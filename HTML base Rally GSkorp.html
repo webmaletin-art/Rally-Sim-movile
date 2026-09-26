@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0a0d12">
+<title>Hill Climb Rally &#8212; Genesis Concept</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#090c10;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;touch-action:none;user-select:none}
+canvas{display:block;width:100%;height:100%}
+#hud{position:fixed;inset:0;z-index:10;pointer-events:none;color:#eef4ff;padding:12px 14px;display:flex;flex-direction:column;justify-content:space-between}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.panel{background:rgba(6,10,16,.62);border:1px solid rgba(160,190,220,.18);backdrop-filter:blur(6px);border-radius:12px;padding:7px 11px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+.lbl{font-size:9px;letter-spacing:1.4px;color:#8ca0b8;text-transform:uppercase}.val{font-variant-numeric:tabular-nums;font-weight:800}
+.gear{display:inline-block;margin-top:4px;font-size:11px;min-width:26px;text-align:center;padding:2px 7px;border-radius:5px;background:rgba(88,160,255,.2);border:1px solid rgba(88,160,255,.35)}
+#speedPanel{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:11;pointer-events:none;text-align:center;min-width:150px}
+#speedPanel .val{font-size:34px;line-height:1;display:block}
+#speedPanel .unit{font-size:10px;font-weight:500;color:#8ea3bc;margin-left:3px}
+#debug{position:fixed;z-index:40;top:58px;left:12px;display:none;background:rgba(4,8,14,.82);border:1px solid rgba(110,170,240,.25);border-radius:9px;color:#b6d3ee;font:11px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace;padding:8px 10px;pointer-events:none;min-width:210px;white-space:pre-wrap}
+#menu{position:fixed;z-index:50;top:12px;right:14px;display:flex;gap:6px}.btn{pointer-events:auto;border:1px solid rgba(140,180,220,.24);background:rgba(8,13,20,.72);color:#dce8f5;border-radius:8px;padding:7px 10px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer}
+#touch{position:fixed;inset:0;z-index:20;pointer-events:none}
+#steering{position:absolute;left:16px;bottom:30px;width:158px;height:158px;pointer-events:auto;touch-action:none}
+body.gyro-on #steering{pointer-events:none;opacity:.75}
+#wheelSvg{width:100%;height:100%;display:block;transform-origin:50% 50%;will-change:transform}
+
+/* ═══ PEDAL ÚNICO SIMPLE, FINO, 2D ═══ */
+#pedals{position:absolute;right:18px;top:50%;transform:translateY(-50%);width:70px;height:58vh;pointer-events:auto;touch-action:none}
+.pedal-track{position:relative;width:100%;height:100%;border-radius:35px;border:2px solid #4a4f57;background:linear-gradient(#151820,#080a0d);overflow:hidden;box-shadow:inset 0 2px 10px rgba(0,0,0,.7),0 4px 0 #050608}
+.pedal-gas-fill{position:absolute;left:0;right:0;bottom:50%;height:0%;background:linear-gradient(to top,#0b4b10,#42c758,#a6ffab);pointer-events:none;z-index:1}
+.pedal-brake-fill{position:absolute;left:0;right:0;top:50%;height:0%;background:linear-gradient(to bottom,#3c0000,#d62e2e,#ff9a9a);pointer-events:none;z-index:1}
+.pedal-center-line{position:absolute;left:10%;right:10%;top:50%;height:2px;background:rgba(255,255,255,.65);transform:translateY(-1px);z-index:2;border-radius:1px;box-shadow:0 0 6px rgba(255,255,255,.35)}
+.pedal-indicator{position:absolute;left:50%;width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#4a5560,#0a0d12);border:2px solid #6db9ff;box-shadow:0 0 14px rgba(100,170,255,.6),inset 0 1px 4px rgba(0,0,0,.8);pointer-events:none;z-index:3;bottom:calc(50% - 20px);transform:translateX(-50%);will-change:bottom}
+.pedal-label{position:absolute;left:0;right:0;text-align:center;font-size:9px;font-weight:800;letter-spacing:1px;z-index:4;pointer-events:none;text-shadow:0 1px 3px #000}
+.pedal-label.top{top:7px;color:#a6ffab}
+.pedal-label.bottom{bottom:7px;color:#ff9a9a}
+
+#gyroBadge{position:fixed;top:82px;left:14px;z-index:12;pointer-events:none;display:none;background:rgba(40,160,90,.55);border:1px solid rgba(120,255,180,.5);color:#e0ffe8;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:800;letter-spacing:1.5px}
+body.gyro-on #gyroBadge{display:block}
+#overlay{position:fixed;inset:0;z-index:60;background:linear-gradient(180deg,rgba(3,7,12,.9),rgba(5,10,16,.76));display:flex;align-items:center;justify-content:center;color:#e8f3ff}
+.card{text-align:center;padding:28px 24px;max-width:420px}
+.card h1{font-size:25px;letter-spacing:3px;font-weight:300;text-transform:uppercase}.card h1 b{font-weight:900;color:#65b5ff}
+.card p{margin:10px 0 20px;font-size:12px;color:#93a6bc;line-height:1.6}
+.start{display:inline-block;pointer-events:auto;padding:12px 30px;border-radius:10px;background:rgba(55,120,210,.48);border:1px solid rgba(130,195,255,.55);font-size:12px;font-weight:900;letter-spacing:2px;cursor:pointer}
+.hint{margin-top:15px;font-size:10px;color:#687f99;line-height:1.65}.hidden{opacity:0;pointer-events:none!important}
+#garage{position:fixed;inset:0;z-index:55;display:none;background:rgba(0,0,0,.32)}
+#garage.open{display:block}
+.garagePanel{position:absolute;right:0;top:0;width:min(410px,88vw);height:100%;background:rgba(7,11,17,.97);border-left:1px solid rgba(120,170,220,.24);overflow-y:auto;overflow-x:hidden;padding:14px 16px 40px;color:#d8e5f5;pointer-events:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.gHead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;position:sticky;top:0;background:rgba(7,11,17,.98);padding:6px 0;z-index:5;border-bottom:1px solid rgba(120,160,200,.15)}
+.gHead h2{font-size:13px;letter-spacing:2px;text-transform:uppercase}
+.tune{padding:10px 0;border-bottom:1px solid rgba(120,160,200,.12)}
+.tuneHead{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px}
+.tuneLabel{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tuneVal{color:#6db9ff;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tune input[type=range]{width:100%;margin-top:7px;touch-action:pan-y}
+.infoBtn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:rgba(100,180,255,.2);border:1px solid rgba(100,180,255,.55);color:#a8d0ff;font-size:11px;font-weight:900;cursor:pointer;padding:0;touch-action:manipulation;line-height:1;flex-shrink:0}
+.infoBtn:active{background:rgba(100,180,255,.45)}
+.tuneDesc{display:none;font-size:11px;color:#9db8d6;line-height:1.5;margin:8px 0 4px;padding:8px 10px;background:rgba(60,120,200,.1);border-left:3px solid rgba(100,180,255,.5);border-radius:5px}
+.tuneDesc.show{display:block}
+.gyroBtns{display:flex;gap:8px;margin-top:8px}
+.gyroBtn{flex:1;padding:10px 8px;border-radius:8px;background:rgba(50,110,200,.4);border:1px solid rgba(100,170,255,.5);color:#c8e0ff;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;cursor:pointer;touch-action:manipulation}
+.gyroBtn.active{background:rgba(40,180,90,.5);border-color:rgba(120,255,180,.6);color:#e0ffe8}
+.gyroBtn.secondary{flex:0 0 auto;padding:10px 14px;background:rgba(80,80,80,.3);border-color:rgba(180,180,180,.3);color:#c8c8c8}
+@media (max-width:700px){
+  #steering{width:140px;height:140px}
+  #pedals{width:64px;height:54vh}
+  .pedal-indicator{width:36px;height:36px;bottom:calc(50% - 18px)}
+  #speedPanel .val{font-size:28px}
+}
+#errorBox{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:100;display:none;max-width:88vw;background:rgba(35,5,8,.96);border:1px solid #ff5b68;border-radius:12px;color:#fff;padding:16px;font:12px/1.5 ui-monospace,monospace;box-shadow:0 12px 40px rgba(0,0,0,.6);white-space:pre-wrap}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas><div id="errorBox"></div>
+<div id="hud">
+  <div class="top">
+    <div class="panel">
+      <div class="lbl">Vuelta</div><div class="val" id="lap">1/3</div>
+      <div class="lbl" style="margin-top:4px">Tiempo</div><div class="val" id="time">00:00.00</div>
+      <div class="lbl" style="margin-top:4px">Mejor</div><div class="val" id="best">--:--.--</div>
+    </div>
+  </div>
+</div>
+<div id="speedPanel" class="panel">
+  <div class="val" id="speed">0<span class="unit">km/h</span></div>
+  <span class="gear" id="gear">N</span>
+  <div style="height:4px;margin-top:6px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden">
+    <div id="rpmFill" style="height:100%;width:0%;background:linear-gradient(90deg,#65b5ff,#ffd166 75%,#ff4d5e)"></div>
+  </div>
+</div>
+<div id="gyroBadge">🎯 GIRO ACTIVO</div>
+<div id="debug"></div>
+<div id="menu"><button class="btn" id="restart">Reiniciar</button><button class="btn" id="setup">Setup</button></div>
+<div id="touch">
+  <div id="steering">
+    <svg id="wheelSvg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="100" r="94" fill="#1a1d22"/>
+      <circle cx="100" cy="100" r="82" fill="none" stroke="#2a2f38" stroke-width="20"/>
+      <rect x="94" y="14" width="12" height="76" fill="#2a2f38"/>
+      <rect x="14" y="94" width="172" height="12" fill="#2a2f38"/>
+      <circle cx="100" cy="100" r="26" fill="#14181e" stroke="#5a6472" stroke-width="3"/>
+      <circle cx="100" cy="100" r="7" fill="#67b4ff"/>
+      <rect x="94" y="6" width="12" height="18" fill="#67b4ff"/>
+    </svg>
+  </div>
+  <div id="pedals">
+    <div class="pedal-track" id="pedalSingle">
+      <div class="pedal-gas-fill"></div>
+      <div class="pedal-brake-fill"></div>
+      <div class="pedal-center-line"></div>
+      <div class="pedal-indicator"></div>
+      <div class="pedal-label top">GAS</div>
+      <div class="pedal-label bottom">FRENO</div>
+    </div>
+  </div>
+</div>
+<div id="garage"><div class="garagePanel"><div class="gHead"><h2>Ajuste f&#237;sico</h2><button class="btn" id="closeSetup">Cerrar</button></div><div id="tunes"></div></div></div>
+<div id="overlay"><div class="card"><h1>Hill Climb <b>Rally</b></h1><p>Genesis X Skorpio Concept &#8212; Circuito de montaña largo con curvas amplias.</p><div class="start" id="start">TOCA PARA EMPEZAR</div><div class="hint">Volante: girá el volantecito con el pulgar. Pedal único: arriba gas, abajo freno. Vuelve al centro al soltar.<br>Teclado: A/D · W/↑ · S/↓ · R reiniciar · P debug · G setup.<br>Giroscopio: activalo desde Setup.</div></div></div>
+<script type="module">
+import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+const VEH={
+ name:'Genesis X Skorpio Concept',
+ mass:2100,weightFront:0.48,comHeight:0.80,Ixx:950,Iyy:3700,Izz:4400,
+ wheelBase:2.95,trackF:1.86,trackR:1.86,wheelRadius:0.508,rimRadius:0.2286,tireWidth:0.34,wheelInertia:9.0,
+ hardpointY:0.0,travel:0.32,freqF:1.30,freqR:1.40,zetaBump:0.30,zetaRebound:0.55,arbF:5000,arbR:2500,
+ bumpStopK:320000,bumpStopC:9000,antiSquat:0.60,antiDive:0.40,rollCenter:0.20,
+ mu:1.02,gripFront:1.0,gripRear:1.0,slipPeakLong:0.12,slipPeakLat:0.16,tireFalloff:1.45,rolling:0.016,
+ surfGrip:{asphalt:1.0,dirt:0.62,shoulder:0.72,grass:0.45,outside:0.40},
+ peakTorque:1152,idleRpm:1000,launchRpm:3600,maxRpm:7200,
+ torqueCurve:[[0,0.45],[1000,0.55],[2000,0.78],[3000,0.93],[4000,1.0],[6800,1.0],[7200,0.9],[7600,0.6]],
+ engineInertia:0.28,engineBrake:190,
+ gears:[3.10,2.15,1.62,1.28,1.03],reverseRatio:3.0,finalDrive:4.30,efficiency:0.88,
+ clutchTime:1.3,shiftUpRpm:6800,shiftDownRpm:3000,shiftTime:0.16,
+ driveType:'AWD',frontDriveRatio:0.40,rearDriveRatio:0.60,centerDiffBias:0.35,lsd:900,
+ tractionControl:true,tcSlip:0.20,
+ brakeTorque:13000,brakeBiasFront:0.62,abs:true,absSlip:0.14,
+ maxSteer:0.54,steerResponse:9.5,dragCoef:0.95,
+ stabilityAssist:0.30,powerScale:1.0
+};
+const clampP=(v,a,b)=>Math.max(a,Math.min(b,v));
+function tireCurve(s,C){const B=Math.tan(Math.PI/(2*C));return Math.sin(C*Math.atan(B*s));}
+class Physics{
+ constructor(track){this.track=track;this.setup();this.reset();}
+ setup(){const V=VEH,g=9.81,wb=V.wheelBase;this.a=wb*(1-V.weightFront);this.b=wb*V.weightFront;
+  const def=[[V.trackF/2,this.a,true,true],[-V.trackF/2,this.a,true,false],[V.trackR/2,-this.b,false,true],[-V.trackR/2,-this.b,false,false]];
+  const old=this.wheels;
+  this.wheels=def.map(([x,z,front,left],i)=>{
+   const load=V.mass*g*(front?V.weightFront:1-V.weightFront)/2,mc=load/g;
+   const f=front?V.freqF:V.freqR,k=mc*Math.pow(2*Math.PI*f,2),cc=2*Math.sqrt(k*mc);
+   const xs=load/k,ss=V.comHeight-V.wheelRadius+V.hardpointY,sMax=ss+xs,sMin=Math.max(0.03,sMax-V.travel);
+   const w={x,z,front,left,k,cB:V.zetaBump*cc,cR:V.zetaRebound*cc,sMax,sMin,sStatic:ss,comp:xs,s:ss,contact:true,Fz:load,Ftire:load,jack:0,omega:0,drive:0,brake:0,kappa:0,alpha:0,gy:0,surf:'asphalt',wx:0,wz:0,fl:0,slip:0,impact:0,vl:0};
+   if(old&&old[i]){w.omega=old[i].omega;w.comp=old[i].comp;w.s=old[i].s;}
+   return w;});}
+ reset(){const t=this.track,p=t.samples[0],tg=t.tangents[0],lat=t.laterals[0];this.px=p.x+lat.x*0.35;this.pz=p.z+lat.z*0.35;this.py=t.groundInfo(this.px,this.pz).y+VEH.comHeight;this.yaw=Math.atan2(tg.x,tg.z);this.pitch=0;this.roll=0;this.vx=0;this.vy=0;this.vz=0;this.yawRate=0;this.pitchRate=0;this.rollRate=0;this.vLong=0;this.vLat=0;this.aLong=0;this.aLat=0;this.steerAngle=0;this.rpm=VEH.idleRpm;this.gear=1;this.shiftT=0;this.clutchLocked=false;this.tc=1;this.load=0;this.limiter=false;this.events=[];this.revT=0;this.airTime=0;this.slip=0;this.contacts=4;for(const w of this.wheels){w.comp=w.sMax-w.sStatic;w.s=w.sStatic;w.omega=0;w.contact=true;w.jack=0;}this.position={x:this.px,y:this.py,z:this.pz};}
+ torqueAt(rpm){const c=VEH.torqueCurve;if(rpm<=c[0][0])return c[0][1];for(let i=1;i<c.length;i++){if(rpm<=c[i][0]){const u=(rpm-c[i-1][0])/(c[i][0]-c[i-1][0]);return c[i-1][1]+(c[i][1]-c[i-1][1])*u}}return c[c.length-1][1];}
+ step(dt,input){const n=2,h=dt/n;for(let i=0;i<n;i++)this.sub(h,input);this.position.x=this.px;this.position.y=this.py;this.position.z=this.pz;}
+ sub(h,inp){const V=VEH,g=9.81,W=this.wheels,R=V.wheelRadius,m=V.mass,tr=this.track;
+  let thr=inp.throttle||0,brk=inp.brake||0;const spd=Math.hypot(this.vx,this.vz);
+  if(this.gear>0&&brk>0.5&&thr<0.05&&spd<0.6&&this.vLong<0.4){this.revT+=h;if(this.revT>0.35){this.gear=-1;this.revT=0}}else if(this.gear>0)this.revT=0;
+  if(this.gear===-1){if(thr>0.1&&this.vLong>-0.6){this.gear=1}else{const t=thr;thr=brk;brk=t}}
+  const sf=1-0.45*clampP(spd/40,0,1);const tgt=-(inp.steer||0)*V.maxSteer*sf;this.steerAngle+=(tgt-this.steerAngle)*(1-Math.exp(-h*V.steerResponse));
+  const sy=Math.sin(this.yaw),cy=Math.cos(this.yaw),fx=sy,fz=cy,lx=cy,lz=-sy;const vLong=this.vx*fx+this.vz*fz,vLat=this.vx*lx+this.vz*lz;const sp=Math.sin(this.pitch),sr=Math.sin(this.roll);
+  let contacts=0;
+  for(const w of W){w.wx=this.px+fx*w.z+lx*w.x;w.wz=this.pz+fz*w.z+lz*w.x;const gi=tr.groundInfo(w.wx,w.wz);w.gy=gi.y;w.surf=gi.surf;const ay=this.py+V.hardpointY+w.x*sr-w.z*sp;const d=ay-(gi.y+R);const prevContact=w.contact,prevComp=w.comp;
+   if(d>=w.sMax){w.contact=false;w.comp=0;w.s=w.sMax;w.Fz=0;w.cv=0;}else{w.contact=true;contacts++;const comp=w.sMax-d;const cv=prevContact?(comp-prevComp)/h:Math.min(6,-this.vy+0);w.comp=comp;w.cv=cv;w.s=Math.max(d,w.sMin);let F=w.k*comp+(cv>0?w.cB:w.cR)*cv;if(d<w.sMin){F+=V.bumpStopK*(w.sMin-d)+(cv>0?V.bumpStopC*cv:0);}w.Fz=Math.max(0,F);if(!prevContact||cv>1.0)w.impact=Math.max(w.impact,Math.abs(cv)*(d<w.sMin?1.6:1));}}
+  for(const [L,Rw,k] of [[W[0],W[1],V.arbF],[W[2],W[3],V.arbR]]){if(L.contact&&Rw.contact){const df=k*(L.comp-Rw.comp);L.Fz=Math.max(0,L.Fz+df);Rw.Fz=Math.max(0,Rw.Fz-df);}}
+  this.contacts=contacts;this.engine(h,thr,brk,vLong);
+  let FL=0,FT=0,Mz=0,tauP=0,tauR=0,FzSum=0,maxSlip=0;const hgt=Math.max(0.3,this.py-(W[0].gy+W[1].gy+W[2].gy+W[3].gy)/4);
+  for(const w of W){const I=V.wheelInertia+(w.inertiaExtra||0);let fl=0,k=0;
+   if(w.contact){const Ft0=Math.max(0,w.Fz+w.jack);const vpl=vLat+this.yawRate*w.z,vpg=vLong-this.yawRate*w.x;const dl=w.front?this.steerAngle:0,cs=Math.cos(dl),sn=Math.sin(dl);const vl=vpl*sn+vpg*cs,vt=vpl*cs-vpg*sn;w.vl=vl;const den=Math.max(Math.abs(vl),2.5);const kap=(w.omega*R-vl)/den,alp=Math.atan2(vt,den);w.kappa=kap;w.alpha=alp;const mu=V.mu*(V.surfGrip[w.surf]||0.4)*(w.front?V.gripFront:V.gripRear);const sx=kap/V.slipPeakLong,sy2=alp/V.slipPeakLat,s=Math.hypot(sx,sy2);let F=0,Ft=0;
+    if(s>1e-6){F=mu*Ft0*tireCurve(s,V.tireFalloff);fl=F*sx/s;Ft=-F*sy2/s;const d1=(tireCurve(s+0.02,V.tireFalloff)-tireCurve(s,V.tireFalloff))/0.02;k=mu*Ft0*Math.max(0.08,d1*Math.abs(sx)/s+(s<1?0.3:0))/V.slipPeakLong*R/den;}else{k=mu*Ft0*2.0/V.slipPeakLong*R/den;}
+    const rr=V.rolling*Ft0*clampP(vl/0.5,-1,1);const flT=fl-rr;const fbLat=flT*sn+Ft*cs,fbLong=flT*cs-Ft*sn;FL+=fbLong;FT+=fbLat;Mz+=w.z*fbLat-w.x*fbLong;
+    const anti=w.front?(fbLong<0?V.antiDive:0.15):(fbLong>0?V.antiSquat:0.2);tauP+=-fbLong*hgt*(1-anti);tauR+=fbLat*(hgt-V.rollCenter);w.jackTau=-fbLong*hgt*anti;w.jackLat=fbLat*V.rollCenter;w.slip=s;maxSlip=Math.max(maxSlip,s);w.fl=fl;
+   }else{w.slip=0;w.kappa=0;w.alpha=0;w.jackTau=0;w.jackLat=0;w.fl=0;}
+   FzSum+=w.Fz;tauP+=-w.Fz*w.z;tauR+=w.Fz*w.x;
+   const T=w.drive;let om=(w.omega+h/I*(T-R*fl+R*k*w.omega))/(1+h/I*R*k);const bd=w.brake*h/I;if(Math.abs(om)<=bd)om=0;else om-=Math.sign(om)*bd;if(!w.contact)om*=Math.exp(-h*0.3);w.omega=om;}
+  let jF=0,jR=0,jLF=0,jLR=0;for(const w of W){if(w.front){jF+=w.jackTau;jLF+=w.jackLat}else{jR+=w.jackTau;jLR+=w.jackLat}}
+  const jt=(jF+jR)/V.wheelBase/2;for(const w of W){const lat=(w.front?jLF/V.trackF:jLR/V.trackR)/2;w.jack=(w.front?jt:-jt)+(w.left?-lat:lat);}
+  this.slip=Math.max(0,maxSlip-1);
+  const slL=((W[0].gy+W[1].gy)-(W[2].gy+W[3].gy))/2/V.wheelBase;const slT=((W[0].gy+W[2].gy)-(W[1].gy+W[3].gy))/2/((V.trackF+V.trackR)/2);
+  const drag=V.dragCoef*spd;let Fx=fx*FL+lx*FT-drag*this.vx-FzSum*(fx*slL+lx*slT);let Fzw=fz*FL+lz*FT-drag*this.vz-FzSum*(fz*slL+lz*slT);
+  this.vx+=Fx/m*h;this.vz+=Fzw/m*h;this.vy+=(FzSum/m-g)*h;
+  const kinYaw=vLong*Math.tan(this.steerAngle)/V.wheelBase;const yMax=V.mu*9.81*0.95/Math.max(spd,3),yT=clampP(kinYaw,-yMax,yMax);
+  if(contacts>0&&(Math.abs(this.yawRate)>Math.abs(yT)||this.yawRate*yT<0))Mz+=-V.stabilityAssist*V.Izz*3.0*(this.yawRate-yT)*clampP(spd/8,0,1);
+  if(contacts>0&&spd<3)Mz+=-V.Izz*2*(this.yawRate-kinYaw)*(1-spd/3);
+  this.yawRate+=Mz/V.Izz*h;this.pitchRate+=tauP/V.Iyy*h;this.rollRate+=tauR/V.Ixx*h;
+  if(contacts===0){this.pitchRate*=Math.exp(-h*0.4);this.rollRate*=Math.exp(-h*0.4);this.yawRate*=Math.exp(-h*0.2);this.airTime+=h}else{if(this.airTime>0.25)this.events.push({type:'land',v:Math.max(...W.map(w=>w.impact))});this.airTime=0}
+  this.px+=this.vx*h;this.py+=this.vy*h;this.pz+=this.vz*h;this.yaw+=this.yawRate*h;this.pitch+=this.pitchRate*h;this.roll+=this.rollRate*h;
+  if(Math.abs(this.pitch)>0.6){this.pitch=Math.sign(this.pitch)*0.6;this.pitchRate=0}if(Math.abs(this.roll)>0.6){this.roll=Math.sign(this.roll)*0.6;this.rollRate=0}
+  const gc=tr.groundInfo(this.px,this.pz).y;if(this.py<gc+0.3){this.py=gc+0.3;if(this.vy<0)this.vy=0}
+  if(spd<0.25&&thr<0.05&&contacts===4){this.vx*=0.8;this.vz*=0.8;this.yawRate*=0.8;for(const w of W)w.omega*=0.8}
+  const nL=this.vx*fx+this.vz*fz,nT=this.vx*lx+this.vz*lz;this.aLong+=(((nL-vLong)/h)-this.aLong)*(1-Math.exp(-h*12));this.aLat+=((FT/m)-this.aLat)*(1-Math.exp(-h*12));this.vLong=nL;this.vLat=nT;}
+ engine(h,thr,brk,vLong){const V=VEH,W=this.wheels;let fr=V.frontDriveRatio,rr=V.rearDriveRatio;if(V.driveType==='RWD'){fr=0;rr=1}else if(V.driveType==='FWD'){fr=1;rr=0}const tot=fr+rr||1;fr/=tot;rr/=tot;
+  const wF=(W[0].omega+W[1].omega)/2,wR=(W[2].omega+W[3].omega)/2,wAvg=wF*fr+wR*rr;const ratio=this.gear>0?V.gears[this.gear-1]*V.finalDrive:(this.gear<0?-V.reverseRatio*V.finalDrive:0);const rpmW=Math.abs(wAvg*ratio)*60/(2*Math.PI);
+  if(this.shiftT>0)this.shiftT-=h;
+  if(!this.clutchLocked){if(thr>0.05)this.engage=Math.min(1,(this.engage||0)+h/V.clutchTime);else this.engage=0;const free=V.idleRpm+thr*(V.launchRpm-V.idleRpm);const target=Math.max(rpmW,free+(Math.max(rpmW,V.idleRpm)-free)*this.engage);this.rpm+=(target-this.rpm)*(1-Math.exp(-h*(thr>0.05?10:4)));if(thr>0.05&&(rpmW>=this.rpm*0.97||this.engage>=1))this.clutchLocked=true;if(thr<0.05&&rpmW>V.idleRpm*1.2)this.clutchLocked=true;}else{this.rpm+=(Math.max(V.idleRpm*0.85,rpmW)-this.rpm)*(1-Math.exp(-h*30));if(rpmW<V.idleRpm*0.8&&(thr<0.05||brk>0.3)){this.clutchLocked=false;this.engage=0;}}
+  this.limiter=this.rpm>=V.maxRpm;let Te;const Tmax=V.peakTorque*V.powerScale*this.torqueAt(this.rpm);
+  if(this.shiftT>0)Te=0;else if(this.clutchLocked){Te=thr*Tmax-(1-thr)*V.engineBrake*(this.rpm/V.maxRpm);if(this.limiter)Te=Math.min(Te,-V.engineBrake*0.5);}else Te=thr*Tmax;
+  if(this.limiter&&!this.wasLimiter)this.events.push({type:'limiter'});this.wasLimiter=this.limiter;
+  let mk=0;for(const w of W)if(w.contact&&((w.front&&fr>0)||(!w.front&&rr>0)))mk=Math.max(mk,w.kappa*Math.sign(ratio||1));
+  if(V.tractionControl&&thr>0.05){if(mk>V.tcSlip)this.tc=Math.max(0.2,this.tc-h*6);else this.tc=Math.min(1,this.tc+h*2.5)}else this.tc=Math.min(1,this.tc+h*4);
+  if(Te>0)Te*=this.tc;const Tw=Te*ratio*V.efficiency;const couple=V.centerDiffBias*600*(wF-wR);const Tf=Tw*fr-(fr>0&&rr>0?couple:0),Tr=Tw*rr+(fr>0&&rr>0?couple:0);
+  const ie=this.clutchLocked?V.engineInertia*ratio*ratio:0;const lF=V.lsd*(W[0].omega-W[1].omega),lR=V.lsd*(W[2].omega-W[3].omega);
+  for(const w of W){w.drive=(w.front?Tf:Tr)/2-(w.front?lF:lR)*(w.left?1:-1)*(this.clutchLocked||thr>0.05?1:0.3);w.inertiaExtra=ie*(w.front?fr:rr)/2;
+   if(V.abs&&brk>0.05){if(w.kappa*Math.sign(w.vl||1)<-V.absSlip)w.absF=Math.max(0.25,(w.absF||1)-h*9);else w.absF=Math.min(1,(w.absF||1)+h*4)}else w.absF=1;
+   w.brake=brk*w.absF*V.brakeTorque*(w.front?V.brakeBiasFront:1-V.brakeBiasFront)/2;}
+  if(this.gear>0&&this.clutchLocked&&this.shiftT<=0){if(this.rpm>V.shiftUpRpm&&this.gear<V.gears.length&&thr>0.1){this.gear++;this.shiftT=V.shiftTime;this.events.push({type:'shift',up:true})}else if(this.rpm<V.shiftDownRpm&&this.gear>1){this.gear--;this.shiftT=V.shiftTime*0.6;this.events.push({type:'shift',up:false})}}
+  const l=this.clutchLocked?(Te>0?Te/Math.max(1,Tmax):0):thr*0.7;this.load+=(l-this.load)*(1-Math.exp(-h*10));this.throttle=thr;}
+}
+const CFG=VEH;
+const STATE={throttle:0,brake:0,steer:0,started:false,debug:false,lap:1,totalLaps:3,lapTime:0,best:0,lapArmed:false,prevCross:0};
+const $=id=>document.getElementById(id),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),lerp=(a,b,t)=>a+(b-a)*t;
+const fmt=s=>{const m=Math.floor(s/60),ss=Math.floor(s%60),cc=Math.floor((s*100)%100);return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}.${String(cc).padStart(2,'0')}`};
+class Input{
+ constructor(){this.keys={};this.wheelTarget=0;this.gasTarget=0;this.brakeTarget=0;this.gas=0;this.brake=0;this.steer=0;this.wheelVisual=0;this.wheelRotation=0;this.wheelTouchAngle=null;this.wheelTouchId=null;this.pedalTouchId=null;this.throttle=0;this.activePointers=new Map();
+  this.gyroEnabled=false;this.gyroSteer=0;this.gyroRaw=0;this.gyroCalib=null;this.gyroHandler=null;
+  addEventListener('keydown',e=>{this.keys[e.code]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();});
+  addEventListener('keyup',e=>{this.keys[e.code]=false;});
+  this.bindWheel();this.bindPedalSingle();}
+ bindWheel(){const el=$('steering');
+  const getAngle=e=>{const r=el.getBoundingClientRect();const cx=r.left+r.width/2,cy=r.top+r.height/2;return Math.atan2(e.clientY-cy,e.clientX-cx);};
+  const angleDelta=(a,b)=>{let d=a-b;while(d>Math.PI)d-=Math.PI*2;while(d<-Math.PI)d+=Math.PI*2;return d;};
+  const begin=e=>{if(this.gyroEnabled)return;e.preventDefault();if(this.activePointers.has(e.pointerId))return;this.activePointers.set(e.pointerId,'wheel');this.wheelTouchAngle=getAngle(e);try{el.setPointerCapture(e.pointerId)}catch(_){}};
+  const move=e=>{if(this.gyroEnabled)return;if(this.activePointers.get(e.pointerId)!=='wheel')return;e.preventDefault();const a=getAngle(e);const d=angleDelta(a,this.wheelTouchAngle);this.wheelTouchAngle=a;this.wheelRotation=clamp(this.wheelRotation+d*1.35,-Math.PI*3,Math.PI*3);this.wheelTarget=clamp(this.wheelRotation/Math.PI,-1,1);};
+  const end=e=>{if(this.activePointers.get(e.pointerId)!=='wheel')return;this.activePointers.delete(e.pointerId);this.wheelTouchAngle=null;this.wheelTarget=0;};
+  el.addEventListener('pointerdown',begin,{passive:false});el.addEventListener('pointermove',move,{passive:false});el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);el.addEventListener('lostpointercapture',end);
+  el.addEventListener('touchstart',e=>{if(this.gyroEnabled)return;e.preventDefault();const t=e.changedTouches[0];if(!t)return;this.wheelTouchId=t.identifier;this.wheelTouchAngle=getAngle(t);},{passive:false});
+  el.addEventListener('touchmove',e=>{if(this.gyroEnabled)return;e.preventDefault();const id=this.wheelTouchId;for(const t of e.changedTouches){if(t.identifier!==id)continue;const a=getAngle(t);const d=angleDelta(a,this.wheelTouchAngle);this.wheelTouchAngle=a;this.wheelRotation=clamp(this.wheelRotation+d*1.35,-Math.PI*3,Math.PI*3);this.wheelTarget=clamp(this.wheelRotation/Math.PI,-1,1);}},{passive:false});
+  const touchEnd=e=>{for(const t of e.changedTouches){if(t.identifier===this.wheelTouchId){this.wheelTouchId=null;this.wheelTouchAngle=null;this.wheelTarget=0;}}};
+  el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});}
+ /* ═══ PEDAL ÚNICO SIMPLE — sigue el dedo 1:1 ═══ */
+ bindPedalSingle(){
+  const el=$('pedalSingle');
+  const indicator=el.querySelector('.pedal-indicator');
+  const gasFill=el.querySelector('.pedal-gas-fill');
+  const brakeFill=el.querySelector('.pedal-brake-fill');
+  const setFromY=clientY=>{
+   const r=el.getBoundingClientRect();
+   const rel=clamp((r.bottom-clientY)/r.height,0,1);
+   const v=clamp((rel-0.5)*2,-1,1);
+   if(v>=0){
+    this.gasTarget=v;this.brakeTarget=0;
+    gasFill.style.height=(v*50)+'%';
+    brakeFill.style.height='0%';
+   }else{
+    this.gasTarget=0;this.brakeTarget=-v;
+    gasFill.style.height='0%';
+    brakeFill.style.height=((-v)*50)+'%';
+   }
+   indicator.style.bottom=`calc(${50+v*38}% - 20px)`;
+  };
+  const reset=()=>{
+   this.gasTarget=0;this.brakeTarget=0;
+   gasFill.style.height='0%';brakeFill.style.height='0%';
+   indicator.style.bottom='calc(50% - 20px)';
+  };
+  reset();
+  el.addEventListener('pointerdown',e=>{e.preventDefault();if(this.activePointers.has(e.pointerId))return;this.activePointers.set(e.pointerId,'pedal');setFromY(e.clientY);try{el.setPointerCapture(e.pointerId)}catch(_){}},{passive:false});
+  el.addEventListener('pointermove',e=>{if(this.activePointers.get(e.pointerId)!=='pedal')return;e.preventDefault();setFromY(e.clientY);},{passive:false});
+  const endPointer=e=>{if(this.activePointers.get(e.pointerId)!=='pedal')return;this.activePointers.delete(e.pointerId);reset();};
+  el.addEventListener('pointerup',endPointer);el.addEventListener('pointercancel',endPointer);el.addEventListener('lostpointercapture',endPointer);
+  el.addEventListener('touchstart',e=>{e.preventDefault();const t=e.changedTouches[0];if(!t)return;this.pedalTouchId=t.identifier;setFromY(t.clientY);},{passive:false});
+  el.addEventListener('touchmove',e=>{e.preventDefault();const id=this.pedalTouchId;for(const t of e.changedTouches)if(t.identifier===id)setFromY(t.clientY);},{passive:false});
+  const touchEnd=e=>{for(const t of e.changedTouches){if(t.identifier===this.pedalTouchId){this.pedalTouchId=null;reset();}}};
+  el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});}
+ gyroOrientation(){let a=0;if(screen.orientation&&typeof screen.orientation.angle==='number')a=screen.orientation.angle;else if(typeof window.orientation==='number')a=window.orientation;a=((a%360)+360)%360;if(a===90)return 'landscape-primary';if(a===270)return 'landscape-secondary';if(a===180)return 'portrait-secondary';return 'portrait-primary';}
+ gyroAxisValue(e){const o=this.gyroOrientation();const beta=(typeof e.beta==='number'&&isFinite(e.beta))?e.beta:0;const gamma=(typeof e.gamma==='number'&&isFinite(e.gamma))?e.gamma:0;if(o==='landscape-primary')return -beta;if(o==='landscape-secondary')return beta;if(o==='portrait-secondary')return -gamma;return gamma;}
+ async enableGyro(){
+  if(!('DeviceOrientationEvent' in window))return {ok:false,err:'Tu navegador no soporta giroscopio.'};
+  if(location.protocol==='file:')return {ok:false,err:'Abrilo por HTTPS o servidor local para usar el giroscopio.'};
+  if(typeof DeviceOrientationEvent.requestPermission==='function'){try{const r=await DeviceOrientationEvent.requestPermission();if(r!=='granted')return {ok:false,err:'Permiso denegado.'};}catch(e){return {ok:false,err:'Error pidiendo permiso: '+e.message};}}
+  let events=0;this.gyroCalib=null;this.gyroRaw=0;this.gyroSteer=0;
+  this.gyroHandler=e=>{if(e.beta==null&&e.gamma==null&&e.alpha==null)return;events++;const cur=this.gyroAxisValue(e);if(this.gyroCalib===null){this.gyroCalib=cur;return;}let delta=cur-this.gyroCalib;if(delta>180)delta-=360;if(delta<-180)delta+=360;this.gyroRaw+=(delta-this.gyroRaw)*0.20;this.gyroSteer=clamp(this.gyroRaw/30,-1,1);};
+  window.addEventListener('deviceorientation',this.gyroHandler,{passive:true});
+  await new Promise(r=>setTimeout(r,600));
+  if(events<2){window.removeEventListener('deviceorientation',this.gyroHandler);this.gyroHandler=null;return {ok:false,err:'El sensor no está enviando datos. Probá mover el teléfono.'};}
+  this.gyroEnabled=true;document.body.classList.add('gyro-on');this.wheelTarget=0;return {ok:true};}
+ disableGyro(){if(this.gyroHandler){window.removeEventListener('deviceorientation',this.gyroHandler);this.gyroHandler=null;}this.gyroEnabled=false;this.gyroSteer=0;this.gyroRaw=0;this.gyroCalib=null;this.wheelTarget=0;document.body.classList.remove('gyro-on');}
+ recalibrateGyro(){this.gyroCalib=null;this.gyroRaw=0;this.gyroSteer=0;}
+ update(dt){
+  let kbSteer=0;if(this.keys.KeyA||this.keys.ArrowLeft)kbSteer-=1;if(this.keys.KeyD||this.keys.ArrowRight)kbSteer+=1;
+  let desiredSteer;
+  if(this.gyroEnabled){desiredSteer=this.gyroSteer;}
+  else{const hasWheelContact=(this.wheelTouchId!=null)||[...this.activePointers.values()].includes('wheel');desiredSteer=hasWheelContact?this.wheelTarget:kbSteer;}
+  const steerRate=desiredSteer===0?13.0:9.5;
+  this.steer+=(desiredSteer-this.steer)*(1-Math.exp(-dt*steerRate));
+  if(this.gyroEnabled){this.wheelRotation+=(this.gyroSteer*Math.PI*0.75-this.wheelRotation)*(1-Math.exp(-dt*15));}
+  else{const hasWheelContact=(this.wheelTouchId!=null)||[...this.activePointers.values()].includes('wheel');if(!hasWheelContact){const targetRot=kbSteer!==0?kbSteer*Math.PI*0.75:0;this.wheelRotation+=(targetRot-this.wheelRotation)*(1-Math.exp(-dt*5.5));}}
+  this.wheelVisual+=(this.wheelRotation-this.wheelVisual)*(1-Math.exp(-dt*10));
+  // ═══ TECLADO como fallback si el pedal no está tocado ═══
+  const kbGas=(this.keys.KeyW||this.keys.ArrowUp)?1:0;
+  const kbBrake=(this.keys.KeyS||this.keys.ArrowDown)?1:0;
+  const pedalActive=(this.pedalTouchId!=null)||[...this.activePointers.values()].includes('pedal');
+  if(!pedalActive){
+   if(kbGas>0){this.gasTarget=kbGas;this.brakeTarget=0;}
+   else if(kbBrake>0){this.gasTarget=0;this.brakeTarget=kbBrake;}
+   else{this.gasTarget=0;this.brakeTarget=0;}
+  }
+  // ═══ INSTANTÁNEO — sigue la velocidad del dedo, sin lag ═══
+  this.gas=this.gasTarget;
+  this.brake=this.brakeTarget;
+  this.throttle=this.gas;
+  $('wheelSvg').style.transform=`rotate(${this.wheelVisual*180/Math.PI}deg)`;
+ }
+}
+class Track{
+ constructor(scene,mode='asphalt'){this.scene=scene;this.mode=mode;this.halfWidth=4.35;this.shoulder=1.35;this.samples=[];this.tangents=[];this.laterals=[];this.length=0;this.tapeNodes=[];this.build();}
+ /* ═══ PISTA DE MONTAÑA LARGA — curvas amplias, ~7 km ═══ */
+ control(){return [
+  [0,2,0],
+  [130,4,25],[270,8,60],[410,13,105],[540,18,165],[650,22,245],
+  [720,25,340],[750,27,445],[730,28,550],
+  [670,28,630],[580,28,690],[480,27,730],[375,26,740],[275,25,720],
+  [190,24,670],[135,22,600],[110,20,525],[115,18,450],
+  [150,16,385],[205,14,340],[270,12,320],[340,11,330],[405,10,360],
+  [455,10,410],[475,10,470],[460,10,535],[415,10,585],[350,10,620],
+  [275,10,635],[200,10,630],[135,10,605],[85,10,560],[55,9,505],
+  [50,8,445],[70,7,385],[110,6,330],[160,5,285],[220,4,255],
+  [290,3,245],[360,3,250],[425,3,275],[475,3,315],[505,3,365],
+  [510,3,420],[490,3,470],[445,3,505],[390,3,520],
+  [325,3,510],[265,3,480],[210,3,435],[165,2,380],[130,2,320],
+  [100,2,260],[80,2,195],[65,2,130],[50,2,70],[30,2,20]
+ ];}
+ getYAt(t){const v=this.control();let i=Math.floor(t*v.length)%v.length,u=(t*v.length)%1,a=v[i],b=v[(i+1)%v.length];return a[1]+(b[1]-a[1])*u+0.20*Math.sin(t*Math.PI*6)+0.10*Math.sin(t*Math.PI*15);}
+ build(){const raw=this.control().map(p=>new THREE.Vector3(p[0],p[1],p[2]));const curve=new THREE.CatmullRomCurve3(raw,true,'catmullrom',0.5);const N=600;this.samples=curve.getSpacedPoints(N-1);for(let i=0;i<N;i++){const t=i/N;this.samples[i].y=this.getYAt(t)}
+  this.tangents=this.samples.map((p,i)=>this.samples[(i+1)%N].clone().sub(this.samples[(i+N-1)%N]).normalize());this.laterals=this.tangents.map(t=>new THREE.Vector3().crossVectors(t,new THREE.Vector3(0,1,0)).normalize());this.cum=[0];for(let i=1;i<=N;i++)this.cum[i]=this.cum[i-1]+this.samples[i-1].distanceTo(this.samples[i%N]);this.length=this.cum[N];
+  this.buildRoad();this.buildTerrain();this.buildTape();this.buildStart();this.buildScenery();}
+ roadOffset(i){const t=i/this.samples.length;return 0.06+0.10*Math.sin(t*Math.PI*5)+0.04*Math.sin(t*Math.PI*13)-0.25*Math.exp(-Math.pow((t-0.43)/0.045,2))+0.18*Math.exp(-Math.pow((t-0.73)/0.06,2));}
+ terrainBase(x,z,roadY){const rY=(typeof roadY==='number'&&isFinite(roadY))?roadY:0;return rY - 0.35 + 0.55*Math.sin(x*.028+z*.021) + 0.28*Math.sin(x*.062-z*.048+1.3) + 0.14*Math.sin(x*.13+z*.10+2.7);}
+ _scan(x,z,i0,cnt){const N=this.samples.length;for(let k=0;k<cnt;k++){const i=((i0+k)%N+N)%N,a=this.samples[i],b=this.samples[(i+1)%N],abx=b.x-a.x,abz=b.z-a.z,apx=x-a.x,apz=z-a.z,den=abx*abx+abz*abz;const t=den?clamp((apx*abx+apz*abz)/den,0,1):0;const dx=x-(a.x+abx*t),dz=z-(a.z+abz*t),d=dx*dx+dz*dz;if(d<this._bd){this._bd=d;this._bi=i;this._bt=t}}}
+ nearest(x,z){const N=this.samples.length,Wd=30,h=this._hint;this._bd=Infinity;this._bi=0;this._bt=0;
+  if(h!=null){this._scan(x,z,h-Wd,2*Wd+1);let off=this._bi-h;if(off>N/2)off-=N;if(off<-N/2)off+=N;if(Math.abs(off)>=Wd-1||this._bd>900){this._bd=Infinity;this._scan(x,z,0,N)}}else this._scan(x,z,0,N);
+  const bi=this._bi,bt=this._bt;this._hint=bi;const a=this.samples[bi],b=this.samples[(bi+1)%N],centerY=lerp(a.y+this.roadOffset(bi),b.y+this.roadOffset((bi+1)%N),bt);const lat=this.laterals[bi],dx=x-(a.x+(b.x-a.x)*bt),dz=z-(a.z+(b.z-a.z)*bt);const o=this._n||(this._n={});o.dist=Math.sqrt(this._bd);o.idx=bi;o.t=bt;o.y=centerY;o.lateral=dx*lat.x+dz*lat.z;o.tan=this.tangents[bi];o.lat=lat;return o}
+ groundInfo(x,z){const n=this.nearest(x,z),d=Math.abs(n.lateral),edge=this.halfWidth,se=edge+this.shoulder,o=this._gi||(this._gi={y:0,surf:'asphalt'});let y;
+  if(d<=edge){y=n.y+(1-Math.min(d/edge,1)**2)*0.03}else{const base=this.terrainBase(x,z,n.y);if(d<=se){const t=(d-edge)/this.shoulder;y=n.y*(1-t)+base*t+0.10*Math.sin(t*Math.PI)}else y=base-0.35*Math.exp(-Math.pow((d-se)/2.5,2))}
+  o.y=y;o.surf=d<=edge?(this.mode==='asphalt'?'asphalt':'dirt'):d<=se?'shoulder':d<10?'grass':'outside';return o}
+ ground(x,z){const n=this.nearest(x,z),d=Math.abs(n.lateral),edge=this.halfWidth,se=edge+this.shoulder;
+  const base=this.terrainBase(x,z,n.y);
+  if(d<=edge){const crown=(1-Math.min(d/edge,1)**2)*0.03;return n.y+crown}
+  if(d<=se){const t=(d-edge)/this.shoulder;return n.y*(1-t)+base*t+0.10*Math.sin(t*Math.PI)}
+  const ditchDepth=0.35*Math.exp(-Math.pow((d-se)/2.5,2));return base-ditchDepth;}
+ surface(x,z){const n=this.nearest(x,z),d=Math.abs(n.lateral);if(d<=this.halfWidth)return this.mode==='asphalt'?'asphalt':'dirt';if(d<=this.halfWidth+this.shoulder)return 'shoulder';return d<10?'grass':'outside'}
+ buildRoad(){const N=this.samples.length,pos=[],nor=[],uv=[],idx=[];for(let i=0;i<N;i++){const p=this.samples[i],lat=this.laterals[i],y=p.y+this.roadOffset(i),l=p.clone().addScaledVector(lat,-this.halfWidth);const r=p.clone().addScaledVector(lat,this.halfWidth);l.y=y;r.y=y;pos.push(l.x,l.y+.015,l.z,r.x,r.y+.015,r.z);nor.push(0,1,0,0,1,0);uv.push(0,i*.22,1,i*.22)}for(let i=0;i<N;i++){const j=(i+1)%N,a=i*2,b=i*2+1,c=j*2,d=j*2+1;idx.push(a,b,c,b,d,c)}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);
+  const tex=document.createElement('canvas');tex.width=512;tex.height=512;const c=tex.getContext('2d');c.fillStyle=this.mode==='asphalt'?'#2e3134':'#5b4a38';c.fillRect(0,0,512,512);
+  for(let i=0;i<12000;i++){const q=35+Math.random()*40;c.fillStyle=`rgb(${q},${q},${q+3})`;c.fillRect(Math.random()*512,Math.random()*512,1,1)}
+  if(this.mode==='asphalt'){c.strokeStyle='rgba(240,240,220,.22)';c.lineWidth=4;for(let y=0;y<512;y+=64){c.beginPath();c.moveTo(120,y);c.lineTo(392,y);c.stroke()}}
+  const t=new THREE.CanvasTexture(tex);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(1,4);
+  const m=new THREE.MeshLambertMaterial({map:t,color:0xffffff,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+  this.scene.add(new THREE.Mesh(g,m));
+  const shoulderG=new THREE.BufferGeometry();const sp=[];const si=[];for(let i=0;i<N;i++){const p=this.samples[i],lat=this.laterals[i],y=p.y+this.roadOffset(i);for(const s of [-1,1]){const a=p.clone().addScaledVector(lat,s*this.halfWidth);const b=p.clone().addScaledVector(lat,s*(this.halfWidth+this.shoulder));a.y=y+.01;b.y=this.ground(b.x,b.z)+.03;sp.push(a.x,a.y,a.z,b.x,b.y,b.z)}}for(let i=0;i<N;i++){const ni=(i+1)%N;for(let side=0;side<2;side++){const a=i*4+side*2,b=a+1,c=ni*4+side*2,d=c+1;si.push(a,b,c,b,d,c)}}shoulderG.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));shoulderG.setIndex(si);shoulderG.computeVertexNormals();
+  this.scene.add(new THREE.Mesh(shoulderG,new THREE.MeshLambertMaterial({color:0x7a6b57,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1})));}
+ /* ═══ TERRENO EXPANDIDO para cubrir la pista nueva ═══ */
+ buildTerrain(){
+  const minX=-150,maxX=900,minZ=-150,maxZ=900,R=84;
+  const pos=[],col=[],idx=[];
+  for(let iz=0;iz<=R;iz++){const z=lerp(minZ,maxZ,iz/R);for(let ix=0;ix<=R;ix++){const x=lerp(minX,maxX,ix/R);const y=this.ground(x,z)-0.20;pos.push(x,y,z);const n=this.nearest(x,z),d=Math.abs(n.lateral),cc=new THREE.Color(d<this.halfWidth+this.shoulder?0x74634c:0x48663d);cc.offsetHSL(0,(Math.random()-.5)*.08,(Math.random()-.5)*.08);col.push(cc.r,cc.g,cc.b)}}
+  for(let iz=0;iz<R;iz++)for(let ix=0;ix<R;ix++){const a=iz*(R+1)+ix,b=a+1,c=a+R+1,d=c+1;idx.push(a,c,b,b,c,d)}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));g.setIndex(idx);g.computeVertexNormals();
+  this.scene.add(new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true})));}
+ buildStart(){const p=this.samples[0],mat=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide});const line=new THREE.Mesh(new THREE.PlaneGeometry(this.halfWidth*2,.9),mat);line.position.copy(p);line.position.y=this.ground(p.x,p.z)+.045;line.rotation.x=-Math.PI/2;line.rotation.z=-Math.atan2(this.tangents[0].x,this.tangents[0].z);this.scene.add(line)}
+ buildTape(){const step=20;for(const side of [-1,1]){const nodes=[];for(let i=0;i<this.samples.length;i+=step){const p=this.samples[i],lat=this.laterals[i],off=this.halfWidth+this.shoulder+.9;const base=p.clone().addScaledVector(lat,side*off);base.y=this.ground(base.x,base.z)+1.0;nodes.push({base:base.clone(),pos:base.clone(),vel:new THREE.Vector3(),side})}
+  const posts=new THREE.Group();const pm=new THREE.MeshStandardMaterial({color:0xd8d8d2});for(const n of nodes){const h=1.55;const pole=new THREE.Mesh(new THREE.CylinderGeometry(.035,.045,h,6),pm);pole.position.copy(n.base);pole.position.y-=.22;posts.add(pole)}this.scene.add(posts);const geo=new THREE.BufferGeometry();const count=nodes.length*2;const arr=new Float32Array(count*3),ind=[];for(let i=0;i<nodes.length-1;i++){const a=i*2,b=i*2+1,c=(i+1)*2,d=(i+1)*2+1;ind.push(a,b,c,b,d,c)}geo.setAttribute('position',new THREE.BufferAttribute(arr,3));geo.setIndex(ind);const tex=document.createElement('canvas');tex.width=128;tex.height=32;const tc=tex.getContext('2d');tc.fillStyle='#f2f2ea';tc.fillRect(0,0,128,32);tc.fillStyle='#e21e1e';for(let x=-32;x<160;x+=32)tc.beginPath(),tc.moveTo(x,32),tc.lineTo(x+18,0),tc.lineTo(x+30,0),tc.lineTo(x+12,32),tc.fill();const t=new THREE.CanvasTexture(tex);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(nodes.length/2,1);const mesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({map:t,transparent:true,side:THREE.DoubleSide,depthWrite:false}));this.scene.add(mesh);this.tapeNodes.push({nodes,geo,mesh})}}
+ updateTape(car){for(const tape of this.tapeNodes){const nodes=tape.nodes;for(const n of nodes){const dx=n.pos.x-car.x,dz=n.pos.z-car.z,dist=Math.hypot(dx,dz);const push=dist<4?Math.pow(1-dist/4,2)*1.6:0;const dir=new THREE.Vector3(dx,0,dz);if(dir.lengthSq()<.001)dir.set(1,0,0);else dir.normalize();const target=n.base.clone().addScaledVector(dir,push);target.y+=Math.sin(performance.now()*.002+n.base.x*.03)*.03;const f=target.sub(n.pos);n.vel.addScaledVector(f,12/60);n.vel.multiplyScalar(.90);n.pos.addScaledVector(n.vel,.016)}const a=tape.geo.attributes.position.array;for(let i=0;i<nodes.length;i++){const n=nodes[i],p=i*2*3;a[p]=n.pos.x;a[p+1]=n.pos.y+.12;a[p+2]=n.pos.z;const prev=i?nodes[i-1].pos:n.pos,next=i<nodes.length-1?nodes[i+1].pos:n.pos;const dir=next.clone().sub(prev).normalize();const across=new THREE.Vector3(0,1,0).cross(dir).normalize().multiplyScalar(.07);a[p+3]=n.pos.x+across.x;a[p+4]=n.pos.y-.07;a[p+5]=n.pos.z+across.z}tape.geo.attributes.position.needsUpdate=true;tape.geo.computeBoundingSphere()}}
+ buildScenery(){const rockGeo=new THREE.DodecahedronGeometry(.55,0),rockMat=new THREE.MeshStandardMaterial({color:0x77736b,roughness:1});const rocks=new THREE.InstancedMesh(rockGeo,rockMat,220);const bushGeo=new THREE.IcosahedronGeometry(.65,0),bushMat=new THREE.MeshStandardMaterial({color:0x314e2e,roughness:1});const bushes=new THREE.InstancedMesh(bushGeo,bushMat,160);const d=new THREE.Object3D();for(let i=0;i<220;i++){const idx=Math.floor(Math.random()*this.samples.length),p=this.samples[idx],lat=this.laterals[idx],side=Math.random()<.5?-1:1,off=this.halfWidth+this.shoulder+5+Math.random()*25,x=p.x+lat.x*off*side,z=p.z+lat.z*off*side,y=this.ground(x,z);d.position.set(x,y+.3,z);d.scale.setScalar(.4+Math.random()*1.2);d.rotation.set(Math.random(),Math.random(),Math.random());d.updateMatrix();rocks.setMatrixAt(i,d.matrix)}for(let i=0;i<160;i++){const idx=Math.floor(Math.random()*this.samples.length),p=this.samples[idx],lat=this.laterals[idx],side=Math.random()<.5?-1:1,off=this.halfWidth+this.shoulder+3+Math.random()*18,x=p.x+lat.x*off*side,z=p.z+lat.z*off*side,y=this.ground(x,z);d.position.set(x,y+.45,z);d.scale.set(.8+Math.random()*1.5,.65+Math.random()*1.2,.8+Math.random()*1.5);d.updateMatrix();bushes.setMatrixAt(i,d.matrix)}rocks.instanceMatrix.needsUpdate=true;bushes.instanceMatrix.needsUpdate=true;this.scene.add(rocks,bushes)}
+}
+function canvasTex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+class VehicleVisual{
+ constructor(){this.group=new THREE.Group();this.body=new THREE.Group();this.group.add(this.body);this.wheels=[];this.shocks=[];const V=VEH;this.a=V.wheelBase*(1-V.weightFront);this.b=V.wheelBase*V.weightFront;
+  this.mat={paint:new THREE.MeshStandardMaterial({color:0x15181d,metalness:0.55,roughness:0.42,envMapIntensity:1.1}),dark:new THREE.MeshStandardMaterial({color:0x0b0d10,metalness:0.3,roughness:0.7}),trim:new THREE.MeshStandardMaterial({color:0x22262c,metalness:0.6,roughness:0.35}),glass:new THREE.MeshStandardMaterial({color:0x0a1218,metalness:0.2,roughness:0.08,transparent:true,opacity:0.9,envMapIntensity:1.6}),white:new THREE.MeshBasicMaterial({color:0xeaf6ff}),red:new THREE.MeshBasicMaterial({color:0xff2436}),shock:new THREE.MeshStandardMaterial({color:0xb03a22,metalness:0.5,roughness:0.4}),shaft:new THREE.MeshStandardMaterial({color:0xc9ced6,metalness:0.9,roughness:0.2})};
+  this.buildBody();this.buildWheels();this.buildLights();this.body.position.y=-V.comHeight;}
+ profileShape(){const s=new THREE.Shape();s.moveTo(2.50,0.64);s.lineTo(2.28,0.52);s.lineTo(-2.30,0.52);s.lineTo(-2.46,0.74);s.lineTo(-2.50,1.06);s.lineTo(-2.38,1.14);s.lineTo(-1.60,1.20);s.lineTo(0.95,1.22);s.lineTo(1.70,1.12);s.lineTo(2.30,1.02);s.lineTo(2.52,0.92);s.lineTo(2.56,0.76);s.lineTo(2.50,0.64);return s;}
+ extrude(shape,depth,bevel,mat){const g=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:true,bevelThickness:bevel,bevelSize:0.03,bevelSegments:2,curveSegments:14});g.rotateY(-Math.PI/2);g.translate(depth/2,0,0);g.computeVertexNormals();return new THREE.Mesh(g,mat);}
+ buildBody(){const M=this.mat,B=this.body,a=this.a,b=-this.b,R=VEH.wheelRadius;M.glass.side=THREE.DoubleSide;
+  B.add(this.extrude(this.profileShape(),1.40,0.08,M.paint));
+  const c=new THREE.Shape();c.moveTo(-2.36,1.13);c.lineTo(-1.25,1.50);c.lineTo(-0.55,1.63);c.lineTo(0.15,1.66);c.lineTo(0.55,1.60);c.lineTo(1.12,1.21);c.lineTo(-2.36,1.13);B.add(this.extrude(c,1.26,0.06,M.paint));
+  const ws=new THREE.Mesh(new THREE.PlaneGeometry(1.24,0.70),M.glass);ws.position.set(0,1.43,0.87);ws.rotation.x=-0.97;B.add(ws);
+  for(const sd of [-1,1]){const sw=new THREE.Shape();sw.moveTo(-1.05,1.24);sw.lineTo(-0.50,1.55);sw.lineTo(0.18,1.58);sw.lineTo(0.95,1.25);sw.lineTo(-1.05,1.24);const g=new THREE.ShapeGeometry(sw);g.rotateY(-Math.PI/2);const m=new THREE.Mesh(g,M.glass);m.position.x=sd*0.705;B.add(m);}
+  const rg=new THREE.Mesh(new THREE.PlaneGeometry(1.0,0.62),M.glass);rg.position.set(0,1.60,-0.90);rg.rotation.x=-1.75;B.add(rg);
+  const scoop=new THREE.Mesh(new THREE.BoxGeometry(0.46,0.14,0.62),M.dark);scoop.position.set(0,1.74,0.05);B.add(scoop);
+  const scoopF=new THREE.Mesh(new THREE.BoxGeometry(0.40,0.09,0.02),M.trim);scoopF.position.set(0,1.74,0.37);B.add(scoopF);
+  const podG=new THREE.CylinderGeometry(0.70,0.70,0.40,22,1,true,Math.PI*0.5-Math.PI*0.64,Math.PI*1.28);podG.rotateZ(Math.PI/2);
+  const lipG=new THREE.TorusGeometry(0.70,0.035,6,22,Math.PI*1.28);lipG.rotateZ(Math.PI*0.5-Math.PI*0.64);lipG.rotateY(Math.PI/2);
+  const capG=new THREE.RingGeometry(0.5,0.70,22,1,Math.PI*0.5-Math.PI*0.64,Math.PI*1.28);capG.rotateY(Math.PI/2);
+  const pm=M.paint.clone();pm.side=THREE.DoubleSide;
+  for(const z of [a,b])for(const sd of [-1,1]){const pod=new THREE.Mesh(podG,pm);pod.position.set(sd*0.96,R,z);B.add(pod);const lip=new THREE.Mesh(lipG,M.trim);lip.position.set(sd*1.16,R,z);B.add(lip);const cap=new THREE.Mesh(capG,M.dark);cap.material.side=THREE.DoubleSide;cap.position.set(sd*0.765,R,z);B.add(cap);const fair=new THREE.Mesh(new THREE.BoxGeometry(0.30,0.10,1.0),pm);fair.position.set(sd*0.86,R+0.62,z);fair.rotation.z=-sd*0.25;B.add(fair);}
+  const skid=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.08,1.0),M.trim);skid.position.set(0,0.50,2.02);skid.rotation.x=-0.2;B.add(skid);
+  const diff=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.22,0.35),M.dark);diff.position.set(0,0.66,-2.36);B.add(diff);
+  for(const sd of [-1,1]){const m=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.1,0.14),M.paint);m.position.set(sd*0.84,1.30,0.80);B.add(m)}
+  for(const sd of [-1,1]){const e=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.055,0.14,10),M.trim);e.rotation.x=Math.PI/2;e.position.set(sd*0.32,0.64,-2.50);B.add(e)}}
+ buildLights(){const M=this.mat,B=this.body;
+  for(const sd of [-1,1]){for(const [dy,len] of [[0,0.72],[0.07,0.76]]){const l=new THREE.Mesh(new THREE.BoxGeometry(len,0.024,0.03),M.white);l.position.set(sd*0.39,0.86+dy,2.575);l.rotation.z=sd*0.22;B.add(l);}
+   for(const dy of [0,0.06]){const l=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,0.55),M.white);l.position.set(sd*0.795,1.0+dy,1.95);B.add(l)}
+   const hs=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.24,0.06),M.dark);hs.position.set(sd*0.58,0.70,2.555);B.add(hs);}
+  const lamp=new THREE.InstancedMesh(new THREE.BoxGeometry(0.075,0.075,0.03),M.white,8);const d=new THREE.Object3D();let k=0;
+  for(const sd of [-1,1])for(const ix of [-1,1])for(const iy of [-1,1]){d.position.set(sd*0.58+ix*0.055,0.70+iy*0.055,2.59);d.updateMatrix();lamp.setMatrixAt(k++,d.matrix)}B.add(lamp);
+  for(const dy of [0,0.075]){const l=new THREE.Mesh(new THREE.BoxGeometry(1.46,0.022,0.03),M.red);l.position.set(0,0.98+dy,-2.545);B.add(l)}
+  for(const sd of [-1,1])for(const dy of [0,0.06]){const l=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,0.45),M.red);l.position.set(sd*0.795,1.02+dy,-1.75);B.add(l)}
+  const tx=canvasTex(256,32,(c,w,h)=>{c.clearRect(0,0,w,h);c.fillStyle='#c9ced6';c.font='bold 20px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('G E N E S I S',w/2,h/2+1)});
+  const lab=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.08),new THREE.MeshBasicMaterial({map:tx,transparent:true}));lab.position.set(0,1.015,-2.56);lab.rotation.y=Math.PI;B.add(lab);}
+ buildWheels(){const V=VEH,R=V.wheelRadius,M=this.mat;
+  const tread=canvasTex(64,256,(c,w,h)=>{c.fillStyle='#15171a';c.fillRect(0,0,w,h);c.fillStyle='#2b2e33';for(let y=0;y<h;y+=16){const o=(y/16)%2?6:0;c.fillRect(4+o,y+2,22,9);c.fillRect(36-o,y+6,22,9)}});
+  tread.wrapS=tread.wrapT=THREE.RepeatWrapping;tread.repeat.set(1,3);
+  const side=canvasTex(256,256,(c,w,h)=>{const cx=w/2,cy=h/2;c.fillStyle='#16181b';c.fillRect(0,0,w,h);c.fillStyle='#232629';c.beginPath();c.arc(cx,cy,126,0,7);c.fill();c.strokeStyle='rgba(200,205,210,.35)';c.lineWidth=3;for(let i=0;i<14;i++){const a=i*Math.PI/7;c.beginPath();c.arc(cx,cy,104,a,a+0.16);c.stroke()}
+   c.fillStyle='#0d0e10';c.beginPath();c.arc(cx,cy,58,0,7);c.fill();c.fillStyle='#1c1e21';c.beginPath();c.arc(cx,cy,56,0,7);c.fill();c.fillStyle='#08090a';for(let i=0;i<10;i++){const a=i*Math.PI/5;c.save();c.translate(cx,cy);c.rotate(a);c.fillRect(-5,12,10,36);c.restore()}
+   c.fillStyle='#3a3e44';for(let i=0;i<20;i++){const a=i*Math.PI/10;c.beginPath();c.arc(cx+Math.cos(a)*52,cy+Math.sin(a)*52,2,0,7);c.fill()}
+   c.fillStyle='#2a2d31';c.beginPath();c.arc(cx,cy,12,0,7);c.fill()});
+  const tMat=new THREE.MeshStandardMaterial({map:tread,roughness:0.95,color:0xbbbbbb}),sMat=new THREE.MeshStandardMaterial({map:side,roughness:0.85});
+  const geo=new THREE.CylinderGeometry(R,R,V.tireWidth,28,1);geo.rotateZ(Math.PI/2);
+  const shockG=new THREE.CylinderGeometry(0.06,0.06,1,8),shaftG=new THREE.CylinderGeometry(0.025,0.025,1,6);
+  const W=[[V.trackF/2,this.a,true],[-V.trackF/2,this.a,true],[V.trackR/2,-this.b,false],[-V.trackR/2,-this.b,false]];
+  for(const [x,z,front] of W){const steer=new THREE.Group();steer.position.set(x,R,z);const spin=new THREE.Group();steer.add(spin);const tire=new THREE.Mesh(geo,[tMat,sMat,sMat]);spin.add(tire);this.body.add(steer);
+   const sh=new THREE.Mesh(shockG,M.shock),sf=new THREE.Mesh(shaftG,M.shaft);this.body.add(sh,sf);
+   this.wheels.push({steer,spin,front,x,z,omega:0,angle:0});this.shocks.push({sh,sf,top:new THREE.Vector3(x*0.74,1.05,z-(front?0.14:-0.14)),x,z});}
+  this.tmpA=new THREE.Vector3();this.tmpB=new THREE.Vector3();this.up=new THREE.Vector3(0,1,0);}
+ update(p,dt){this.group.position.set(p.px,p.py,p.pz);this.group.rotation.set(0,0,0);this.group.rotateY(p.yaw);this.group.rotateX(p.pitch);this.group.rotateZ(p.roll);
+  const V=VEH,base=V.comHeight+V.hardpointY;
+  for(let i=0;i<4;i++){const w=this.wheels[i],pw=p.wheels[i];w.steer.position.y=base-pw.s;if(w.front)w.steer.rotation.y=p.steerAngle;w.angle+=pw.omega*dt;w.spin.rotation.x=w.angle;
+   const s=this.shocks[i],A=this.tmpA.copy(s.top),Bv=this.tmpB.set(w.x*0.86,base-pw.s+0.06,w.z);const len=A.distanceTo(Bv);const mid=A.add(Bv).multiplyScalar(0.5);s.sh.position.copy(mid);s.sf.position.copy(mid);
+   const dir=this.tmpB.sub(s.top).normalize();s.sh.quaternion.setFromUnitVectors(this.up,dir);s.sf.quaternion.copy(s.sh.quaternion);s.sh.scale.set(1,len*0.55,1);s.sf.scale.set(1,len,1);s.sh.position.addScaledVector(dir,-len*0.2);}}}
+class Effects{
+ constructor(scene){this.N=220;const N=this.N;this.pos=new Float32Array(N*3);this.col=new Float32Array(N*3);this.alpha=new Float32Array(N);this.size=new Float32Array(N);this.vel=new Float32Array(N*3);this.life=new Float32Array(N);this.max=new Float32Array(N);this.grow=new Float32Array(N);this.grav=new Float32Array(N);this.a0=new Float32Array(N);
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(this.pos,3));g.setAttribute('color',new THREE.BufferAttribute(this.col,3));g.setAttribute('alpha',new THREE.BufferAttribute(this.alpha,1));g.setAttribute('size',new THREE.BufferAttribute(this.size,1));
+  const m=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{scale:{value:innerHeight*0.6}},vertexShader:'attribute float alpha;attribute float size;attribute vec3 color;varying float vA;varying vec3 vC;uniform float scale;void main(){vA=alpha;vC=color;vec4 mv=modelViewMatrix*vec4(position,1.0);gl_PointSize=size*scale/max(0.5,-mv.z);gl_Position=projectionMatrix*mv;}',fragmentShader:'varying float vA;varying vec3 vC;void main(){vec2 d=gl_PointCoord-0.5;float r=dot(d,d)*4.0;if(r>1.0)discard;gl_FragColor=vec4(vC,vA*(1.0-r));}'});
+  this.pts=new THREE.Points(g,m);this.pts.frustumCulled=false;scene.add(this.pts);this.geo=g;this.mat=m;this.next=0;
+  this.MK=500;const mg=new THREE.PlaneGeometry(1,1);mg.rotateX(-Math.PI/2);this.marks=new THREE.InstancedMesh(mg,new THREE.MeshBasicMaterial({color:0x0c0c0c,transparent:true,opacity:0.42,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-3}),this.MK);this.marks.frustumCulled=false;const d=new THREE.Object3D();d.scale.set(0,0,0);d.updateMatrix();for(let i=0;i<this.MK;i++)this.marks.setMatrixAt(i,d.matrix);scene.add(this.marks);
+  this.mk=0;this.d=d;this.last=[null,null,null,null];this.acc=[0,0,0,0];}
+ spawn(x,y,z,vx,vy,vz,r,g,b,a,size,life,grow,grav){const i=this.next;this.next=(i+1)%this.N;this.pos[i*3]=x;this.pos[i*3+1]=y;this.pos[i*3+2]=z;this.vel[i*3]=vx;this.vel[i*3+1]=vy;this.vel[i*3+2]=vz;this.col[i*3]=r;this.col[i*3+1]=g;this.col[i*3+2]=b;this.a0[i]=a;this.alpha[i]=a;this.size[i]=size;this.life[i]=life;this.max[i]=life;this.grow[i]=grow;this.grav[i]=grav;}
+ emitFrom(p,dt){const fx=Math.sin(p.yaw),fz=Math.cos(p.yaw),lx=Math.cos(p.yaw),lz=-Math.sin(p.yaw);
+  for(let i=0;i<4;i++){const w=p.wheels[i];if(!w.contact){this.last[i]=null;continue}
+   const loose=w.surf!=='asphalt';const sp=Math.abs(w.vl);const sl=Math.max(0,Math.abs(w.kappa)-0.06)+Math.max(0,Math.abs(w.alpha)-0.09);
+   const x=w.wx,z=w.wz,y=w.gy+0.08;const side=w.left?1:-1;let rate=0,kind=0;
+   if(loose){rate=sp*0.9+sl*90;kind=1}else if(sl>0.14){rate=(sl-0.14)*120*Math.min(1,sp/3+0.3);kind=2}
+   this.acc[i]+=rate*dt;
+   while(this.acc[i]>=1){this.acc[i]-=1;const rnd=Math.random;const back=-(1.5+sp*0.25+Math.abs(w.kappa)*6),up=0.6+rnd()*1.2;
+    if(kind===1){const c=0.55+rnd()*0.1;this.spawn(x+(rnd()-.5)*.3,y,z+(rnd()-.5)*.3,fx*back+lx*side*(rnd()*1.5)+(rnd()-.5),up,fz*back+lz*side*(rnd()*1.5)+(rnd()-.5),c*0.86,c*0.72,c*0.55,0.42,0.7+rnd()*0.5,0.9+rnd()*0.7,1.6,-0.4);
+     if(rnd()<0.35)this.spawn(x,y,z,fx*back*0.8+(rnd()-.5)*2,1.5+rnd()*2,fz*back*0.8+(rnd()-.5)*2,0.18,0.15,0.12,1.0,0.07,0.6,0,-9.8);}
+    else{const c=0.78+rnd()*0.1;this.spawn(x+(rnd()-.5)*.3,y+0.1,z+(rnd()-.5)*.3,fx*back*0.3+(rnd()-.5)*0.8,0.5+rnd()*0.5,fz*back*0.3+(rnd()-.5)*0.8,c,c,c*1.02,0.30,0.8+rnd()*0.6,1.4+rnd(),2.2,0.25);}}
+   const mark=!loose&&sl>0.22;
+   if(mark&&this.last[i]){const L=this.last[i],dx=x-L.x,dz=z-L.z,dd=Math.hypot(dx,dz);
+    if(dd>0.35){const d=this.d;d.position.set((x+L.x)/2,Math.max(w.gy,L.y)+0.03,(z+L.z)/2);d.rotation.set(0,Math.atan2(dx,dz),0);d.scale.set(VEH.tireWidth*0.9,1,dd);d.updateMatrix();this.marks.setMatrixAt(this.mk,d.matrix);this.mk=(this.mk+1)%this.MK;this.marks.instanceMatrix.needsUpdate=true;L.x=x;L.z=z;L.y=w.gy}}
+   else if(mark)this.last[i]={x,z,y:w.gy};else this.last[i]=null;}}
+ update(dt){const N=this.N,P=this.pos,Vv=this.vel;
+  for(let i=0;i<N;i++){if(this.life[i]<=0){if(this.alpha[i]!==0){this.alpha[i]=0}continue}
+   this.life[i]-=dt;const k=this.life[i]/this.max[i];Vv[i*3+1]+=this.grav[i]*dt;const drag=Math.exp(-dt*1.6);Vv[i*3]*=drag;Vv[i*3+2]*=drag;
+   P[i*3]+=Vv[i*3]*dt;P[i*3+1]+=Vv[i*3+1]*dt;P[i*3+2]+=Vv[i*3+2]*dt;this.size[i]+=this.grow[i]*dt*this.size[i]*0.5;this.alpha[i]=Math.max(0,this.a0[i]*k)}
+  this.geo.attributes.position.needsUpdate=true;this.geo.attributes.alpha.needsUpdate=true;this.geo.attributes.size.needsUpdate=true;this.geo.attributes.color.needsUpdate=true;}}
+const CAM={dist:6.2,height:1.35,look:3.0,lookH:0.55,posRate:9,heightRate:5,yawRate:2.3,fov:56,fovSpeed:8,bank:0.010,closeOnAccel:0.07};
+class CameraRig{
+ constructor(cam,track){this.cam=cam;this.track=track;this.pos=new THREE.Vector3();this.look=new THREE.Vector3();this.ready=false;this.yaw=0;this.bank=0;this.dist=CAM.dist;this.tmp=new THREE.Vector3();this.shake=0}
+ update(dt,p){const spd=Math.hypot(p.vx,p.vz);let heading=p.yaw;if(spd>5){const vh=Math.atan2(p.vx,p.vz);let d=vh-p.yaw;d=Math.atan2(Math.sin(d),Math.cos(d));if(p.vLong<0)d=0;heading=p.yaw+d*0.5}
+  if(!this.ready){this.yaw=heading}let dy=heading-this.yaw;dy=Math.atan2(Math.sin(dy),Math.cos(dy));this.yaw+=dy*(1-Math.exp(-dt*CAM.yawRate));
+  const fx=Math.sin(this.yaw),fz=Math.cos(this.yaw);const targetD=CAM.dist+clamp(spd*0.018,0,1.1)-clamp(p.aLong*CAM.closeOnAccel,-0.4,0.7);this.dist+=(targetD-this.dist)*(1-Math.exp(-dt*3));
+  const ix=p.px-fx*this.dist,iz=p.pz-fz*this.dist;let iy=p.py+CAM.height;const gy=this.track.groundInfo(ix,iz).y+0.7;if(iy<gy)iy=gy;
+  if(!this.ready){this.pos.set(ix,iy,iz);this.ready=true}
+  const k=1-Math.exp(-dt*CAM.posRate),kh=1-Math.exp(-dt*CAM.heightRate);this.pos.x+=(ix-this.pos.x)*k;this.pos.z+=(iz-this.pos.z)*k;this.pos.y+=(iy-this.pos.y)*kh;
+  this.look.set(p.px+fx*CAM.look,p.py+CAM.lookH,p.pz+fz*CAM.look);const rough=p.wheels.some(w=>w.contact&&w.surf!=='asphalt')?2.2:1;this.shake+=dt*37;
+  const sa=Math.min(1,spd/40)*0.012*rough;this.cam.position.set(this.pos.x,this.pos.y+Math.sin(this.shake)*sa,this.pos.z);this.cam.lookAt(this.look);
+  const bt=clamp(-p.aLat*CAM.bank,-0.07,0.07);this.bank+=(bt-this.bank)*(1-Math.exp(-dt*3));this.cam.rotateZ(this.bank);
+  this.cam.fov=CAM.fov+Math.min(spd/45,1)*CAM.fovSpeed;this.cam.updateProjectionMatrix();}}
+const SND={master:0.55,engine:0.5,tires:0.35,squeal:0.28,gravel:0.45,wind:0.25,turbo:0.10,pops:0.35,impacts:0.8,firingOrder:4};
+class AudioEngine{
+ constructor(){this.ctx=null;this.on=false;this.prevThr=0}
+ init(){if(this.on)return;try{const C=window.AudioContext||window.webkitAudioContext;const ctx=this.ctx=new C();
+  const comp=ctx.createDynamicsCompressor();comp.threshold.value=-14;comp.ratio.value=4;comp.connect(ctx.destination);
+  this.master=ctx.createGain();this.master.gain.value=SND.master;this.master.connect(comp);
+  const nb=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate),d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;this.noiseBuf=nb;
+  const noise=()=>{const s=ctx.createBufferSource();s.buffer=nb;s.loop=true;s.start(0,Math.random()*1.5);return s};
+  const filt=(type,f,q)=>{const x=ctx.createBiquadFilter();x.type=type;x.frequency.value=f;x.Q.value=q;return x};
+  const gain=v=>{const g=ctx.createGain();g.gain.value=v;return g};
+  this.eng=gain(0);this.engF=filt('lowpass',600,0.8);
+  const shp=ctx.createWaveShaper(),cv=new Float32Array(1024);for(let i=0;i<1024;i++){const x=i/511.5-1;cv[i]=Math.tanh(x*2.2)}shp.curve=cv;
+  this.oscs=[];const mix=gain(1);
+  for(const [type,mul,g] of [['sawtooth',1,0.45],['sawtooth',0.5,0.35],['square',2,0.08],['sine',0.25,0.45],['triangle',1.5,0.10]]){const o=ctx.createOscillator();o.type=type;o.frequency.value=60*mul;const gg=gain(g);o.connect(gg).connect(mix);o.start();this.oscs.push({o,mul})}
+  this.am=gain(0.75);this.lfo=ctx.createOscillator();this.lfo.type='sine';this.lfoG=gain(0.25);this.lfo.connect(this.lfoG).connect(this.am.gain);this.lfo.start();
+  mix.connect(this.am).connect(shp).connect(this.engF).connect(this.eng).connect(this.master);
+  this.engN=gain(0);this.engNF=filt('bandpass',300,1.5);noise().connect(this.engNF).connect(this.engN).connect(this.eng);
+  this.roll=gain(0);noise().connect(filt('bandpass',380,0.7)).connect(this.roll).connect(this.master);
+  this.sq=gain(0);this.sqF=filt('bandpass',1150,7);noise().connect(this.sqF).connect(this.sq).connect(this.master);
+  this.grav=gain(0);noise().connect(filt('highpass',900,0.7)).connect(filt('bandpass',2500,0.8)).connect(this.grav).connect(this.master);
+  this.wind=gain(0);this.windF=filt('bandpass',700,0.5);noise().connect(this.windF).connect(this.wind).connect(this.master);
+  this.tb=gain(0);this.tbF=filt('bandpass',3600,4);noise().connect(this.tbF).connect(this.tb).connect(this.master);
+  this.on=true;}catch(e){}}
+ resume(){if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume()}
+ burst(t,dur,f,q,amp,type='bandpass'){const ctx=this.ctx,s=ctx.createBufferSource();s.buffer=this.noiseBuf;const fl=ctx.createBiquadFilter();fl.type=type;fl.frequency.value=f;fl.Q.value=q;const g=ctx.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(amp,t+0.004);g.gain.exponentialRampToValueAtTime(0.0008,t+dur);s.connect(fl).connect(g).connect(this.master);s.start(t,Math.random()*1.5);s.stop(t+dur+0.05)}
+ thump(strength){if(!this.on)return;const ctx=this.ctx,t=ctx.currentTime,a=Math.min(1,strength)*SND.impacts;
+  const o=ctx.createOscillator();o.frequency.setValueAtTime(75,t);o.frequency.exponentialRampToValueAtTime(38,t+0.22);const g=ctx.createGain();g.gain.setValueAtTime(a*0.9,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.28);o.connect(g).connect(this.master);o.start(t);o.stop(t+0.3);this.burst(t,0.12,180,0.7,a*0.6,'lowpass');}
+ pops(n){if(!this.on)return;const t=this.ctx.currentTime;for(let i=0;i<n;i++)this.burst(t+0.03+Math.random()*0.35,0.03+Math.random()*0.03,700+Math.random()*700,1.2,SND.pops*(0.5+Math.random()*0.5))}
+ update(p,dt){if(!this.on)return;const ctx=this.ctx,t=ctx.currentTime,V=VEH;
+  const rpm=p.rpm,rn=clamp((rpm-V.idleRpm)/(V.maxRpm-V.idleRpm),0,1),load=clamp(p.load,0,1);
+  const f0=rpm/60*SND.firingOrder;for(const o of this.oscs)o.o.frequency.setTargetAtTime(f0*o.mul,t,0.012);this.lfo.frequency.setTargetAtTime(f0*0.125,t,0.02);
+  const cut=260+load*1500+rn*1600;this.engF.frequency.setTargetAtTime(cut,t,0.03);
+  const eg=SND.engine*(0.35+0.25*rn)*(0.62+0.38*load)*(p.limiter?0.7:1);this.eng.gain.setTargetAtTime(eg,t,0.03);
+  this.engNF.frequency.setTargetAtTime(f0,t,0.02);this.engN.gain.setTargetAtTime(0.25*load,t,0.05);
+  let sp=Math.hypot(p.vx,p.vz),asf=0,loose=0,sl=0;
+  for(const w of p.wheels){if(!w.contact)continue;const s2=Math.max(0,Math.abs(w.kappa)-0.08)+Math.max(0,Math.abs(w.alpha)-0.1);if(w.surf==='asphalt'){asf+=0.25;sl=Math.max(sl,s2)}else loose+=0.25+s2}
+  this.roll.gain.setTargetAtTime(SND.tires*asf*Math.min(1,sp/30),t,0.08);
+  this.sq.gain.setTargetAtTime(SND.squeal*clamp((sl-0.08)*3,0,1),t,0.05);this.sqF.frequency.setTargetAtTime(1000+sl*400+Math.random()*120,t,0.03);
+  this.grav.gain.setTargetAtTime(SND.gravel*Math.min(1,loose)*Math.min(1,sp/18+0.1)*(0.75+Math.random()*0.5),t,0.03);
+  this.wind.gain.setTargetAtTime(SND.wind*Math.pow(Math.min(1,sp/45),2),t,0.1);this.windF.frequency.setTargetAtTime(500+sp*18,t,0.1);
+  this.tb.gain.setTargetAtTime(SND.turbo*load*rn,t,0.08);this.tbF.frequency.setTargetAtTime(2600+rn*2400,t,0.05);
+  const thr=p.throttle||0;if(this.prevThr>0.6&&thr<0.15&&rpm>4200)this.pops(2+Math.floor(Math.random()*4));this.prevThr=thr;
+  for(const e of p.events){if(e.type==='shift'&&e.up)this.pops(1);if(e.type==='limiter')this.pops(2);if(e.type==='land')this.thump(e.v/4)}
+  for(const w of p.wheels){if(w.impact>1.4)this.thump((w.impact-1.2)/5);w.impact=0}}}
+const tune={gameSpeed:60,power:100,gripFront:50,gripRear:50,brakes:55,steering:50,springs:45,damping:50,antiroll:30,frontDrive:40,antiSquat:60,tc:50,assist:30};
+function applyTune(){
+ VEH.powerScale=0.35+tune.power*0.0065;
+ VEH.gripFront=0.85+tune.gripFront*0.003;VEH.gripRear=0.85+tune.gripRear*0.003;
+ VEH.brakeTorque=8000+tune.brakes*100;VEH.maxSteer=0.40+tune.steering*0.0028;
+ VEH.freqF=0.95+tune.springs*0.0078;VEH.freqR=VEH.freqF+0.10;
+ VEH.zetaBump=0.15+tune.damping*0.003;VEH.zetaRebound=VEH.zetaBump*1.8;
+ VEH.arbF=tune.antiroll*170;VEH.arbR=tune.antiroll*85;
+ if(tune.frontDrive<=0){VEH.driveType='RWD'}else if(tune.frontDrive>=100){VEH.driveType='FWD'}else VEH.driveType='AWD';
+ VEH.frontDriveRatio=tune.frontDrive/100;VEH.rearDriveRatio=1-VEH.frontDriveRatio;
+ VEH.antiSquat=tune.antiSquat/100;VEH.tractionControl=tune.tc>0;VEH.tcSlip=0.08+tune.tc*0.0024;
+ VEH.stabilityAssist=tune.assist/100;
+ if(window.__HILL_CLIMB_GAME__)window.__HILL_CLIMB_GAME__.physics.setup();
+}
+applyTune();
+const TUNE_INFO={
+ gameSpeed:'Escala la velocidad de TODO el juego (motor, físicas, cámara, tiempo). 100% = velocidad original. Bajalo si querés más tiempo para reaccionar en curvas.',
+ power:'Potencia del motor V8 biturbo. Alto = acelera más fuerte y llega a más velocidad. Si lo subís mucho, el auto patina más fácil al acelerar.',
+ gripFront:'Adherencia del eje delantero. Alto = el frente agarra más y gira mejor. Bajo = el auto se va de frente (subviraje) en curvas.',
+ gripRear:'Adherencia del eje trasero. Alto = más estable, se derrapa menos. Bajo = el tren trasero se suelta fácil al acelerar (sobreviraje).',
+ brakes:'Fuerza de frenado. Alto = frena más corto y fuerte. Si bloqueás las ruedas, perdés control.',
+ steering:'Ángulo máximo de giro de las ruedas delanteras. Alto = gira más cerrado y responde más rápido, pero se vuelve nervioso. Bajo = dirección más suave y estable.',
+ springs:'Dureza de resortes. Alto = suspensión rígida, se inclina poco, más agarre en curvas. Bajo = más blanda, absorbe mejor los pozos pero se balancea más.',
+ damping:'Amortiguadores. Alto = los rebotes se controlan rápido, se siente firme. Bajo = el auto rebota y flota más después de un bache.',
+ antiroll:'Barras estabilizadoras. Alto = menos inclinación lateral en curvas. Bajo = más balanceo pero mejor tracción en terreno irregular.',
+ frontDrive:'Porcentaje de tracción al eje delantero. 0% = propulsión trasera (RWD), 100% = tracción delantera (FWD), intermedio = AWD.',
+ antiSquat:'Evita que el auto se agache atrás al acelerar. Alto = salida más plana, menos levantamiento. Bajo = se encabrita más (mejor look, peor tracción).',
+ tc:'Control de tracción. Alto = corta potencia si las ruedas patinan (más seguro). 0% = sin ayuda, control total del pie derecho.',
+ assist:'Ayuda de estabilidad. Alto = el auto se corrige solo si se va de cola (más fácil). 0% = física pura, sin ayudas.'
+};
+class Game{
+ constructor(){
+  this.canvas=$('game');this.renderer=new THREE.WebGLRenderer({canvas:this.canvas,antialias:false,powerPreference:'high-performance'});this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));this.renderer.setSize(innerWidth,innerHeight);this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.05;
+  this.scene=new THREE.Scene();this.scene.background=new THREE.Color(0x9ec0d2);this.scene.fog=new THREE.Fog(0x9ec0d2,140,600);
+  this.camera=new THREE.PerspectiveCamera(CAM.fov,innerWidth/innerHeight,.15,900);this.addLights();
+  this.track=new Track(this.scene,'asphalt');this.car=new VehicleVisual();this.scene.add(this.car.group);this.buildShadow();
+  this.physics=new Physics(this.track);this.input=new Input();this.cameraRig=new CameraRig(this.camera,this.track);this.fx=new Effects(this.scene);this.audio=new AudioEngine();
+  this.acc=0;this.last=performance.now();this.running=false;this.fixed=1/120;this.fpsFrames=0;this.fpsAccum=0;this.fps=0;
+  this.rpmFill=$('rpmFill');
+  this.bind();this.buildSetup();addEventListener('resize',()=>this.resize());requestAnimationFrame(t=>this.loop(t));
+ }
+ addLights(){this.scene.add(new THREE.HemisphereLight(0xd9e9ff,0x4b4132,1.1));const sun=new THREE.DirectionalLight(0xfff0d2,1.6);sun.position.set(120,160,80);this.scene.add(sun);
+  const env=canvasTex(256,128,(c,w,h)=>{const g=c.createLinearGradient(0,0,0,h);g.addColorStop(0,'#b9d4e8');g.addColorStop(0.48,'#e8eef2');g.addColorStop(0.52,'#4a5a3a');g.addColorStop(1,'#2a2a22');c.fillStyle=g;c.fillRect(0,0,w,h);c.fillStyle='rgba(255,250,235,.9)';c.beginPath();c.arc(w*0.3,h*0.22,9,0,7);c.fill()});
+  env.mapping=THREE.EquirectangularReflectionMapping;const pm=new THREE.PMREMGenerator(this.renderer);this.scene.environment=pm.fromEquirectangular(env).texture;pm.dispose()}
+ buildShadow(){const t=canvasTex(64,64,(x)=>{const g=x.createRadialGradient(32,32,3,32,32,30);g.addColorStop(0,'rgba(0,0,0,.55)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,64,64)});
+  this.shadow=new THREE.Mesh(new THREE.PlaneGeometry(2.8,5.4),new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-5}));this.shadow.rotation.order='YXZ';this.shadow.rotation.x=-Math.PI/2;this.scene.add(this.shadow)}
+ bind(){
+  $('start').onclick=()=>this.start();
+  $('restart').onclick=()=>this.restart();
+  $('setup').onclick=()=>this.toggleSetup(true);
+  $('closeSetup').onclick=()=>this.toggleSetup(false);
+  addEventListener('keydown',e=>{if(e.code==='KeyR')this.restart();if(e.code==='KeyP'){STATE.debug=!STATE.debug;$('debug').style.display=STATE.debug?'block':'none'}if(e.code==='KeyG')this.toggleSetup(true)});
+  const wake=()=>{this.audio.init();this.audio.resume()};addEventListener('pointerdown',wake);addEventListener('touchstart',wake,{passive:true});addEventListener('keydown',wake);}
+ start(){this.audio.init();this.audio.resume();$('overlay').classList.add('hidden');$('overlay').style.display='none';this.running=true;this.restart()}
+ restart(){this.physics.reset();this.acc=0;STATE.lap=1;STATE.lapTime=0;STATE.lapArmed=false;STATE.prevCross=this.crossValue();this.cameraRig.ready=false}
+ crossValue(){const p=this.track.samples[0],t=this.track.tangents[0];return (this.physics.px-p.x)*t.x+(this.physics.pz-p.z)*t.z}
+ fixedUpdate(){this.input.update(this.fixed);this.physics.step(this.fixed,this.input);
+  if(STATE.lapArmed)STATE.lapTime+=this.fixed;const c=this.crossValue();
+  if(STATE.prevCross<-.35&&c>=-.05&&Math.abs(this.physics.vLong)>.8){if(STATE.lapArmed){if(STATE.lapTime>3&&(STATE.best===0||STATE.lapTime<STATE.best))STATE.best=STATE.lapTime;STATE.lap=STATE.lap%STATE.totalLaps+1}STATE.lapArmed=true;STATE.lapTime=0}
+  STATE.prevCross=c;}
+ loop(now){const realDt=Math.min(.05,(now-this.last)/1000);this.last=now;const dt=realDt*(tune.gameSpeed/100);
+  if(this.running){this.acc+=dt;let steps=0;while(this.acc>=this.fixed&&steps<8){this.fixedUpdate();this.acc-=this.fixed;steps++}if(steps>=8)this.acc=0;
+   const p=this.physics;this.car.update(p,dt);
+   const g=this.track.groundInfo(p.px,p.pz).y;this.shadow.position.set(p.px,g+0.04,p.pz);this.shadow.rotation.y=p.yaw;
+   this.cameraRig.update(dt,p);this.track.updateTape(p.position);this.fx.emitFrom(p,dt);this.fx.update(dt);this.audio.update(p,dt);p.events.length=0;
+   this.updateHud(realDt);}
+  this.renderer.render(this.scene,this.camera);requestAnimationFrame(t=>this.loop(t))}
+ updateHud(dt){this.fpsFrames++;this.fpsAccum+=dt;if(this.fpsAccum>=.5){this.fps=Math.round(this.fpsFrames/this.fpsAccum);this.fpsAccum=0;this.fpsFrames=0}
+  const p=this.physics,kmh=Math.abs(p.vLong)*3.6;const g=p.gear<0?'R':(p.clutchLocked||kmh>3?String(p.gear):'N');
+  $('speed').innerHTML=`${Math.round(kmh)}<span class="unit">km/h</span>`;$('gear').textContent=g;this.rpmFill.style.width=(clamp(p.rpm/VEH.maxRpm,0,1)*100).toFixed(1)+'%';
+  $('lap').textContent=`${STATE.lap}/${STATE.totalLaps}`;$('time').textContent=fmt(STATE.lapTime);$('best').textContent=STATE.best?fmt(STATE.best):'--:--.--';
+  if(STATE.debug){const W=p.wheels,d=v=>v.toFixed(2);$('debug').textContent=`FPS ${this.fps}\nvLong ${d(p.vLong)} vLat ${d(p.vLat)}\nRPM ${p.rpm.toFixed(0)} marcha ${g}\nGyro ${this.input.gyroEnabled?'ON':'OFF'}\nSteer ${(p.steerAngle*57.3).toFixed(1)}°\nGas ${d(this.input.gas)} Freno ${d(this.input.brake)}\nVelJuego ${tune.gameSpeed}%`}}
+ resize(){this.camera.aspect=innerWidth/innerHeight;this.camera.updateProjectionMatrix();this.renderer.setSize(innerWidth,innerHeight);this.fx.mat.uniforms.scale.value=innerHeight*0.6}
+ toggleSetup(open){$('garage').classList.toggle('open',open)}
+ buildSetup(){
+  const root=$('tunes');
+  const rows=[['gameSpeed','Velocidad del juego'],['power','Potencia del motor'],['gripFront','Grip delantero'],['gripRear','Grip trasero'],['brakes','Fuerza de frenos'],['steering','Ángulo de dirección'],['springs','Dureza de resortes'],['damping','Amortiguación'],['antiroll','Barras estabilizadoras'],['frontDrive','Reparto de tracción'],['antiSquat','Anti-squat'],['tc','Control de tracción'],['assist','Ayuda de estabilidad']];
+  for(const [k,l] of rows){
+   const d=document.createElement('div');d.className='tune';
+   d.innerHTML=`<div class="tuneHead"><span class="tuneLabel">${l}<button class="infoBtn" data-info="${k}" type="button" aria-label="Info">?</button></span><span class="tuneVal" id="tv-${k}">${tune[k]}%</span></div><div class="tuneDesc" id="td-${k}">${TUNE_INFO[k]||''}</div><input id="tr-${k}" type="range" min="0" max="100" value="${tune[k]}">`;
+   root.appendChild(d);
+   const input=d.querySelector('input');
+   input.addEventListener('input',()=>{tune[k]=+input.value;applyTune();$(`tv-${k}`).textContent=`${tune[k]}%`;});
+   d.querySelector('.infoBtn').addEventListener('click',e=>{e.stopPropagation();e.preventDefault();$(`td-${k}`).classList.toggle('show');});
+  }
+  const gd=document.createElement('div');gd.className='tune';
+  gd.innerHTML=`<div class="tuneHead"><span class="tuneLabel">Modo giroscopio<button class="infoBtn" data-info="gyro" type="button">?</button></span><span class="tuneVal" id="gyroStatus">OFF</span></div><div class="tuneDesc" id="td-gyro">Cuando lo activás, el volante deja de responder al tacto y gira siguiendo la inclinación del teléfono. Sostené el teléfono en horizontal (landscape) delante tuyo y girá la muñeca izquierda/derecha como si fuera un volante. Para volver al modo normal, desactivalo.</div><div class="gyroBtns"><button class="gyroBtn" id="gyroToggleBtn" type="button">HABILITAR GIROSCOPIO</button><button class="gyroBtn secondary" id="gyroCalibBtn" type="button" style="display:none">RECALIBRAR</button></div>`;
+  root.appendChild(gd);
+  gd.querySelector('.infoBtn').addEventListener('click',e=>{e.stopPropagation();e.preventDefault();$('td-gyro').classList.toggle('show');});
+  const gyroToggle=$('gyroToggleBtn'),gyroCalib=$('gyroCalibBtn'),gyroStatus=$('gyroStatus');
+  const updateGyroBtn=()=>{
+   if(this.input.gyroEnabled){gyroToggle.textContent='DESACTIVAR GIROSCOPIO';gyroToggle.classList.add('active');gyroStatus.textContent='ON';gyroStatus.style.color='#6dff9a';gyroCalib.style.display='';}
+   else{gyroToggle.textContent='HABILITAR GIROSCOPIO';gyroToggle.classList.remove('active');gyroStatus.textContent='OFF';gyroStatus.style.color='#6db9ff';gyroCalib.style.display='none';}
+  };
+  gyroToggle.addEventListener('click',async e=>{
+   e.preventDefault();e.stopPropagation();
+   if(this.input.gyroEnabled){this.input.disableGyro();updateGyroBtn();}
+   else{gyroToggle.textContent='SOLICITANDO…';const r=await this.input.enableGyro();if(!r.ok){gyroToggle.textContent='HABILITAR GIROSCOPIO';alert('No se pudo activar el giroscopio:\n'+r.err);}else{updateGyroBtn();}}
+  });
+  gyroCalib.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();this.input.recalibrateGyro();gyroCalib.textContent='✓ LISTO';setTimeout(()=>{gyroCalib.textContent='RECALIBRAR';},900);});
+  updateGyroBtn();
+  const n=document.createElement('p');n.style.cssText='font-size:10px;color:#8ca0b8;margin-top:14px;line-height:1.5';n.textContent='Datos documentados: 1115 PS, 850 lb-ft, neumáticos 40 in, llantas 18 in, frenos Brembo. Masa, CG, suspensión, cajas y reparto de tracción son inferidos y ajustables.';root.appendChild(n);
+ }
+}
+try{const game=new Game();window.__HILL_CLIMB_GAME__=game;game.start();}catch(err){console.error(err);const box=document.getElementById('errorBox');box.style.display='block';box.innerHTML='<b>ERROR DE INICIALIZACION</b><br>'+String(err&&err.stack||err).replace(/</g,'&lt;');}
+</script>
+<script>
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){try{window.focus()}catch(_){}}});
+</script>
+</body>
+</html>
