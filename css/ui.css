@@ -163,7 +163,7 @@
 #centerMsg.go{color:var(--ok)}#centerMsg.anim{animation:cmsg .9s ease-out}
 @keyframes cmsg{0%{transform:translate(-50%,-50%) scale(1.8);opacity:0}25%{transform:translate(-50%,-50%) scale(1);opacity:1}80%{opacity:1}100%{opacity:0}}
 #subMsg{position:fixed;left:50%;top:calc(46% + 20px);transform:translateX(-50%);z-index:25;pointer-events:none;font-weight:900;font-size:clamp(14px,3vw,22px);letter-spacing:2px;text-transform:uppercase;text-shadow:0 4px 18px rgba(0,0,0,.7);white-space:nowrap}
-#driftPanel{position:fixed;left:50%;top:calc(64px + var(--safe-t));transform:translateX(-50%);z-index:12;pointer-events:none;text-align:center;display:none}
+#driftPanel{position:fixed;left:50%;top:calc(98px + var(--safe-t));transform:translateX(-50%);z-index:12;pointer-events:none;text-align:center;display:none}
 #driftPanel.on{display:block}#driftScore{font-style:italic;font-weight:900;font-size:34px;color:#fff;text-shadow:0 0 18px rgba(177,92,255,.8)}
 #driftCombo{font-weight:900;color:#d7b8ff;font-size:14px;letter-spacing:2px}#driftTotal{font-size:11px;font-weight:800;letter-spacing:2px;color:#cfd8e3;margin-top:2px}
 #nitroBtn{position:fixed;right:calc(100px + var(--safe-r));bottom:calc(26px + var(--safe-b));z-index:21;width:64px;height:64px;border-radius:50%;pointer-events:auto;touch-action:none;border:2px solid rgba(80,180,255,.7);background:radial-gradient(circle at 35% 30%,#12325a,#050c16);color:#bfe4ff;font-weight:900;font-size:13px;overflow:hidden;display:none}
