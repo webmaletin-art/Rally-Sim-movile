@@ -3,6 +3,7 @@
 import {CAR_META,CAR_ORDER,COMING_SOON,UPGRADES,TIRES,TIRE_BY_ID,TUNE_GROUPS,TUNE_ITEMS,PAINTS,FINISHES,ACHIEVEMENTS,xpForLevel} from './data.js';
 import {TIERS,EVENTS,TYPE_INFO,TARGETS,lowerIsBetter,rewardFor} from './events.js';
 import {classOf,unlocksOf,defaultTune} from './carbuild.js';
+import {PRESET_INFO} from './post.js';
 
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 export const fmtCr=n=>'$ '+Math.round(n).toLocaleString('es-AR');
@@ -44,7 +45,8 @@ export class UI{
    case 'starterPick':this.starterSel=ds.id;A.showCar(ds.id);this.show('starter');break;
    case 'starterOk':{const id=this.starterSel||'t1plus';P.give(id);P.select(id);this.toast(`¡${CAR_META[id].brand} ${CAR_META[id].model} es tuyo!`,'green');this.show('home');this.daily();break;}
    case 'tier':{const t=TIERS.find(x=>x.id===ds.id);if(!this.tierOpen(t)){A.sfx('error');this.toast(t.car&&!P.owns(t.car)?'Necesitás el '+CAR_META[t.car].brand+' '+CAR_META[t.car].model:`Necesitás ${t.stars} ⭐ para abrir esta copa`);break;}this.tier=ds.id;this.show('career');break;}
-   case 'ev':this.eventSheet(EVENTS.find(e=>e.id===ds.id));break;
+   case 'ev':{const ev=EVENTS.find(e=>e.id===ds.id);const lk=this.evLocked(ev);if(lk){A.sfx('error');this.toast('🔒 '+lk);break;}this.eventSheet(ev);break;}
+   case 'nextEv':this.openNext();break;
    case 'evRun':{const ev=EVENTS.find(e=>e.id===ds.id);this.closeSheet();A.startEvent(ev);break;}
    case 'close':this.closeSheet();break;
    case 'selCar':P.select(ds.id);A.showCar(ds.id);this.show(this.cur);break;
@@ -85,6 +87,12 @@ export class UI{
  s_goals(){const d=this.P.d,cl=d.claimed||{};const done=ACHIEVEMENTS.filter(a=>cl[a.id]).length;
   this.mount(`${this.top('<button class="back" data-a="home">←</button>')}<div class="head"><h2>Logros<small>${done}/${ACHIEVEMENTS.length} cobrados</small></h2></div><div class="body"><div class="grid">${ACHIEVEMENTS.map(a=>{const ok=a.test(d),got=cl[a.id];
    return `<div class="ev ${got?'':ok?'final':'locked'}" style="min-height:96px"><span class="bgic">${a.icon}</span><span class="et">${a.icon} ${got?'COBRADO':ok?'¡LISTO PARA COBRAR!':'EN PROGRESO'}</span><span class="en">${a.n}</span><span class="em">${a.d}</span><span class="er"><span style="color:var(--gold)">${fmtCr(a.cr)}</span>${ok&&!got?`<button class="buy" data-a="claim" data-id="${a.id}">COBRAR</button>`:got?'<span style="color:var(--ok)">✔</span>':''}</span></div>`}).join('')}</div></div>`,'dim');}
+ evLocked(ev){const list=EVENTS.filter(e=>e.tier===ev.tier),i=list.indexOf(ev),m=id=>(this.P.eventResult(id)||{}).medal||0;if(i<=0)return null;
+  if(ev.final){const miss=list.slice(0,i).filter(e=>m(e.id)<1);return miss.length?`Conseguí medalla en todas las anteriores (faltan ${miss.length})`:null;}
+  return m(list[i-1].id)>=1?null:`Conseguí medalla en "${list[i-1].name}"`;}
+ nextMission(){for(const t of TIERS){if(!this.tierOpen(t))continue;for(const e of EVENTS.filter(x=>x.tier===t.id))if(!this.evLocked(e)&&!((this.P.eventResult(e.id)||{}).medal>0))return e;}
+  for(const t of TIERS){if(!this.tierOpen(t))continue;for(const e of EVENTS.filter(x=>x.tier===t.id))if(!this.evLocked(e)&&((this.P.eventResult(e.id)||{}).medal||0)<3)return e;}return null;}
+ openNext(){const e=this.nextMission();if(!e){this.show('career');this.toast('¡Completaste todo lo disponible! Juntá estrellas para abrir otra copa','blue');return;}this.tier=e.tier;this.show('career');this.eventSheet(e);}
  tierOpen(t){if(t.car&&!this.P.owns(t.car))return false;return this.stars()>=t.stars;}
  daily(){const r=this.P.dailyCheck();if(r){this.api.sfx('buy');this.sheet(`<h3>🎁 Bonus diario</h3><p>Día ${r.streak} seguido jugando. Volvé mañana y el premio crece.</p><div class="rew"><div><b>${fmtCr(r.amount)}</b><span>créditos</span></div></div><button class="bigbtn green" data-a="close"><span class="bt">¡Gracias!</span></button>`);}}
 
@@ -104,6 +112,7 @@ export class UI{
  s_home(){const P=this.P,id=P.d.current,car=P.car;if(!id||!car)return this.show('starter');const {perf,html}=this.carInfo(id,car);const st=this.stars();
   this.api.showCar(id,car);
   this.mount(`${this.top('',true)}<div class="home"><div class="homeL">
+    ${(()=>{const nx=this.nextMission();return nx?`<button class="bigbtn green" data-a="nextEv"><span class="bi">▶</span><span class="bt">Siguiente misión<span class="bs">${esc(nx.name)} · ${TYPE_INFO[nx.type].n} · ${TIERS.find(t=>t.id===nx.tier).name}</span></span></button>`:''})()}
     <button class="bigbtn" data-a="go" data-s="career"><span class="bi">🏆</span><span class="bt">Modo carrera<span class="bs">${st} ⭐ · 5 copas · ${EVENTS.length} eventos</span></span></button>
     <button class="bigbtn blue" data-a="world"><span class="bi">🗺️</span><span class="bt">Mundo abierto<span class="bs">Carteles, radares y libertad total</span></span></button>
     <button class="bigbtn dark" data-a="go" data-s="quick"><span class="bi">⚡</span><span class="bt">Evento rápido<span class="bs">Armá tu carrera: pista, rivales, clima</span></span></button>
@@ -123,7 +132,8 @@ export class UI{
    <div class="tabs">${TIERS.map(t=>`<button class="tab ${t.id===tier.id?'on':''} ${this.tierOpen(t)?'':'lock'}" data-a="tier" data-id="${t.id}">${t.icon} ${t.name}${this.tierOpen(t)?((P.d.cups||{})[t.id]?' ✔':''):' 🔒 '+t.stars+'⭐'}</button>`).join('')}</div>
    <div class="body"><p class="muted" style="font-size:12px;margin-bottom:8px">${tier.sub} · ${tier.car?'Auto obligatorio: '+CAR_META[tier.car].model:'Clase máxima '+classOf(tier.maxPI).c+' (PI '+tier.maxPI+')'} · Tu auto: ${clsBadge(cur.pi)}</p>
    <div class="grid">${evs.map(e=>{const r=P.eventResult(e.id),ti=TYPE_INFO[e.type],rw=rewardFor(e,3,tier);
-    return `<button class="ev ${e.final?'final':''}" data-a="ev" data-id="${e.id}"><span class="bgic">${ti.icon}</span><span class="et">${ti.icon} ${ti.n}${e.final?' · FINAL':''}</span><span class="en">${esc(e.name)}</span><span class="em">${this.api.mapName(e.map)} · ${SKY_N[e.sky]||''}</span>
+    const lk=this.evLocked(e),num=evs.indexOf(e)+1;
+    return `<button class="ev ${e.final?'final':''} ${lk?'locked':''}" data-a="ev" data-id="${e.id}"><span class="bgic">${lk?'🔒':ti.icon}</span><span class="et">${num}. ${ti.icon} ${ti.n}${e.final?' · FINAL':''}${lk?' · 🔒':''}</span><span class="en">${esc(e.name)}</span><span class="em">${this.api.mapName(e.map)} · ${SKY_N[e.sky]||''}</span>
      <span class="er">${medals(r?r.medal:0)}<span style="color:var(--gold)">${fmtCr(rw.cr)}</span></span></button>`}).join('')}</div></div>`,'dim');}
  eventSheet(ev){const P=this.P,tier=TIERS.find(t=>t.id===ev.tier),r=P.eventResult(ev.id),ti=TYPE_INFO[ev.type];const perf=this.api.perf(P.d.current,P.car);
   let block='';if(tier.car&&P.d.current!==tier.car)block=`Este evento es solo con el ${CAR_META[tier.car].brand} ${CAR_META[tier.car].model}. Elegilo en el garaje.`;
@@ -208,6 +218,10 @@ export class UI{
  s_options(){const s=this.P.d.settings,A=this.api;const seg=(k,opts)=>`<div class="seg">${opts.map(([v,n])=>`<button class="${s[k]==v?'on':''}" data-a="set" data-k="${k}" data-v="${v}">${n}</button>`).join('')}</div>`;
   const back=this.inRace?'<button class="back" data-a="go" data-s="pause">←</button>':'<button class="back" data-a="home">←</button>';
   this.mount(`${this.inRace?'<div class="topbar">'+back+'<div class="spacer"></div></div>':this.top(back)}<div class="head"><h2>Opciones</h2></div><div class="body"><div class="panelBox">
+   <div class="tg"><h4>Estilo visual</h4>${A.postSupported()?'':'<div class="warn">Tu teléfono no soporta el postprocesado HDR: se usa el modo Normal.</div>'}
+    <p class="muted" style="font-size:11px;margin:-2px 0 8px">Efectos de cámara sobre el juego (el HUD no se toca). Recomendado: <b style="color:var(--acc)">✨ Claude · Realidad</b>. Si baja el rendimiento, se aliviana solo.</p>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${PRESET_INFO.map(([id,ic,n,d])=>`<button class="ev ${s.visual===id?'final':''}" style="min-height:84px;${s.visual===id?'border-color:var(--acc)':''}" data-a="set" data-k="visual" data-v="${id}" ${A.postSupported()||id==='none'?'':'disabled'}><span class="bgic">${ic}</span><span class="en" style="font-size:13px">${ic} ${n}${s.visual===id?' ✔':''}</span><span class="em" style="font-size:10.5px">${d}</span></button>`).join('')}</div>
+    <div class="opt"><span>Sombras reales<small>Sombras de los autos sobre el piso (calidad media o alta)</small></span>${seg('shadows',[[true,'Sí'],[false,'No']])}</div></div>
    <div class="tg"><h4>Controles</h4>
     <div class="opt"><span>Dirección<small>Volante circular o palanca horizontal</small></span>${seg('steerMode',[['wheel','🎡 Volante'],['slider','↔️ Palanca']])}</div>
     <div class="opt"><span>Acelerómetro<small>Girá inclinando el teléfono</small></span><div class="row"><button class="buy ${A.gyroOn()?'':'inst'}" data-a="gyro">${A.gyroOn()?'DESACTIVAR':'ACTIVAR'}</button>${A.gyroOn()?'<button class="back" data-a="gyroCal">Recalibrar</button>':''}</div></div>
@@ -239,7 +253,7 @@ export class UI{
    <div style="font-size:14px;font-weight:800">${esc(r.line||'')}</div>${r.sub?`<div class="muted" style="font-size:12px;margin-top:4px">${esc(r.sub)}</div>`:''}${rows}
    <div class="rew"><div><b id="rCr">${fmtCr(0)}</b><span>créditos</span></div><div><b id="rXp">+0</b><span>experiencia</span></div>${r.record?'<div style="border-color:var(--gold)"><b>🏆</b><span>nuevo récord</span></div>':''}</div>
    <div>${r.cupMsg?`<span class="lvup" style="background:linear-gradient(90deg,#c98a00,#ffc83d);color:#1a1200">${esc(r.cupMsg)}</span>`:''}${(r.levelUps||[]).map(l=>`<span class="lvup">⭐ NIVEL ${l.level} · +${fmtCr(l.bonus)}</span>`).join('')}</div>
-   <div class="row" style="justify-content:center;margin-top:10px"><button class="bigbtn" data-a="resOk" data-next="${r.next||'career'}"><span class="bt">Continuar</span></button><button class="bigbtn dark" data-a="retry"><span class="bi">↺</span><span class="bt">Reintentar</span></button></div></div>`,'res');
+   <div class="row" style="justify-content:center;margin-top:10px"><button class="bigbtn" data-a="resOk" data-next="${r.next||'career'}"><span class="bt">Continuar</span></button><button class="bigbtn dark" data-a="retry"><span class="bi">↺</span><span class="bt">Reintentar</span></button>${r.next==='career'?'<button class="bigbtn green" data-a="resOk" data-next="nextEv"><span class="bt">Siguiente misión ▶</span></button>':''}</div></div>`,'res');
   const t0=performance.now(),cr=r.cr||0,xp=r.xp||0;const tick=()=>{const k=Math.min(1,(performance.now()-t0)/1200);const e=1-Math.pow(1-k,3);const a=document.getElementById('rCr'),b=document.getElementById('rXp');if(!a)return;a.textContent=fmtCr(cr*e);b.textContent='+'+Math.round(xp*e);if(k<1)requestAnimationFrame(tick);};requestAnimationFrame(tick);}
 }
 /* presets de ajuste rápido */
