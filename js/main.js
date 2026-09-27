@@ -110,7 +110,8 @@ class Physics{
   this.nitro=V.nitroCap||0;}
  reset(pose){const t=this.track,p=t.samples[0],tg=t.tangents[0],lat=t.laterals[0];pose=pose||this.pose;if(pose){this.px=pose.x;this.pz=pose.z;this.yaw=pose.yaw;}else{this.px=p.x+lat.x*0.35;this.pz=p.z+lat.z*0.35;this.yaw=Math.atan2(tg.x,tg.z);}t._hint=null;this.trackHint=null;this.py=t.groundInfo(this.px,this.pz).y+this.V.comHeight;this.pitch=0;this.roll=0;this.vx=0;this.vy=0;this.vz=0;this.yawRate=0;this.pitchRate=0;this.rollRate=0;this.vLong=0;this.vLat=0;this.aLong=0;this.aLat=0;this.steerAngle=0;this.rpm=this.V.idleRpm;this.gear=1;this.shiftT=0;this.clutchLocked=false;this.tc=1;this.load=0;this.limiter=false;this.events=[];this.revT=0;this.airTime=0;this.slip=0;this.contacts=4;this.nitro=this.V.nitroCap||0;this.nitroActive=false;for(const w of this.wheels){w.comp=w.sMax-w.sStatic;w.s=w.sStatic;w.omega=0;w.contact=true;w.jack=0;}this.position={x:this.px,y:this.py,z:this.pz};}
  torqueAt(rpm){const c=this.V.torqueCurve;if(rpm<=c[0][0])return c[0][1];for(let i=1;i<c.length;i++){if(rpm<=c[i][0]){const u=(rpm-c[i-1][0])/(c[i][0]-c[i-1][0]);return c[i-1][1]+(c[i][1]-c[i-1][1])*u}}return c[c.length-1][1];}
- step(dt,input){const n=2,h=dt/n;for(let i=0;i<n;i++)this.sub(h,input);this.position.x=this.px;this.position.y=this.py;this.position.z=this.pz;}
+ step(dt,input){const n=2,h=dt/n;for(let i=0;i<n;i++)this.sub(h,input);
+  if(!isFinite(this.px+this.py+this.pz+this.vx+this.vy+this.vz+this.yaw+this.pitch+this.roll+this.yawRate)){console.warn('physics NaN → recover');this.reset(this._good||this.pose);}else if(!this._gt||(this._gt=(this._gt+1)%60)===0){this._good={x:this.px,z:this.pz,yaw:this.yaw};this._gt=this._gt||1;}this.position.x=this.px;this.position.y=this.py;this.position.z=this.pz;}
  sub(h,inp){this.track._hint=this.trackHint;this._sub(h,inp);this.trackHint=this.track._hint;}
  _sub(h,inp){const V=this.V,g=9.81,W=this.wheels,R=V.wheelRadius,m=V.mass,tr=this.track;
   let thr=inp.throttle||0,brk=inp.brake||0;const spd=Math.hypot(this.vx,this.vz);
@@ -160,7 +161,7 @@ class Physics{
   if(V.tractionControl&&thr>0.05){if(mk>V.tcSlip)this.tc=Math.max(0.2,this.tc-h*6);else this.tc=Math.min(1,this.tc+h*2.5)}else this.tc=Math.min(1,this.tc+h*4);
   this.nitroActive=false;if(V.nitroCap>0){if(this.nitroOn&&this.nitro>0.02&&thr>0.3&&this.gear>0){this.nitro=Math.max(0,this.nitro-h);this.nitroActive=true;}else if(!this.nitroOn)this.nitro=Math.min(V.nitroCap,this.nitro+h*V.nitroCap/35);}
   if(Te>0)Te*=this.tc*(this.nitroActive?1+V.nitroBoost:1);const Tw=Te*ratio*V.efficiency;const couple=V.centerDiffBias*600*(wF-wR);const Tf=Tw*fr-(fr>0&&rr>0?couple:0),Tr=Tw*rr+(fr>0&&rr>0?couple:0);
-  const ie=this.clutchLocked?V.engineInertia*ratio*ratio:0;const lF=V.lsd*(W[0].omega-W[1].omega),lR=V.lsd*(W[2].omega-W[3].omega);
+  const ie=this.clutchLocked?V.engineInertia*ratio*ratio:0;const cap=0.45*V.wheelInertia/h,lsdT=d=>Math.sign(d)*Math.min(V.lsd*Math.abs(d),cap*Math.abs(d));const lF=lsdT(W[0].omega-W[1].omega),lR=lsdT(W[2].omega-W[3].omega);
   for(const w of W){w.drive=(w.front?Tf:Tr)/2-(w.front?lF:lR)*(w.left?1:-1)*(this.clutchLocked||thr>0.05?1:0.3);w.inertiaExtra=ie*(w.front?fr:rr)/2;
    if(V.abs&&brk>0.05){if(w.kappa*Math.sign(w.vl||1)<-V.absSlip)w.absF=Math.max(0.25,(w.absF||1)-h*9);else w.absF=Math.min(1,(w.absF||1)+h*4)}else w.absF=1;
    w.brake=brk*w.absF*V.brakeTorque*(w.front?V.brakeBiasFront:1-V.brakeBiasFront)/2;
@@ -1031,9 +1032,9 @@ class Showroom{
   const pm=new THREE.PMREMGenerator(renderer);S.environment=pm.fromScene(new RoomEnvironment(),0.04).texture;pm.dispose();
   S.add(new THREE.HemisphereLight(0xcfe2ff,0x1a1410,0.55));
   const key=new THREE.DirectionalLight(0xffffff,2.2);key.position.set(4,7,5);S.add(key);
-  const rim=new THREE.DirectionalLight(0xff8a3a,1.6);rim.position.set(-6,3,-5);S.add(rim);
+  const rim=new THREE.DirectionalLight(0xff8a3a,0.9);rim.position.set(-6,3,-5);S.add(rim);
   const blue=new THREE.DirectionalLight(0x3a9bff,1.2);blue.position.set(6,2,-6);S.add(blue);
-  const floor=new THREE.Mesh(new THREE.CircleGeometry(30,64),new THREE.MeshStandardMaterial({color:0x0c0f14,metalness:0.55,roughness:0.32}));floor.rotation.x=-Math.PI/2;S.add(floor);
+  const floor=new THREE.Mesh(new THREE.CircleGeometry(30,64),new THREE.MeshStandardMaterial({color:0x0a0c10,metalness:0.35,roughness:0.48}));floor.rotation.x=-Math.PI/2;S.add(floor);
   const disc=new THREE.Mesh(new THREE.CylinderGeometry(3.6,3.7,0.08,72),new THREE.MeshStandardMaterial({color:0x14181f,metalness:0.8,roughness:0.25}));disc.position.y=0.04;S.add(disc);this.disc=disc;
   const ring=new THREE.Mesh(new THREE.TorusGeometry(3.66,0.025,6,120),new THREE.MeshBasicMaterial({color:0xff6a08}));ring.rotation.x=Math.PI/2;ring.position.y=0.085;S.add(ring);
   const ring2=new THREE.Mesh(new THREE.TorusGeometry(5.2,0.012,6,120),new THREE.MeshBasicMaterial({color:0x37b6ff}));ring2.rotation.x=Math.PI/2;ring2.position.y=0.01;S.add(ring2);
@@ -1049,7 +1050,7 @@ class Showroom{
   const box=new THREE.Box3().setFromObject(vis.group),sz=box.getSize(new THREE.Vector3());this.size=sz;this.dist=Math.max(7,Math.max(sz.z,sz.x*1.6)*1.55+2);this.lookY=sz.y*0.42;}
  pointer(e,type){if(type==='down'){this.drag={x:e.clientX,a:this.tAng};this.auto=false;}else if(type==='move'&&this.drag){this.tAng=this.drag.a-(e.clientX-this.drag.x)*0.008;}else if(type==='up'){this.drag=null;clearTimeout(this._t);this._t=setTimeout(()=>this.auto=true,3500);}}
  render(dt){if(this.auto)this.tAng+=dt*0.16;this.ang+=(this.tAng-this.ang)*(1-Math.exp(-dt*6));
-  const wide=innerWidth/innerHeight>1.2;const off=wide?-0.9:0;
+  const wide=innerWidth/innerHeight>1.2;const off=wide?(this.off??-0.9):0;
   this.cam.aspect=innerWidth/innerHeight;this.cam.fov=wide?30:44;this.cam.updateProjectionMatrix();
   const d=this.dist;this.cam.position.set(Math.sin(this.ang)*d,1.9+d*0.12,Math.cos(this.ang)*d);
   const right=new THREE.Vector3(Math.cos(this.ang),0,-Math.sin(this.ang));this.cam.lookAt(right.x*off,this.lookY||0.8,right.z*off);
@@ -1069,7 +1070,7 @@ function aiCarsFor(n,maxPI,only,surface){
  const pool=only?[only]:CAR_ORDER.filter(id=>id!=='truck'&&perfOf(paramsFor(id,null)).pi<=maxPI+30);if(!pool.length)pool.push('pickup');
  const cats=['engine','turbo','weight','brakes','suspension','gearbox','diff','aero'];const out=[];
  for(let i=0;i<n;i++){const id=pool[i%pool.length];const st=newCarState(id);st.tires=surface==='asphalt'?'sport':'gravel';
-  const target=Math.min(maxPI,999)-8-Math.random()*38;let guard=0;
+  const target=Math.min(maxPI,999)-30-Math.random()*45;let guard=0;
   while(guard++<40){const pf=perfOf(buildParams(VEHICLES[id],st,{abs:true,tc:50,stab:40}));if(pf.pi>=target)break;const c=cats[Math.floor(Math.random()*cats.length)];const u=UPG_BY_ID[c];if((st.upg[c]||0)<u.levels.length-1)st.upg[c]=(st.upg[c]||0)+1;}
   while(perfOf(buildParams(VEHICLES[id],st,{abs:true,tc:50,stab:40})).pi>maxPI){const c=cats.find(c=>st.upg[c]>0);if(!c)break;st.upg[c]--;}
   st.paint={body:PAINTS[(i*7+3)%PAINTS.length],accent:PAINTS[(i*5+11)%PAINTS.length],rim:'#2a2d33',finish:['gloss','metal','matte'][i%3]};
@@ -1160,6 +1161,7 @@ class Session{
   if(this.route)for(const c of this.cars){if(c.finished)continue;this.updateProg(c,h);
    if(this.type!=='drift'&&c.prog>=this.raceLen){c.finished=true;c.finishTime=this.time;if(c.isPlayer){if(this.type==='trap'){this.trapKmh=Math.round(sp*3.6);}this.finish(true);}}
    if(c.ai){/* goma elástica suave: nadie se escapa demasiado */const gap=c.prog-pl.prog;c.ai.boost=gap>140?0.93:gap<-160?1.05:1;}}
+  if(this.route&&this.state==='run'){const i=pl.idx||0,tg=this.track.tangents[i],v=pl.phys.vx*tg.x+pl.phys.vz*tg.z;this.wrongT=v<-3?(this.wrongT||0)+h:0;const w=this.wrongT>1;if(w!==this.wrongShown){this.wrongShown=w;$('subMsg').textContent=w?'⚠ SENTIDO CONTRARIO':'';}}
   if(this.type==='drift')this.driftStep(h);
   if(this.type==='parking'&&this.state==='run'){const p=pl.phys,sp2=Math.hypot(p.vx,p.vz);const ok=this.track.checkParked(p.px,p.pz,p.yaw,sp2);this.parkT=ok?(this.parkT||0)+h:0;$('parkOk').classList.toggle('show',this.parkT>0.1);if(this.parkT>0.6)this.finish(true);}
   if(this.flags&&this.flags.length){for(const f of this.flags){if(f.got)continue;if(Math.hypot(pl.phys.px-f.x,pl.phys.pz-f.z)<7){f.got=true;f.g.visible=false;this.g.sfx('coin');const left=this.flags.filter(x=>!x.got).length;this.g.toast(left?`🚩 Bandera · faltan ${left}`:'🚩 ¡Todas las banderas!','green');if(this.type==='rush'&&!left)this.finish(true);}}}
@@ -1180,7 +1182,8 @@ class Session{
     this.g.toast(`💥 Cartel GSKORP ${got}/12 · +$400`,'green');for(const u of ups)this.g.toast(`⭐ ¡Nivel ${u.level}! +$${u.bonus}`,'blue');}}
   for(const t of this.traps){if(t.cool>0){t.cool-=h;continue;}if(Math.hypot(p.px-t.x,p.pz-t.z)<11&&sp>8){t.cool=4;const kmh=Math.round(sp*3.6);const best=st.traps[t.i]||0;const th=[90,130,170];const starsNow=th.filter(v=>kmh>=v).length,starsOld=th.filter(v=>best>=v).length;
     if(kmh>best)st.traps[t.i]=kmh;let msg=`📸 RADAR ${kmh} km/h ${'⭐'.repeat(starsNow)}`;if(starsNow>starsOld){const pay=(starsNow-starsOld)*500;PROFILE.earn(pay);PROFILE.addXP(80*(starsNow-starsOld));msg+=` · +$${pay}`;this.g.sfx('coin');}else PROFILE.save();this.g.toast(msg,starsNow>starsOld?'green':'');}}}
- finish(ok){if(this.state==='done')return;this.state='done';this.doneT=0;this.ok=ok;const pl=this.player;
+ respawn(){const pl=this.player;if(this.route){const a=this.arcPos(pl);const N=this.track.samples.length,i=(a.idx+1)%N,s=this.track.samples[i],tg=this.track.tangents[i];pl.phys.reset({x:s.x,z:s.z,yaw:Math.atan2(tg.x,tg.z)});pl.phys.trackHint=i;}else{const p=pl.phys;p.reset({x:p.px,z:p.pz,yaw:p.yaw});}}
+ finish(ok){if(this.state==='done')return;$('subMsg').textContent='';this.state='done';this.doneT=0;this.ok=ok;const pl=this.player;
   if(this.type==='race'){const pos=this.standings().findIndex(c=>c.isPlayer)+1;this.g.bigMsg(pos===1?'¡GANASTE!':`${pos}°`,pos===1?'go':'');}
   else if(ok)this.g.bigMsg('¡LISTO!','go');else this.g.bigMsg(this.type==='rush'?'¡TIEMPO!':'¡PERDISTE!');
   this.g.sfx('finish');$('parkOk').classList.remove('show');}
@@ -1214,7 +1217,7 @@ class Game{
    onScreen:n=>this.onScreen(n),startEvent:ev=>this.startEvent(ev),startQuick:q=>this.startQuick(q),testDrive:id=>this.testDrive(id),openWorld:()=>this.openWorld(),
    mapName:id=>(MAPS[id]||{}).name||id,mapList:()=>Object.entries(MAPS).map(([id,m])=>({id,...m})),applySettings:()=>this.applySettings(),
    toggleGyro:async()=>{if(this.input.gyroEnabled){this.input.disableGyro();return {};}const r=await this.input.enableGyro();return r.ok?{}:{err:r.err};},gyroOn:()=>this.input.gyroEnabled,recalGyro:()=>this.input.recalibrateGyro(),
-   resume:()=>this.resume(),restart:()=>this.retry(),quit:()=>this.quit(),nextCam:()=>{this.nextCamera();},afterResults:n=>this.afterResults(n),retry:()=>this.retry()};
+   resume:()=>this.resume(),respawn:()=>{if(this.session){this.session.respawn();this.resume();}},canRespawn:()=>!!(this.session&&this.session.type!=='parking'),restart:()=>this.retry(),quit:()=>this.quit(),nextCam:()=>{this.nextCamera();},afterResults:n=>this.afterResults(n),retry:()=>this.retry()};
   this.ui=new UI(api);
   this.bind();this.applySettings();
   addEventListener('resize',()=>this.resize());this.resize();
@@ -1238,7 +1241,7 @@ class Game{
   const pr={baja:0.7,media:Math.min(devicePixelRatio,1.25),alta:Math.min(devicePixelRatio,1.75)}[s.quality]||1;this.renderer.setPixelRatio(pr);this.renderer.setSize(innerWidth,innerHeight);
   if(this.audio.master)this.audio.master.gain.value=SND.master*(s.volume/80);
   if(this.physics&&this.session){const id=currentVehicleId;const st=this.testState||PROFILE.d.owned[id];const V=paramsFor(id,st);Object.assign(VEH,V);this.physics.setup();}}
- onScreen(n){this.ui.inRace=this.state==='paused';}
+ onScreen(n){this.ui.inRace=this.state==='paused';this.showroom.off={home:0,starter:-1.3,garage:-1.3,dealer:-1.3,paint:-1.3,tuning:-1.5,workshop:-2.2}[n]??0;}
  bind(){
   $('camBtn').onclick=()=>this.nextCamera();$('camLockBtn').onclick=()=>this.lockCamera();$('pauseBtn').onclick=()=>this.pause();
   const nb=$('nitroBtn');const non=e=>{e.preventDefault();this.input.nitroTouch=true;nb.classList.add('active');},noff=()=>{this.input.nitroTouch=false;nb.classList.remove('active');};
@@ -1257,7 +1260,7 @@ class Game{
   if(cfg.type==='timetrial'&&MAPS[q.map].kind!=='route')cfg.type='free';if(cfg.type==='drift'&&MAPS[q.map].kind==='route'){cfg.seg=null;}this.launch(cfg);}
  testDrive(id){this.testState=newCarState(id);this.launch({type:'test',map:'offroad',sky:'day',testCar:id});}
  openWorld(){this.launch({type:'world',map:'offroad',sky:PROFILE.d.stats.worldSky||'day',flags:0});}
- launch(cfg){try{this.cfg=cfg;const id=cfg.testCar||PROFILE.d.current;if(!cfg.testCar)this.testState=null;const st=cfg.testCar?this.testState:PROFILE.car;
+ launch(cfg){try{this.cfg=cfg;const id=cfg.testCar||PROFILE.d.current||'t1plus';if(!cfg.testCar)this.testState=null;const st=(cfg.testCar?this.testState:PROFILE.car)||newCarState(id);
   setPlayerCar(id,st);this.cleanupSession();this.setSky(cfg.sky||'day');
   if(this.car){this.car.dispose();this.scene.remove(this.car.group);}
   this.car=new VehicleVisual(VEHICLES[id].visualType,VEH,{paint:st.paint});this.scene.add(this.car.group);this.makeShadow();
@@ -1267,6 +1270,7 @@ class Game{
   $('nitroBtn').classList.toggle('have',VEH.nitroCap>0);
   this.state='race';this.ui.root.innerHTML='';this.setHud(true);this.hudLayout();this.buildMinimap();
   this.audio.init();this.audio.resume();
+  if(!PROFILE.d.tutorial){PROFILE.d.tutorial=true;PROFILE.save();const T=['Volante a la izquierda · pedal a la derecha: arriba GAS, abajo FRENO','Frenando a fondo parado → marcha atrás · 🅷 freno de mano','❚❚ pausa: volver a la pista, cámara y opciones'];T.forEach((m,i)=>setTimeout(()=>this.toast(m,'blue'),600+i*2800));}
   if(cfg.type==='world')this.toast('Mundo abierto: rompé los 12 carteles GSKORP y pasá por los radares 📸','blue');
   if(cfg.type==='test')this.toast('Prueba de manejo · pausa ❚❚ para salir','blue');
   }catch(err){console.error(err);this.showError(err);}}

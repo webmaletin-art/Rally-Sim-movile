@@ -70,6 +70,7 @@ export class UI{
    case 'qset':this.q[ds.k]=isNaN(+ds.v)?ds.v:+ds.v;this.show('quick');break;
    case 'world':A.openWorld();break;
    case 'resume':A.resume();break;
+   case 'respawn':A.respawn();break;
    case 'restart':A.restart();break;
    case 'quit':A.quit();break;
    case 'cam':A.nextCam();break;
@@ -92,7 +93,7 @@ export class UI{
    <div class="cars" style="grid-template-columns:1fr 1fr">${ids.map(id=>{const m=CAR_META[id];return `<button class="car ${id===sel?'sel':''}" data-a="starterPick" data-id="${id}"><span class="cb">${m.brand}</span><span class="cn">${m.model}</span><span class="kind">${m.kind}</span></button>`}).join('')}</div>
    <div style="margin-top:12px">${html}<p class="muted" style="font-size:12px;margin:6px 0">${CAR_META[sel].desc}</p>${this.statBlock(perf)}</div>
    <button class="bigbtn" style="margin-top:12px;width:100%" data-a="starterOk"><span class="bi">🔑</span><span class="bt">Este es el mío</span></button></div><div></div></div>`,'fade');}
- s_home(){const P=this.P,id=P.d.current,car=P.car;const {perf,html}=this.carInfo(id,car);const st=this.stars();
+ s_home(){const P=this.P,id=P.d.current,car=P.car;if(!id||!car)return this.show('starter');const {perf,html}=this.carInfo(id,car);const st=this.stars();
   this.api.showCar(id,car);
   this.mount(`${this.top()}<div class="home"><div class="homeL">
     <button class="bigbtn" data-a="go" data-s="career"><span class="bi">🏆</span><span class="bt">Modo carrera<span class="bs">${st} ⭐ · 5 copas · ${EVENTS.length} eventos</span></span></button>
@@ -108,7 +109,7 @@ export class UI{
     </div></div><div class="homeC"></div>
    <div class="carCard">${html}${this.statBlock(perf)}${this.specs(perf)}<div class="kind">Neumáticos: <b style="color:#fff">${TIRE_BY_ID[car.tires].n}</b> · ${Math.round(car.km)} km recorridos</div></div></div>
    <div class="rot-hint">⟲ deslizá para girar el auto</div>`,'fade');}
- s_career(){const P=this.P,tier=TIERS.find(t=>t.id===this.tier),evs=EVENTS.filter(e=>e.tier===tier.id);const st=this.stars();
+ s_career(){if(!this.P.car)return this.show('starter');const P=this.P,tier=TIERS.find(t=>t.id===this.tier),evs=EVENTS.filter(e=>e.tier===tier.id);const st=this.stars();
   const cur=this.api.perf(P.d.current,P.car);
   this.mount(`${this.top('<button class="back" data-a="home">←</button>')}<div class="head"><h2>Modo carrera<small>${st} ⭐ ganadas</small></h2></div>
    <div class="tabs">${TIERS.map(t=>`<button class="tab ${t.id===tier.id?'on':''} ${this.tierOpen(t)?'':'lock'}" data-a="tier" data-id="${t.id}">${t.icon} ${t.name}${this.tierOpen(t)?'':' 🔒'}</button>`).join('')}</div>
@@ -140,7 +141,7 @@ export class UI{
    <div class="opt">Clima<div class="seg">${Object.keys(SKY_N).map(k=>segBtn('sky',k,SKY_N[k])).join('')}</div></div>
    <button class="bigbtn" style="margin-top:12px" data-a="quick"><span class="bi">▶</span><span class="bt">Largar</span></button></div></div>`,'dim');}
  quickRun(){const q=this.q;this.api.startQuick({...q});}
- s_garage(){const P=this.P,ids=CAR_ORDER.filter(i=>P.owns(i)),cur=P.d.current;const {perf,html}=this.carInfo(cur,P.car);this.api.showCar(cur,P.car);
+ s_garage(){if(!this.P.car)return this.show('starter');const P=this.P,ids=CAR_ORDER.filter(i=>P.owns(i)),cur=P.d.current;const {perf,html}=this.carInfo(cur,P.car);this.api.showCar(cur,P.car);
   this.mount(`${this.top('<button class="back" data-a="home">←</button>')}<div class="split"><div class="panelBox"><h2 class="ttl" style="font-size:18px">Mi garaje <span class="muted" style="font-size:12px;font-style:normal">${ids.length} auto${ids.length>1?'s':''}</span></h2>
    <div class="cars" style="margin-top:8px">${ids.map(id=>{const m=CAR_META[id],pf=this.api.perf(id,P.d.owned[id]);return `<button class="car ${id===cur?'sel':''}" data-a="selCar" data-id="${id}"><span class="cb">${m.brand}</span><span class="cn">${m.model}</span><span class="cp">${clsBadge(pf.pi)}<span>${id===cur?'✔ EN USO':''}</span></span></button>`}).join('')}
    <button class="car soon" data-a="go" data-s="dealer"><span class="ci">＋</span><span class="cn">Comprar más</span><span class="kind">Concesionaria</span></button></div>
@@ -154,7 +155,7 @@ export class UI{
    <div style="margin-top:12px">${html}<p class="muted" style="font-size:12px;margin:6px 0">${m.desc} · ${m.engine}</p>${this.statBlock(perf)}${this.specs(perf)}</div>
    <div class="row" style="margin-top:10px">${owned?'<span class="muted">Ya está en tu garaje</span>':`<button class="bigbtn" data-a="buyCar" data-id="${sel}" ${P.credits<m.price?'disabled':''}><span class="bi">💳</span><span class="bt">Comprar ${fmtCr(m.price)}</span></button>`}
    <button class="bigbtn dark" data-a="testDrive" data-id="${sel}"><span class="bi">🔑</span><span class="bt">Probar</span></button></div></div><div></div></div>`,'fade');}
- s_workshop(){const P=this.P,id=P.d.current,car=P.car;const perf=this.api.perf(id,car);const cat=this.wsCat;this.api.showCar(id,car);
+ s_workshop(){if(!this.P.car)return this.show('starter');const P=this.P,id=P.d.current,car=P.car;const perf=this.api.perf(id,car);const cat=this.wsCat;this.api.showCar(id,car);
   let right='';
   if(cat==='tires'){right=`<h3 class="ttl" style="font-size:16px">🛞 Neumáticos</h3><p class="muted" style="font-size:12px;margin:4px 0 8px">Cada compuesto cambia el agarre según la superficie. Comprás una vez y después los cambiás gratis.</p>`+
    TIRES.map(t=>{const own=car.tiresOwned.includes(t.id),on=car.tires===t.id;const pf=this.api.perf(id,{...car,tires:t.id});const d=pf.pi-perf.pi;
@@ -171,7 +172,7 @@ export class UI{
   this.mount(`${this.top('<button class="back" data-a="home">←</button>')}<div class="split" style="grid-template-columns:minmax(170px,230px) minmax(260px,440px) 1fr"><div class="panelBox">
    <div style="margin-bottom:8px">${this.carInfo(id,car).html}</div>${cats.map(c=>`<button class="cat ${c.id===cat?'on':''}" data-a="wsCat" data-id="${c.id}"><span class="ci2">${c.icon}</span><span class="cn2">${c.n}</span>${c.max?`<span class="pips">${Array.from({length:c.max},(_,k)=>`<i class="pip ${k<c.l?'on':''}"></i>`).join('')}</span>`:`<span class="kind">${TIRE_BY_ID[car.tires].n}</span>`}</button>`).join('')}</div>
    <div class="panelBox">${right}<div style="margin-top:10px">${this.statBlock(perf)}</div></div><div></div></div>`,'fade');}
- s_tuning(){const P=this.P,id=P.d.current,car=P.car,base=this.api.base(id);const un=unlocksOf(car.upg);const tu={...defaultTune(base),...(car.tune||{})};this.api.showCar(id,car);
+ s_tuning(){if(!this.P.car)return this.show('starter');const P=this.P,id=P.d.current,car=P.car,base=this.api.base(id);const un=unlocksOf(car.upg);const tu={...defaultTune(base),...(car.tune||{})};this.api.showCar(id,car);
   const V=this.api.params(id,car);const lockName={springs:'Suspensión Nv1',damp:'Suspensión Nv1',arb:'Suspensión Nv1',height:'Coilovers (Suspensión Nv3)',camber:'Coilovers (Suspensión Nv3)',toe:'Coilovers (Suspensión Nv3)',lsd:'Diferencial Nv1',final:'Transmisión Nv2',aero:'Aerodinámica Nv1',stance:'Kit stance (Estilo)'};
   const show=(it,v)=>{if(it.unit==='k'){const f=it.k==='springF'?V.freqF:V.freqR,mc=V.mass*9.81*(it.k==='springF'?V.weightFront:1-V.weightFront)/2/9.81;return Math.round(mc*Math.pow(2*Math.PI*f,2)/1000)+' N/mm';}
    if(it.k==='final')return (V.finalDrive).toFixed(2)+':1';if(it.k==='split')return v+'% / '+(100-v)+'%';return (Math.round(v*10)/10)+' '+it.u;};
@@ -187,7 +188,7 @@ export class UI{
   el.querySelectorAll('input[type=range]').forEach(inp=>inp.addEventListener('input',()=>{const k=inp.dataset.k,it=TUNE_ITEMS[k];car.tune=car.tune||{};car.tune[k]=+inp.value;
    const V2=this.api.params(id,car);Object.assign(V,V2);const tv=document.getElementById('tv_'+k);if(tv)tv.textContent=show(it,+inp.value);
    clearTimeout(tmr);tmr=setTimeout(()=>{P.save();this.api.carChanged();const pi=document.getElementById('tunePI');if(pi)pi.innerHTML=this.carInfo(id,car).html;},180);}));}
- s_paint(){const P=this.P,id=P.d.current,car=P.car,p=car.paint;this.api.showCar(id,car);
+ s_paint(){if(!this.P.car)return this.show('starter');const P=this.P,id=P.d.current,car=P.car,p=car.paint;this.api.showCar(id,car);
   const sw=slot=>`<div class="sw">${PAINTS.map(c=>`<button style="background:${c}" class="${p[slot]===c?'on':''}" data-a="paint" data-slot="${slot}" data-c="${c}"></button>`).join('')}</div>`;
   this.mount(`${this.top('<button class="back" data-a="home">←</button>')}<div class="split"><div class="panelBox"><h2 class="ttl" style="font-size:18px">Pintura</h2>
    <h4 class="ttl" style="font-size:12px;margin-top:10px;color:var(--acc2)">Color principal</h4>${sw('body')}
@@ -216,6 +217,7 @@ export class UI{
    <p class="muted" style="font-size:10.5px;margin-top:8px">GSkorp Rally · física de simulación propia · hecho con IA</p></div></div>`,'dim');}
  s_pause(){this.mount(`<div class="pauseBox"><div class="resT" style="font-size:34px;margin-bottom:6px">Pausa</div>
    <button class="bigbtn" data-a="resume"><span class="bi">▶</span><span class="bt">Continuar</span></button>
+   ${this.api.canRespawn()?'<button class="bigbtn dark" data-a="respawn"><span class="bi">🔄</span><span class="bt">Volver a la pista</span></button>':''}
    <button class="bigbtn dark" data-a="restart"><span class="bi">↺</span><span class="bt">Reiniciar</span></button>
    <button class="bigbtn dark" data-a="cam"><span class="bi">🎥</span><span class="bt">Cambiar cámara</span></button>
    <button class="bigbtn dark" data-a="go" data-s="options"><span class="bi">⚙️</span><span class="bt">Opciones</span></button>

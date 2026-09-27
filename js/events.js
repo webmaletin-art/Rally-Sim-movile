@@ -3,11 +3,11 @@
           parking (estacionar rápido) · rush (banderas en mundo abierto) · trap (radar de velocidad)
    seg: [inicio, fin] como fracción de la vuelta → tramo punto a punto.  laps: vueltas completas. */
 export const TIERS=[
- {id:'debut',name:'Copa Debut',sub:'Tus primeras carreras',maxPI:599,stars:0,base:3500,skill:0.84,color:'#37b6ff',icon:'🏁'},
- {id:'nacional',name:'Campeonato Nacional',sub:'Rivales serios · autos clase A',maxPI:699,stars:12,base:6500,skill:0.9,color:'#ff8a1f',icon:'🏆'},
- {id:'continental',name:'Serie Continental',sub:'Los mejores de la región · clase S',maxPI:799,stars:28,base:11000,skill:0.95,color:'#ff3b4f',icon:'🌎'},
- {id:'leyenda',name:'Leyenda GSkorp',sub:'Clase libre · solo para leyendas',maxPI:999,stars:46,base:18000,skill:1.0,color:'#b15cff',icon:'👑'},
- {id:'camiones',name:'Rally Raid de Camiones',sub:'Solo el Colossus 6x6',maxPI:999,stars:6,base:7000,skill:0.9,color:'#c9a24b',icon:'🚛',car:'truck'},
+ {id:'debut',name:'Copa Debut',sub:'Tus primeras carreras',maxPI:599,stars:0,base:3500,skill:0.76,color:'#37b6ff',icon:'🏁'},
+ {id:'nacional',name:'Campeonato Nacional',sub:'Rivales serios · autos clase A',maxPI:699,stars:12,base:6500,skill:0.84,color:'#ff8a1f',icon:'🏆'},
+ {id:'continental',name:'Serie Continental',sub:'Los mejores de la región · clase S',maxPI:799,stars:28,base:11000,skill:0.9,color:'#ff3b4f',icon:'🌎'},
+ {id:'leyenda',name:'Leyenda GSkorp',sub:'Clase libre · solo para leyendas',maxPI:999,stars:46,base:18000,skill:0.96,color:'#b15cff',icon:'👑'},
+ {id:'camiones',name:'Rally Raid de Camiones',sub:'Solo el Colossus 6x6',maxPI:999,stars:6,base:7000,skill:0.82,color:'#c9a24b',icon:'🚛',car:'truck'},
 ];
 export const EVENTS=[
  /* ── Copa Debut ── */
@@ -21,7 +21,7 @@ export const EVENTS=[
  /* ── Nacional ── */
  {id:'n1',tier:'nacional',type:'timetrial',name:'Montaña Contrarreloj',map:'asphaltLong',seg:[0,0.38],sky:'day',desc:'Ruta de montaña rapidísima. Frená tarde, salí fuerte.'},
  {id:'n2',tier:'nacional',type:'race',name:'Atardecer en el Lago',map:'lake',laps:3,ai:5,sky:'sunset',desc:'Tres vueltas al lago con el sol de frente.'},
- {id:'n3',tier:'nacional',type:'trap',name:'Radar de la Recta',map:'lake',seg:[0.62,0.86],sky:'day',desc:'Pasá por el radar lo más rápido posible. Todo el tramo es tuyo para tomar carrera.'},
+ {id:'n3',tier:'nacional',type:'trap',name:'Radar de la Recta',map:'lake',seg:[0.97,0.22],sky:'day',desc:'Pasá por el radar lo más rápido posible. Todo el tramo es tuyo para tomar carrera.'},
  {id:'n4',tier:'nacional',type:'race',name:'Cantera al Revés',map:'quarryRev',laps:2,ai:5,sky:'day',desc:'La cantera en sentido contrario: nada es como lo recordás.'},
  {id:'n5',tier:'nacional',type:'drift',name:'Drift en la Plaza (Pro)',map:'drift',time:75,sky:'dusk',desc:'Más tiempo, más exigencia. Encadená derrapes largos.'},
  {id:'n6',tier:'nacional',type:'race',name:'Bosque Inverso',map:'forestRev',seg:[0,0.45],ai:5,sky:'day',desc:'El bosque de punta a punta, al revés.'},
@@ -39,7 +39,7 @@ export const EVENTS=[
  {id:'l1',tier:'leyenda',type:'race',name:'Montaña: Dos Vueltas',map:'asphaltLong',laps:2,ai:5,sky:'day',desc:'Clase libre. Todo vale.'},
  {id:'l2',tier:'leyenda',type:'timetrial',name:'Récord del Bosque',map:'forest',laps:1,sky:'day',desc:'La vuelta completa al bosque contra el reloj.'},
  {id:'l3',tier:'leyenda',type:'race',name:'Cantera Inversa: Maratón',map:'quarryRev',laps:4,ai:5,sky:'dusk',desc:'Cuatro vueltas de cantera al revés.'},
- {id:'l4',tier:'leyenda',type:'trap',name:'Radar de la Montaña',map:'asphaltLong',seg:[0.05,0.3],sky:'day',desc:'¿Cuánto da tu auto de verdad?'},
+ {id:'l4',tier:'leyenda',type:'trap',name:'Radar de la Montaña',map:'asphaltLong',seg:[0.5,0.72],sky:'day',desc:'¿Cuánto da tu auto de verdad?'},
  {id:'l5',tier:'leyenda',type:'race',name:'Leyenda GSkorp',map:'forest',laps:1,ai:5,sky:'sunset',final:true,desc:'El último desafío. Ganala y sos leyenda.'},
  /* ── Camiones ── */
  {id:'k1',tier:'camiones',type:'race',name:'Duelo de Titanes',map:'quarry',laps:2,ai:3,sky:'day',desc:'Camiones de 10 toneladas en la cantera. Cuidado con los golpes.'},
@@ -54,11 +54,11 @@ export const TYPE_INFO={
 /* ─── medallas: 3 oro · 2 plata · 1 bronce · 0 nada ───
    targets: [oro, plata, bronce]; para tiempos, menor es mejor */
 export const TARGETS={
- d1:[62,68,76],d3:[16,22,32],d5:[9000,6000,3500],d6:[95,70,40],
- n1:[70,76,84],n3:[165,150,135],n5:[16000,11000,7000],n7:[120,85,45],
- c2:[190,202,216],c4:[26000,19000,13000],c6:[12,16,22],
- l2:[260,280,300],l4:[235,215,195],
- k2:[120,132,146],k3:[80,50,20],
+ d1:[40,44,49],d3:[16,22,32],d5:[6000,3800,2000],d6:[55,35,15],
+ n1:[41.5,45.5,50],n3:[176,162,145],n5:[9000,6000,3500],n7:[60,35,12],
+ c2:[258,282,310],c4:[14000,9500,6000],c6:[12,16,22],
+ l2:[172,188,208],l4:[225,205,185],
+ k2:[67,73,80],k3:[70,40,15],
 };
 export function lowerIsBetter(type){return type==='timetrial'||type==='parking';}
 export function medalFor(ev,value){
