@@ -24,11 +24,11 @@ export const EVENTS=[
  {id:'n3',tier:'nacional',type:'trap',name:'Radar de la Recta',map:'lake',seg:[0.97,0.22],sky:'day',desc:'Pasá por el radar lo más rápido posible. Todo el tramo es tuyo para tomar carrera.'},
  {id:'n4',tier:'nacional',type:'race',name:'Cantera al Revés',map:'quarryRev',laps:2,ai:5,sky:'day',desc:'La cantera en sentido contrario: nada es como lo recordás.'},
  {id:'n5',tier:'nacional',type:'drift',name:'Drift en la Plaza (Pro)',map:'drift',time:75,sky:'dusk',desc:'Más tiempo, más exigencia. Encadená derrapes largos.'},
- {id:'n6',tier:'nacional',type:'race',name:'Bosque Inverso',map:'forestRev',seg:[0,0.45],ai:5,sky:'day',desc:'El bosque de punta a punta, al revés.'},
+ {id:'n6',tier:'nacional',type:'race',name:'Bosque Inverso',map:'forestRev',seg:[0,0.45],ai:5,sky:'rain',desc:'El bosque de punta a punta, al revés… y bajo la lluvia. El grip baja: frená antes.'},
  {id:'n7',tier:'nacional',type:'rush',name:'Valle: 10 Banderas',map:'offroad',flags:10,time:230,sky:'sunset',desc:'Diez banderas repartidas por todo el valle.'},
  {id:'n8',tier:'nacional',type:'race',name:'Gran Premio Nacional',map:'asphaltLong',laps:1,ai:5,sky:'day',final:true,desc:'La vuelta completa a la montaña contra los mejores del país.'},
  /* ── Continental ── */
- {id:'c1',tier:'continental',type:'race',name:'Rally del Bosque',map:'forest',laps:1,ai:5,sky:'overcast',desc:'Vuelta completa al bosque: más de 5 km de tierra.'},
+ {id:'c1',tier:'continental',type:'race',name:'Rally del Bosque',map:'forest',laps:1,ai:5,sky:'rain',desc:'Vuelta completa al bosque: más de 5 km de tierra.'},
  {id:'c2',tier:'continental',type:'timetrial',name:'Cantera: 3 Vueltas',map:'quarry',laps:3,sky:'sunset',desc:'Constancia pura: tres vueltas sin errores.'},
  {id:'c3',tier:'continental',type:'race',name:'Lago: Resistencia',map:'lake',laps:4,ai:5,sky:'dusk',desc:'Cuatro vueltas. Cuidá el auto y atacá al final.'},
  {id:'c4',tier:'continental',type:'drift',name:'Rey de la Plaza',map:'drift',time:90,sky:'day',desc:'Solo los mejores superan esta marca.'},
@@ -36,7 +36,7 @@ export const EVENTS=[
  {id:'c6',tier:'continental',type:'parking',name:'Cochera de Precisión',map:'parking',sky:'dusk',hard:true,desc:'Tiempos de profesional. Un toque y perdés.'},
  {id:'c7',tier:'continental',type:'race',name:'Final Continental',map:'forestRev',laps:1,ai:5,sky:'overcast',final:true,desc:'El bosque completo al revés. Esta es para campeones.'},
  /* ── Leyenda ── */
- {id:'l1',tier:'leyenda',type:'race',name:'Montaña: Dos Vueltas',map:'asphaltLong',laps:2,ai:5,sky:'day',desc:'Clase libre. Todo vale.'},
+ {id:'l1',tier:'leyenda',type:'race',name:'Montaña: Dos Vueltas',map:'asphaltLong',laps:2,ai:5,sky:'rain',desc:'Clase libre. Todo vale.'},
  {id:'l2',tier:'leyenda',type:'timetrial',name:'Récord del Bosque',map:'forest',laps:1,sky:'day',desc:'La vuelta completa al bosque contra el reloj.'},
  {id:'l3',tier:'leyenda',type:'race',name:'Cantera Inversa: Maratón',map:'quarryRev',laps:4,ai:5,sky:'dusk',desc:'Cuatro vueltas de cantera al revés.'},
  {id:'l4',tier:'leyenda',type:'trap',name:'Radar de la Montaña',map:'asphaltLong',seg:[0.5,0.72],sky:'day',desc:'¿Cuánto da tu auto de verdad?'},

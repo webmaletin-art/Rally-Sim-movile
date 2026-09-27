@@ -8,7 +8,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 export const fmtCr=n=>'$ '+Math.round(n).toLocaleString('es-AR');
 export const fmtTime=s=>{if(s==null||!isFinite(s))return '--:--.--';const m=Math.floor(s/60),ss=Math.floor(s%60),cc=Math.floor((s*100)%100);return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}.${String(cc).padStart(2,'0')}`;};
 const MEDAL=['','b','s','g'],MEDAL_N=['Sin medalla','Bronce','Plata','Oro'];
-const SKY_N={day:'☀️ Día',sunset:'🌇 Atardecer',overcast:'☁️ Nublado',dusk:'🌆 Anochecer'};
+const SKY_N={day:'☀️ Día',sunset:'🌇 Atardecer',overcast:'☁️ Nublado',dusk:'🌆 Anochecer',rain:'🌧️ Lluvia'};
 function clsBadge(pi){const c=classOf(pi);return `<span class="cls"><b style="background:${c.col}">${c.c}</b><span>${pi}</span></span>`;}
 function medals(m){return `<span class="medals">${[1,2,3].map(i=>`<i class="medal ${m>=i?MEDAL[i]:''}"></i>`).join('')}</span>`;}
 
@@ -88,7 +88,7 @@ export class UI{
   this.root.firstChild.dataset.a='';}
  splashProgress(p,done){const b=document.getElementById('loadBar');if(b)b.style.width=Math.round(p*100)+'%';if(done){const t=document.getElementById('tapGo');if(t){t.classList.remove('off');this.root.firstChild.setAttribute('data-a','tap');}}}
  s_starter(){const sel=this.starterSel||'t1plus';const ids=CAR_ORDER.filter(i=>CAR_META[i].starter);const {perf,html}=this.carInfo(sel,null);
-  this.mount(`${this.top()}<div class="split" style="grid-template-columns:minmax(250px,360px) 1fr"><div class="panelBox">
+  this.mount(`${this.top()}<div class="split"><div class="panelBox">
    <h2 class="ttl" style="font-size:20px">Elegí tu primer auto</h2><p class="muted" style="font-size:12px;margin:4px 0 10px">Es un regalo. Los demás los vas a ganar corriendo.</p>
    <div class="cars" style="grid-template-columns:1fr 1fr">${ids.map(id=>{const m=CAR_META[id];return `<button class="car ${id===sel?'sel':''}" data-a="starterPick" data-id="${id}"><span class="cb">${m.brand}</span><span class="cn">${m.model}</span><span class="kind">${m.kind}</span></button>`}).join('')}</div>
    <div style="margin-top:12px">${html}<p class="muted" style="font-size:12px;margin:6px 0">${CAR_META[sel].desc}</p>${this.statBlock(perf)}</div>
@@ -169,8 +169,8 @@ export class UI{
      <span class="piDelta ${d>0?'up':d<0?'dn':''}">${d?(d>0?'+':'')+d+' PI':''}</span>
      ${on?'<button class="buy done" disabled>INSTALADO</button>':own?`<button class="buy inst" data-a="buyPart" data-cat="${cat}" data-l="${i}">INSTALAR</button>`:`<button class="buy" data-a="buyPart" data-cat="${cat}" data-l="${i}" ${P.credits<(L.cost||0)?'disabled':''}>${fmtCr(L.cost||0)}</button>`}</div>`}).join('');}
   const cats=[...UPGRADES.map(u=>({id:u.id,icon:u.icon,n:u.name,max:u.levels.length-1,l:car.upg[u.id]||0})),{id:'tires',icon:'🛞',n:'Neumáticos',max:0,l:0}];
-  this.mount(`${this.top('<button class="back" data-a="home">←</button>')}<div class="split" style="grid-template-columns:minmax(170px,230px) minmax(260px,440px) 1fr"><div class="panelBox">
-   <div style="margin-bottom:8px">${this.carInfo(id,car).html}</div>${cats.map(c=>`<button class="cat ${c.id===cat?'on':''}" data-a="wsCat" data-id="${c.id}"><span class="ci2">${c.icon}</span><span class="cn2">${c.n}</span>${c.max?`<span class="pips">${Array.from({length:c.max},(_,k)=>`<i class="pip ${k<c.l?'on':''}"></i>`).join('')}</span>`:`<span class="kind">${TIRE_BY_ID[car.tires].n}</span>`}</button>`).join('')}</div>
+  this.mount(`${this.top('<button class="back" data-a="home">←</button>')}<div class="split ws"><div class="panelBox wsCats">
+   <div class="wsCar" style="margin-bottom:8px">${this.carInfo(id,car).html}</div>${cats.map(c=>`<button class="cat ${c.id===cat?'on':''}" data-a="wsCat" data-id="${c.id}"><span class="ci2">${c.icon}</span><span class="cn2">${c.n}</span>${c.max?`<span class="pips">${Array.from({length:c.max},(_,k)=>`<i class="pip ${k<c.l?'on':''}"></i>`).join('')}</span>`:`<span class="kind">${TIRE_BY_ID[car.tires].n}</span>`}</button>`).join('')}</div>
    <div class="panelBox">${right}<div style="margin-top:10px">${this.statBlock(perf)}</div></div><div></div></div>`,'fade');}
  s_tuning(){if(!this.P.car)return this.show('starter');const P=this.P,id=P.d.current,car=P.car,base=this.api.base(id);const un=unlocksOf(car.upg);const tu={...defaultTune(base),...(car.tune||{})};this.api.showCar(id,car);
   const V=this.api.params(id,car);const lockName={springs:'Suspensión Nv1',damp:'Suspensión Nv1',arb:'Suspensión Nv1',height:'Coilovers (Suspensión Nv3)',camber:'Coilovers (Suspensión Nv3)',toe:'Coilovers (Suspensión Nv3)',lsd:'Diferencial Nv1',final:'Transmisión Nv2',aero:'Aerodinámica Nv1',stance:'Kit stance (Estilo)'};
@@ -179,7 +179,7 @@ export class UI{
   const groups=TUNE_GROUPS.map(g=>`<div class="tg"><h4>${g.g}</h4>${g.items.map(it=>{const lk=it.req&&!un.has(it.req);const v=tu[it.k];
    return `<div class="tr ${lk?'locked':''} ${this.tuneInfo[it.k]?'info':''}"><div class="th"><span>${it.n}<button class="qb" data-a="tq" data-k="${it.k}">?</button></span>${lk?`<span class="lk">🔒 ${lockName[it.req]||''}</span>`:`<span class="tv" id="tv_${it.k}">${show(it,v)}</span>`}</div>
     <input type="range" min="${it.min}" max="${it.max}" step="${it.step}" value="${v}" data-k="${it.k}" ${lk?'disabled':''}><div class="ti2">${it.info}</div></div>`}).join('')}</div>`).join('');
-  const el=this.mount(`${this.top('<button class="back" data-a="home">←</button>')}<div class="split" style="grid-template-columns:minmax(280px,470px) 1fr"><div class="panelBox" id="tuneBox">
+  const el=this.mount(`${this.top('<button class="back" data-a="home">←</button>')}<div class="split tn"><div class="panelBox" id="tuneBox">
    <div class="row" style="justify-content:space-between"><h2 class="ttl" style="font-size:18px">Ajuste fino</h2><button class="back" data-a="tuneReset">↺ Fábrica</button></div>
    <div class="row" style="margin:8px 0"><span class="kind">Presets:</span>${Object.keys(PRESETS).map(k=>`<button class="tab" data-a="tunePreset" data-id="${k}" data-n="${PRESET_N[k]}">${PRESET_N[k]}</button>`).join('')}</div>
    <div id="tunePI" style="margin-bottom:6px">${this.carInfo(id,car).html}</div>${groups}</div><div></div></div>`,'fade');
