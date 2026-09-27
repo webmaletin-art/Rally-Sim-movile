@@ -146,3 +146,25 @@ export const FINISHES=[{id:'gloss',n:'Brillante'},{id:'metal',n:'Metalizado'},{i
 
 /* ─── Niveles de piloto ─── */
 export function xpForLevel(l){return Math.round(1100*Math.pow(l,1.5));}
+
+/* ─── Logros: objetivos con premio (se reclaman en el menú) ─── */
+export const ACHIEVEMENTS=[
+ {id:'win1',icon:'🥇',n:'Primera victoria',d:'Ganá una carrera contra la IA.',cr:3000,test:p=>p.stats.wins>=1},
+ {id:'win5',icon:'🏆',n:'Piloto ganador',d:'Ganá 5 carreras.',cr:8000,test:p=>p.stats.wins>=5},
+ {id:'win15',icon:'👑',n:'Imbatible',d:'Ganá 15 carreras.',cr:20000,test:p=>p.stats.wins>=15},
+ {id:'pod10',icon:'🎖️',n:'Siempre en el podio',d:'Terminá 10 veces entre los 3 primeros.',cr:7000,test:p=>p.stats.podiums>=10},
+ {id:'km50',icon:'🛣️',n:'Kilómetros',d:'Recorré 50 km.',cr:4000,test:p=>p.stats.km>=50},
+ {id:'km250',icon:'🌎',n:'Trotamundos',d:'Recorré 250 km.',cr:15000,test:p=>p.stats.km>=250},
+ {id:'spd200',icon:'⚡',n:'Barrera de los 200',d:'Superá los 200 km/h en un evento.',cr:5000,test:p=>p.stats.topSpeed>=200},
+ {id:'spd250',icon:'🚀',n:'Misil',d:'Superá los 250 km/h.',cr:12000,test:p=>p.stats.topSpeed>=250},
+ {id:'drift5k',icon:'🌀',n:'Derrapador',d:'Hacé 5.000 puntos en un evento de drift.',cr:4000,test:p=>p.stats.driftBest>=5000},
+ {id:'drift15k',icon:'🔥',n:'Rey del humo',d:'Hacé 15.000 puntos de drift.',cr:12000,test:p=>p.stats.driftBest>=15000},
+ {id:'board6',icon:'💥',n:'Rompecarteles',d:'Rompé 6 carteles GSKORP en el mundo abierto.',cr:4000,test:p=>Object.keys(p.stats.boards||{}).length>=6},
+ {id:'board12',icon:'🧨',n:'Sin cartel en pie',d:'Rompé los 12 carteles.',cr:12000,test:p=>Object.keys(p.stats.boards||{}).length>=12},
+ {id:'trap150',icon:'📸',n:'Multado',d:'Pasá un radar a más de 150 km/h.',cr:3500,test:p=>Object.values(p.stats.traps||{}).some(v=>v>=150)},
+ {id:'cars2',icon:'🚘',n:'Coleccionista',d:'Tené 2 autos en el garaje.',cr:5000,test:p=>Object.keys(p.owned).length>=2},
+ {id:'cars4',icon:'🏁',n:'Garaje completo',d:'Tené los 4 autos.',cr:25000,test:p=>Object.keys(p.owned).length>=4},
+ {id:'gold10',icon:'⭐',n:'Diez de oro',d:'Conseguí 10 medallas de oro.',cr:10000,test:p=>Object.values(p.events).filter(e=>e.medal===3).length>=10},
+ {id:'cup1',icon:'🏆',n:'Campeón de copa',d:'Completá una copa entera.',cr:6000,test:p=>Object.keys(p.cups||{}).length>=1},
+ {id:'lvl10',icon:'🎓',n:'Nivel 10',d:'Llegá al nivel 10 de piloto.',cr:10000,test:p=>p.level>=10},
+];
