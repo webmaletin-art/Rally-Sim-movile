@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0a0d12">
-<title>Rally Sim — Genesis Concept</title>
+<title>GSkorp Rally</title>
+<link rel="stylesheet" href="css/ui.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;height:100%;overflow:hidden;background:#090c10;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;touch-action:none;user-select:none}
@@ -110,37 +111,37 @@ body.slider-mode #handbrakeBtn{left:auto;right:16px;bottom:24px;transform:none}
 </head>
 <body>
 <canvas id="game"></canvas><div id="errorBox"></div>
-<div id="hud">
-  <div class="top">
-    <div class="panel" id="lapPanel">
-      <div class="lbl">Vuelta</div><div class="val" id="lap">1/3</div>
-      <div class="lbl" style="margin-top:4px">Tiempo</div><div class="val" id="time">00:00.00</div>
-      <div class="lbl" style="margin-top:4px">Mejor</div><div class="val" id="best">--:--.--</div>
-    </div>
+<div id="hud" class="off">
+  <div id="raceInfo" class="panel">
+    <div class="riRow" id="riPos"><span class="lbl">Posición</span><span class="val big" id="pos">1/1</span></div>
+    <div class="riRow" id="riLap"><span class="lbl">Vuelta</span><span class="val" id="lap">1/1</span></div>
+    <div class="riRow"><span class="lbl" id="timeLbl">Tiempo</span><span class="val" id="time">00:00.00</span></div>
+    <div class="riRow" id="riBest"><span class="lbl" id="bestLbl">Objetivo</span><span class="val" id="best">--:--.--</span></div>
+    <div class="riRow" id="riProg"><div class="prog"><i id="progFill"></i></div></div>
   </div>
+  <canvas id="minimap" width="220" height="220"></canvas>
 </div>
-<div id="speedPanel" class="panel">
+<div id="speedPanel" class="panel off">
   <div class="val" id="speed">0<span class="unit">km/h</span></div>
   <span class="gear" id="gear">N</span>
-  <div style="height:4px;margin-top:6px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden">
-    <div id="rpmFill" style="height:100%;width:0%;background:linear-gradient(90deg,#65b5ff,#ffd166 75%,#ff4d5e)"></div>
-  </div>
+  <div class="rpmBar"><div id="rpmFill"></div></div>
 </div>
+<div id="centerMsg"></div>
+<div id="subMsg"></div>
+<div id="driftPanel"><div id="driftScore">0</div><div id="driftCombo"></div><div id="driftTotal">TOTAL 0</div></div>
+<div id="toasts"></div>
 <div id="gyroBadge">🎯 ACELERÓMETRO ON</div>
 <div id="parkOk">✅ ESTACIONADO</div>
 <div id="debug"></div>
-<div id="menu">
-  <button class="btn" id="mapBtn">🗺️ MAPA</button>
-  <button class="btn" id="vehBtn">🚗 AUTO</button>
-  <button class="btn" id="camBtn">🎥 CAM 2</button>
-  <button class="btn" id="restart">Reiniciar</button>
-  <button class="btn" id="setup">Setup</button>
+<div id="menu" class="off">
+  <button class="btn" id="camBtn">🎥</button>
+  <button class="btn" id="pauseBtn">❚❚</button>
 </div>
 
 <div id="camEditHint">Ajustando cámara<small>1 dedo: rotar alrededor · 2 dedos juntos: desplazar · 2 dedos separar: zoom</small></div>
 <button id="camLockBtn">✓ OK — Fijar cámara</button>
 
-<div id="touch">
+<div id="touch" class="off">
   <div id="steering">
     <svg id="wheelSvg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
       <circle cx="100" cy="100" r="94" fill="#1a1d22"/>
@@ -148,8 +149,8 @@ body.slider-mode #handbrakeBtn{left:auto;right:16px;bottom:24px;transform:none}
       <rect x="94" y="14" width="12" height="76" fill="#2a2f38"/>
       <rect x="14" y="94" width="172" height="12" fill="#2a2f38"/>
       <circle cx="100" cy="100" r="26" fill="#14181e" stroke="#5a6472" stroke-width="3"/>
-      <circle cx="100" cy="100" r="7" fill="#67b4ff"/>
-      <rect x="94" y="6" width="12" height="18" fill="#67b4ff"/>
+      <circle cx="100" cy="100" r="7" fill="#ff6a08"/>
+      <rect x="94" y="6" width="12" height="18" fill="#ff6a08"/>
     </svg>
   </div>
   <div id="steerSlider">
@@ -173,50 +174,9 @@ body.slider-mode #handbrakeBtn{left:auto;right:16px;bottom:24px;transform:none}
     </div>
   </div>
   <button id="handbrakeBtn">🅷</button>
+  <button id="nitroBtn"><span>N₂O</span><i id="nitroFill"></i></button>
 </div>
-<div id="garage"><div class="garagePanel"><div class="gHead"><h2>Ajuste f&#237;sico</h2><button class="btn" id="closeSetup">Cerrar</button></div><div id="tunes"></div></div></div>
-
-<div id="overlay">
-  <div class="card" id="vehicleScreen">
-    <h1>Rally <b>Sim</b></h1>
-    <p>Elegí tu vehículo</p>
-    <div class="mapSelect vehicleSelect" id="vehicleSelect"></div>
-    <div class="hint">Cada vehículo tiene su propia física de fábrica · después la podés ajustar en Setup.</div>
-  </div>
-  <div class="card hidden" id="mapScreen">
-    <h1>Elegí la <b>pista</b></h1>
-    <p id="mapScreenSub">Vehículo seleccionado</p>
-    <div class="mapSelect">
-      <button class="mapBtn" data-map="forest">
-        <span class="ic">🌲</span>
-        <span class="nm">BOSQUE TIERRA</span>
-        <span class="sub">Rally stage grande · muy sinuosa</span>
-      </button>
-      <button class="mapBtn" data-map="asphaltLong">
-        <span class="ic">🏔️</span>
-        <span class="nm">MONTAÑA ASFALTO</span>
-        <span class="sub">Ruta larga · curvas abiertas</span>
-      </button>
-      <button class="mapBtn" data-map="drift">
-        <span class="ic">🛞</span>
-        <span class="nm">DRIFT PLAZA</span>
-        <span class="sub">Playón liso · rotonda y conos</span>
-      </button>
-      <button class="mapBtn" data-map="offroad">
-        <span class="ic">🏞️</span>
-        <span class="nm">OFF-ROAD LIBRE</span>
-        <span class="sub">Terreno grande · mundo libre, sin vueltas</span>
-      </button>
-      <button class="mapBtn" data-map="parking">
-        <span class="ic">🅿️</span>
-        <span class="nm">ESTACIONAMIENTO</span>
-        <span class="sub">Cochera angosta · difícil, con cuidado</span>
-      </button>
-    </div>
-    <button class="btn" id="backToVehicle" style="margin-top:10px">← Cambiar vehículo</button>
-    <div class="hint">Volante o palanca: configurable en Setup · 5 cámaras + 1 personalizable.<br>Teclado: A/D · W/↑ · S/↓ · Espacio freno de mano · R reiniciar · P debug · G setup · C cámara.</div>
-  </div>
-</div>
+<div id="ui"></div>
 
 <script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/jsm/"}}</script>
 <script type="module" src="js/main.js"></script>
