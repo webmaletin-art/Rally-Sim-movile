@@ -6,7 +6,7 @@ import {CAR_META,CAR_ORDER,UPG_BY_ID,PAINTS} from './data.js';
 import {buildParams,perfOf} from './carbuild.js';
 import {Profile,newCarState} from './profile.js';
 import {AIDriver} from './ai.js';
-import {TIERS,TARGETS,medalFor,rewardFor,lowerIsBetter} from './events.js';
+import {TIERS,EVENTS,TARGETS,medalFor,rewardFor,lowerIsBetter} from './events.js';
 import {UI,fmtTime} from './ui.js';
 const VEHICLES={
  genesis:{
@@ -380,7 +380,7 @@ class Track{
   const bushGeo=new THREE.IcosahedronGeometry(.65,0),bushMat=new THREE.MeshStandardMaterial({color:0x314e2e,roughness:1});const bushes=new THREE.InstancedMesh(bushGeo,bushMat,200);
   const trunkGeo=new THREE.CylinderGeometry(.18,.25,2.6,6);const trunkMat=new THREE.MeshStandardMaterial({color:0x5a3f28,roughness:1});
   const crownGeo=new THREE.ConeGeometry(1.5,3.8,7);const crownMat=new THREE.MeshStandardMaterial({color:0x2e5c2a,roughness:1});
-  const TREE_COUNT=420;const trunks=new THREE.InstancedMesh(trunkGeo,trunkMat,TREE_COUNT);const crowns=new THREE.InstancedMesh(crownGeo,crownMat,TREE_COUNT);
+  const TREE_COUNT=Math.round(420*QF());const trunks=new THREE.InstancedMesh(trunkGeo,trunkMat,TREE_COUNT);const crowns=new THREE.InstancedMesh(crownGeo,crownMat,TREE_COUNT);
   const d=new THREE.Object3D();
   for(let i=0;i<260;i++){const idx=Math.floor(Math.random()*this.samples.length),p=this.samples[idx],lat=this.laterals[idx],side=Math.random()<.5?-1:1,off=this.halfWidth+this.shoulder+6+Math.random()*30,x=p.x+lat.x*off*side,z=p.z+lat.z*off*side,y=this.ground(x,z);d.position.set(x,y+.3,z);d.scale.setScalar(.4+Math.random()*1.3);d.rotation.set(Math.random(),Math.random(),Math.random());d.updateMatrix();rocks.setMatrixAt(i,d.matrix)}
   for(let i=0;i<200;i++){const idx=Math.floor(Math.random()*this.samples.length),p=this.samples[idx],lat=this.laterals[idx],side=Math.random()<.5?-1:1,off=this.halfWidth+this.shoulder+4+Math.random()*22,x=p.x+lat.x*off*side,z=p.z+lat.z*off*side,y=this.ground(x,z);d.position.set(x,y+.45,z);d.scale.set(.8+Math.random()*1.5,.65+Math.random()*1.2,.8+Math.random()*1.5);d.updateMatrix();bushes.setMatrixAt(i,d.matrix)}
@@ -559,7 +559,7 @@ class OffroadTrack{
   const bushGeo=new THREE.IcosahedronGeometry(.7,0),bushMat=new THREE.MeshStandardMaterial({color:0x3a5c34,roughness:1});const bushes=new THREE.InstancedMesh(bushGeo,bushMat,160);
   const trunkGeo=new THREE.CylinderGeometry(.18,.25,2.6,6),trunkMat=new THREE.MeshStandardMaterial({color:0x5a3f28,roughness:1});
   const crownGeo=new THREE.ConeGeometry(1.5,3.8,7),crownMat=new THREE.MeshStandardMaterial({color:0x336b2e,roughness:1});
-  const TREE=180;const trunks=new THREE.InstancedMesh(trunkGeo,trunkMat,TREE),crowns=new THREE.InstancedMesh(crownGeo,crownMat,TREE);
+  const TREE=Math.round(180*QF());const trunks=new THREE.InstancedMesh(trunkGeo,trunkMat,TREE),crowns=new THREE.InstancedMesh(crownGeo,crownMat,TREE);
   const d=new THREE.Object3D();
   for(let i=0;i<220;i++){const [x,z]=rndAway(),y=this.groundY(x,z);d.position.set(x,y+.3,z);d.scale.setScalar(.4+Math.random()*1.3);d.rotation.set(Math.random(),Math.random(),Math.random());d.updateMatrix();rocks.setMatrixAt(i,d.matrix);}
   for(let i=0;i<160;i++){const [x,z]=rndAway(),y=this.groundY(x,z);d.position.set(x,y+.45,z);d.scale.set(.8+Math.random()*1.5,.65+Math.random()*1.2,.8+Math.random()*1.5);d.rotation.set(0,0,0);d.updateMatrix();bushes.setMatrixAt(i,d.matrix);}
@@ -998,6 +998,7 @@ class AudioEngine{
    ═══════════════════════════════════════════════════════════════════ */
 const tune={steerMode:'wheel',gameSpeed:100,gyroSensitivity:50};
 let QUALITY='media';
+function QF(){return {baja:0.45,media:1,alta:1.35}[QUALITY]||1;}
 const PROFILE=new Profile();
 function assistsOf(s){return {abs:s.abs,tc:s.tc,stab:s.stab};}
 function paramsFor(id,state){return buildParams(VEHICLES[id],state||newCarState(id),assistsOf(PROFILE.d.settings));}
@@ -1067,6 +1068,23 @@ function sfxPlay(audio,name){if(!audio.on)return;const ctx=audio.ctx,t=ctx.curre
  const P={click:[880,0.04,'triangle',0.12],buy:[660,0.18,'sine',0.2],error:[160,0.2,'square',0.12],beep:[660,0.16,'sine',0.35],go:[1320,0.5,'sine',0.35],coin:[1500,0.12,'sine',0.2],finish:[523,0.6,'triangle',0.3]}[name]||[600,0.05,'sine',0.1];
  o.type=P[2];o.frequency.setValueAtTime(P[0],t);if(name==='buy'||name==='coin')o.frequency.exponentialRampToValueAtTime(P[0]*2,t+P[1]);if(name==='finish'){o.frequency.setValueAtTime(523,t);o.frequency.setValueAtTime(659,t+0.15);o.frequency.setValueAtTime(784,t+0.3);}
  g.gain.setValueAtTime(P[3],t);g.gain.exponentialRampToValueAtTime(0.0005,t+P[1]);o.start(t);o.stop(t+P[1]+0.05);}
+
+/* ═══ MÚSICA DE MENÚ (sintetizada, loop synthwave suave) ═══ */
+class Music{
+ constructor(audio){this.a=audio;this.on=false;this.step=0;this.timer=null;}
+ start(){const A=this.a;if(!A.on||this.on)return;this.on=true;const ctx=A.ctx;if(!this.out){this.out=ctx.createGain();this.out.gain.value=0;const f=ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=2400;this.out.connect(f).connect(A.master);}
+  this.out.gain.setTargetAtTime(0.55,ctx.currentTime,0.8);this.next=ctx.currentTime+0.1;this.timer=setInterval(()=>this.sched(),60);}
+ stop(){if(!this.on)return;this.on=false;clearInterval(this.timer);const ctx=this.a.ctx;this.out.gain.setTargetAtTime(0,ctx.currentTime,0.4);}
+ note(t,f,d,type,g,dest){const ctx=this.a.ctx,o=ctx.createOscillator(),e=ctx.createGain();o.type=type;o.frequency.value=f;e.gain.setValueAtTime(0,t);e.gain.linearRampToValueAtTime(g,t+0.02);e.gain.exponentialRampToValueAtTime(0.0008,t+d);o.connect(e).connect(dest||this.out);o.start(t);o.stop(t+d+0.05);}
+ sched(){const ctx=this.a.ctx,spb=60/96/2;const prog=[[57,60,64],[53,57,60],[48,52,55],[55,59,62]];const hz=m=>440*Math.pow(2,(m-69)/12);
+  while(this.next<ctx.currentTime+0.25){const s=this.step,bar=Math.floor(s/8)%4,ch=prog[bar],t=this.next;
+   this.note(t,hz(ch[0]-24),spb*0.9,'sawtooth',0.07);if(s%2===0)this.note(t,hz(ch[0]-12),spb*1.8,'triangle',0.05);
+   if(s%8===0)for(const m of ch)this.note(t,hz(m),spb*7.5,'sine',0.028);
+   if([0,3,5,6].includes(s%8))this.note(t,hz(ch[(s>>1)%3]+12),spb*0.7,'square',0.012);
+   if(s%2===1){const b=ctx.createBufferSource();b.buffer=this.a.noiseBuf;const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=7000;const e=ctx.createGain();e.gain.setValueAtTime(0.03,t);e.gain.exponentialRampToValueAtTime(0.0005,t+0.05);b.connect(hp).connect(e).connect(this.out);b.start(t,Math.random());b.stop(t+0.06);}
+   if(s%4===0){const o=ctx.createOscillator(),e=ctx.createGain();o.frequency.setValueAtTime(120,t);o.frequency.exponentialRampToValueAtTime(40,t+0.12);e.gain.setValueAtTime(0.12,t);e.gain.exponentialRampToValueAtTime(0.001,t+0.18);o.connect(e).connect(this.out);o.start(t);o.stop(t+0.2);}
+   this.step++;this.next+=spb;}}
+}
 
 /* ═══ NOMBRES Y AUTOS DE LA IA ═══ */
 const AI_NAMES=['M. Kovac','L. Ferreyra','S. Okafor','T. Nakamura','R. Álvarez','J. Lindqvist','C. Duarte','A. Moreau','P. Rossi','K. Bauer','D. Sosa','E. Varga'];
@@ -1226,13 +1244,14 @@ class Game{
   this.input=new Input();this.cameraRig=null;this.fx=new Effects(this.scene);this.audio=new AudioEngine();
   this.acc=0;this.last=performance.now();this.state='menu';this.fixed=1/120;this.fpsFrames=0;this.fpsAccum=0;this.fps=0;this.odo=0;
   this.rpmFill=$('rpmFill');this.customLocked=false;
-  const api={profile:PROFILE,sfx:n=>this.sfx(n),unlockAudio:()=>{this.audio.init();this.audio.resume();this.applySettings();},
+  const api={profile:PROFILE,sfx:n=>this.sfx(n),unlockAudio:()=>{this.audio.init();this.audio.resume();this.applySettings();this.musicCheck();},
    perf:(id,st)=>{const pf=perfOf(paramsFor(id,st));return pf;},params:(id,st)=>paramsFor(id,st),base:id=>VEHICLES[id],
    showCar:(id,st)=>{this.showroom.setCar(id,st);},carChanged:()=>{const id=PROFILE.d.current;this.showroom.setCar(id,PROFILE.car);},
    onScreen:n=>this.onScreen(n),startEvent:ev=>this.startEvent(ev),startQuick:q=>this.startQuick(q),testDrive:id=>this.testDrive(id),openWorld:()=>this.openWorld(),
    mapName:id=>(MAPS[id]||{}).name||id,mapList:()=>Object.entries(MAPS).map(([id,m])=>({id,...m})),applySettings:()=>this.applySettings(),
    toggleGyro:async()=>{if(this.input.gyroEnabled){this.input.disableGyro();return {};}const r=await this.input.enableGyro();return r.ok?{}:{err:r.err};},gyroOn:()=>this.input.gyroEnabled,recalGyro:()=>this.input.recalibrateGyro(),
    resume:()=>this.resume(),respawn:()=>{if(this.session){this.session.respawn();this.resume();}},canRespawn:()=>!!(this.session&&this.session.type!=='parking'),restart:()=>this.retry(),quit:()=>this.quit(),nextCam:()=>{this.nextCamera();},afterResults:n=>this.afterResults(n),retry:()=>this.retry()};
+  this.music=new Music(this.audio);
   this.ui=new UI(api);
   this.bind();this.applySettings();
   addEventListener('resize',()=>this.resize());this.resize();
@@ -1253,12 +1272,13 @@ class Game{
  toast(m,c){this.ui.toast(m,c);}
  bigMsg(t,cls){const e=$('centerMsg');e.textContent=t;e.className='anim '+(cls||'');void e.offsetWidth;e.className='anim '+(cls||'');clearTimeout(this._bm);this._bm=setTimeout(()=>{e.textContent='';e.className='';},950);}
  hitFx(v){if(v>2.5&&PROFILE.d.settings.vibrate&&navigator.vibrate)try{navigator.vibrate(Math.min(80,v*10))}catch(e){}if(v>1.5)this.audio.thump&&this.audio.thump(Math.min(1,v/8));}
- applySettings(){const s=PROFILE.d.settings;tune.steerMode=s.steerMode;tune.gameSpeed=s.gameSpeed;tune.gyroSensitivity=s.gyroSens;GYRO_TILT_FOR_FULL=55-s.gyroSens*0.40;
+ musicCheck(){if(!this.music)return;const want=PROFILE.d.settings.music&&(this.state==='menu'||this.state==='results');if(want)this.music.start();else this.music.stop();}
+ applySettings(){const s=PROFILE.d.settings;this.musicCheck&&this.musicCheck();tune.steerMode=s.steerMode;tune.gameSpeed=s.gameSpeed;tune.gyroSensitivity=s.gyroSens;GYRO_TILT_FOR_FULL=55-s.gyroSens*0.40;
   document.body.classList.toggle('slider-mode',s.steerMode==='slider');QUALITY=s.quality;
   const pr={baja:0.7,media:Math.min(devicePixelRatio,1.25),alta:Math.min(devicePixelRatio,1.75)}[s.quality]||1;this.renderer.setPixelRatio(pr);this.renderer.setSize(innerWidth,innerHeight);
   if(this.audio.master)this.audio.master.gain.value=SND.master*(s.volume/80);
   if(this.physics&&this.session){const id=currentVehicleId;const st=this.testState||PROFILE.d.owned[id];const V=paramsFor(id,st);Object.assign(VEH,V);this.physics.setup();}}
- onScreen(n){this.ui.inRace=this.state==='paused';this.showroom.off={home:0,starter:-1.3,garage:-1.3,dealer:-1.3,paint:-1.3,tuning:-1.5,workshop:-2.2}[n]??0;}
+ onScreen(n){this.ui.inRace=this.state==='paused';this.musicCheck();this.showroom.off={home:0,starter:-1.3,garage:-1.3,dealer:-1.3,paint:-1.3,tuning:-1.5,workshop:-2.2}[n]??0;}
  bind(){
   $('camBtn').onclick=()=>this.nextCamera();$('camLockBtn').onclick=()=>this.lockCamera();$('pauseBtn').onclick=()=>this.pause();
   const nb=$('nitroBtn');const non=e=>{e.preventDefault();this.input.nitroTouch=true;nb.classList.add('active');},noff=()=>{this.input.nitroTouch=false;nb.classList.remove('active');};
@@ -1285,7 +1305,7 @@ class Game{
   this.cameraRig=new CameraRig(this.camera,this.track);this.car.setGlassVisible(CAMERAS[CAM_INDEX].mode!=='fps');
   this.acc=0;this.odo=0;this.fx.marks&&(this.fx.marks.count=this.fx.MK);
   $('nitroBtn').classList.toggle('have',VEH.nitroCap>0);
-  this.state='race';this.ui.root.innerHTML='';this.setHud(true);this.hudLayout();this.buildMinimap();
+  this.state='race';this.musicCheck();this.ui.root.innerHTML='';this.setHud(true);this.hudLayout();this.buildMinimap();
   this.audio.init();this.audio.resume();
   if(!PROFILE.d.tutorial){PROFILE.d.tutorial=true;PROFILE.save();const T=['Volante a la izquierda · pedal a la derecha: arriba GAS, abajo FRENO','Frenando a fondo parado → marcha atrás · botón H = freno de mano','❚❚ pausa: volver a la pista, cámara y opciones'];T.forEach((m,i)=>setTimeout(()=>this.toast(m,'blue'),600+i*2800));}
   if(cfg.type==='world')this.toast('Mundo abierto: rompé los 12 carteles GSKORP y pasá por los radares 📸','blue');
@@ -1333,8 +1353,10 @@ class Game{
   if(ev){medal=medalFor(ev,r.value);const rw=rewardFor(ev,medal,cfg.tier);cr=rw.cr;xp=rw.xp;const rec=PROFILE.recordEvent(ev.id,{value:r.value,medal,lowerIsBetter:lowerIsBetter(ev.type)});record=rec.improved&&PROFILE.eventResult(ev.id).plays>1;if(rec.firstMedal&&medal===3){cr+=Math.round(cfg.tier.base*0.25);}next='career';
    if(ev.type==='race'){st.races++;if(r.value===1)st.wins++;if(r.value<=3)st.podiums++;}if(ev.type==='drift'&&r.value>st.driftBest)st.driftBest=r.value;}
   else if(cfg.quick){if(cfg.type==='race'){medal=r.value===1?3:r.value===2?2:r.value===3?1:0;cr=[150,500,800,1200][medal]*(cfg.laps||1)*(1+cfg.ai/3);xp=120*(cfg.laps||1)+medal*60;}else if(cfg.type==='drift'){cr=Math.min(2500,Math.round(r.value/20));xp=Math.round(r.value/60);}else{cr=300;xp=100;}next='quick';}
+  let cupMsg=null;if(ev){const T=cfg.tier;const all=EVENTS.filter(e=>e.tier===T.id).every(e=>(PROFILE.eventResult(e.id)||{}).medal>0);const cups=PROFILE.d.cups||(PROFILE.d.cups={});
+   if(all&&!cups[T.id]){cups[T.id]=1;const bonus=T.base*4;cr+=bonus;xp+=1500;cupMsg=`🏆 ¡${T.name} completada! +$ ${bonus.toLocaleString('es-AR')}`;}}
   cr=Math.round(cr/10)*10;PROFILE.earn(cr);levelUps=PROFILE.addXP(xp);
-  this.ui.show('results',{...r,medal,cr,xp,record,next,levelUps,eventName:ev?ev.name:(MAPS[cfg.map]||{}).name,showMedal:!!ev||cfg.type==='race'});}
+  this.ui.show('results',{...r,medal,cr,xp,record,next,levelUps,cupMsg,eventName:ev?ev.name:(MAPS[cfg.map]||{}).name,showMedal:!!ev||cfg.type==='race'});}
  afterResults(next){this.cleanupSession();if(this.car){this.car.dispose();this.scene.remove(this.car.group);this.car=null;}this.state='menu';this.ui.inRace=false;this.ui.show(next||'home');}
  showError(err){const box=$('errorBox');box.style.display='block';box.innerHTML='<b>ERROR</b><br>'+String(err&&err.stack||err).replace(/</g,'&lt;')+'<br><button onclick="location.reload()">Recargar</button>';}
  nextCamera(){

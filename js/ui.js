@@ -77,6 +77,9 @@ export class UI{
    case 'resOk':A.afterResults(ds.next);break;
    case 'retry':A.retry();break;
   }}
+ statsBlock(){const st=this.P.d.stats,d=this.P.d;const traps=Object.values(st.traps||{});const cups=Object.keys(d.cups||{}).length;
+  const k=[['🛣️',Math.round(st.km)+' km','recorridos'],['🏁',st.races,'carreras'],['🥇',st.wins,'victorias'],['🏆',st.podiums,'podios'],['⚡',st.topSpeed+' km/h','vel. máxima'],['🌀',(st.driftBest||0).toLocaleString('es-AR'),'mejor drift'],['💥',Object.keys(st.boards||{}).length+'/12','carteles'],['📸',traps.length?Math.max(...traps)+' km/h':'—','mejor radar'],['⭐',this.stars(),'estrellas'],['👑',cups+'/5','copas']];
+  return `<h4 class="ttl" style="font-size:12px;color:var(--acc2);margin-top:12px">Récords del piloto</h4><div class="kv">${k.map(([i,v,n])=>`<div><span>${i} ${n}</span><b>${v}</b></div>`).join('')}</div>`;}
  tierOpen(t){if(t.car&&!this.P.owns(t.car))return false;return this.stars()>=t.stars;}
  daily(){const r=this.P.dailyCheck();if(r){this.api.sfx('buy');this.sheet(`<h3>🎁 Bonus diario</h3><p>Día ${r.streak} seguido jugando. Volvé mañana y el premio crece.</p><div class="rew"><div><b>${fmtCr(r.amount)}</b><span>créditos</span></div></div><button class="bigbtn green" data-a="close"><span class="bt">¡Gracias!</span></button>`);}}
 
@@ -112,7 +115,7 @@ export class UI{
  s_career(){if(!this.P.car)return this.show('starter');const P=this.P,tier=TIERS.find(t=>t.id===this.tier),evs=EVENTS.filter(e=>e.tier===tier.id);const st=this.stars();
   const cur=this.api.perf(P.d.current,P.car);
   this.mount(`${this.top('<button class="back" data-a="home">←</button>')}<div class="head"><h2>Modo carrera<small>${st} ⭐ ganadas</small></h2></div>
-   <div class="tabs">${TIERS.map(t=>`<button class="tab ${t.id===tier.id?'on':''} ${this.tierOpen(t)?'':'lock'}" data-a="tier" data-id="${t.id}">${t.icon} ${t.name}${this.tierOpen(t)?'':' 🔒'}</button>`).join('')}</div>
+   <div class="tabs">${TIERS.map(t=>`<button class="tab ${t.id===tier.id?'on':''} ${this.tierOpen(t)?'':'lock'}" data-a="tier" data-id="${t.id}">${t.icon} ${t.name}${this.tierOpen(t)?((P.d.cups||{})[t.id]?' ✔':''):' 🔒 '+t.stars+'⭐'}</button>`).join('')}</div>
    <div class="body"><p class="muted" style="font-size:12px;margin-bottom:8px">${tier.sub} · ${tier.car?'Auto obligatorio: '+CAR_META[tier.car].model:'Clase máxima '+classOf(tier.maxPI).c+' (PI '+tier.maxPI+')'} · Tu auto: ${clsBadge(cur.pi)}</p>
    <div class="grid">${evs.map(e=>{const r=P.eventResult(e.id),ti=TYPE_INFO[e.type],rw=rewardFor(e,3,tier);
     return `<button class="ev ${e.final?'final':''}" data-a="ev" data-id="${e.id}"><span class="bgic">${ti.icon}</span><span class="et">${ti.icon} ${ti.n}${e.final?' · FINAL':''}</span><span class="en">${esc(e.name)}</span><span class="em">${this.api.mapName(e.map)} · ${SKY_N[e.sky]||''}</span>
@@ -146,6 +149,7 @@ export class UI{
    <div class="cars" style="margin-top:8px">${ids.map(id=>{const m=CAR_META[id],pf=this.api.perf(id,P.d.owned[id]);return `<button class="car ${id===cur?'sel':''}" data-a="selCar" data-id="${id}"><span class="cb">${m.brand}</span><span class="cn">${m.model}</span><span class="cp">${clsBadge(pf.pi)}<span>${id===cur?'✔ EN USO':''}</span></span></button>`}).join('')}
    <button class="car soon" data-a="go" data-s="dealer"><span class="ci">＋</span><span class="cn">Comprar más</span><span class="kind">Concesionaria</span></button></div>
    <div style="margin-top:12px">${html}${this.statBlock(perf)}${this.specs(perf)}</div>
+   ${this.statsBlock()}
    <div class="row" style="margin-top:10px"><button class="tile" style="flex:1" data-a="go" data-s="workshop"><span class="ti">🔧</span>Taller</button><button class="tile" style="flex:1" data-a="go" data-s="tuning"><span class="ti">🎛️</span>Ajuste</button><button class="tile" style="flex:1" data-a="go" data-s="paint"><span class="ti">🎨</span>Pintura</button></div></div><div></div></div>`,'fade');}
  s_dealer(){const P=this.P,sel=this.dealerSel||CAR_ORDER.find(i=>!P.owns(i))||CAR_ORDER[0];const m=CAR_META[sel];const {perf,html}=this.carInfo(sel,null);this.api.showCar(sel,null);
   const owned=P.owns(sel);
@@ -211,6 +215,7 @@ export class UI{
     <div class="opt"><span>Velocidad del juego<small>100% = tiempo real. Menos = cámara lenta, más fácil</small></span>${seg('gameSpeed',[[60,'60%'],[80,'80%'],[100,'100%']])}</div></div>
    <div class="tg"><h4>Gráficos y sonido</h4>
     <div class="opt"><span>Calidad gráfica<small>Bajala si el teléfono se calienta o va lento</small></span>${seg('quality',[['baja','Baja'],['media','Media'],['alta','Alta']])}</div>
+    <div class="opt"><span>Música en menús</span>${seg('music',[[true,'Sí'],[false,'No']])}</div>
     <div class="opt"><span>Volumen</span>${seg('volume',[[0,'🔇'],[40,'40%'],[80,'80%'],[100,'100%']])}</div>
     <div class="opt"><span>Unidades</span>${seg('units',[['kmh','km/h'],['mph','mph']])}</div></div>
    ${this.inRace?'':'<div class="tg"><h4>Progreso</h4><div class="opt"><span>Borrar partida<small>Empezar de cero</small></span><button class="buy" style="background:var(--bad)" data-a="resetAll">BORRAR</button></div></div>'}
@@ -228,7 +233,7 @@ export class UI{
    ${r.medal!=null&&r.showMedal!==false?`<div class="bigMedal" style="background:${['rgba(255,255,255,.08)','radial-gradient(circle at 35% 30%,#ffd9b0,#b06a2c)','radial-gradient(circle at 35% 30%,#fff,#9aa6b4)','radial-gradient(circle at 35% 30%,#fff3b0,#e0a500)'][r.medal||0]}">${icon}</div>`:''}
    <div style="font-size:14px;font-weight:800">${esc(r.line||'')}</div>${r.sub?`<div class="muted" style="font-size:12px;margin-top:4px">${esc(r.sub)}</div>`:''}${rows}
    <div class="rew"><div><b id="rCr">${fmtCr(0)}</b><span>créditos</span></div><div><b id="rXp">+0</b><span>experiencia</span></div>${r.record?'<div style="border-color:var(--gold)"><b>🏆</b><span>nuevo récord</span></div>':''}</div>
-   <div>${(r.levelUps||[]).map(l=>`<span class="lvup">⭐ NIVEL ${l.level} · +${fmtCr(l.bonus)}</span>`).join('')}</div>
+   <div>${r.cupMsg?`<span class="lvup" style="background:linear-gradient(90deg,#c98a00,#ffc83d);color:#1a1200">${esc(r.cupMsg)}</span>`:''}${(r.levelUps||[]).map(l=>`<span class="lvup">⭐ NIVEL ${l.level} · +${fmtCr(l.bonus)}</span>`).join('')}</div>
    <div class="row" style="justify-content:center;margin-top:10px"><button class="bigbtn" data-a="resOk" data-next="${r.next||'career'}"><span class="bt">Continuar</span></button><button class="bigbtn dark" data-a="retry"><span class="bi">↺</span><span class="bt">Reintentar</span></button></div></div>`,'res');
   const t0=performance.now(),cr=r.cr||0,xp=r.xp||0;const tick=()=>{const k=Math.min(1,(performance.now()-t0)/1200);const e=1-Math.pow(1-k,3);const a=document.getElementById('rCr'),b=document.getElementById('rXp');if(!a)return;a.textContent=fmtCr(cr*e);b.textContent='+'+Math.round(xp*e);if(k<1)requestAnimationFrame(tick);};requestAnimationFrame(tick);}
 }
