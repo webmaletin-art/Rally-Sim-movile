@@ -1,6 +1,6 @@
 /* ═══ GSKORP RALLY — menús ═══
    Pantallas DOM sobre el showroom 3D. Toda acción de juego pasa por `api` (lo provee Game). */
-import {CAR_META,CAR_ORDER,COMING_SOON,UPGRADES,TIRES,TIRE_BY_ID,TUNE_GROUPS,TUNE_ITEMS,PAINTS,FINISHES,xpForLevel} from './data.js';
+import {CAR_META,CAR_ORDER,COMING_SOON,UPGRADES,TIRES,TIRE_BY_ID,TUNE_GROUPS,TUNE_ITEMS,PAINTS,FINISHES,ACHIEVEMENTS,xpForLevel} from './data.js';
 import {TIERS,EVENTS,TYPE_INFO,TARGETS,lowerIsBetter,rewardFor} from './events.js';
 import {classOf,unlocksOf,defaultTune} from './carbuild.js';
 
@@ -19,10 +19,10 @@ export class UI{
   this.P.on(()=>this.refreshTop());}
  /* ─── utilidades ─── */
  mount(html,cls){this.root.innerHTML=`<div class="scr ${cls||''}">${html}</div>`;return this.root.firstChild;}
- top(extra){const d=this.P.d,need=xpForLevel(d.level);
+ top(extra,gear){const d=this.P.d,need=xpForLevel(d.level);
   return `<div class="topbar">${extra||''}<div class="logo">GSKORP <b>RALLY</b><small>SIMULACIÓN</small></div><div class="spacer"></div>
    <div class="pill"><span class="ic">⭐</span><div class="lvl"><span>NIVEL <b id="tLvl">${d.level}</b></span><div class="xpbar"><i id="tXp" style="width:${Math.min(100,d.xp/need*100)}%"></i></div></div></div>
-   <div class="pill"><span class="ic">💰</span><span id="tCr">${fmtCr(d.credits)}</span></div></div>`;}
+   <div class="pill"><span class="ic">💰</span><span id="tCr">${fmtCr(d.credits)}</span></div>${gear?'<button class="iconbtn" data-a="go" data-s="options">⚙️</button>':''}</div>`;}
  refreshTop(){const d=this.P.d,a=document.getElementById('tCr');if(a)a.textContent=fmtCr(d.credits);const l=document.getElementById('tLvl');if(l)l.textContent=d.level;const x=document.getElementById('tXp');if(x)x.style.width=Math.min(100,d.xp/xpForLevel(d.level)*100)+'%';}
  toast(msg,cls){const t=document.createElement('div');t.className='toast '+(cls||'');t.textContent=msg;document.getElementById('toasts').appendChild(t);setTimeout(()=>t.remove(),2700);}
  sheet(html){const bg=document.createElement('div');bg.className='sheetBg';bg.innerHTML=`<div class="sheet">${html}</div>`;bg.addEventListener('click',e=>{if(e.target===bg)bg.remove();});(this.root.firstChild||this.root).appendChild(bg);return bg;}
@@ -69,6 +69,7 @@ export class UI{
    case 'quick':this.quickRun();break;
    case 'qset':this.q[ds.k]=isNaN(+ds.v)?ds.v:+ds.v;this.show('quick');break;
    case 'world':A.openWorld();break;
+   case 'claim':{const a=ACHIEVEMENTS.find(x=>x.id===ds.id),d=P.d;d.claimed=d.claimed||{};if(a&&!d.claimed[a.id]&&a.test(d)){d.claimed[a.id]=1;P.earn(a.cr);A.sfx('buy');this.toast(`${a.icon} ${a.n} · +${fmtCr(a.cr)}`,'green');}this.show('goals');break;}
    case 'resume':A.resume();break;
    case 'respawn':A.respawn();break;
    case 'restart':A.restart();break;
@@ -80,6 +81,10 @@ export class UI{
  statsBlock(){const st=this.P.d.stats,d=this.P.d;const traps=Object.values(st.traps||{});const cups=Object.keys(d.cups||{}).length;
   const k=[['🛣️',Math.round(st.km)+' km','recorridos'],['🏁',st.races,'carreras'],['🥇',st.wins,'victorias'],['🏆',st.podiums,'podios'],['⚡',st.topSpeed+' km/h','vel. máxima'],['🌀',(st.driftBest||0).toLocaleString('es-AR'),'mejor drift'],['💥',Object.keys(st.boards||{}).length+'/12','carteles'],['📸',traps.length?Math.max(...traps)+' km/h':'—','mejor radar'],['⭐',this.stars(),'estrellas'],['👑',cups+'/5','copas']];
   return `<h4 class="ttl" style="font-size:12px;color:var(--acc2);margin-top:12px">Récords del piloto</h4><div class="kv">${k.map(([i,v,n])=>`<div><span>${i} ${n}</span><b>${v}</b></div>`).join('')}</div>`;}
+ goalsReady(){const d=this.P.d,cl=d.claimed||{};return ACHIEVEMENTS.filter(a=>!cl[a.id]&&a.test(d)).length;}
+ s_goals(){const d=this.P.d,cl=d.claimed||{};const done=ACHIEVEMENTS.filter(a=>cl[a.id]).length;
+  this.mount(`${this.top('<button class="back" data-a="home">←</button>')}<div class="head"><h2>Logros<small>${done}/${ACHIEVEMENTS.length} cobrados</small></h2></div><div class="body"><div class="grid">${ACHIEVEMENTS.map(a=>{const ok=a.test(d),got=cl[a.id];
+   return `<div class="ev ${got?'':ok?'final':'locked'}" style="min-height:96px"><span class="bgic">${a.icon}</span><span class="et">${a.icon} ${got?'COBRADO':ok?'¡LISTO PARA COBRAR!':'EN PROGRESO'}</span><span class="en">${a.n}</span><span class="em">${a.d}</span><span class="er"><span style="color:var(--gold)">${fmtCr(a.cr)}</span>${ok&&!got?`<button class="buy" data-a="claim" data-id="${a.id}">COBRAR</button>`:got?'<span style="color:var(--ok)">✔</span>':''}</span></div>`}).join('')}</div></div>`,'dim');}
  tierOpen(t){if(t.car&&!this.P.owns(t.car))return false;return this.stars()>=t.stars;}
  daily(){const r=this.P.dailyCheck();if(r){this.api.sfx('buy');this.sheet(`<h3>🎁 Bonus diario</h3><p>Día ${r.streak} seguido jugando. Volvé mañana y el premio crece.</p><div class="rew"><div><b>${fmtCr(r.amount)}</b><span>créditos</span></div></div><button class="bigbtn green" data-a="close"><span class="bt">¡Gracias!</span></button>`);}}
 
@@ -98,7 +103,7 @@ export class UI{
    <button class="bigbtn" style="margin-top:12px;width:100%" data-a="starterOk"><span class="bi">🔑</span><span class="bt">Este es el mío</span></button></div><div></div></div>`,'fade');}
  s_home(){const P=this.P,id=P.d.current,car=P.car;if(!id||!car)return this.show('starter');const {perf,html}=this.carInfo(id,car);const st=this.stars();
   this.api.showCar(id,car);
-  this.mount(`${this.top()}<div class="home"><div class="homeL">
+  this.mount(`${this.top('',true)}<div class="home"><div class="homeL">
     <button class="bigbtn" data-a="go" data-s="career"><span class="bi">🏆</span><span class="bt">Modo carrera<span class="bs">${st} ⭐ · 5 copas · ${EVENTS.length} eventos</span></span></button>
     <button class="bigbtn blue" data-a="world"><span class="bi">🗺️</span><span class="bt">Mundo abierto<span class="bs">Carteles, radares y libertad total</span></span></button>
     <button class="bigbtn dark" data-a="go" data-s="quick"><span class="bi">⚡</span><span class="bt">Evento rápido<span class="bs">Armá tu carrera: pista, rivales, clima</span></span></button>
@@ -108,7 +113,7 @@ export class UI{
      <button class="tile" data-a="go" data-s="tuning"><span class="ti">🎛️</span>Ajuste fino</button>
      <button class="tile" data-a="go" data-s="paint"><span class="ti">🎨</span>Pintura</button>
      <button class="tile" data-a="go" data-s="dealer"><span class="ti">🏪</span>Concesionaria</button>
-     <button class="tile" data-a="go" data-s="options"><span class="ti">⚙️</span>Opciones</button>
+     <button class="tile" data-a="go" data-s="goals" style="position:relative"><span class="ti">🎯</span>Logros${this.goalsReady()?`<b style="position:absolute;top:4px;right:6px;background:var(--bad);border-radius:9px;padding:1px 6px;font-size:10px">${this.goalsReady()}</b>`:''}</button>
     </div></div><div class="homeC"></div>
    <div class="carCard">${html}${this.statBlock(perf)}${this.specs(perf)}<div class="kind">Neumáticos: <b style="color:#fff">${TIRE_BY_ID[car.tires].n}</b> · ${Math.round(car.km)} km recorridos</div></div></div>
    <div class="rot-hint">⟲ deslizá para girar el auto</div>`,'fade');}
