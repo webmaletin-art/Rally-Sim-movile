@@ -876,7 +876,8 @@ class VehicleVisual{
   const grille=new THREE.Mesh(new THREE.BoxGeometry(1.15,0.30,0.05),M.dark);grille.position.set(0,0.72,2.40);B.add(grille);
   const bar=new THREE.Mesh(new THREE.BoxGeometry(1.30,0.05,0.20),M.trim);bar.position.set(0,1.68,1.05);B.add(bar);
   for(let i=-2;i<=2;i++){const lp=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.05),M.white);lp.position.set(i*0.24,1.72,1.05);B.add(lp);}
-  this.addFlares();}
+  for(const sd of [-1,1]){const step=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.06,2.6),M.dark);step.position.set(sd*1.02,0.46,-0.3);B.add(step);}
+  this.addFlares(0x121316);}
  buildLightsPickup(){const M=this.mat,B=this.body;
   for(const sd of [-1,1]){const l=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.16,0.03),M.white);l.position.set(sd*0.55,0.85,2.43);B.add(l);
    const t=new THREE.Mesh(new THREE.BoxGeometry(0.10,0.32,0.03),M.red);t.position.set(sd*0.76,0.80,-3.36);B.add(t);}
@@ -897,7 +898,8 @@ class VehicleVisual{
   const grille=new THREE.Mesh(new THREE.BoxGeometry(1.55,0.55,0.06),M.dark);grille.position.set(0,0.95,2.44);B.add(grille);
   const bumper=new THREE.Mesh(new THREE.BoxGeometry(1.9,0.28,0.30),M.trim);bumper.position.set(0,0.55,2.55);B.add(bumper);
   const roofBar=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.08,0.22),M.trim);roofBar.position.set(0,1.88,1.35);B.add(roofBar);
-  for(let i=-3;i<=3;i++){const lp=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.09,0.09),M.white);lp.position.set(i*0.24,1.94,1.35);B.add(lp);}
+  const roundLampG=new THREE.CylinderGeometry(0.075,0.075,0.05,12);
+  for(let i=-3;i<=3;i++){const lp=new THREE.Mesh(roundLampG,M.white);lp.rotation.x=Math.PI/2;lp.position.set(i*0.24,1.94,1.40);B.add(lp);}
   for(const sd of [-1,1]){const snorkel=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,1.5,8),M.dark);snorkel.position.set(sd*0.95,1.55,1.9);B.add(snorkel);}
   this.addFlares(0x2a2d31);}
  buildLightsTruck(){const M=this.mat,B=this.body;
