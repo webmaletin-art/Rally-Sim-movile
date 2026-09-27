@@ -669,7 +669,7 @@ function helixGeometry(turns,r,tube){const pts=[];const N=turns*14;for(let i=0;i
 class VehicleVisual{
  constructor(type,Vp,opts){this.V=Vp||VEH;this.opts=opts||{};this.type=type||'genesis';this.group=new THREE.Group();this.body=new THREE.Group();this.glassGroup=new THREE.Group();this.body.add(this.glassGroup);this.group.add(this.body);this.wheels=[];this.shocks=[];const V=this.V;this.a=V.wheelBase*(1-V.weightFront);this.b=V.wheelBase*V.weightFront;
   this.mat={paint:new THREE.MeshStandardMaterial({color:0x15181d,metalness:0.55,roughness:0.42,envMapIntensity:1.1}),dark:new THREE.MeshStandardMaterial({color:0x0b0d10,metalness:0.3,roughness:0.7}),trim:new THREE.MeshStandardMaterial({color:0x22262c,metalness:0.6,roughness:0.35}),glass:new THREE.MeshStandardMaterial({color:0x0a1218,metalness:0.2,roughness:0.08,transparent:true,opacity:0.9,envMapIntensity:1.6}),white:new THREE.MeshBasicMaterial({color:0xeaf6ff}),red:new THREE.MeshBasicMaterial({color:0x661015}),reverse:new THREE.MeshBasicMaterial({color:0x242426}),shock:new THREE.MeshStandardMaterial({color:0xb03a22,metalness:0.5,roughness:0.4}),shaft:new THREE.MeshStandardMaterial({color:0xc9ced6,metalness:0.9,roughness:0.2})};
-  this.buildBody();this.buildWheels();this.buildLights();this.body.position.y=-V.comHeight;this.applyPaint(this.opts.paint);this.mergeStatic();}
+  this.buildBody();this.buildWheels();this.buildLights();this.body.position.y=-V.comHeight+(V.rideOffset||0);this.applyPaint(this.opts.paint);this.mergeStatic();}
  /* une las piezas fijas de la carrocería por material → muchas menos llamadas de dibujo */
  mergeStatic(){this._merge(this.body);this._merge(this.glassGroup);}
  _merge(root){const skip=new Set();for(const sh of this.shocks)for(const k of ['sh','sf','spring','axle','armF','armB','upF','upB'])if(sh[k])skip.add(sh[k]);
@@ -828,7 +828,7 @@ class VehicleVisual{
   this.tmpA=new THREE.Vector3();this.tmpB=new THREE.Vector3();this.tmpC=new THREE.Vector3();this.tmpD=new THREE.Vector3();this.up=new THREE.Vector3(0,1,0);}
  link(m,A,B){const d=this.tmpD.subVectors(B,A),L=d.length()||1e-4;m.position.copy(A).addScaledVector(d,0.5);m.quaternion.setFromUnitVectors(this.up,d.multiplyScalar(1/L));const r=m.userData.r||1;m.scale.set(r,L,r);}
  update(p,dt){this.group.position.set(p.px,p.py,p.pz);this.group.rotation.set(0,0,0);this.group.rotateY(p.yaw);this.group.rotateX(p.pitch);this.group.rotateZ(p.roll);
-  const V=this.V,base=V.comHeight+V.hardpointY,R0=V.wheelRadius;const wyMax=VOLT_META.archY+VOLT_META.archR-R0-0.02;
+  const V=this.V,base=V.comHeight+V.hardpointY-(V.rideOffset||0),R0=V.wheelRadius;const wyMax=VOLT_META.archY+VOLT_META.archR-R0-0.02;
   for(let i=0;i<4;i++){const w=this.wheels[i],pw=p.wheels[i];const wy=this.glb?Math.min(base-pw.s,wyMax):base-pw.s;w.steer.position.y=wy;if(w.front)w.steer.rotation.y=p.steerAngle;w.steer.rotation.z=-((w.front?V.camberF:V.camberR)||0)*0.01745*Math.sign(w.x);w.angle+=pw.omega*dt;w.spin.rotation.x=w.angle;
    const s=this.shocks[i];
    if(s.axle){const T=this.tmpA,H=this.tmpB,cz=w.z;const hx=w.x-s.sg*(V.tireWidth/2+0.07);
