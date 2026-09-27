@@ -60,6 +60,9 @@ body.cam-edit #steering,body.cam-edit #pedals{pointer-events:none !important;opa
 
 #gyroBadge{position:fixed;top:82px;left:14px;z-index:12;pointer-events:none;display:none;background:rgba(40,160,90,.55);border:1px solid rgba(120,255,180,.5);color:#e0ffe8;border-radius:8px;padding:5px 10px;font-size:10px;font-weight:800;letter-spacing:1.5px}
 body.gyro-on #gyroBadge{display:block}
+#handbrakeBtn{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:21;width:64px;height:64px;border-radius:50%;pointer-events:auto;touch-action:none;background:radial-gradient(circle at 35% 30%,#5a1e1e,#1a0808);border:2px solid rgba(255,120,110,.55);color:#ffb3ab;font-size:22px;font-weight:900;box-shadow:0 6px 18px rgba(0,0,0,.5),inset 0 1px 4px rgba(0,0,0,.8);-webkit-user-select:none;user-select:none}
+#handbrakeBtn.active{background:radial-gradient(circle at 35% 30%,#ff3b30,#7a1010);box-shadow:0 0 22px rgba(255,70,60,.8),inset 0 1px 4px rgba(0,0,0,.8);color:#fff}
+body.slider-mode #handbrakeBtn{left:auto;right:16px;bottom:24px;transform:none}
 #parkOk{position:fixed;top:14%;left:50%;transform:translateX(-50%);z-index:15;display:none;align-items:center;gap:10px;pointer-events:none;background:rgba(20,140,70,.88);border:1px solid rgba(140,255,190,.8);color:#eafff2;border-radius:14px;padding:12px 22px;font-size:16px;font-weight:900;letter-spacing:2px;text-transform:uppercase;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 #parkOk.show{display:flex}
 #overlay{position:fixed;inset:0;z-index:60;background:linear-gradient(180deg,rgba(3,7,12,.9),rgba(5,10,16,.76));display:flex;align-items:center;justify-content:center;color:#e8f3ff}
@@ -169,6 +172,7 @@ body.gyro-on #gyroBadge{display:block}
       <div class="pedal-label bottom">FRENO</div>
     </div>
   </div>
+  <button id="handbrakeBtn">🅷</button>
 </div>
 <div id="garage"><div class="garagePanel"><div class="gHead"><h2>Ajuste f&#237;sico</h2><button class="btn" id="closeSetup">Cerrar</button></div><div id="tunes"></div></div></div>
 
@@ -210,7 +214,7 @@ body.gyro-on #gyroBadge{display:block}
       </button>
     </div>
     <button class="btn" id="backToVehicle" style="margin-top:10px">← Cambiar vehículo</button>
-    <div class="hint">Volante o palanca: configurable en Setup · 5 cámaras + 1 personalizable.<br>Teclado: A/D · W/↑ · S/↓ · R reiniciar · P debug · G setup · C cámara.</div>
+    <div class="hint">Volante o palanca: configurable en Setup · 5 cámaras + 1 personalizable.<br>Teclado: A/D · W/↑ · S/↓ · Espacio freno de mano · R reiniciar · P debug · G setup · C cámara.</div>
   </div>
 </div>
 
@@ -325,7 +329,7 @@ class Physics{
   for(const w of W){w.wx=this.px+fx*w.z+lx*w.x;w.wz=this.pz+fz*w.z+lz*w.x;const gi=tr.groundInfo(w.wx,w.wz);w.gy=gi.y;w.surf=gi.surf;const ay=this.py+V.hardpointY+w.x*sr-w.z*sp;const d=ay-(gi.y+R);const prevContact=w.contact,prevComp=w.comp;
    if(d>=w.sMax){w.contact=false;w.comp=0;w.s=w.sMax;w.Fz=0;w.cv=0;}else{w.contact=true;contacts++;const comp=w.sMax-d;const cv=prevContact?(comp-prevComp)/h:Math.min(6,-this.vy+0);w.comp=comp;w.cv=cv;w.s=Math.max(d,w.sMin);let F=w.k*comp+(cv>0?w.cB:w.cR)*cv;if(d<w.sMin){F+=V.bumpStopK*(w.sMin-d)+(cv>0?V.bumpStopC*cv:0);}w.Fz=Math.max(0,F);if(!prevContact||cv>1.0)w.impact=Math.max(w.impact,Math.abs(cv)*(d<w.sMin?1.6:1));}}
   for(const [L,Rw,k] of [[W[0],W[1],V.arbF],[W[2],W[3],V.arbR]]){if(L.contact&&Rw.contact){const df=k*(L.comp-Rw.comp);L.Fz=Math.max(0,L.Fz+df);Rw.Fz=Math.max(0,Rw.Fz-df);}}
-  this.contacts=contacts;this.engine(h,thr,brk,vLong);
+  this.contacts=contacts;this.brake=brk;this.engine(h,thr,brk,vLong,!!inp.handbrake);
   let FL=0,FT=0,Mz=0,tauP=0,tauR=0,FzSum=0,maxSlip=0;const hgt=Math.max(0.3,this.py-(W[0].gy+W[1].gy+W[2].gy+W[3].gy)/4);
   for(const w of W){const I=V.wheelInertia+(w.inertiaExtra||0);let fl=0,k=0;
    if(w.contact){const Ft0=Math.max(0,w.Fz+w.jack);const vpl=vLat+this.yawRate*w.z,vpg=vLong-this.yawRate*w.x;const dl=w.front?this.steerAngle:0,cs=Math.cos(dl),sn=Math.sin(dl);const vl=vpl*sn+vpg*cs,vt=vpl*cs-vpg*sn;w.vl=vl;const den=Math.max(Math.abs(vl),2.5);const kap=(w.omega*R-vl)/den,alp=Math.atan2(vt,den);w.kappa=kap;w.alpha=alp;const mu=V.mu*(V.surfGrip[w.surf]||0.4)*(w.front?V.gripFront:V.gripRear);const sx=kap/V.slipPeakLong,sy2=alp/V.slipPeakLat,s=Math.hypot(sx,sy2);let F=0,Ft=0;
@@ -351,7 +355,7 @@ class Physics{
   const gc=tr.groundInfo(this.px,this.pz).y;if(this.py<gc+0.3){this.py=gc+0.3;if(this.vy<0)this.vy=0}
   if(spd<0.25&&thr<0.05&&contacts===4){this.vx*=0.8;this.vz*=0.8;this.yawRate*=0.8;for(const w of W)w.omega*=0.8}
   const nL=this.vx*fx+this.vz*fz,nT=this.vx*lx+this.vz*lz;this.aLong+=(((nL-vLong)/h)-this.aLong)*(1-Math.exp(-h*12));this.aLat+=((FT/m)-this.aLat)*(1-Math.exp(-h*12));this.vLong=nL;this.vLat=nT;}
- engine(h,thr,brk,vLong){const V=VEH,W=this.wheels;let fr=V.frontDriveRatio,rr=V.rearDriveRatio;if(V.driveType==='RWD'){fr=0;rr=1}else if(V.driveType==='FWD'){fr=1;rr=0}const tot=fr+rr||1;fr/=tot;rr/=tot;
+ engine(h,thr,brk,vLong,handbrake){const V=VEH,W=this.wheels;let fr=V.frontDriveRatio,rr=V.rearDriveRatio;if(V.driveType==='RWD'){fr=0;rr=1}else if(V.driveType==='FWD'){fr=1;rr=0}const tot=fr+rr||1;fr/=tot;rr/=tot;
   const wF=(W[0].omega+W[1].omega)/2,wR=(W[2].omega+W[3].omega)/2,wAvg=wF*fr+wR*rr;const ratio=this.gear>0?V.gears[this.gear-1]*V.finalDrive:(this.gear<0?-V.reverseRatio*V.finalDrive:0);const rpmW=Math.abs(wAvg*ratio)*60/(2*Math.PI);
   if(this.shiftT>0)this.shiftT-=h;
   if(!this.clutchLocked){if(thr>0.05)this.engage=Math.min(1,(this.engage||0)+h/V.clutchTime);else this.engage=0;const free=V.idleRpm+thr*(V.launchRpm-V.idleRpm);const target=Math.max(rpmW,free+(Math.max(rpmW,V.idleRpm)-free)*this.engage);this.rpm+=(target-this.rpm)*(1-Math.exp(-h*(thr>0.05?10:4)));if(thr>0.05&&(rpmW>=this.rpm*0.97||this.engage>=1))this.clutchLocked=true;if(thr<0.05&&rpmW>V.idleRpm*1.2)this.clutchLocked=true;}else{this.rpm+=(Math.max(V.idleRpm*0.85,rpmW)-this.rpm)*(1-Math.exp(-h*30));if(rpmW<V.idleRpm*0.8&&(thr<0.05||brk>0.3)){this.clutchLocked=false;this.engage=0;}}
@@ -364,7 +368,8 @@ class Physics{
   const ie=this.clutchLocked?V.engineInertia*ratio*ratio:0;const lF=V.lsd*(W[0].omega-W[1].omega),lR=V.lsd*(W[2].omega-W[3].omega);
   for(const w of W){w.drive=(w.front?Tf:Tr)/2-(w.front?lF:lR)*(w.left?1:-1)*(this.clutchLocked||thr>0.05?1:0.3);w.inertiaExtra=ie*(w.front?fr:rr)/2;
    if(V.abs&&brk>0.05){if(w.kappa*Math.sign(w.vl||1)<-V.absSlip)w.absF=Math.max(0.25,(w.absF||1)-h*9);else w.absF=Math.min(1,(w.absF||1)+h*4)}else w.absF=1;
-   w.brake=brk*w.absF*V.brakeTorque*(w.front?V.brakeBiasFront:1-V.brakeBiasFront)/2;}
+   w.brake=brk*w.absF*V.brakeTorque*(w.front?V.brakeBiasFront:1-V.brakeBiasFront)/2;
+   if(handbrake&&!w.front)w.brake=Math.max(w.brake,V.brakeTorque*0.55);}
   if(this.gear>0&&this.clutchLocked&&this.shiftT<=0){if(this.rpm>V.shiftUpRpm&&this.gear<V.gears.length&&thr>0.1){this.gear++;this.shiftT=V.shiftTime;this.events.push({type:'shift',up:true})}else if(this.rpm<V.shiftDownRpm&&this.gear>1){this.gear--;this.shiftT=V.shiftTime*0.6;this.events.push({type:'shift',up:false})}}
   const l=this.clutchLocked?(Te>0?Te/Math.max(1,Tmax):0):thr*0.7;this.load+=(l-this.load)*(1-Math.exp(-h*10));this.throttle=thr;}
 }
@@ -391,9 +396,15 @@ class Input{
   this.gasTarget=0;this.brakeTarget=0;this.gas=0;this.brake=0;this.steer=0;this.throttle=0;
   this.pedalTouchId=null;this.activePointers=new Map();
   this.gyroEnabled=false;this.gyroSteer=0;this.gyroRaw=0;this.gyroCalib=null;this.gyroHandler=null;
+  this.handbrakeTouch=false;this.handbrake=false;
   addEventListener('keydown',e=>{this.keys[e.code]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();});
   addEventListener('keyup',e=>{this.keys[e.code]=false;});
-  this.bindWheel();this.bindSlider();this.bindPedalSingle();
+  this.bindWheel();this.bindSlider();this.bindPedalSingle();this.bindHandbrake();
+ }
+ bindHandbrake(){const el=$('handbrakeBtn');if(!el)return;
+  const on=e=>{e.preventDefault();this.handbrakeTouch=true;el.classList.add('active');};
+  const off=e=>{this.handbrakeTouch=false;el.classList.remove('active');};
+  el.addEventListener('pointerdown',on,{passive:false});el.addEventListener('pointerup',off);el.addEventListener('pointercancel',off);el.addEventListener('pointerleave',off);
  }
  bindWheel(){const el=$('steering');
   const getAngle=e=>{const r=el.getBoundingClientRect();const cx=r.left+r.width/2,cy=r.top+r.height/2;return Math.atan2(e.clientY-cy,e.clientX-cx);};
@@ -482,6 +493,7 @@ class Input{
   const pedalActive=(this.pedalTouchId!=null)||[...this.activePointers.values()].includes('pedal');
   if(!pedalActive){if(kbGas>0){this.gasTarget=kbGas;this.brakeTarget=0;}else if(kbBrake>0){this.gasTarget=0;this.brakeTarget=kbBrake;}else{this.gasTarget=0;this.brakeTarget=0;}}
   this.gas=this.gasTarget;this.brake=this.brakeTarget;this.throttle=this.gas;
+  this.handbrake=this.handbrakeTouch||!!this.keys.Space;
  }
 }
 
@@ -809,7 +821,7 @@ class ParkingTrack{
 function canvasTex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
 class VehicleVisual{
  constructor(type){this.type=type||'genesis';this.group=new THREE.Group();this.body=new THREE.Group();this.glassGroup=new THREE.Group();this.body.add(this.glassGroup);this.group.add(this.body);this.wheels=[];this.shocks=[];const V=VEH;this.a=V.wheelBase*(1-V.weightFront);this.b=V.wheelBase*V.weightFront;
-  this.mat={paint:new THREE.MeshStandardMaterial({color:0x15181d,metalness:0.55,roughness:0.42,envMapIntensity:1.1}),dark:new THREE.MeshStandardMaterial({color:0x0b0d10,metalness:0.3,roughness:0.7}),trim:new THREE.MeshStandardMaterial({color:0x22262c,metalness:0.6,roughness:0.35}),glass:new THREE.MeshStandardMaterial({color:0x0a1218,metalness:0.2,roughness:0.08,transparent:true,opacity:0.9,envMapIntensity:1.6}),white:new THREE.MeshBasicMaterial({color:0xeaf6ff}),red:new THREE.MeshBasicMaterial({color:0xff2436}),shock:new THREE.MeshStandardMaterial({color:0xb03a22,metalness:0.5,roughness:0.4}),shaft:new THREE.MeshStandardMaterial({color:0xc9ced6,metalness:0.9,roughness:0.2})};
+  this.mat={paint:new THREE.MeshStandardMaterial({color:0x15181d,metalness:0.55,roughness:0.42,envMapIntensity:1.1}),dark:new THREE.MeshStandardMaterial({color:0x0b0d10,metalness:0.3,roughness:0.7}),trim:new THREE.MeshStandardMaterial({color:0x22262c,metalness:0.6,roughness:0.35}),glass:new THREE.MeshStandardMaterial({color:0x0a1218,metalness:0.2,roughness:0.08,transparent:true,opacity:0.9,envMapIntensity:1.6}),white:new THREE.MeshBasicMaterial({color:0xeaf6ff}),red:new THREE.MeshBasicMaterial({color:0x661015}),reverse:new THREE.MeshBasicMaterial({color:0x242426}),shock:new THREE.MeshStandardMaterial({color:0xb03a22,metalness:0.5,roughness:0.4}),shaft:new THREE.MeshStandardMaterial({color:0xc9ced6,metalness:0.9,roughness:0.2})};
   this.buildBody();this.buildWheels();this.buildLights();this.body.position.y=-V.comHeight;}
  setGlassVisible(v){this.glassGroup.visible=v;}
  buildBody(){if(this.type==='pickup')return this.buildBodyPickup();if(this.type==='truck')return this.buildBodyTruck();if(this.type==='t1plus')return this.buildBodyT1();return this.buildBodyGenesis();}
@@ -843,6 +855,7 @@ class VehicleVisual{
   for(const sd of [-1,1])for(const ix of [-1,1])for(const iy of [-1,1]){d.position.set(sd*0.58+ix*0.055,0.70+iy*0.055,2.59);d.updateMatrix();lamp.setMatrixAt(k++,d.matrix)}B.add(lamp);
   for(const dy of [0,0.075]){const l=new THREE.Mesh(new THREE.BoxGeometry(1.46,0.022,0.03),M.red);l.position.set(0,0.98+dy,-2.545);B.add(l)}
   for(const sd of [-1,1])for(const dy of [0,0.06]){const l=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,0.45),M.red);l.position.set(sd*0.795,1.02+dy,-1.75);B.add(l)}
+  {const r=new THREE.Mesh(new THREE.BoxGeometry(0.30,0.05,0.03),M.reverse);r.position.set(0,0.90,-2.545);B.add(r);}
   this.nameplate('G E N E S I S',1.015,-2.56);}
  addFlares(color){const M=this.mat,V=VEH,R=V.wheelRadius,B=this.body;
   const mat=color?new THREE.MeshStandardMaterial({color,metalness:0.35,roughness:0.6}):M.paint;
@@ -867,6 +880,7 @@ class VehicleVisual{
  buildLightsPickup(){const M=this.mat,B=this.body;
   for(const sd of [-1,1]){const l=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.16,0.03),M.white);l.position.set(sd*0.55,0.85,2.43);B.add(l);
    const t=new THREE.Mesh(new THREE.BoxGeometry(0.10,0.32,0.03),M.red);t.position.set(sd*0.76,0.80,-3.36);B.add(t);}
+  {const r=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.10,0.03),M.reverse);r.position.set(0,0.80,-3.36);B.add(r);}
   this.nameplate('T I T A N',0.98,-3.37);}
  /* ═══ CAMIÓN: cabina sobre motor, plataforma trasera larga ═══ */
  profileShapeTruck(){const s=new THREE.Shape();
@@ -889,6 +903,7 @@ class VehicleVisual{
  buildLightsTruck(){const M=this.mat,B=this.body;
   for(const sd of [-1,1]){const l=new THREE.Mesh(new THREE.BoxGeometry(0.30,0.30,0.05),M.white);l.position.set(sd*0.62,0.95,2.46);B.add(l);
    const t=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.40,0.05),M.red);t.position.set(sd*0.90,1.15,-3.78);B.add(t);}
+  {const r=new THREE.Mesh(new THREE.BoxGeometry(0.30,0.14,0.05),M.reverse);r.position.set(0,1.15,-3.78);B.add(r);}
   this.nameplate('C O L O S S U S',1.30,-3.79);}
  /* ═══ BUGGY T1+: baja, ancha, alerón trasero grande ═══ */
  profileShapeT1(){const s=new THREE.Shape();
@@ -910,6 +925,7 @@ class VehicleVisual{
  buildLightsT1(){const M=this.mat,B=this.body;
   for(const sd of [-1,1]){const l=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.10,0.03),M.white);l.position.set(sd*0.52,0.72,2.13);B.add(l);
    const t=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.20,0.03),M.red);t.position.set(sd*0.75,1.05,-2.16);B.add(t);}
+  {const r=new THREE.Mesh(new THREE.BoxGeometry(0.20,0.08,0.03),M.reverse);r.position.set(0,1.05,-2.16);B.add(r);}
   this.nameplate('V O L T',1.30,-2.17);}
  buildWheels(){const V=VEH,R=V.wheelRadius,M=this.mat;
   const tread=canvasTex(64,256,(c,w,h)=>{c.fillStyle='#15171a';c.fillRect(0,0,w,h);c.fillStyle='#2b2e33';for(let y=0;y<h;y+=16){const o=(y/16)%2?6:0;c.fillRect(4+o,y+2,22,9);c.fillRect(36-o,y+6,22,9)}});
@@ -930,7 +946,9 @@ class VehicleVisual{
   const V=VEH,base=V.comHeight+V.hardpointY;
   for(let i=0;i<4;i++){const w=this.wheels[i],pw=p.wheels[i];w.steer.position.y=base-pw.s;if(w.front)w.steer.rotation.y=p.steerAngle;w.angle+=pw.omega*dt;w.spin.rotation.x=w.angle;
    const s=this.shocks[i],A=this.tmpA.copy(s.top),Bv=this.tmpB.set(w.x*0.86,base-pw.s+0.06,w.z);const len=A.distanceTo(Bv);const mid=A.add(Bv).multiplyScalar(0.5);s.sh.position.copy(mid);s.sf.position.copy(mid);
-   const dir=this.tmpB.sub(s.top).normalize();s.sh.quaternion.setFromUnitVectors(this.up,dir);s.sf.quaternion.copy(s.sh.quaternion);s.sh.scale.set(1,len*0.55,1);s.sf.scale.set(1,len,1);s.sh.position.addScaledVector(dir,-len*0.2);}}}
+   const dir=this.tmpB.sub(s.top).normalize();s.sh.quaternion.setFromUnitVectors(this.up,dir);s.sf.quaternion.copy(s.sh.quaternion);s.sh.scale.set(1,len*0.55,1);s.sf.scale.set(1,len,1);s.sh.position.addScaledVector(dir,-len*0.2);}
+  const braking=clamp((p.brake||0)*1.3,0,1);this.mat.red.color.setRGB(0.40+0.60*braking,0.06+0.09*braking,0.08+0.02*braking);
+  const reversing=p.gear===-1?1:0;this.mat.reverse.color.setRGB(0.14+0.74*reversing,0.14+0.74*reversing,0.15+0.75*reversing);}}
 class Effects{
  constructor(scene){this.N=220;const N=this.N;this.pos=new Float32Array(N*3);this.col=new Float32Array(N*3);this.alpha=new Float32Array(N);this.size=new Float32Array(N);this.vel=new Float32Array(N*3);this.life=new Float32Array(N);this.max=new Float32Array(N);this.grow=new Float32Array(N);this.grav=new Float32Array(N);this.a0=new Float32Array(N);
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(this.pos,3));g.setAttribute('color',new THREE.BufferAttribute(this.col,3));g.setAttribute('alpha',new THREE.BufferAttribute(this.alpha,1));g.setAttribute('size',new THREE.BufferAttribute(this.size,1));
