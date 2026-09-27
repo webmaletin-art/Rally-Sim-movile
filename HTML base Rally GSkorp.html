@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#0a0d12">
-<title>Hill Climb Rally — Genesis Concept</title>
+<title>Rally Sim — Genesis Concept</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;height:100%;overflow:hidden;background:#090c10;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;touch-action:none;user-select:none}
@@ -125,6 +125,7 @@ body.gyro-on #gyroBadge{display:block}
 <div id="debug"></div>
 <div id="menu">
   <button class="btn" id="mapBtn">🗺️ MAPA</button>
+  <button class="btn" id="vehBtn">🚗 AUTO</button>
   <button class="btn" id="camBtn">🎥 CAM 2</button>
   <button class="btn" id="restart">Reiniciar</button>
   <button class="btn" id="setup">Setup</button>
@@ -169,14 +170,25 @@ body.gyro-on #gyroBadge{display:block}
 <div id="garage"><div class="garagePanel"><div class="gHead"><h2>Ajuste f&#237;sico</h2><button class="btn" id="closeSetup">Cerrar</button></div><div id="tunes"></div></div></div>
 
 <div id="overlay">
-  <div class="card">
-    <h1>Hill Climb <b>Rally</b></h1>
-    <p>Elegí el mapa para empezar</p>
+  <div class="card" id="vehicleScreen">
+    <h1>Rally <b>Sim</b></h1>
+    <p>Elegí tu vehículo</p>
+    <div class="mapSelect vehicleSelect" id="vehicleSelect"></div>
+    <div class="hint">Cada vehículo tiene su propia física de fábrica · después la podés ajustar en Setup.</div>
+  </div>
+  <div class="card hidden" id="mapScreen">
+    <h1>Elegí la <b>pista</b></h1>
+    <p id="mapScreenSub">Vehículo seleccionado</p>
     <div class="mapSelect">
-      <button class="mapBtn" data-map="hill">
+      <button class="mapBtn" data-map="forest">
+        <span class="ic">🌲</span>
+        <span class="nm">BOSQUE TIERRA</span>
+        <span class="sub">Rally stage grande · muy sinuosa</span>
+      </button>
+      <button class="mapBtn" data-map="asphaltLong">
         <span class="ic">🏔️</span>
-        <span class="nm">HILL CLIMB</span>
-        <span class="sub">Ruta de montaña · 7 km</span>
+        <span class="nm">MONTAÑA ASFALTO</span>
+        <span class="sub">Ruta larga · curvas abiertas</span>
       </button>
       <button class="mapBtn" data-map="drift">
         <span class="ic">🛞</span>
@@ -184,31 +196,95 @@ body.gyro-on #gyroBadge{display:block}
         <span class="sub">Playón liso · rotonda y conos</span>
       </button>
     </div>
+    <button class="btn" id="backToVehicle" style="margin-top:10px">← Cambiar vehículo</button>
     <div class="hint">Volante o palanca: configurable en Setup · 5 cámaras + 1 personalizable.<br>Teclado: A/D · W/↑ · S/↓ · R reiniciar · P debug · G setup · C cámara.</div>
   </div>
 </div>
 
 <script type="module">
 import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-const VEH={
- name:'Genesis X Skorpio Concept',
- mass:2100,weightFront:0.48,comHeight:0.80,Ixx:950,Iyy:3700,Izz:4400,
- wheelBase:2.95,trackF:1.86,trackR:1.86,wheelRadius:0.508,rimRadius:0.2286,tireWidth:0.34,wheelInertia:9.0,
- hardpointY:0.0,travel:0.32,freqF:1.30,freqR:1.40,zetaBump:0.30,zetaRebound:0.55,arbF:5000,arbR:2500,
- bumpStopK:320000,bumpStopC:9000,antiSquat:0.60,antiDive:0.40,rollCenter:0.20,
- mu:1.02,gripFront:1.0,gripRear:1.0,slipPeakLong:0.12,slipPeakLat:0.16,tireFalloff:1.45,rolling:0.016,
- surfGrip:{asphalt:1.0,dirt:0.62,shoulder:0.72,grass:0.45,outside:0.40},
- peakTorque:1152,idleRpm:1000,launchRpm:3600,maxRpm:7200,
- torqueCurve:[[0,0.45],[1000,0.55],[2000,0.78],[3000,0.93],[4000,1.0],[6800,1.0],[7200,0.9],[7600,0.6]],
- engineInertia:0.28,engineBrake:190,
- gears:[3.10,2.15,1.62,1.28,1.03],reverseRatio:3.0,finalDrive:4.30,efficiency:0.88,
- clutchTime:1.3,shiftUpRpm:6800,shiftDownRpm:3000,shiftTime:0.16,
- driveType:'AWD',frontDriveRatio:0.40,rearDriveRatio:0.60,centerDiffBias:0.35,lsd:900,
- tractionControl:true,tcSlip:0.20,
- brakeTorque:13000,brakeBiasFront:0.62,abs:true,absSlip:0.14,
- maxSteer:0.54,steerResponse:9.5,dragCoef:0.95,
- stabilityAssist:0.30,powerScale:1.0
+const VEHICLES={
+ genesis:{
+  name:'Genesis X Skorpio Concept',visualType:'genesis',icon:'🦂',tagline:'Prototipo híbrido AWD · el equilibrado',firingOrder:4,
+  mass:2100,weightFront:0.48,comHeight:0.80,Ixx:950,Iyy:3700,Izz:4400,
+  wheelBase:2.95,trackF:1.86,trackR:1.86,wheelRadius:0.508,rimRadius:0.2286,tireWidth:0.34,wheelInertia:9.0,
+  hardpointY:0.0,travel:0.32,freqF:1.30,freqR:1.40,zetaBump:0.30,zetaRebound:0.55,arbF:5000,arbR:2500,
+  bumpStopK:320000,bumpStopC:9000,antiSquat:0.60,antiDive:0.40,rollCenter:0.20,
+  mu:1.02,gripFront:1.0,gripRear:1.0,slipPeakLong:0.12,slipPeakLat:0.16,tireFalloff:1.45,rolling:0.016,
+  surfGrip:{asphalt:1.0,dirt:0.62,shoulder:0.72,grass:0.45,outside:0.40},
+  peakTorque:1152,idleRpm:1000,launchRpm:3600,maxRpm:7200,
+  torqueCurve:[[0,0.45],[1000,0.55],[2000,0.78],[3000,0.93],[4000,1.0],[6800,1.0],[7200,0.9],[7600,0.6]],
+  engineInertia:0.28,engineBrake:190,
+  gears:[3.10,2.15,1.62,1.28,1.03],reverseRatio:3.0,finalDrive:4.30,efficiency:0.88,
+  clutchTime:1.3,shiftUpRpm:6800,shiftDownRpm:3000,shiftTime:0.16,
+  driveType:'AWD',frontDriveRatio:0.40,rearDriveRatio:0.60,centerDiffBias:0.35,lsd:900,
+  tractionControl:true,tcSlip:0.20,
+  brakeTorque:13000,brakeBiasFront:0.62,abs:true,absSlip:0.14,
+  maxSteer:0.54,steerResponse:9.5,dragCoef:0.95,
+  stabilityAssist:0.30,powerScale:1.0
+ },
+ pickup:{
+  name:'Titan Raptor X',visualType:'pickup',icon:'🛻',tagline:'Pick-up 4x4 · potencia bruta',firingOrder:8,
+  mass:2900,weightFront:0.54,comHeight:0.85,Ixx:1130,Iyy:7970,Izz:8280,
+  wheelBase:3.685,trackF:1.73,trackR:1.73,wheelRadius:0.44,rimRadius:0.229,tireWidth:0.325,wheelInertia:10.0,
+  hardpointY:0.0,travel:0.33,freqF:1.22,freqR:1.18,zetaBump:0.32,zetaRebound:0.58,arbF:6900,arbR:3450,
+  bumpStopK:442000,bumpStopC:12400,antiSquat:0.55,antiDive:0.35,rollCenter:0.25,
+  mu:0.95,gripFront:1.0,gripRear:1.0,slipPeakLong:0.14,slipPeakLat:0.18,tireFalloff:1.35,rolling:0.020,
+  surfGrip:{asphalt:0.90,dirt:0.80,shoulder:0.78,grass:0.55,outside:0.42},
+  peakTorque:881,idleRpm:750,launchRpm:2500,maxRpm:6500,
+  torqueCurve:[[0,0.55],[1000,0.75],[2000,0.92],[3000,1.0],[4000,1.0],[5000,0.97],[6000,0.88],[6500,0.65]],
+  engineInertia:0.35,engineBrake:160,
+  gears:[4.71,3.14,2.10,1.67,1.29,1.00,0.84,0.67],reverseRatio:3.30,finalDrive:3.09,efficiency:0.85,
+  clutchTime:0.9,shiftUpRpm:6200,shiftDownRpm:2200,shiftTime:0.25,
+  driveType:'AWD',frontDriveRatio:0.40,rearDriveRatio:0.60,centerDiffBias:0.30,lsd:1400,
+  tractionControl:true,tcSlip:0.22,
+  brakeTorque:17000,brakeBiasFront:0.60,abs:true,absSlip:0.16,
+  maxSteer:0.46,steerResponse:7.0,dragCoef:1.35,
+  stabilityAssist:0.30,powerScale:1.0
+ },
+ truck:{
+  name:'Colossus Master 6x6',visualType:'truck',icon:'🚛',tagline:'Camión Dakar · gigante imparable',firingOrder:2,
+  mass:10200,weightFront:0.50,comHeight:1.30,Ixx:5300,Iyy:25000,Izz:27000,
+  wheelBase:4.2,trackF:2.1,trackR:2.1,wheelRadius:0.55,rimRadius:0.254,tireWidth:0.40,wheelInertia:32.0,
+  hardpointY:0.0,travel:0.38,freqF:1.20,freqR:1.18,zetaBump:0.38,zetaRebound:0.65,arbF:24300,arbR:12150,
+  bumpStopK:1554000,bumpStopC:43700,antiSquat:0.40,antiDive:0.30,rollCenter:0.35,
+  mu:0.90,gripFront:1.0,gripRear:1.0,slipPeakLong:0.16,slipPeakLat:0.20,tireFalloff:1.25,rolling:0.028,
+  surfGrip:{asphalt:0.75,dirt:0.88,shoulder:0.80,grass:0.55,outside:0.45},
+  peakTorque:3500,idleRpm:600,launchRpm:1200,maxRpm:2400,
+  torqueCurve:[[0,0.60],[400,0.75],[800,0.92],[1200,1.0],[1800,1.0],[2200,0.95],[2400,0.85]],
+  engineInertia:0.65,engineBrake:380,
+  gears:[7.50,5.20,3.80,2.70,2.00,1.50,1.15,0.90],reverseRatio:6.5,finalDrive:5.5,efficiency:0.80,
+  clutchTime:2.0,shiftUpRpm:2200,shiftDownRpm:900,shiftTime:0.45,
+  driveType:'AWD',frontDriveRatio:0.50,rearDriveRatio:0.50,centerDiffBias:0.50,lsd:3000,
+  tractionControl:false,tcSlip:0.30,
+  brakeTorque:45000,brakeBiasFront:0.55,abs:true,absSlip:0.18,
+  maxSteer:0.35,steerResponse:4.5,dragCoef:2.2,
+  stabilityAssist:0.35,powerScale:1.0
+ },
+ t1plus:{
+  name:'Volt Raid Ultimate',visualType:'t1plus',icon:'⚡',tagline:'Prototipo T1+ híbrido · ágil en dunas',firingOrder:6,
+  mass:2200,weightFront:0.48,comHeight:0.70,Ixx:831,Iyy:4008,Izz:4508,
+  wheelBase:3.0,trackF:1.70,trackR:1.70,wheelRadius:0.47,rimRadius:0.216,tireWidth:0.318,wheelInertia:8.0,
+  hardpointY:0.0,travel:0.38,freqF:1.40,freqR:1.45,zetaBump:0.38,zetaRebound:0.65,arbF:3200,arbR:1800,
+  bumpStopK:330000,bumpStopC:9200,antiSquat:0.65,antiDive:0.45,rollCenter:0.18,
+  mu:1.05,gripFront:1.0,gripRear:1.0,slipPeakLong:0.13,slipPeakLat:0.17,tireFalloff:1.45,rolling:0.022,
+  surfGrip:{asphalt:0.85,dirt:0.78,shoulder:0.75,grass:0.60,outside:0.50},
+  peakTorque:950,idleRpm:500,launchRpm:800,maxRpm:9000,
+  torqueCurve:[[0,0.95],[500,1.0],[3000,1.0],[6000,0.85],[8000,0.55],[9000,0.35]],
+  engineInertia:0.10,engineBrake:140,
+  gears:[6.50,2.47],reverseRatio:6.5,finalDrive:3.80,efficiency:0.93,
+  clutchTime:0.3,shiftUpRpm:8500,shiftDownRpm:1500,shiftTime:0.08,
+  driveType:'AWD',frontDriveRatio:0.50,rearDriveRatio:0.50,centerDiffBias:0.50,lsd:1100,
+  tractionControl:true,tcSlip:0.16,
+  brakeTorque:15000,brakeBiasFront:0.52,abs:true,absSlip:0.13,
+  maxSteer:0.50,steerResponse:10.5,dragCoef:0.80,
+  stabilityAssist:0.25,powerScale:1.0
+ }
 };
+const VEHICLE_ORDER=['genesis','pickup','truck','t1plus'];
+let currentVehicleId='genesis';
+let VEH=structuredClone(VEHICLES.genesis);
+let BASE=structuredClone(VEHICLES.genesis);
 const clampP=(v,a,b)=>Math.max(a,Math.min(b,v));
 function tireCurve(s,C){const B=Math.tan(Math.PI/(2*C));return Math.sin(C*Math.atan(B*s));}
 class Physics{
@@ -397,18 +473,25 @@ class Input{
 }
 
 /* ═══ HILL CLIMB TRACK ═══ */
+/* ═══ RUTAS: bosque de tierra (grande, muy sinuosa) y asfalto de montaña (larga, curvas abiertas) ═══ */
+const TRACK_ROUTES={
+ forest:{halfWidth:3.4,shoulder:2.2,points:[
+  [727,67,0],[558,64,81],[498,58,149],[531,49,254],[530,40,374],[414,32,424],[234,26,363],[95,22,257],
+  [26,19,221],[-36,17,297],[-155,14,421],[-319,12,496],[-473,11,484],[-586,11,413],[-663,13,318],[-704,17,211],
+  [-688,21,100],[-624,24,0],[-561,26,-81],[-542,28,-163],[-545,30,-261],[-508,31,-358],[-401,32,-411],[-260,33,-405],
+  [-138,33,-375],[-43,32,-363],[44,30,-367],[132,28,-358],[215,28,-334],[317,32,-325],[481,39,-340],[699,48,-335],
+  [869,57,-260],[876,64,-127]
+ ]},
+ asphaltLong:{halfWidth:4.8,shoulder:1.6,points:[
+  [510,29,0],[516,24,152],[493,19,317],[374,14,432],[210,11,459],[68,12,471],[-69,18,480],[-193,29,423],
+  [-291,43,336],[-424,57,273],[-581,68,171],[-637,75,0],[-554,77,-163],[-421,73,-270],[-302,64,-348],[-195,55,-427],
+  [-72,45,-501],[75,38,-520],[213,34,-467],[333,32,-384],[442,32,-284],[504,31,-148]
+ ]}
+};
 class Track{
- constructor(scene,mode='asphalt'){this.scene=scene;this.mode=mode;this.halfWidth=5.6;this.shoulder=1.9;this.samples=[];this.tangents=[];this.laterals=[];this.length=0;this.tapeNodes=[];this.lapEnabled=true;this.kind='hill';
+ constructor(scene,mode,routeId){this.scene=scene;this.mode=mode;this.routeId=routeId;const route=TRACK_ROUTES[routeId];this.halfWidth=route.halfWidth;this.shoulder=route.shoulder;this._control=route.points;this.samples=[];this.tangents=[];this.laterals=[];this.length=0;this.tapeNodes=[];this.lapEnabled=true;this.kind=routeId;
   this.group=new THREE.Group();scene.add(this.group);this.build();}
- control(){return [
-  [-500,12,0],[-450,14,-60],[-380,20,-160],[-300,30,-80],[-220,40,-180],[-140,52,-80],
-  [-60,64,-180],[20,78,-80],[100,92,-180],[180,108,-80],[260,124,-180],[330,138,-260],
-  [400,150,-180],[450,158,-80],[510,166,-140],[570,174,-200],[610,180,-120],
-  [650,188,0],[670,194,120],[650,190,240],[600,182,320],
-  [540,172,380],[470,162,300],[400,152,380],[330,142,300],[260,132,380],[190,122,300],
-  [120,110,380],[50,98,300],[-20,86,380],[-90,74,300],[-160,62,380],[-230,52,300],
-  [-300,42,380],[-370,32,300],[-430,24,180],[-470,18,80]
- ];}
+ control(){return this._control;}
  getYAt(t){const v=this.control();let i=Math.floor(t*v.length)%v.length,u=(t*v.length)%1,a=v[i],b=v[(i+1)%v.length];return a[1]+(b[1]-a[1])*u+0.20*Math.sin(t*Math.PI*6)+0.10*Math.sin(t*Math.PI*15);}
  build(){const raw=this.control().map(p=>new THREE.Vector3(p[0],p[1],p[2]));
   const curve=new THREE.CatmullRomCurve3(raw,true,'catmullrom',0.5);
@@ -449,7 +532,7 @@ class Track{
   for(let i=0;i<N;i++){const ni=(i+1)%N;for(let side=0;side<2;side++){const a=i*4+side*2,b=a+1,c=ni*4+side*2,d=c+1;si.push(a,b,c,b,d,c)}}
   shoulderG.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));shoulderG.setIndex(si);shoulderG.computeVertexNormals();
   this.group.add(new THREE.Mesh(shoulderG,new THREE.MeshLambertMaterial({color:0x7a6b57,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1})));}
- buildTerrain(){const minX=-600,maxX=750,minZ=-380,maxZ=480,R=130;const pos=[],col=[],idx=[];
+ buildTerrain(){const xs=this._control.map(p=>p[0]),zs=this._control.map(p=>p[2]);const minX=Math.min(...xs)-180,maxX=Math.max(...xs)+180,minZ=Math.min(...zs)-180,maxZ=Math.max(...zs)+180,R=150;const pos=[],col=[],idx=[];
   for(let iz=0;iz<=R;iz++){const z=lerp(minZ,maxZ,iz/R);for(let ix=0;ix<=R;ix++){const x=lerp(minX,maxX,ix/R);const y=this.ground(x,z)-0.25;pos.push(x,y,z);const n=this.nearest(x,z),d=Math.abs(n.lateral),cc=new THREE.Color(d<this.halfWidth+this.shoulder?0x74634c:0x48663d);cc.offsetHSL(0,(Math.random()-.5)*.08,(Math.random()-.5)*.08);col.push(cc.r,cc.g,cc.b)}}
   for(let iz=0;iz<R;iz++)for(let ix=0;ix<R;ix++){const a=iz*(R+1)+ix,b=a+1,c=a+R+1,d=c+1;idx.push(a,c,b,b,c,d)}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));g.setIndex(idx);g.computeVertexNormals();
@@ -569,13 +652,17 @@ class DriftTrack{
 
 function canvasTex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
 class VehicleVisual{
- constructor(){this.group=new THREE.Group();this.body=new THREE.Group();this.glassGroup=new THREE.Group();this.body.add(this.glassGroup);this.group.add(this.body);this.wheels=[];this.shocks=[];const V=VEH;this.a=V.wheelBase*(1-V.weightFront);this.b=V.wheelBase*V.weightFront;
+ constructor(type){this.type=type||'genesis';this.group=new THREE.Group();this.body=new THREE.Group();this.glassGroup=new THREE.Group();this.body.add(this.glassGroup);this.group.add(this.body);this.wheels=[];this.shocks=[];const V=VEH;this.a=V.wheelBase*(1-V.weightFront);this.b=V.wheelBase*V.weightFront;
   this.mat={paint:new THREE.MeshStandardMaterial({color:0x15181d,metalness:0.55,roughness:0.42,envMapIntensity:1.1}),dark:new THREE.MeshStandardMaterial({color:0x0b0d10,metalness:0.3,roughness:0.7}),trim:new THREE.MeshStandardMaterial({color:0x22262c,metalness:0.6,roughness:0.35}),glass:new THREE.MeshStandardMaterial({color:0x0a1218,metalness:0.2,roughness:0.08,transparent:true,opacity:0.9,envMapIntensity:1.6}),white:new THREE.MeshBasicMaterial({color:0xeaf6ff}),red:new THREE.MeshBasicMaterial({color:0xff2436}),shock:new THREE.MeshStandardMaterial({color:0xb03a22,metalness:0.5,roughness:0.4}),shaft:new THREE.MeshStandardMaterial({color:0xc9ced6,metalness:0.9,roughness:0.2})};
   this.buildBody();this.buildWheels();this.buildLights();this.body.position.y=-V.comHeight;}
  setGlassVisible(v){this.glassGroup.visible=v;}
+ buildBody(){if(this.type==='pickup')return this.buildBodyPickup();if(this.type==='truck')return this.buildBodyTruck();if(this.type==='t1plus')return this.buildBodyT1();return this.buildBodyGenesis();}
+ buildLights(){if(this.type==='pickup')return this.buildLightsPickup();if(this.type==='truck')return this.buildLightsTruck();if(this.type==='t1plus')return this.buildLightsT1();return this.buildLightsGenesis();}
+ nameplate(text,y,z){const tx=canvasTex(256,32,(c,w,h)=>{c.clearRect(0,0,w,h);c.fillStyle='#c9ced6';c.font='bold 20px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText(text,w/2,h/2+1)});const lab=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.08),new THREE.MeshBasicMaterial({map:tx,transparent:true}));lab.position.set(0,y,z);lab.rotation.y=Math.PI;this.body.add(lab);}
+ dispose(){this.group.traverse(o=>{if(o.isInstancedMesh){o.geometry.dispose();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose();return}if(o.geometry)o.geometry.dispose();if(o.material){const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats){if(m.map)m.map.dispose();m.dispose();}}});}
  profileShape(){const s=new THREE.Shape();s.moveTo(2.50,0.64);s.lineTo(2.28,0.52);s.lineTo(-2.30,0.52);s.lineTo(-2.46,0.74);s.lineTo(-2.50,1.06);s.lineTo(-2.38,1.14);s.lineTo(-1.60,1.20);s.lineTo(0.95,1.22);s.lineTo(1.70,1.12);s.lineTo(2.30,1.02);s.lineTo(2.52,0.92);s.lineTo(2.56,0.76);s.lineTo(2.50,0.64);return s;}
  extrude(shape,depth,bevel,mat){const g=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:true,bevelThickness:bevel,bevelSize:0.03,bevelSegments:2,curveSegments:14});g.rotateY(-Math.PI/2);g.translate(depth/2,0,0);g.computeVertexNormals();return new THREE.Mesh(g,mat);}
- buildBody(){const M=this.mat,B=this.body,a=this.a,b=-this.b,R=VEH.wheelRadius;M.glass.side=THREE.DoubleSide;
+ buildBodyGenesis(){const M=this.mat,B=this.body,a=this.a,b=-this.b,R=VEH.wheelRadius;M.glass.side=THREE.DoubleSide;
   B.add(this.extrude(this.profileShape(),1.40,0.08,M.paint));
   const c=new THREE.Shape();c.moveTo(-2.36,1.13);c.lineTo(-1.25,1.50);c.lineTo(-0.55,1.63);c.lineTo(0.15,1.66);c.lineTo(0.55,1.60);c.lineTo(1.12,1.21);c.lineTo(-2.36,1.13);B.add(this.extrude(c,1.26,0.06,M.paint));
   const ws=new THREE.Mesh(new THREE.PlaneGeometry(1.24,0.70),M.glass);ws.position.set(0,1.43,0.87);ws.rotation.x=-0.97;this.glassGroup.add(ws);
@@ -592,7 +679,7 @@ class VehicleVisual{
   const diff=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.22,0.35),M.dark);diff.position.set(0,0.66,-2.36);B.add(diff);
   for(const sd of [-1,1]){const m=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.1,0.14),M.paint);m.position.set(sd*0.84,1.30,0.80);B.add(m)}
   for(const sd of [-1,1]){const e=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.055,0.14,10),M.trim);e.rotation.x=Math.PI/2;e.position.set(sd*0.32,0.64,-2.50);B.add(e)}}
- buildLights(){const M=this.mat,B=this.body;
+ buildLightsGenesis(){const M=this.mat,B=this.body;
   for(const sd of [-1,1]){for(const [dy,len] of [[0,0.72],[0.07,0.76]]){const l=new THREE.Mesh(new THREE.BoxGeometry(len,0.024,0.03),M.white);l.position.set(sd*0.39,0.86+dy,2.575);l.rotation.z=sd*0.22;B.add(l);}
    for(const dy of [0,0.06]){const l=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,0.55),M.white);l.position.set(sd*0.795,1.0+dy,1.95);B.add(l)}
    const hs=new THREE.Mesh(new THREE.BoxGeometry(0.24,0.24,0.06),M.dark);hs.position.set(sd*0.58,0.70,2.555);B.add(hs);}
@@ -600,8 +687,74 @@ class VehicleVisual{
   for(const sd of [-1,1])for(const ix of [-1,1])for(const iy of [-1,1]){d.position.set(sd*0.58+ix*0.055,0.70+iy*0.055,2.59);d.updateMatrix();lamp.setMatrixAt(k++,d.matrix)}B.add(lamp);
   for(const dy of [0,0.075]){const l=new THREE.Mesh(new THREE.BoxGeometry(1.46,0.022,0.03),M.red);l.position.set(0,0.98+dy,-2.545);B.add(l)}
   for(const sd of [-1,1])for(const dy of [0,0.06]){const l=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,0.45),M.red);l.position.set(sd*0.795,1.02+dy,-1.75);B.add(l)}
-  const tx=canvasTex(256,32,(c,w,h)=>{c.clearRect(0,0,w,h);c.fillStyle='#c9ced6';c.font='bold 20px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('G E N E S I S',w/2,h/2+1)});
-  const lab=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.08),new THREE.MeshBasicMaterial({map:tx,transparent:true}));lab.position.set(0,1.015,-2.56);lab.rotation.y=Math.PI;B.add(lab);}
+  this.nameplate('G E N E S I S',1.015,-2.56);}
+ addFlares(color){const M=this.mat,V=VEH,R=V.wheelRadius,B=this.body;
+  const mat=color?new THREE.MeshStandardMaterial({color,metalness:0.35,roughness:0.6}):M.paint;
+  const archG=new THREE.CylinderGeometry(R*1.14,R*1.14,V.tireWidth*1.85,16,1,true,Math.PI*0.06,Math.PI*0.88);archG.rotateZ(Math.PI/2);
+  for(const z of [this.a,-this.b])for(const sd of [-1,1]){const arch=new THREE.Mesh(archG,mat);arch.position.set(sd*(V.trackF/2),R*1.03,z);B.add(arch);}}
+ /* ═══ PICK-UP: cabina + caja separada, guardabarros anchos ═══ */
+ profileShapePickup(){const s=new THREE.Shape();
+  s.moveTo(2.40,0.62);s.lineTo(2.20,0.50);s.lineTo(-3.15,0.50);s.lineTo(-3.34,0.56);s.lineTo(-3.34,0.94);s.lineTo(-3.10,0.98);
+  s.lineTo(-0.55,0.98);s.lineTo(-0.50,1.58);s.lineTo(1.05,1.62);s.lineTo(1.45,1.56);s.lineTo(1.55,1.05);s.lineTo(2.30,0.98);s.lineTo(2.42,0.80);s.lineTo(2.40,0.62);
+  return s;}
+ buildBodyPickup(){const M=this.mat,B=this.body;M.glass.side=THREE.DoubleSide;M.paint.color.set(0xb31f24);
+  B.add(this.extrude(this.profileShapePickup(),1.42,0.06,M.paint));
+  const ws=new THREE.Mesh(new THREE.PlaneGeometry(1.30,0.62),M.glass);ws.position.set(0,1.30,1.30);ws.rotation.x=-1.05;this.glassGroup.add(ws);
+  for(const sd of [-1,1]){const sw=new THREE.Shape();sw.moveTo(-0.50,1.00);sw.lineTo(-0.05,1.55);sw.lineTo(0.85,1.58);sw.lineTo(1.45,1.10);sw.lineTo(-0.50,1.00);const g=new THREE.ShapeGeometry(sw);g.rotateY(-Math.PI/2);const m=new THREE.Mesh(g,M.glass);m.position.x=sd*0.72;this.glassGroup.add(m);}
+  const rw=new THREE.Mesh(new THREE.PlaneGeometry(1.10,0.55),M.glass);rw.position.set(0,1.32,-0.52);rw.rotation.x=1.15;this.glassGroup.add(rw);
+  const bedFloor=new THREE.Mesh(new THREE.BoxGeometry(1.55,0.06,2.75),M.dark);bedFloor.position.set(0,0.52,-1.95);B.add(bedFloor);
+  for(const sd of [-1,1]){const rail=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.10,2.75),M.trim);rail.position.set(sd*0.76,0.95,-1.95);B.add(rail);}
+  const grille=new THREE.Mesh(new THREE.BoxGeometry(1.15,0.30,0.05),M.dark);grille.position.set(0,0.72,2.40);B.add(grille);
+  const bar=new THREE.Mesh(new THREE.BoxGeometry(1.30,0.05,0.20),M.trim);bar.position.set(0,1.68,1.05);B.add(bar);
+  for(let i=-2;i<=2;i++){const lp=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.05),M.white);lp.position.set(i*0.24,1.72,1.05);B.add(lp);}
+  this.addFlares();}
+ buildLightsPickup(){const M=this.mat,B=this.body;
+  for(const sd of [-1,1]){const l=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.16,0.03),M.white);l.position.set(sd*0.55,0.85,2.43);B.add(l);
+   const t=new THREE.Mesh(new THREE.BoxGeometry(0.10,0.32,0.03),M.red);t.position.set(sd*0.76,0.80,-3.36);B.add(t);}
+  this.nameplate('T I T A N',0.98,-3.37);}
+ /* ═══ CAMIÓN: cabina sobre motor, plataforma trasera larga ═══ */
+ profileShapeTruck(){const s=new THREE.Shape();
+  s.moveTo(2.42,0.60);s.lineTo(2.42,1.75);s.lineTo(1.50,1.80);s.lineTo(1.20,1.06);s.lineTo(-3.55,1.06);
+  s.lineTo(-3.75,1.00);s.lineTo(-3.75,0.55);s.lineTo(2.20,0.50);s.lineTo(2.42,0.60);
+  return s;}
+ buildBodyTruck(){const M=this.mat,B=this.body;M.glass.side=THREE.DoubleSide;M.paint.color.set(0xe8e6df);M.paint.roughness=0.6;
+  B.add(this.extrude(this.profileShapeTruck(),1.75,0.05,M.paint));
+  const ws=new THREE.Mesh(new THREE.PlaneGeometry(1.55,0.85),M.glass);ws.position.set(0,1.35,2.30);ws.rotation.x=-1.30;this.glassGroup.add(ws);
+  for(const sd of [-1,1]){const sw=new THREE.Mesh(new THREE.PlaneGeometry(0.62,0.62),M.glass);sw.position.set(sd*0.88,1.35,1.60);sw.rotation.y=sd*0.55;this.glassGroup.add(sw);}
+  const deck=new THREE.Mesh(new THREE.BoxGeometry(1.95,0.08,5.1),M.dark);deck.position.set(0,1.10,-1.30);B.add(deck);
+  for(const dz of [-0.4,-1.9,-3.3]){const drum=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.86,14),M.trim);drum.rotation.z=Math.PI/2;drum.position.set(0.55,1.55,dz);B.add(drum);
+   const spare=new THREE.Mesh(new THREE.TorusGeometry(0.5,0.16,10,20),M.dark);spare.position.set(-0.85,1.65,dz);B.add(spare);}
+  const grille=new THREE.Mesh(new THREE.BoxGeometry(1.55,0.55,0.06),M.dark);grille.position.set(0,0.95,2.44);B.add(grille);
+  const bumper=new THREE.Mesh(new THREE.BoxGeometry(1.9,0.28,0.30),M.trim);bumper.position.set(0,0.55,2.55);B.add(bumper);
+  const roofBar=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.08,0.22),M.trim);roofBar.position.set(0,1.88,1.35);B.add(roofBar);
+  for(let i=-3;i<=3;i++){const lp=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.09,0.09),M.white);lp.position.set(i*0.24,1.94,1.35);B.add(lp);}
+  for(const sd of [-1,1]){const snorkel=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,1.5,8),M.dark);snorkel.position.set(sd*0.95,1.55,1.9);B.add(snorkel);}
+  this.addFlares(0x2a2d31);}
+ buildLightsTruck(){const M=this.mat,B=this.body;
+  for(const sd of [-1,1]){const l=new THREE.Mesh(new THREE.BoxGeometry(0.30,0.30,0.05),M.white);l.position.set(sd*0.62,0.95,2.46);B.add(l);
+   const t=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.40,0.05),M.red);t.position.set(sd*0.90,1.15,-3.78);B.add(t);}
+  this.nameplate('C O L O S S U S',1.30,-3.79);}
+ /* ═══ BUGGY T1+: baja, ancha, alerón trasero grande ═══ */
+ profileShapeT1(){const s=new THREE.Shape();
+  s.moveTo(2.10,0.58);s.lineTo(1.85,0.50);s.lineTo(-1.95,0.50);s.lineTo(-2.15,0.58);s.lineTo(-2.15,0.80);
+  s.lineTo(-1.35,0.98);s.lineTo(-0.45,1.28);s.lineTo(0.05,1.32);s.lineTo(0.55,1.22);s.lineTo(1.15,0.92);s.lineTo(1.85,0.72);s.lineTo(2.10,0.58);
+  return s;}
+ buildBodyT1(){const M=this.mat,B=this.body;M.glass.side=THREE.DoubleSide;M.paint.color.set(0x1a4fb3);
+  B.add(this.extrude(this.profileShapeT1(),1.46,0.05,M.paint));
+  const ws=new THREE.Mesh(new THREE.PlaneGeometry(0.95,0.55),M.glass);ws.position.set(0,1.12,0.15);ws.rotation.x=-0.85;this.glassGroup.add(ws);
+  for(const sd of [-1,1]){const strut=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.9,0.10),M.trim);strut.position.set(sd*0.62,1.35,-2.05);B.add(strut);}
+  const wing=new THREE.Mesh(new THREE.BoxGeometry(1.55,0.05,0.42),M.dark);wing.position.set(0,1.85,-2.10);B.add(wing);
+  const wingEnd=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.30,0.42),M.dark);
+  for(const sd of [-1,1]){const we=wingEnd.clone();we.position.set(sd*0.78,1.72,-2.10);B.add(we);}
+  const scoop=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.16,0.55),M.dark);scoop.position.set(0,1.42,-0.55);B.add(scoop);
+  const arm1=new THREE.CylinderGeometry(0.035,0.035,0.9,6);
+  for(const z of [this.a,-this.b])for(const sd of [-1,1]){const arm=new THREE.Mesh(arm1,M.trim);arm.rotation.z=Math.PI/2.4*sd;arm.position.set(sd*0.55,VEH.wheelRadius*0.9,z+(z>0?0.35:-0.35));B.add(arm);}
+  const nose=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.08,0.05),M.trim);nose.position.set(0,0.60,2.12);B.add(nose);
+  this.addFlares();}
+ buildLightsT1(){const M=this.mat,B=this.body;
+  for(const sd of [-1,1]){const l=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.10,0.03),M.white);l.position.set(sd*0.52,0.72,2.13);B.add(l);
+   const t=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.20,0.03),M.red);t.position.set(sd*0.75,1.05,-2.16);B.add(t);}
+  this.nameplate('V O L T',1.30,-2.17);}
  buildWheels(){const V=VEH,R=V.wheelRadius,M=this.mat;
   const tread=canvasTex(64,256,(c,w,h)=>{c.fillStyle='#15171a';c.fillRect(0,0,w,h);c.fillStyle='#2b2e33';for(let y=0;y<h;y+=16){const o=(y/16)%2?6:0;c.fillRect(4+o,y+2,22,9);c.fillRect(36-o,y+6,22,9)}});
   tread.wrapS=tread.wrapT=THREE.RepeatWrapping;tread.repeat.set(1,3);
@@ -764,7 +917,7 @@ class AudioEngine{
  pops(n){if(!this.on)return;const t=this.ctx.currentTime;for(let i=0;i<n;i++)this.burst(t+0.03+Math.random()*0.35,0.03+Math.random()*0.03,700+Math.random()*700,1.2,SND.pops*(0.5+Math.random()*0.5))}
  update(p,dt){if(!this.on)return;const ctx=this.ctx,t=ctx.currentTime,V=VEH;
   const rpm=p.rpm,rn=clamp((rpm-V.idleRpm)/(V.maxRpm-V.idleRpm),0,1),load=clamp(p.load,0,1);
-  const f0=rpm/60*SND.firingOrder;for(const o of this.oscs)o.o.frequency.setTargetAtTime(f0*o.mul,t,0.012);this.lfo.frequency.setTargetAtTime(f0*0.125,t,0.02);
+  const f0=rpm/60*(VEH.firingOrder||SND.firingOrder);for(const o of this.oscs)o.o.frequency.setTargetAtTime(f0*o.mul,t,0.012);this.lfo.frequency.setTargetAtTime(f0*0.125,t,0.02);
   const cut=260+load*1500+rn*1600;this.engF.frequency.setTargetAtTime(cut,t,0.03);
   const eg=SND.engine*(0.35+0.25*rn)*(0.62+0.38*load)*(p.limiter?0.7:1);this.eng.gain.setTargetAtTime(eg,t,0.03);
   this.engNF.frequency.setTargetAtTime(f0,t,0.02);this.engN.gain.setTargetAtTime(0.25*load,t,0.05);
@@ -778,21 +931,42 @@ class AudioEngine{
   const thr=p.throttle||0;if(this.prevThr>0.6&&thr<0.15&&rpm>4200)this.pops(2+Math.floor(Math.random()*4));this.prevThr=thr;
   for(const e of p.events){if(e.type==='shift'&&e.up)this.pops(1);if(e.type==='limiter')this.pops(2);if(e.type==='land')this.thump(e.v/4)}
   for(const w of p.wheels){if(w.impact>1.4)this.thump((w.impact-1.2)/5);w.impact=0}}}
-const tune={gameSpeed:60,power:100,gripFront:50,gripRear:50,brakes:55,steering:50,springs:45,damping:50,antiroll:30,frontDrive:40,antiSquat:60,tc:50,assist:30,gyroSensitivity:50,steerMode:'wheel'};
+const DEFAULT_TUNE={gameSpeed:60,power:50,gripFront:50,gripRear:50,brakes:50,steering:50,springs:50,damping:50,antiroll:50,frontDrive:40,antiSquat:50,tc:50,assist:30,gyroSensitivity:50,steerMode:'wheel'};
+const tune={...DEFAULT_TUNE};
 function applyTune(){
- VEH.powerScale=0.35+tune.power*0.0065;
+ /* Cada campo usa BASE (los valores propios del vehículo elegido) como referencia: */
+ /* slider en 50% = el ajuste de fábrica de ESE auto. 0%=mitad, 100%=una vez y media. */
+ const m=v=>0.5+v*0.01;
+ VEH.powerScale=m(tune.power);
  VEH.gripFront=0.85+tune.gripFront*0.003;VEH.gripRear=0.85+tune.gripRear*0.003;
- VEH.brakeTorque=8000+tune.brakes*100;VEH.maxSteer=0.40+tune.steering*0.0028;
- VEH.freqF=0.95+tune.springs*0.0078;VEH.freqR=VEH.freqF+0.10;
- VEH.zetaBump=0.15+tune.damping*0.003;VEH.zetaRebound=VEH.zetaBump*1.8;
- VEH.arbF=tune.antiroll*170;VEH.arbR=tune.antiroll*85;
+ VEH.brakeTorque=BASE.brakeTorque*m(tune.brakes);VEH.maxSteer=BASE.maxSteer*m(tune.steering);
+ VEH.freqF=BASE.freqF*m(tune.springs);VEH.freqR=BASE.freqR*m(tune.springs);
+ VEH.zetaBump=BASE.zetaBump*m(tune.damping);VEH.zetaRebound=BASE.zetaRebound*m(tune.damping);
+ VEH.arbF=BASE.arbF*m(tune.antiroll);VEH.arbR=BASE.arbR*m(tune.antiroll);
  if(tune.frontDrive<=0){VEH.driveType='RWD'}else if(tune.frontDrive>=100){VEH.driveType='FWD'}else VEH.driveType='AWD';
  VEH.frontDriveRatio=tune.frontDrive/100;VEH.rearDriveRatio=1-VEH.frontDriveRatio;
- VEH.antiSquat=tune.antiSquat/100;VEH.tractionControl=tune.tc>0;VEH.tcSlip=0.08+tune.tc*0.0024;
+ VEH.antiSquat=BASE.antiSquat*m(tune.antiSquat);VEH.tractionControl=tune.tc>0;VEH.tcSlip=BASE.tcSlip*m(tune.tc);
  VEH.stabilityAssist=tune.assist/100;
  GYRO_TILT_FOR_FULL=55-tune.gyroSensitivity*0.40;
  document.body.classList.toggle('slider-mode',tune.steerMode==='slider');
- if(window.__HILL_CLIMB_GAME__)window.__HILL_CLIMB_GAME__.physics.setup();
+ if(window.__HILL_CLIMB_GAME__&&window.__HILL_CLIMB_GAME__.physics)window.__HILL_CLIMB_GAME__.physics.setup();
+}
+function selectVehicle(id){
+ if(!VEHICLES[id])return;
+ currentVehicleId=id;
+ BASE=structuredClone(VEHICLES[id]);
+ Object.assign(VEH,structuredClone(VEHICLES[id]));
+ const steerMode=tune.steerMode;
+ Object.assign(tune,DEFAULT_TUNE);
+ tune.steerMode=steerMode;
+ tune.frontDrive=Math.round(BASE.frontDriveRatio*100);
+ applyTune();
+ const game=window.__HILL_CLIMB_GAME__;
+ if(game){
+  game.rebuildVehicleVisual();
+  if(game.physics){game.physics.setup();game.physics.reset();}
+  if(game.buildSetup)game.buildSetup();
+ }
 }
 applyTune();
 const TUNE_INFO={
@@ -817,12 +991,14 @@ class Game{
   this.scene=new THREE.Scene();this.scene.background=new THREE.Color(0x9ec0d2);this.scene.fog=new THREE.Fog(0x9ec0d2,180,900);
   this.camera=new THREE.PerspectiveCamera(CAMERAS[CAM_INDEX].fov,innerWidth/innerHeight,.15,2500);this.addLights();
   this.track=null;
-  this.car=new VehicleVisual();this.scene.add(this.car.group);this.buildShadow();
+  this.car=new VehicleVisual(VEHICLES[currentVehicleId].visualType);this.scene.add(this.car.group);this.buildShadow();
   this.physics=null;this.input=new Input();this.cameraRig=null;this.fx=new Effects(this.scene);this.audio=new AudioEngine();
   this.acc=0;this.last=performance.now();this.running=false;this.fixed=1/120;this.fpsFrames=0;this.fpsAccum=0;this.fps=0;
   this.rpmFill=$('rpmFill');
-  this.currentMap='hill';
+  this.currentMap='forest';
+  this.hasStarted=false;
   this.customLocked=false;
+  this.buildVehicleSelect();
   this.bind();
   addEventListener('resize',()=>this.resize());
   requestAnimationFrame(t=>this.loop(t));
@@ -832,12 +1008,42 @@ class Game{
   env.mapping=THREE.EquirectangularReflectionMapping;const pm=new THREE.PMREMGenerator(this.renderer);this.scene.environment=pm.fromEquirectangular(env).texture;pm.dispose()}
  buildShadow(){const t=canvasTex(64,64,(x)=>{const g=x.createRadialGradient(32,32,3,32,32,30);g.addColorStop(0,'rgba(0,0,0,.55)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,64,64)});
   this.shadow=new THREE.Mesh(new THREE.PlaneGeometry(2.8,5.4),new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-5}));this.shadow.rotation.order='YXZ';this.shadow.rotation.x=-Math.PI/2;this.scene.add(this.shadow)}
+ buildVehicleSelect(){
+  const root=$('vehicleSelect');root.innerHTML='';
+  for(const id of VEHICLE_ORDER){
+   const v=VEHICLES[id];
+   const b=document.createElement('button');b.className='mapBtn';b.dataset.vehicle=id;
+   b.innerHTML=`<span class="ic">${v.icon}</span><span class="nm">${v.name}</span><span class="sub">${v.tagline}</span>`;
+   b.addEventListener('click',()=>{
+    selectVehicle(id);
+    if(this.hasStarted)this.startWithMap(this.currentMap);
+    else this.showMapScreen();
+   });
+   root.appendChild(b);
+  }
+ }
+ showVehicleScreen(){
+  $('vehicleScreen').classList.remove('hidden');$('vehicleScreen').style.display='';
+  $('mapScreen').classList.add('hidden');$('mapScreen').style.display='none';
+ }
+ showMapScreen(){
+  $('mapScreenSub').textContent='Vehículo: '+VEHICLES[currentVehicleId].name;
+  $('vehicleScreen').classList.add('hidden');$('vehicleScreen').style.display='none';
+  $('mapScreen').classList.remove('hidden');$('mapScreen').style.display='';
+ }
+ rebuildVehicleVisual(){
+  if(this.car){this.car.dispose();this.scene.remove(this.car.group);}
+  this.car=new VehicleVisual(VEHICLES[currentVehicleId].visualType);this.scene.add(this.car.group);
+  this.car.setGlassVisible(CAMERAS[CAM_INDEX].mode!=='fps');
+ }
  bind(){
-  document.querySelectorAll('.mapBtn').forEach(btn=>btn.addEventListener('click',()=>this.startWithMap(btn.dataset.map)));
+  document.querySelectorAll('.mapSelect:not(.vehicleSelect) .mapBtn').forEach(btn=>btn.addEventListener('click',()=>this.startWithMap(btn.dataset.map)));
   $('restart').onclick=()=>this.restart();
   $('setup').onclick=()=>this.toggleSetup(true);
   $('closeSetup').onclick=()=>this.toggleSetup(false);
   $('mapBtn').onclick=()=>this.showMapSelector();
+  $('vehBtn').onclick=()=>{$('overlay').classList.remove('hidden');$('overlay').style.display='flex';document.body.classList.remove('cam-edit');this.running=false;this.showVehicleScreen();};
+  $('backToVehicle').onclick=()=>this.showVehicleScreen();
   $('camBtn').onclick=()=>this.nextCamera();
   $('camLockBtn').onclick=()=>this.lockCamera();
   this._setupCustomCamDrag();
@@ -870,12 +1076,16 @@ class Game{
   $('overlay').classList.remove('hidden');$('overlay').style.display='flex';
   document.body.classList.remove('cam-edit');
   this.running=false;
+  this.showMapScreen();
  }
  startWithMap(type){
   this.currentMap=type;
+  this.hasStarted=true;
   if(this.track){try{this.track.dispose();}catch(e){}}
-  if(type==='drift'){this.track=new DriftTrack(this.scene);this.scene.background=new THREE.Color(0x9ec0d2);this.scene.fog=new THREE.Fog(0x9ec0d2,180,900);}
-  else{this.track=new Track(this.scene,'asphalt');this.scene.background=new THREE.Color(0x9ec0d2);this.scene.fog=new THREE.Fog(0x9ec0d2,180,900);}
+  if(type==='drift'){this.track=new DriftTrack(this.scene);}
+  else if(type==='asphaltLong'){this.track=new Track(this.scene,'asphalt','asphaltLong');}
+  else{this.track=new Track(this.scene,'dirt','forest');}
+  this.scene.background=new THREE.Color(0x9ec0d2);this.scene.fog=new THREE.Fog(0x9ec0d2,180,900);
   this.physics=new Physics(this.track);
   this.cameraRig=new CameraRig(this.camera,this.track);
   $('lapPanel').style.display=this.track.lapEnabled?'block':'none';
