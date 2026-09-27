@@ -282,16 +282,16 @@ const VEHICLES={
  },
  t1plus:{
   name:'Volt Raid Ultimate',visualType:'t1plus',icon:'⚡',tagline:'Prototipo T1+ híbrido · ágil en dunas',firingOrder:6,
-  mass:2200,weightFront:0.48,comHeight:0.66,Ixx:831,Iyy:4008,Izz:4508,
-  wheelBase:2.9,trackF:2.06,trackR:2.06,wheelRadius:0.33,rimRadius:0.19,tireWidth:0.28,wheelInertia:4.5,
-  hardpointY:0.0,travel:0.32,freqF:1.40,freqR:1.45,zetaBump:0.38,zetaRebound:0.65,arbF:3200,arbR:1800,
+  mass:2200,weightFront:0.48,comHeight:0.70,Ixx:831,Iyy:4008,Izz:4508,
+  wheelBase:2.9,trackF:2.02,trackR:2.02,wheelRadius:0.40,rimRadius:0.23,tireWidth:0.33,wheelInertia:6.5,
+  hardpointY:0.0,travel:0.28,freqF:1.40,freqR:1.45,zetaBump:0.38,zetaRebound:0.65,arbF:3200,arbR:1800,
   bumpStopK:330000,bumpStopC:9200,antiSquat:0.65,antiDive:0.45,rollCenter:0.18,
   mu:1.05,gripFront:1.0,gripRear:1.0,slipPeakLong:0.13,slipPeakLat:0.17,tireFalloff:1.45,rolling:0.022,
   surfGrip:{asphalt:0.85,dirt:0.78,shoulder:0.75,grass:0.60,outside:0.50,mud:0.45},
   peakTorque:950,idleRpm:500,launchRpm:800,maxRpm:9000,
   torqueCurve:[[0,0.95],[500,1.0],[3000,1.0],[6000,0.85],[8000,0.55],[9000,0.35]],
   engineInertia:0.10,engineBrake:140,
-  gears:[6.50,2.47],reverseRatio:6.5,finalDrive:2.67,efficiency:0.93,
+  gears:[6.50,2.47],reverseRatio:6.5,finalDrive:3.23,efficiency:0.93,
   clutchTime:0.3,shiftUpRpm:8500,shiftDownRpm:1500,shiftTime:0.08,
   driveType:'AWD',frontDriveRatio:0.50,rearDriveRatio:0.50,centerDiffBias:0.50,lsd:1100,
   tractionControl:true,tcSlip:0.16,
@@ -823,7 +823,7 @@ class ParkingTrack{
 function canvasTex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
 /* ═══ Modelos GLB (Volt Raid): carrocería + rueda, cargados desde models/ ═══ */
 const ASSETS={voltBody:null,voltWheel:null};
-const VOLT_META={archR:0.387,archY:0.486,hw:1.206,zf:1.508,zr:-1.392,yb:0.12,belt:1.004,cab0:-1.921,cab1:0.692,H:1.459,R:0.33};
+const VOLT_META={archR:0.461,archY:0.516,hw:1.206,zf:1.508,zr:-1.392,yb:0.15,belt:1.034,cab0:-1.921,cab1:0.692,H:1.489,R:0.40};
 function loadGLB(url){return new Promise(res=>{try{new GLTFLoader().load(url,g=>res(g.scene),undefined,e=>{console.warn('GLB',url,e);res(null)})}catch(e){console.warn(e);res(null)}});}
 const ASSETS_READY=Promise.all([loadGLB('models/volt_body.glb'),loadGLB('models/volt_wheel.glb')]).then(([b,w])=>{ASSETS.voltBody=b;ASSETS.voltWheel=w;
  const g=window.__HILL_CLIMB_GAME__;if(b&&w&&g&&g.car&&g.car.type==='t1plus'&&!g.car.glb)g.rebuildVehicleVisual();});
@@ -993,24 +993,24 @@ class VehicleVisual{
   for(const [x,z,front] of W){const steer=new THREE.Group();steer.position.set(x,R,z);const spin=new THREE.Group();steer.add(spin);spin.add(glbWheel?glbWheel(x):new THREE.Mesh(geo,[tMat,sMat,sMat]));this.body.add(steer);
    const sh=new THREE.Mesh(shockG,M.shock),sf=new THREE.Mesh(shaftG,M.shaft);this.body.add(sh,sf);
    this.wheels.push({steer,spin,front,x,z,omega:0,angle:0});
-   const sg=Math.sign(x),S={sh,sf,x,z,sg,top:this.glb?new THREE.Vector3(x-sg*0.20,0.82,z-(front?0.05:-0.05)):new THREE.Vector3(x*0.74,1.05,z-(front?0.14:-0.14))};
+   const sg=Math.sign(x),S={sh,sf,x,z,sg,top:this.glb?new THREE.Vector3(x-sg*(V.tireWidth/2+0.07),0.92,z-(front?0.05:-0.05)):new THREE.Vector3(x*0.74,1.05,z-(front?0.14:-0.14))};
    if(this.glb){const mk=(r,mat)=>{const m=new THREE.Mesh(rodG,mat);m.userData.r=r;this.body.add(m);return m;};
     S.spring=new THREE.Mesh(springG,M.spring);this.body.add(S.spring);
     S.axle=mk(0.032,M.axle);S.armF=mk(0.024,M.arm);S.armB=mk(0.024,M.arm);S.upF=mk(0.02,M.arm);S.upB=mk(0.02,M.arm);
-    const hub=new THREE.Mesh(hubG,M.axle);hub.position.x=-sg*0.175;steer.add(hub);}
+    const hub=new THREE.Mesh(hubG,M.axle);hub.position.x=-sg*(V.tireWidth/2+0.035);steer.add(hub);}
    this.shocks.push(S);}
   this.tmpA=new THREE.Vector3();this.tmpB=new THREE.Vector3();this.tmpC=new THREE.Vector3();this.tmpD=new THREE.Vector3();this.up=new THREE.Vector3(0,1,0);}
  link(m,A,B){const d=this.tmpD.subVectors(B,A),L=d.length()||1e-4;m.position.copy(A).addScaledVector(d,0.5);m.quaternion.setFromUnitVectors(this.up,d.multiplyScalar(1/L));const r=m.userData.r||1;m.scale.set(r,L,r);}
  update(p,dt){this.group.position.set(p.px,p.py,p.pz);this.group.rotation.set(0,0,0);this.group.rotateY(p.yaw);this.group.rotateX(p.pitch);this.group.rotateZ(p.roll);
-  const V=VEH,base=V.comHeight+V.hardpointY,R0=V.wheelRadius;
-  for(let i=0;i<4;i++){const w=this.wheels[i],pw=p.wheels[i];w.steer.position.y=base-pw.s;if(w.front)w.steer.rotation.y=p.steerAngle;w.angle+=pw.omega*dt;w.spin.rotation.x=w.angle;
-   const s=this.shocks[i],wy=base-pw.s;
-   if(s.axle){const T=this.tmpA,H=this.tmpB,cz=w.z;const hx=w.x-s.sg*0.21;
+  const V=VEH,base=V.comHeight+V.hardpointY,R0=V.wheelRadius;const wyMax=VOLT_META.archY+VOLT_META.archR-R0-0.02;
+  for(let i=0;i<4;i++){const w=this.wheels[i],pw=p.wheels[i];const wy=this.glb?Math.min(base-pw.s,wyMax):base-pw.s;w.steer.position.y=wy;if(w.front)w.steer.rotation.y=p.steerAngle;w.angle+=pw.omega*dt;w.spin.rotation.x=w.angle;
+   const s=this.shocks[i];
+   if(s.axle){const T=this.tmpA,H=this.tmpB,cz=w.z;const hx=w.x-s.sg*(V.tireWidth/2+0.07);
     this.link(s.axle,T.set(s.sg*0.30,R0,cz),H.set(hx,wy,cz));
     this.link(s.armF,T.set(s.sg*0.40,R0-0.13,cz+0.22),H.set(hx+s.sg*0.02,wy-0.11,cz));this.link(s.armB,T.set(s.sg*0.40,R0-0.13,cz-0.22),H.set(hx+s.sg*0.02,wy-0.11,cz));
     this.link(s.upF,T.set(s.sg*0.46,R0+0.17,cz+0.17),H.set(hx+s.sg*0.01,wy+0.13,cz));this.link(s.upB,T.set(s.sg*0.46,R0+0.17,cz-0.17),H.set(hx+s.sg*0.01,wy+0.13,cz));
     this.link(s.spring,s.top,this.tmpC.lerpVectors(s.top,H.set(hx+s.sg*0.03,wy+0.02,cz),0.72));s.spring.scale.x=s.spring.scale.z=1;}
-   const A=this.tmpA.copy(s.top),Bv=this.tmpB.set(s.axle?w.x-s.sg*0.18:w.x*0.86,wy+(s.axle?0.02:0.06),w.z);const len=A.distanceTo(Bv);const mid=A.add(Bv).multiplyScalar(0.5);s.sh.position.copy(mid);s.sf.position.copy(mid);
+   const A=this.tmpA.copy(s.top),Bv=this.tmpB.set(s.axle?w.x-s.sg*(V.tireWidth/2+0.045):w.x*0.86,wy+(s.axle?0.02:0.06),w.z);const len=A.distanceTo(Bv);const mid=A.add(Bv).multiplyScalar(0.5);s.sh.position.copy(mid);s.sf.position.copy(mid);
    const dir=this.tmpB.sub(s.top).normalize();s.sh.quaternion.setFromUnitVectors(this.up,dir);s.sf.quaternion.copy(s.sh.quaternion);s.sh.scale.set(1,len*0.55,1);s.sf.scale.set(1,len,1);s.sh.position.addScaledVector(dir,-len*0.2);}
   const braking=clamp((p.brake||0)*1.3,0,1);this.mat.red.color.setRGB(0.40+0.60*braking,0.06+0.09*braking,0.08+0.02*braking);
   const reversing=p.gear===-1?1:0;this.mat.reverse.color.setRGB(0.14+0.74*reversing,0.14+0.74*reversing,0.15+0.75*reversing);}}
