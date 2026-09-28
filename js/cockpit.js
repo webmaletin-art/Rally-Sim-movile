@@ -285,7 +285,7 @@ export class Cockpit{
   if(this.rig)this.rig[0].hideHead(mode==='onboard');else{this.driver.helmet.visible=mode!=='onboard';this.driver.torso.visible=mode!=='onboard';}}
  /* espejos con imagen (se pueden apagar en Opciones para ganar rendimiento: quedan como vidrio oscuro) */
  setMirrors(on){this.mirrorsOn=on;const dark=this._dark||(this._dark=new THREE.MeshBasicMaterial({color:0x1d242e}));for(const m of this.mirrors||[]){if(!m.userData.live)m.userData.live=m.material;m.material=on?m.userData.live:dark;}}
- renderMirror(renderer,scene,hide){if(this.mirrorsOn===false)return;const C=this.C,root=this.root;root.updateWorldMatrix(true,false);const pos=root.localToWorld(V3(0,C.roofY+0.05,C.eyeZ-1.6)),look=root.localToWorld(V3(0,C.roofY-0.35,C.eyeZ-30));
+ renderMirror(renderer,scene,hide,force){if(this.mirrorsOn===false&&!force)return;const C=this.C,root=this.root;root.updateWorldMatrix(true,false);const pos=root.localToWorld(V3(0,C.roofY+0.05,C.eyeZ-1.6)),look=root.localToWorld(V3(0,C.roofY-0.35,C.eyeZ-30));
   this.mirrorCam.position.copy(pos);this.mirrorCam.lookAt(look);for(const h of hide)h.visible=false;const old=renderer.getRenderTarget();renderer.setRenderTarget(this.mirrorRT);renderer.render(scene,this.mirrorCam);renderer.setRenderTarget(old);for(const h of hide)h.visible=true;}
  dispose(){const rigObjs=new Set((this.rig||[]).map(r=>r.obj));const free=o=>{if(o.geometry)o.geometry.dispose();};this.crew.removeFromParent();this.crew.traverse(o=>{let q=o;while(q){if(rigObjs.has(q))return;q=q.parent;}free(o);});this.root.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){const ms=Array.isArray(o.material)?o.material:[o.material];for(const m of ms){if(m.map)m.map.dispose();m.dispose();}}});this.mirrorRT.dispose();}
 }

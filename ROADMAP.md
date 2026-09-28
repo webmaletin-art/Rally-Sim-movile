@@ -7,7 +7,7 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 - ✅ Pausa: silencio total; cámara en vivo al cambiarla.
 - ✅ Autos iniciales con limitador de fábrica (170 km/h) que se libera en el Taller; cajas escalonadas reales.
 - ✅ Vista previa de efectos con tu auto andando.
-- ✅ Espejos retrovisores (central + laterales) y pantalla de cámara trasera en la vista detrás del piloto; opción para apagarlos.
+- ✅ Espejos retrovisores (central + laterales), opción para apagarlos; cámara trasera en pantalla opcional (apagada por defecto).
 - ✅ Estilo visual **Cámara de acción cruda** (grano, viñeta, imagen blanda, bruma verdosa, vibración). El estilo "Claude" queda igual.
 
 ## En curso (esta tanda)
