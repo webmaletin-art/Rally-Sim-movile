@@ -75,6 +75,7 @@ export class UI{
    case 'testTrack':this.api.startQuick({mode:'timetrial',map:'descent',laps:1,ai:0,skill:1,sky:'day',seg:[0,0.47]});break;
    case 'qset':this.q[ds.k]=isNaN(+ds.v)?ds.v:+ds.v;this.show('quick');break;
    case 'world':A.openWorld();break;
+   case 'toWorld':A.toWorld();break;
    case 'claim':{const a=ACHIEVEMENTS.find(x=>x.id===ds.id),d=P.d;d.claimed=d.claimed||{};if(a&&!d.claimed[a.id]&&a.test(d)){d.claimed[a.id]=1;P.earn(a.cr);A.sfx('buy');this.toast(`${a.icon} ${a.n} · +${fmtCr(a.cr)}`,'green');}this.show('goals');break;}
    case 'resume':A.resume();break;
    case 'respawn':A.respawn();break;
@@ -254,6 +255,7 @@ export class UI{
  s_pause(){this.mount(`<div class="pauseBox"><div class="resT" style="font-size:34px;margin-bottom:6px">Pausa</div>
    <button class="bigbtn" data-a="resume"><span class="bi">▶</span><span class="bt">Continuar</span></button>
    ${this.api.canRespawn()?'<button class="bigbtn dark" data-a="respawn"><span class="bi">🔄</span><span class="bt">Volver a la pista</span></button>':''}
+   ${this.api.canExitToWorld()?'<button class="bigbtn blue" data-a="toWorld"><span class="bi">🗺️</span><span class="bt">Salir al mundo abierto</span></button>':''}
    <button class="bigbtn dark" data-a="restart"><span class="bi">↺</span><span class="bt">Reiniciar</span></button>
    <button class="bigbtn dark" data-a="cam"><span class="bi">🎥</span><span class="bt">Cambiar cámara</span></button>
    <button class="bigbtn dark" data-a="go" data-s="options"><span class="bi">⚙️</span><span class="bt">Opciones</span></button>
