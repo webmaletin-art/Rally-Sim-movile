@@ -31,7 +31,7 @@ export const TIPS=[
  ['Efectos','📹','Cámara de acción cruda','Como una cámara barata pegada al auto: imagen blanda, grano, viñeta y vibración. No cambia la física: solo cómo se ve.'],
  ['Efectos','📺','TV, GoPro, VHS, térmica…','Transmisión de TV, gran angular de acción, cinta de los 80, cámara infrarroja y más. Si el teléfono va lento, "Normal" es el más liviano.'],
  ['Cámaras','👁️','Cámaras','Tocá el botón de cámara para cambiar: interior con el piloto, capó, paragolpes, detrás del piloto, cerca, lejos, aérea y cámara libre. En pausa ves cómo queda antes de volver.'],
- ['Cámaras','🪞','Espejos','En las cámaras interiores tenés espejo central y laterales para ver quién viene atrás. Si el teléfono va lento, apagalos en Opciones → Espejos.'],
+ ['Cámaras','🪞','Espejos','En las cámaras interiores tenés espejo central y laterales para ver quién viene atrás. Si el teléfono va lento, apagalos en Opciones → Espejos retrovisores. Si querés, en Opciones podés activar una cámara trasera en pantalla (apagada por defecto).'],
  ['Consejo','🧠','Mirá lejos','Mirá hacia la salida de la curva, no al capó. El copiloto te canta las curvas: el número indica qué tan cerrada es (1 horquilla … 6 casi recta).'],
  ['Consejo','🛑','Frenar antes','Es más rápido frenar un poco antes y salir acelerando que entrar pasado y tener que corregir. "Lento para entrar, rápido para salir".'],
 ];

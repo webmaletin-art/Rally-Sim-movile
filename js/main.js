@@ -1738,11 +1738,12 @@ class Game{
  renderPost(scene,cam,info){const raw=this.post.preset==='accion';if(raw!==!!this.rawOn){this.rawOn=raw;document.body.classList.toggle('rawcam',raw);this.applySettings();}
   if(raw)this.rawBegin(scene,cam);this.post.render(scene,cam,info);if(raw)this.rawEnd();}
  /* cámara "detrás del piloto": pantalla de cámara trasera arriba al centro (usa la misma imagen del espejo, sin costo extra) */
- rearScreen(){const ck=this.cockpit;if(!ck||!this.inside||CAMERAS[CAM_INDEX].mode!=='rearcabin'||ck.mirrorsOn===false||!ck.mirrorRT||(this.session&&this.session.cine))return;
+ rearCamOn(){return PROFILE.d.settings.rearCam===true&&!(this.session&&this.session.cine);}
+ rearScreen(){const ck=this.cockpit;if(!ck||!this.rearCamOn()||!ck.mirrorRT)return;
   let M=this._rs;if(!M){const sc=new THREE.Scene(),cam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);const fr=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({color:0x0b0e13,depthTest:false}));
    const q=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:ck.mirrorRT.texture,depthTest:false}));q.renderOrder=1;sc.add(fr,q);M=this._rs={sc,cam,fr,q};}
   if(M.q.material.map!==ck.mirrorRT.texture){M.q.material.map=ck.mirrorRT.texture;M.q.material.needsUpdate=true;}
-  const W=innerWidth,H=innerHeight,w=Math.min(0.5,300/W*2),h=w*W/(256/96)/H;M.q.scale.set(w,h,1);M.q.position.set(0,1-0.05-h/2,0);M.fr.scale.set(w+8/W*2,h+8/H*2,1);M.fr.position.copy(M.q.position);
+  const W=innerWidth,H=innerHeight,w=Math.min(0.5,300/W*2),h=w*W/(256/96)/H;M.q.scale.set(w,h,1);const top=this.inside?0.05:Math.min(0.45,112/H*2);M.q.position.set(0,1-top-h/2,0);M.fr.scale.set(w+8/W*2,h+8/H*2,1);M.fr.position.copy(M.q.position);
   const r=this.renderer,ac=r.autoClear;r.autoClear=false;r.setRenderTarget(null);r.render(M.sc,M.cam);r.autoClear=ac;}
  musicCheck(){if(!this.music)return;const want=PROFILE.d.settings.music&&(this.state==='menu'||this.state==='results');if(want)this.music.start();else this.music.stop();}
  applySettings(){const s=PROFILE.d.settings;this.musicCheck&&this.musicCheck();tune.steerMode=s.steerMode;tune.gameSpeed=s.gameSpeed;tune.gyroSensitivity=s.gyroSens;GYRO_TILT_FOR_FULL=55-s.gyroSens*0.40;
@@ -1944,7 +1945,7 @@ class Game{
   if(this.state==='menu'||!this.session){if(this.fxStageOn&&this.fxStage){this.post.autoQuality(this.fps||60,realDt);this.fxStage.render(realDt,this);}else{if(this.rawOn){this.rawOn=false;document.body.classList.remove('rawcam');this.applySettings();}this.showroom.render(realDt);}requestAnimationFrame(t=>this.loop(t));return;}
   if(this.state==='loading')this.loadingStep();
   /* en pausa la cámara sigue viva: al cambiarla se ve cómo queda */
-  if(this.state==='paused'&&this.cameraRig&&this.physics&&!(this.session.director&&this.session.cine)){this.cameraRig.update(Math.min(realDt,1/30),this.physics);if(this.inside&&this.cockpit&&(this.frameN%3)===0)this.cockpit.renderMirror&&this.cockpit.renderMirror(this.renderer,this.scene,[this.car.group,...this.shadows]);}
+  if(this.state==='paused'&&this.cameraRig&&this.physics&&!(this.session.director&&this.session.cine)){this.cameraRig.update(Math.min(realDt,1/30),this.physics);if(this.cockpit&&(this.inside||this.rearCamOn())&&(this.frameN%3)===0)this.cockpit.renderMirror(this.renderer,this.scene,[this.car.group,...this.shadows],this.rearCamOn());}
   const dt=realDt*(tune.gameSpeed/100)*(this.timeScale||1);
   if(this.state==='race'&&this.physics&&this.track){
    this.acc+=dt;let steps=0;while(this.acc>=this.fixed&&steps<8){this.fixedUpdate();this.acc-=this.fixed;steps++}if(steps>=8)this.acc=0;
@@ -1958,7 +1959,8 @@ class Game{
     this.frameInfo={time:now/1000,rough:Math.min(1,cv*0.12+loose*0.08*Math.min(1,sp/15)),rain:this.isRain?1:0,stage:S.time,delta:S.lastDelta??null};
     if(this.cameraRig)this.cameraRig.info=this.frameInfo;
     if(this.cockpit&&!this.inside)this.cockpit.updateCrew(dt,p,this.frameInfo);
-    if(this.inside&&this.cockpit){this.cockpit.update(dt,p,this.input,this.frameInfo);if((this.frameN%3)===0)this.cockpit.renderMirror(this.renderer,this.scene,[this.car.group,...this.shadows]);}}
+    if(this.inside&&this.cockpit){this.cockpit.update(dt,p,this.input,this.frameInfo);}
+    if(this.cockpit&&(this.inside||this.rearCamOn())&&(this.frameN%3)===0)this.cockpit.renderMirror(this.renderer,this.scene,[this.car.group,...this.shadows],this.rearCamOn());}
    if(this.cameraRig)this.cameraRig.update(dt,this.physics);if(S.director)S.director.update(dt,realDt);if(this.dome)this.dome.position.copy(this.camera.position);
    if(this.track.updateTape)this.track.updateTape(this.physics.position);this.updateRain(dt);if(S.ghost)S.updateGhost(dt);
    {let best=null,bd=1e9;for(const c of S.cars)if(c.ai){const d=Math.hypot(c.phys.px-this.physics.px,c.phys.pz-this.physics.pz);if(d<bd){bd=d;best=c;}}this.audio.aiUpdate(best?bd:null,best?best.phys.rpm:0,best?best.phys.V.firingOrder:4);}
