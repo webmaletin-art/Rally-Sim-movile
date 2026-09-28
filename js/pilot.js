@@ -43,13 +43,13 @@ export class RigPilot{
   for(const b of spine)def(b,null,fw,up);def(B.Hips,null,fw,up);def(B.Head,null,fw,up);
   this.side={};for(const [S,sg] of [['Left',1],['Right',-1]]){
    const arm=B[S+'Arm'],fore=B[S+'ForeArm'],hand=B[S+'Hand'],mid=B[S+'HandMiddle1']||B[S+'HandIndex1'];
-   def(arm,fore,fw);def(fore,hand,up);def(hand,mid,up,mid?null:V(sg,0,0));
+   const shb=B[S+'Shoulder'];if(shb)def(shb,arm,up);def(arm,fore,fw);def(fore,hand,up);def(hand,mid,up,mid?null:V(sg,0,0));
    const ul=B[S+'UpLeg'],lg=B[S+'Leg'],ft=B[S+'Foot'],toe=B[S+'ToeBase'];def(ul,lg,fw);def(lg,ft,fw);def(ft,toe,up,toe?null:V(0,-0.5,1).normalize());
    const r=rest.get(arm).p,rf=rest.get(fore).p,rh=rest.get(hand).p;
    const lu=rest.get(ul).p,ll=rest.get(lg).p,lf=rest.get(ft).p;
    /* dedos: eje de nudillos en reposo (T-pose: Z); se curvan hacia la palma */
    const fing=[];for(const F of [...FINGERS,'Thumb'])for(let i=1;i<=3;i++){const b=B[S+'Hand'+F+i];if(b){const ax=V(0,0,1).applyQuaternion(inv(b));fing.push({b,ax,k:F==='Thumb'?0.35:1,sg});}}
-   this.side[S]={arm,fore,hand,ul,lg,ft,fing,sg,L1:r.distanceTo(rf)*s,L2:rf.distanceTo(rh)*s,T1:lu.distanceTo(ll)*s,T2:ll.distanceTo(lf)*s};}
+   this.side[S]={sh:shb,arm,fore,hand,ul,lg,ft,fing,sg,L1:r.distanceTo(rf)*s,L2:rf.distanceTo(rh)*s,T1:lu.distanceTo(ll)*s,T2:ll.distanceTo(lf)*s};}
   this.hip2head=rest.get(B.Hips).p.distanceTo(rest.get(B.Head).p)*s;
   this.headHidden=false;}
  /* orienta el hueso para que su eje primario apunte a P y el secundario hacia S (vectores en espacio de "frame") */
@@ -62,7 +62,7 @@ export class RigPilot{
  /* IK de dos huesos: A (raíz) → codo/rodilla → objetivo T, con vector polo */
  twoBone(A,B2,L1,L2,T,pole,secA,secB){const S=this.fpos(A,V());const d=T.clone().sub(S);let len=d.length();const mx=(L1+L2)*0.999;if(len>mx){d.multiplyScalar(mx/len);len=mx;}len=Math.max(len,Math.abs(L1-L2)+1e-3);
   const dir=d.clone().normalize();const a=(L1*L1-L2*L2+len*len)/(2*len),h=Math.sqrt(Math.max(0,L1*L1-a*a));const pd=pole.clone().addScaledVector(dir,-pole.dot(dir)).normalize();
-  const E=S.clone().addScaledVector(dir,a).addScaledVector(pd,h);const tgt=S.clone().add(d);
+  const E=S.clone().addScaledVector(dir,a).addScaledVector(pd,h);const tgt=S.clone().add(d);if(secA==='fold')secA=tgt.clone().sub(E).addScaledVector(pd,-0.3);
   this.orient(A,E.clone().sub(S),secA||pd);this.orient(B2,tgt.clone().sub(this.fpos(B2,V())),secB||pd);return E;}
  /* pose completa. o={hips,head(pos cabeza objetivo),roll,hands:[{side,wrist,fdir,back}], feet:[{side,pos,knee}], grip} */
  pose(o){if(!this.ok)return;const B=this.B;this.frame.updateWorldMatrix(true,false);this.obj.updateWorldMatrix(true,false);
@@ -76,7 +76,9 @@ export class RigPilot{
   const hd=V(Math.sin(o.roll||0),Math.cos(o.roll||0),0.05).normalize();this.orient(B.Head,hd,V(o.look||0,-0.1,1));
   /* brazos */
   for(const h of o.hands){const S=this.side[h.side];if(!S)continue;const pole=V(S.sg*0.6,-1,-0.25);
-   this.twoBone(S.arm,S.fore,S.L1,S.L2,h.wrist,pole,V(0,0,1),h.back);
+   /* clavícula: acompaña un poco al brazo (sin esto el hombro se estira y deforma) */
+   if(S.sh){const sp=this.fpos(S.sh,V());const tw=h.wrist.clone().sub(sp).normalize();this.orient(S.sh,V(S.sg,0,0).multiplyScalar(0.72).addScaledVector(tw,0.28).add(V(0,-0.04,0)),V(0,1,0));}
+   this.twoBone(S.arm,S.fore,S.L1,S.L2,h.wrist,pole,'fold',h.back);
    this.orient(S.hand,h.fdir,h.back);
    for(const f of S.fing){const r=this.rest.get(f.b).lq;f.b.quaternion.copy(r).multiply(_q.setFromAxisAngle(f.ax,-f.sg*(o.grip??1.1)*0.55*f.k));}
    S.hand.updateMatrixWorld(true);}

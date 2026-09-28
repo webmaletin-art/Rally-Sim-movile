@@ -2,7 +2,7 @@
 import {CAR_META,UPG_BY_ID,TIRE_BY_ID,xpForLevel} from './data.js';
 
 const KEY='gskorp_rally_profile_v1';
-export const DEFAULT_SETTINGS={visual:'none',shadows:true,notes:true,copilot:true,steerMode:'wheel',gyroSens:50,gameSpeed:100,quality:'media',volume:80,music:true,
+export const DEFAULT_SETTINGS={visual:'none',shadows:true,notes:true,copilot:true,steerMode:'wheel',gyroSens:50,gameSpeed:100,quality:'auto',volume:80,music:true,
  units:'kmh',abs:true,tc:50,stab:30,camera:1,hud:'full',vibrate:true};
 
 export function newCarState(id){
@@ -17,7 +17,7 @@ export function defaultProfile(){
 export class Profile{
  constructor(){this.d=this.load();this.listeners=[];}
  load(){try{const raw=localStorage.getItem(KEY);if(raw){const d=JSON.parse(raw);const def=defaultProfile();
-   d.settings={...def.settings,...(d.settings||{})};d.stats={...def.stats,...(d.stats||{})};d.daily=d.daily||def.daily;d.events=d.events||{};d.owned=d.owned||{};
+   d.settings={...def.settings,...(d.settings||{})};if(!d.settings._q2){d.settings._q2=1;if(d.settings.quality==='media')d.settings.quality='auto';}d.stats={...def.stats,...(d.stats||{})};d.daily=d.daily||def.daily;d.events=d.events||{};d.owned=d.owned||{};
    for(const id in d.owned){if(!CAR_META[id])delete d.owned[id];else d.owned[id]={...newCarState(id),...d.owned[id]};}
    if(d.current&&!d.owned[d.current])d.current=Object.keys(d.owned)[0]||null;
    return d;}}catch(e){console.warn('perfil',e)}

@@ -39,7 +39,7 @@ export class AIDriver{
   while(acc<dist){const j=(i+1)%N;acc+=S[i].distanceTo(S[j]);i=j;}
   const p=S[i],l=tr.laterals[i];return {x:p.x+l.x*lane,z:p.z+l.z*lane,i};}
  update(h,others,time){
-  const p=this.p,V=p.V,tr=this.track,N=tr.samples.length,inp=this.inp;
+  const p=this.p,V=p.V,tr=this.track,N=tr.samples.length,inp=this.inp;this._others=others;
   if(!this.enabled){inp.throttle=0;inp.brake=0;inp.handbrake=true;inp.steer=0;return inp;}inp.handbrake=false;
   this.locate();
   const spd=Math.hypot(p.vx,p.vz),hw=tr.halfWidth;
@@ -58,7 +58,9 @@ export class AIDriver{
      const side=(l>0?-1:1);this.laneT=Math.max(-laneMax,Math.min(laneMax,(this.lat||0)+side*2.6));}}}
   if(blockV!=null&&this.aggr<0.8)vt=Math.min(vt,blockV+2+this.aggr*4);
   /* dirección: pure pursuit */
-  const Ld=Math.max(6,Math.min(32,5+spd*0.55));const tgt=this.pointAhead(Ld,lane);
+  const Ld=Math.max(6,Math.min(32,5+spd*0.55));let tgt=this.pointAhead(Ld,lane);
+  /* carriles con islas (trinchera): elegir un carril libre con anticipación */
+  if(tr.laneFix){if(this.pref===undefined)this.pref=[-1,0,1][Math.floor(Math.random()*3)];const far=this.pointAhead(Math.max(Ld,30),lane);const l2=tr.laneFix(far.i,lane,this.pref);if(Math.abs(l2-lane)>0.05){lane=l2;tgt=this.pointAhead(Ld,lane);}else{const l3=tr.laneFix(tgt.i,lane,this.pref);if(Math.abs(l3-lane)>0.05){lane=l3;tgt=this.pointAhead(Ld,lane);}}}
   const dx=tgt.x-p.px,dz=tgt.z-p.pz;const fwd=dx*fx+dz*fz,lft=dx*lx+dz*lz;const alpha=Math.atan2(lft,Math.max(0.5,fwd));
   let delta=Math.atan(2*V.wheelBase*Math.sin(alpha)/Ld);
   /* corrección por error lateral (tipo Stanley): no dejar que el auto se abra de a poco */
@@ -79,8 +81,15 @@ export class AIDriver{
   /* recuperación */
   if(time>2&&spd<1.5&&inp.throttle>0.3)this.stuckT+=h;else this.stuckT=Math.max(0,this.stuckT-h*2);
   if(Math.abs(this.lat)>hw+7)this.offT+=h;else this.offT=0;
-  if(this.stuckT>2.5||this.offT>3){this.respawn();}
+  /* trabado contra algo: primero marcha atrás girando al revés; si no alcanza, reaparece */
+  if(this.unstickT>0){this.unstickT-=h;inp.throttle=0;inp.brake=1;inp.steer=-this.unstickS;if(this.unstickT<=0)this.stuckT=Math.min(this.stuckT,1.4);return inp;}
+  if(this.stuckT>1.5&&this.stuckT<3&&!this.triedUnstick){this.triedUnstick=true;this.unstickT=1.3;this.unstickS=inp.steer||(Math.random()<.5?-1:1);}
+  if(this.stuckT<0.2)this.triedUnstick=false;
+  if(this.stuckT>4||this.offT>3){this.respawn();this.triedUnstick=false;}
   return inp;}
- respawn(){const tr=this.track,N=tr.samples.length,i=(this.idx+2)%N,s=tr.samples[i],tg=tr.tangents[i];
-  this.p.reset({x:s.x,z:s.z,yaw:Math.atan2(tg.x,tg.z)});this.stuckT=0;this.offT=0;this.hint=i;}
+ respawn(){const tr=this.track,N=tr.samples.length;
+  /* aparecer en un carril libre (no sobre una isla de roca ni encima de otro auto) */
+  let i=(this.idx+2)%N,x=0,z=0;for(let k=2;k<60;k+=3){i=(this.idx+k)%N;const s=tr.samples[i],L=tr.laterals[i];const lo=tr.laneFix?tr.laneFix(i,this.laneT||0,this.pref):0;x=s.x+L.x*lo;z=s.z+L.z*lo;
+   if(!(this._others||[]).some(o=>o!==this.p&&Math.hypot(o.px-x,o.pz-z)<7))break;}
+  const tg=tr.tangents[i];this.p.reset({x,z,yaw:Math.atan2(tg.x,tg.z)});this.stuckT=0;this.offT=0;this.hint=i;}
 }
