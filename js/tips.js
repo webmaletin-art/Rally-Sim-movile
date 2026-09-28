@@ -1,0 +1,40 @@
+/* ═══ Consejos de las pantallas de carga: controles, mecánicas, menús, modos avanzados y efectos ═══
+   [categoría, icono, título, texto, modos donde se muestran primero (opcional)] */
+export const TIPS=[
+ ['Controles','🎮','Volante y pedal','Girá el volante de la izquierda con el dedo. En la barra de la derecha, arriba es GAS y abajo FRENO: podés dosificar, no hace falta ir a fondo.'],
+ ['Controles','🅷','Freno de mano','El botón H bloquea las ruedas traseras: sirve para cruzar el auto en horquillas y curvas lentas. En curvas rápidas usalo poquito o te trompeás.'],
+ ['Controles','↕️','Caja manual','En Opciones → Caja de cambios elegí Manual: aparece una tira a la izquierda. Deslizá hacia arriba para subir y hacia abajo para bajar (o tocá arriba/abajo). Si bajás con muchas vueltas, la caja no entra: protege el motor.'],
+ ['Controles','📱','Dirección por inclinación','En Opciones podés manejar inclinando el teléfono (acelerómetro). La primera vez el teléfono pide permiso. Usá "Recalibrar" sosteniéndolo en tu posición cómoda.'],
+ ['Controles','✋','Varios dedos a la vez','Podés tocar volante, pedal, freno de mano y nitro al mismo tiempo: el juego reconoce cada dedo por separado.'],
+ ['Mecánica','⚙️','Cambios reales','Cada auto tiene su caja: la automática sube cerca de las vueltas máximas y reduce cuando frenás. Mirá la marcha en el tablero: 1ª para arrancar, las largas para velocidad.'],
+ ['Mecánica','🚦','Limitador de fábrica','Los autos iniciales vienen limitados a 170 km/h, como los de verdad. En el Taller, la ECU reprogramada lo sube y el motor de competición lo quita: la velocidad se gana de a poco.'],
+ ['Mecánica','🛞','Superficies','Asfalto, tierra, pasto y banquina agarran distinto. En tierra frená antes y abrí las manos: el auto se desliza. Los neumáticos del Taller cambian mucho el agarre en cada superficie.'],
+ ['Mecánica','⚖️','Transferencia de peso','Al frenar el peso va adelante (dobla mejor, la cola se aliviana); al acelerar va atrás. Frená derecho, soltá el freno al girar y acelerá a la salida.'],
+ ['Mecánica','🌀','Derrapar','Para cruzar el auto: entrá un poco rápido, tocá el freno de mano o levantá el pie en la curva, y mantené el gas con contravolante. Cuanto más cruzado y más tiempo, más puntos en Drift.'],
+ ['Mecánica','💥','Daño','Los golpes fuertes contra paredes y rocas dañan el auto: pierde potencia. En el Modo historia la barra AUTO baja con cada embestida: si llega a 0% te atrapan.'],
+ ['Mecánica','🏔️','Crestas y badenes','En las crestas el auto se aliviana y puede despegar: no gires ni frenes en el aire. Al caer, esperá a que apoyen las cuatro ruedas antes de acelerar a fondo.'],
+ ['Modos','🏆','Modo carrera','5 copas con eventos de carrera, contrarreloj, drift, radar, banderas y estacionamiento. Ganá medallas para desbloquear la copa siguiente y juntar créditos.'],
+ ['Modos','📖','Modo historia','Capítulo 1 · La Fuga: una cinemática manejada por la IA y después te toca a vos escapar de la mina. Podés saltar la cinemática con "Saltar".','story'],
+ ['Modos','🗺️','Mundo abierto','Recorré libre, rompé los carteles GSKORP y pasá por los radares. Buscá la entrada de la mina: te lleva a La Trinchera.','world'],
+ ['Modos','⛏️','La Trinchera','Caminos hundidos de una mina vieja: se abren en dos o tres carriles con islas de roca y vuelven a unirse. Elegí el carril con tiempo y ojo en los túneles, que están más oscuros.'],
+ ['Modos','⏱️','Contrarreloj y fantasma','En contrarreloj corrés contra tu mejor vuelta: el auto fantasma te muestra por dónde fuiste y los parciales te dicen si vas ganando o perdiendo tiempo.','timetrial'],
+ ['Modos','🅿️','Estacionamiento','Entrá al lugar marcado sin tocar nada. Despacio: cada toque suma 3 segundos.','parking'],
+ ['Modos','🌀','Drift','Sumá puntos manteniendo el auto cruzado. El multiplicador sube si encadenás derrapes sin parar; si enderezás o chocás, se corta el combo.','drift'],
+ ['Modos','🏁','Carrera rápida','En Evento rápido armás tu carrera: pista, cantidad de rivales, vueltas y clima. Ideal para partidas cortas.','race'],
+ ['Menús','🔧','Taller','Motor, turbo, aligerado, frenos, suspensión, caja, diferencial y aero. Algunas piezas habilitan ajustes nuevos en Ajuste fino.'],
+ ['Menús','🎛️','Ajuste fino','Resortes, amortiguadores, barras, caída, convergencia, presión de gomas, reparto de frenos y de tracción. Cambiá una cosa por vez y probá en la Pista de pruebas.'],
+ ['Menús','⛰️','Pista de pruebas','Una bajada de asfalto con badenes largos: sirve para probar frenos, aceleración y dirección después de tocar el Ajuste fino.'],
+ ['Menús','🏪','Concesionaria y garaje','Comprá autos nuevos con los créditos y probalos antes en la prueba de manejo. En el garaje elegís cuál usar; cada uno guarda sus piezas y su pintura.'],
+ ['Menús','⚡','Calidad automática','Con Calidad en "Auto (optimizar)" el juego mide los cuadros por segundo y baja o sube los gráficos solo. Si tu teléfono calienta, elegí Baja.'],
+ ['Efectos','🎥','Efectos de cámara','Opciones → Efectos de cámara: cada estilo tiene su explicación y una vista previa con tu auto. Tocá Aplicar para quedártelo.'],
+ ['Efectos','✨','Claude · Realidad','Foco en tu auto, bruma a lo lejos, rayos de sol entre los árboles, destello de lente y gotas cuando llueve. El más realista.'],
+ ['Efectos','📹','Cámara de acción cruda','Como una cámara barata pegada al auto: imagen blanda, grano, viñeta y vibración. No cambia la física: solo cómo se ve.'],
+ ['Efectos','📺','TV, GoPro, VHS, térmica…','Transmisión de TV, gran angular de acción, cinta de los 80, cámara infrarroja y más. Si el teléfono va lento, "Normal" es el más liviano.'],
+ ['Cámaras','👁️','Cámaras','Tocá el botón de cámara para cambiar: interior con el piloto, capó, paragolpes, detrás del piloto, cerca, lejos, aérea y cámara libre. En pausa ves cómo queda antes de volver.'],
+ ['Cámaras','🪞','Espejos','En las cámaras interiores tenés espejo central y laterales para ver quién viene atrás. Si el teléfono va lento, apagalos en Opciones → Espejos.'],
+ ['Consejo','🧠','Mirá lejos','Mirá hacia la salida de la curva, no al capó. El copiloto te canta las curvas: el número indica qué tan cerrada es (1 horquilla … 6 casi recta).'],
+ ['Consejo','🛑','Frenar antes','Es más rápido frenar un poco antes y salir acelerando que entrar pasado y tener que corregir. "Lento para entrar, rápido para salir".'],
+];
+
+export function tipsFor(type){const first=TIPS.filter(t=>t[4]&&t[4]===type),rest=TIPS.filter(t=>!(t[4]&&t[4]===type));
+ for(let i=rest.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[rest[i],rest[j]]=[rest[j],rest[i]];}return [...first,...rest];}

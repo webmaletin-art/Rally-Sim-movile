@@ -134,9 +134,11 @@ export class Cockpit{
   /* espejo interior y retrovisores exteriores (textura viva) */
   this.mirrorRT=new THREE.WebGLRenderTarget(256,96,{depthBuffer:true});
   const mm=new THREE.MeshBasicMaterial({map:this.mirrorRT.texture});this.mirrorRT.texture.wrapS=THREE.RepeatWrapping;this.mirrorRT.texture.repeat.x=-1;this.mirrorRT.texture.offset.x=1;
-  const mpos=V3(0,rY-0.11,eZ+0.40);add(new THREE.BoxGeometry(0.27,0.085,0.03),M.trim,mpos.x,mpos.y,mpos.z+0.015);const mir=add(new THREE.PlaneGeometry(0.25,0.07),mm,mpos.x,mpos.y,mpos.z);mir.lookAt(root.localToWorld(eye.clone()));
-  add(new THREE.CylinderGeometry(0.008,0.008,0.07,6),M.trim,0,rY-0.05,eZ+0.42);
-  for(const sd of [1,-1]){const sp=V3(sd*(hw+0.17),cowlY+0.07,cz-0.08);add(new THREE.BoxGeometry(0.2,0.12,0.07),M.paint,sp.x,sp.y,sp.z+0.04);const sm=add(new THREE.PlaneGeometry(0.18,0.1),mm,sp.x,sp.y,sp.z);sm.lookAt(root.localToWorld(eye.clone()));add(new THREE.BoxGeometry(0.12,0.03,0.05),M.paint,sd*(hw+0.07),cowlY+0.04,cz-0.05);}
+  /* el central, bajo el borde superior del parabrisas y dentro del campo visual del casco */
+  const my=Math.min(rY-0.14,eY+0.1),mpos=V3(0.02,my,eZ+0.42);this.mirrors=[];/* orientado entre el casco del piloto y la cámara de atrás de las butacas: se ve la imagen en las dos cámaras interiores */const aim=V3(xD*0.5,eY+0.06,eZ-0.36);const nrm=aim.clone().sub(mpos).normalize(),fp=mpos.clone().addScaledVector(nrm,-0.02);/* el marco va DETRÁS del vidrio (sobre su normal), no delante */const frame=add(new THREE.BoxGeometry(0.29,0.095,0.03),M.trim,fp.x,fp.y,fp.z);frame.lookAt(root.localToWorld(aim.clone()));const mir=add(new THREE.PlaneGeometry(0.27,0.08),mm,mpos.x,mpos.y,mpos.z);mir.lookAt(root.localToWorld(aim.clone()));this.mirrors.push(mir);
+  add(new THREE.CylinderGeometry(0.008,0.008,Math.max(0.04,rY-my-0.02),6),M.trim,0.02,(rY+my)/2,eZ+0.44);
+  /* laterales: afuera, a la altura de la vista, visibles por la ventanilla (no tapados por el parante) */
+  for(const sd of [1,-1]){const sp=V3(sd*(hw+0.21),eY-0.1,cz-0.02),hn=eye.clone().sub(sp).normalize(),hp=sp.clone().addScaledVector(hn,-0.04);const hous=add(new THREE.BoxGeometry(0.25,0.16,0.07),M.paint,hp.x,hp.y,hp.z);hous.lookAt(root.localToWorld(eye.clone()));const sm=add(new THREE.PlaneGeometry(0.22,0.13),mm,sp.x,sp.y,sp.z);sm.lookAt(root.localToWorld(eye.clone()));this.mirrors.push(sm);add(new THREE.BoxGeometry(0.16,0.03,0.05),M.paint,sd*(hw+0.09),eY-0.17,cz-0.03);}
   /* puertas */
   for(const sd of [1,-1]){const d=add(new THREE.BoxGeometry(0.04,eY-0.22-floorY,cz-0.1-(eZ-1.0)),M.carbon,sd*hw,(eY-0.22+floorY)/2,(cz-0.1+eZ-1.0)/2);
    add(new THREE.BoxGeometry(0.1,0.05,cz-0.1-(eZ-1.0)),M.dash,sd*(hw-0.03),eY-0.21,(cz-0.1+eZ-1.0)/2);}
@@ -281,7 +283,9 @@ export class Cockpit{
   cam.fov=mode==='onboard'?74:72;cam.near=0.04;cam.updateProjectionMatrix();
   /* el piloto propio no se dibuja en la vista de casco */
   if(this.rig)this.rig[0].hideHead(mode==='onboard');else{this.driver.helmet.visible=mode!=='onboard';this.driver.torso.visible=mode!=='onboard';}}
- renderMirror(renderer,scene,hide){const C=this.C,root=this.root;root.updateWorldMatrix(true,false);const pos=root.localToWorld(V3(0,C.roofY+0.05,C.eyeZ-1.6)),look=root.localToWorld(V3(0,C.roofY-0.35,C.eyeZ-30));
+ /* espejos con imagen (se pueden apagar en Opciones para ganar rendimiento: quedan como vidrio oscuro) */
+ setMirrors(on){this.mirrorsOn=on;const dark=this._dark||(this._dark=new THREE.MeshBasicMaterial({color:0x1d242e}));for(const m of this.mirrors||[]){if(!m.userData.live)m.userData.live=m.material;m.material=on?m.userData.live:dark;}}
+ renderMirror(renderer,scene,hide){if(this.mirrorsOn===false)return;const C=this.C,root=this.root;root.updateWorldMatrix(true,false);const pos=root.localToWorld(V3(0,C.roofY+0.05,C.eyeZ-1.6)),look=root.localToWorld(V3(0,C.roofY-0.35,C.eyeZ-30));
   this.mirrorCam.position.copy(pos);this.mirrorCam.lookAt(look);for(const h of hide)h.visible=false;const old=renderer.getRenderTarget();renderer.setRenderTarget(this.mirrorRT);renderer.render(scene,this.mirrorCam);renderer.setRenderTarget(old);for(const h of hide)h.visible=true;}
  dispose(){const rigObjs=new Set((this.rig||[]).map(r=>r.obj));const free=o=>{if(o.geometry)o.geometry.dispose();};this.crew.removeFromParent();this.crew.traverse(o=>{let q=o;while(q){if(rigObjs.has(q))return;q=q.parent;}free(o);});this.root.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){const ms=Array.isArray(o.material)?o.material:[o.material];for(const m of ms){if(m.map)m.map.dispose();m.dispose();}}});this.mirrorRT.dispose();}
 }
