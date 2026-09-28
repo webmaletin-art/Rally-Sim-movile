@@ -80,7 +80,7 @@ export class CoPilot{
   const fx=Math.sin(p.yaw),fz=Math.cos(p.yaw),lx=Math.cos(p.yaw),lz=-Math.sin(p.yaw);
   /* rivales alrededor */
   let side=null,behind=false,ahead=false,near=1e9;
-  for(const c of S.cars){if(!c.ai)continue;const q=c.phys,dx=q.px-p.px,dz=q.pz-p.pz,f=dx*fx+dz*fz,l=dx*lx+dz*lz,d=Math.hypot(dx,dz);near=Math.min(near,d);
+  for(const c of S.cars){if(!c.ai||c.ai.passive||c.sleep)continue;const q=c.phys,dx=q.px-p.px,dz=q.pz-p.pz,f=dx*fx+dz*fz,l=dx*lx+dz*lz,d=Math.hypot(dx,dz);near=Math.min(near,d);
    if(Math.abs(f)<3.5&&Math.abs(l)>1.6&&Math.abs(l)<5)side=l>0?'rival_izquierda':'rival_derecha';
    else if(f<-3.5&&f>-14&&Math.abs(l)<2.8)behind=true;
    else if(f>5&&f<20&&Math.abs(l)<4&&(sp-(q.vx*fx+q.vz*fz))>1)ahead=true;}
