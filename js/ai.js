@@ -15,10 +15,14 @@ export function speedProfile(track,mu){
   const ds=Math.hypot(c.x-a.x,c.z-a.z)/2+1e-3;kap[i]=Math.abs(d)/ds;}
  /* suavizado */
  const k2=new Float32Array(N);for(let i=0;i<N;i++){let s=0;for(let j=-3;j<=3;j++)s+=kap[(i+j+N)%N];k2[i]=s/7;}
- for(let i=0;i<N;i++){const k=Math.max(k2[i],1e-4);v[i]=Math.min(95,Math.sqrt(mu*G/k));}
+ /* en bajada se deja margen: cualquier error cuesta más metros para corregir */
+ for(let i=0;i<N;i++){const k=Math.max(k2[i],1e-4),j=(i+4)%N,gd=Math.max(0,(S[i].y-S[j].y)/Math.max(1,Math.hypot(S[j].x-S[i].x,S[j].z-S[i].z)));v[i]=Math.min(95,Math.sqrt(mu*(1-1.6*Math.min(0.2,gd))*G/k));}
+ /* crestas: con curvatura vertical convexa el auto se aliviana; no pasar tan rápido que despegue */
+ for(let i=0;i<N;i++){const a=S[(i-3+N)%N],b=S[i],c=S[(i+3)%N];const d1=Math.hypot(b.x-a.x,b.z-a.z)||1,d2=Math.hypot(c.x-b.x,c.z-b.z)||1;const kv=((b.y-a.y)/d1-(c.y-b.y)/d2)/((d1+d2)/2);if(kv>1e-4)v[i]=Math.min(v[i],Math.sqrt(0.5*G/kv));}
  /* frenada: v_i <= sqrt(v_{i+1}^2 + 2 a ds) — dos vueltas hacia atrás para cerrar el circuito */
  const aB=mu*G*0.72;
- for(let pass=0;pass<2;pass++)for(let i=N-1;i>=0;i--){const j=(i+1)%N,ds=S[i].distanceTo(S[j]);v[i]=Math.min(v[i],Math.sqrt(v[j]*v[j]+2*aB*ds));}
+ /* en bajada la gravedad resta frenada (y en subida suma) */
+ for(let pass=0;pass<2;pass++)for(let i=N-1;i>=0;i--){const j=(i+1)%N,ds=S[i].distanceTo(S[j]),gr=(S[i].y-S[j].y)/Math.max(0.5,ds);const a=Math.max(1.5,aB-G*gr);v[i]=Math.min(v[i],Math.sqrt(v[j]*v[j]+2*a*ds));}
  track[key]={v,kap};return track[key];}
 
 export class AIDriver{
@@ -57,15 +61,20 @@ export class AIDriver{
   const Ld=Math.max(6,Math.min(32,5+spd*0.55));const tgt=this.pointAhead(Ld,lane);
   const dx=tgt.x-p.px,dz=tgt.z-p.pz;const fwd=dx*fx+dz*fz,lft=dx*lx+dz*lz;const alpha=Math.atan2(lft,Math.max(0.5,fwd));
   let delta=Math.atan(2*V.wheelBase*Math.sin(alpha)/Ld);
+  /* corrección por error lateral (tipo Stanley): no dejar que el auto se abra de a poco */
+  delta+=Math.atan(0.4*((this.lat||0)-lane)/Math.max(6,spd));
   /* contravolanteo suave si la cola se va (ángulo de deriva grande) */
   const slipAng=spd>4?Math.atan2(p.vLat||0,Math.max(1,Math.abs(p.vLong||0))):0;delta+=slipAng*0.55;
-  const sf=1-0.45*Math.min(1,spd/40);const st=-delta/(V.maxSteer*sf);
+  const sf=p.steerScale?p.steerScale(spd):1-0.45*Math.min(1,spd/40);const st=-delta/(V.maxSteer*sf);
   inp.steer=Math.max(-1,Math.min(1,st));
   /* acelerador / freno */
   const err=vt-spd;
   if(err>0){inp.throttle=Math.min(1,0.35+err*0.25);inp.brake=0;}
   else{inp.throttle=err>-1.2?0.25:0;inp.brake=err<-1.2?Math.min(1,-err*0.22):0;}
   if(Math.abs(inp.steer)>0.95&&spd>12)inp.throttle*=0.6;
+  /* círculo de fricción: si las gomas ya trabajan doblando, dosificar el acelerador (y más si el auto se abre hacia el borde) */
+  {const latUse=Math.abs((p.vLong||spd)*p.yawRate)/(this.mu*G);const edge=Math.max(0,(Math.abs(this.lat||0)-(hw-1.2))/2)*(Math.sign(this.lat||0)===Math.sign(-(inp.steer||0))?0:1);
+   const lim=Math.max(0.15,1-Math.max(0,latUse-0.3)*2.2-edge*0.5);if(inp.throttle>lim)inp.throttle=lim;}
   inp.nitro=V.nitroCap>0&&err>6&&Math.abs(inp.steer)<0.2&&p.nitro>V.nitroCap*0.3;
   /* recuperación */
   if(time>2&&spd<1.5&&inp.throttle>0.3)this.stuckT+=h;else this.stuckT=Math.max(0,this.stuckT-h*2);

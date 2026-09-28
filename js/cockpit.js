@@ -253,3 +253,38 @@ export class Cockpit{
  dispose(){const rigObjs=new Set((this.rig||[]).map(r=>r.obj));const free=o=>{if(o.geometry)o.geometry.dispose();};this.crew.removeFromParent();this.crew.traverse(o=>{let q=o;while(q){if(rigObjs.has(q))return;q=q.parent;}free(o);});this.root.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){const ms=Array.isArray(o.material)?o.material:[o.material];for(const m of ms){if(m.map)m.map.dispose();m.dispose();}}});this.mirrorRT.dispose();}
 }
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+
+/* ═══ Tripulación liviana para los autos rivales: piloto y copiloto con esqueleto, sin habitáculo.
+   Cada tripulación tiene su propio "cuello" (rigidez/amortiguación), cuánto se inclina el cuerpo
+   y cuánto rola la cabeza: se mueven distinto con las mismas fuerzas G. Traje de otro color. ═══ */
+const SUIT_HUES=[2.3,4.1,1.2,3.3,5.2,0.55];
+let NOTE_TEX=null;
+function noteTex(){if(NOTE_TEX)return NOTE_TEX;NOTE_TEX=tex(64,80,(c,w,h)=>{c.fillStyle='#f2efe6';c.fillRect(0,0,w,h);c.strokeStyle='#9fb2c8';for(let y=12;y<h;y+=9){c.beginPath();c.moveTo(4,y);c.lineTo(w-4,y);c.stroke();}c.fillStyle='#c41e24';c.fillRect(0,0,3,h);});return NOTE_TEX;}
+export class Crew{
+ constructor(type,seed=0){const C=this.C={...(CABIN[type]||CABIN.t1plus)};this.group=new THREE.Group();this.group.name='crew';this.ok=false;const src=pilotSource();if(!src)return;
+  let q=(Math.imul(seed+1,2654435761)>>>0)||1;const rnd=()=>{q^=q<<13;q>>>=0;q^=q>>>17;q^=q<<5;q>>>=0;return q/4294967296;};rnd();rnd();
+  this.k=52+rnd()*42;this.c=7+rnd()*6;this.lean=0.35+rnd()*0.4;this.rollK=0.8+rnd()*0.8;this.gain=0.8+rnd()*0.45;
+  const hue=SUIT_HUES[seed%SUIT_HUES.length];
+  try{this.rigs=[new RigPilot(src,this.group,{hue}),new RigPilot(src,this.group,{hue})];}catch(e){console.warn('tripulación',e);return;}
+  if(!this.rigs.every(r=>r.ok))return;for(const r of this.rigs)this.group.add(r.obj);
+  const xD=this.xD=0.37;this.wc=V3(xD,C.eyeY-0.31,C.eyeZ+0.37);this.n=V3(xD,C.eyeY-0.12,C.eyeZ).sub(this.wc).normalize();
+  this.wX=V3(0,1,0).cross(this.n).normalize();this.wY=this.n.clone().cross(this.wX);
+  this.book=new THREE.Mesh(new THREE.PlaneGeometry(0.2,0.25),new THREE.MeshLambertMaterial({map:noteTex(),side:THREE.DoubleSide}));this.book.rotation.x=-0.95;this.group.add(this.book);
+  this.head=V3(0,0,0);this.headV=V3(0,0,0);this.body=V3(0,0,0);this.steerVis=0;this._v=V3(0,0,0);this.ok=true;}
+ update(dt,p,pose){if(!this.ok)return;const C=this.C;dt=Math.min(dt,0.05);
+  const g=this.gain,tgt=this._v.set(clamp(-p.aLat*0.011*g,-0.09,0.09),clamp((p.vy||0)*-0.01,-0.04,0.04),clamp(-p.aLong*0.0095*g,-0.075,0.075));
+  const hs=Math.max(1,Math.ceil(dt/0.01)),hd=dt/hs;for(let s=0;s<hs;s++)for(const ax of ['x','y','z']){const a=this.k*(tgt[ax]-this.head[ax])-this.c*this.headV[ax];this.headV[ax]+=a*hd;this.head[ax]=clamp(this.head[ax]+this.headV[ax]*hd,-0.11,0.11);}
+  this.body.lerp(V3(this.head.x,this.head.y,this.head.z).multiplyScalar(this.lean),1-Math.exp(-dt*9));
+  this.steerVis+=((p.steerAngle*7.5)-this.steerVis)*(1-Math.exp(-dt*25));
+  if(!pose)return;
+  const xD=this.xD,b=this.body,h=this.head,fy=C.eyeY-1.05,th=clamp(this.steerVis,-1.1,1.1),cs=Math.cos(th),sn=Math.sin(th),n=this.n;const hands=[];
+  for(const sd of [1,-1]){const lx=sd*0.17,ly=0.015;const gp=this.wc.clone().addScaledVector(this.wX,lx*cs-ly*sn).addScaledVector(this.wY,lx*sn+ly*cs);const r=gp.clone().sub(this.wc).normalize();
+   hands.push({side:sd>0?'Right':'Left',wrist:gp.clone().addScaledVector(n,0.07).addScaledVector(r,0.045),fdir:r.clone().multiplyScalar(-0.15).addScaledVector(n,-0.85).normalize(),back:r.clone().multiplyScalar(0.9).addScaledVector(n,0.25).normalize()});}
+  this.rigs[0].pose({hips:V3(xD+b.x*0.3,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.11+b.z*0.2),head:V3(xD+h.x,C.eyeY-0.07+h.y,C.eyeZ-0.09+h.z),roll:h.x*1.2*this.rollK,look:clamp(p.steerAngle*0.45,-0.35,0.35),hands,grip:1.2,
+   feet:[{side:'Left',pos:V3(xD+0.13,fy+0.13,C.eyeZ+0.60)},{side:'Right',pos:V3(xD-0.11,fy+0.13,C.eyeZ+0.62)}]});
+  const x=-xD+b.x*0.9,by=C.eyeY-0.47+b.y,bz=C.eyeZ+0.27+b.z;this.book.position.set(x+0.02,by+0.03,bz+0.03);
+  this.rigs[1].pose({hips:V3(-xD+b.x*0.3,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.13+b.z*0.2),head:V3(-xD+h.x*0.9,C.eyeY-0.09+h.y,C.eyeZ-0.07+h.z),roll:h.x*1.1*this.rollK,look:-0.05,grip:0.8,
+   hands:[{side:'Left',wrist:V3(x+0.14,by,bz-0.05),fdir:V3(-0.5,-0.2,0.8).normalize(),back:V3(0.4,1,0.1).normalize()},{side:'Right',wrist:V3(x-0.14,by,bz-0.05),fdir:V3(0.5,-0.2,0.8).normalize(),back:V3(-0.4,1,0.1).normalize()}],
+   feet:[{side:'Left',pos:V3(-xD+0.13,fy+0.12,C.eyeZ+0.55)},{side:'Right',pos:V3(-xD-0.13,fy+0.12,C.eyeZ+0.55)}]});}
+ dispose(){this.group.removeFromParent();if(this.rigs)for(const r of this.rigs)r.dispose();if(this.book){this.book.geometry.dispose();this.book.material.dispose();}}
+}

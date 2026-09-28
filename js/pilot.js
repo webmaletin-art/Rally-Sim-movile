@@ -11,14 +11,20 @@ export function loadPilot(url='models/pilot.glb',opts={}){if(!PROM)PROM=new Prom
 export function pilotSource(){return SRC;}
 
 const V=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
+/* traje de otro color: rota el tono de las zonas saturadas (el traje), deja casco/visera/gris como están */
+function hueMat(m,hue){const c=m.clone();c.onBeforeCompile=sh=>{sh.uniforms.uHue={value:hue};sh.fragmentShader='uniform float uHue;\n'+sh.fragmentShader.replace('#include <map_fragment>',`#include <map_fragment>
+ {vec3 c=diffuseColor.rgb;float mx=max(c.r,max(c.g,c.b)),mn=min(c.r,min(c.g,c.b));float m=smoothstep(0.25,0.5,(mx-mn)/(mx+1e-4));
+  vec3 yiq=mat3(0.299,0.596,0.211,0.587,-0.274,-0.523,0.114,-0.322,0.312)*c;float cs=cos(uHue),sn=sin(uHue);yiq.yz=mat2(cs,sn,-sn,cs)*yiq.yz;
+  vec3 rc=mat3(1.0,1.0,1.0,0.956,-0.272,-1.106,0.621,-0.647,1.703)*yiq;diffuseColor.rgb=mix(c,max(rc,0.0),m);}`);};c.customProgramCacheKey=()=>'hue'+hue.toFixed(2);return c;}
 const norm=n=>n.replace(/^mixamorig\d*[:_]?/i,'').replace(/^.*[:|]/,'');
 const FINGERS=['Index','Middle','Ring','Pinky'];
-const _m1=new THREE.Matrix4(),_m2=new THREE.Matrix4(),_q=new THREE.Quaternion(),_q2=new THREE.Quaternion(),_a=V(),_b=V(),_c=V(),_d=V();
+const _m1=new THREE.Matrix4(),_m2=new THREE.Matrix4(),_q=new THREE.Quaternion(),_q2=new THREE.Quaternion(),_q3=new THREE.Quaternion(),_a=V(),_b=V(),_c=V(),_d=V(),_e=V();
 
 export class RigPilot{
  /* height: estatura objetivo (m). frame: objeto cuyo espacio local es el de la cabina (targets vienen en ese espacio) */
- constructor(src,frame,{height=1.76}={}){
+ constructor(src,frame,{height=1.76,hue=0}={}){
   this.frame=frame;const o=this.obj=skClone(src.scene);this.B={};this.hasHelmet=!!(src.opts&&src.opts.helmet);
+  if(hue)o.traverse(n=>{if(n.isMesh&&n.material){n.material=hueMat(n.material,hue);this.ownMats=(this.ownMats||[]);this.ownMats.push(n.material);}});
   o.traverse(n=>{if(n.isBone){const k=norm(n.name);if(!this.B[k])this.B[k]=n;}if(n.isMesh&&/helmet|casco/i.test(n.name+' '+(n.material&&n.material.name||'')))this.hasHelmet=true;if(n.isMesh){n.frustumCulled=false;n.castShadow=false;n.receiveShadow=false;}});
   const B=this.B,need=['Hips','Spine','Head','LeftArm','LeftForeArm','LeftHand','RightArm','RightForeArm','RightHand','LeftUpLeg','LeftLeg','LeftFoot','RightUpLeg','RightLeg','RightFoot'];
   this.ok=need.every(k=>B[k]);if(!this.ok){console.warn('piloto: faltan huesos',need.filter(k=>!B[k]));return;}
@@ -49,8 +55,8 @@ export class RigPilot{
  /* orienta el hueso para que su eje primario apunte a P y el secundario hacia S (vectores en espacio de "frame") */
  orient(b,P,S){const ax=this.ax.get(b);if(!ax)return;const fq=this.frame.getWorldQuaternion(_q2);
   const p1=_a.copy(P).applyQuaternion(fq).normalize(),s1=_b.copy(S).applyQuaternion(fq);s1.addScaledVector(p1,-s1.dot(p1)).normalize();if(!isFinite(s1.x)||s1.lengthSq()<1e-6)return;
-  const t1=_c.crossVectors(p1,s1);_m1.makeBasis(p1,s1,t1);const s0=_d.copy(ax.s).addScaledVector(ax.p,-ax.s.dot(ax.p)).normalize();const t0=V().crossVectors(ax.p,s0);_m2.makeBasis(ax.p,s0,t0).transpose();
-  _m1.multiply(_m2);const Q=_q.setFromRotationMatrix(_m1);const pq=b.parent.getWorldQuaternion(new THREE.Quaternion()).invert();b.quaternion.copy(pq.multiply(Q));b.updateMatrixWorld(true);}
+  const t1=_c.crossVectors(p1,s1);_m1.makeBasis(p1,s1,t1);const s0=_d.copy(ax.s).addScaledVector(ax.p,-ax.s.dot(ax.p)).normalize();const t0=_e.crossVectors(ax.p,s0);_m2.makeBasis(ax.p,s0,t0).transpose();
+  _m1.multiply(_m2);const Q=_q.setFromRotationMatrix(_m1);const pq=b.parent.getWorldQuaternion(_q3).invert();b.quaternion.copy(pq.multiply(Q));b.updateMatrixWorld(true);}
  /* posición del hueso en espacio "frame" */
  fpos(b,out){b.getWorldPosition(out);return this.frame.worldToLocal(out);}
  /* IK de dos huesos: A (raíz) → codo/rodilla → objetivo T, con vector polo */
@@ -79,5 +85,5 @@ export class RigPilot{
   }
  hideHead(v){if(!this.ok||this.headHidden===v)return;this.headHidden=v;this.B.Head.scale.setScalar(v?0.001:1);this.B.Head.updateMatrixWorld(true);}
  /* geometrías y materiales se comparten con el modelo fuente: no se liberan */
- dispose(){this.obj.removeFromParent();}
+ dispose(){this.obj.removeFromParent();for(const m of this.ownMats||[])m.dispose();}
 }
