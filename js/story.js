@@ -30,7 +30,7 @@ export class Director{
  frac(){const S=this.S,pl=S.player,tr=this.tr;const i=pl.idx??S.s0;return tr.cum[i]/tr.length;}
  /* voz + subtítulo (si el audio todavía no cargó, reintenta un rato) */
  line(k,cool){const now=this.t;if(cool&&this.cd[k]&&now-this.cd[k]<cool)return;this.cd[k]=now;
-  const ok=this.vo&&this.vo.say([k]);if(!ok)this.pending={k,until:now+4};
+  const ok=this.vo&&this.vo.say([k]);if(!ok)this.pending={k,until:now+4};else if(this.g.copilot)this.g.copilot.hold(this.vo.busyUntil);
   const e=this.el.sub;e.textContent=STORY_LINES[k]||'';e.classList.add('on');this.subT=now+Math.max(2.4,(STORY_LINES[k]||'').length*0.075);}
  onHit(imp,o){if(imp<2.2)return;this.line('choque',this.cine?7:6);}
  setRig(i){if(this.g.getCam()!==i)this.g.setCam(i);}

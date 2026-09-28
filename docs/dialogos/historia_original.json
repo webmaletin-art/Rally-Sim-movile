@@ -1,0 +1,409 @@
+{
+  "capitulos": [
+    {
+      "numero": 2,
+      "titulo": "Afuera",
+      "resumen": "El piloto sale de La Trinchera con el maletín. Los Cuervos lo esperan afuera. Tiene que escapar por el bosque y la cantera antes de que lo alcancen.",
+      "misiones": [
+        {
+          "id": "c2m1",
+          "titulo": "Salida de emergencia",
+          "tipo": "escape",
+          "mapa": "trinchera",
+          "cielo": "dusk",
+          "auto": "cualquiera",
+          "rivales": 3,
+          "vueltas": 0,
+          "tiempo_limite_segundos": 0,
+          "objetivo": "Salir de la mina y llegar al punto de extracción con el auto entero.",
+          "estrellas": [
+            "1 estrella: llegar con el auto al 30% o más.",
+            "2 estrellas: llegar con el auto al 60% o más.",
+            "3 estrellas: llegar con el auto al 90% o más."
+          ],
+          "falla_si": "El auto llega al 0% de integridad.",
+          "recompensa": {"creditos": 2500, "desbloquea": ""},
+          "cinematica_inicio": {
+            "planos": ["interior", "detras_piloto", "persecucion_cerca"],
+            "dialogos": [
+              {"quien": "copiloto", "texto": "Ahí están. Tres autos en la salida."},
+              {"quien": "rival", "texto": "No te va a alcanzar el motor, pibe."},
+              {"quien": "copiloto", "texto": "Dale, que la mina nos tapa."}
+            ]
+          },
+          "dialogos_durante": [
+            {"cuando": "al empezar", "quien": "copiloto", "texto": "A la derecha, después del túnel."},
+            {"cuando": "si un rival se acerca", "quien": "rival", "texto": "Te tengo, no corras más."},
+            {"cuando": "si el auto baja del 50%", "quien": "copiloto", "texto": "Cuidado, está golpeado."}
+          ],
+          "dialogo_final_ganando": [{"quien": "copiloto", "texto": "Afuera. Y con el maletín."}],
+          "dialogo_final_perdiendo": [{"quien": "copiloto", "texto": "Nos atraparon. Otra vez."}]
+        },
+        {
+          "id": "c2m2",
+          "titulo": "Bosque cerrado",
+          "tipo": "carrera",
+          "mapa": "forest",
+          "cielo": "dusk",
+          "auto": "cualquiera",
+          "rivales": 2,
+          "vueltas": 1,
+          "tiempo_limite_segundos": 0,
+          "objetivo": "Ganar la carrera por el bosque para perder de vista a los perseguidores.",
+          "estrellas": [
+            "1 estrella: terminar primero.",
+            "2 estrellas: terminar primero con el auto al 50% o más.",
+            "3 estrellas: terminar primero con el auto al 80% o más."
+          ],
+          "falla_si": "Terminar segundo o peor.",
+          "recompensa": {"creditos": 3000, "desbloquea": ""},
+          "cinematica_inicio": {
+            "planos": ["persecucion_lejos", "dos_autos"],
+            "dialogos": [
+              {"quien": "copiloto", "texto": "Dos rivales adelante. Los tenemos que pasar."},
+              {"quien": "rival", "texto": "Este bosque es nuestro, forastero."}
+            ]
+          },
+          "dialogos_durante": [
+            {"cuando": "al empezar", "quien": "copiloto", "texto": "Cuidado con los árboles caídos."},
+            {"cuando": "si un rival se acerca", "quien": "rival", "texto": "No te me pegues tanto."}
+          ],
+          "dialogo_final_ganando": [{"quien": "copiloto", "texto": "Los perdimos. Buen trabajo."}],
+          "dialogo_final_perdiendo": [{"quien": "copiloto", "texto": "Nos siguen. No los sacamos."}]
+        },
+        {
+          "id": "c2m3",
+          "titulo": "Cantera roja",
+          "tipo": "drift",
+          "mapa": "quarry",
+          "cielo": "sunset",
+          "auto": "cualquiera",
+          "rivales": 0,
+          "vueltas": 0,
+          "tiempo_limite_segundos": 90,
+          "objetivo": "Sumar puntos de drift en la cantera para ganar tiempo y perder a los Cuervos.",
+          "estrellas": [
+            "1 estrella: sumar cinco mil puntos.",
+            "2 estrellas: sumar diez mil puntos.",
+            "3 estrellas: sumar quince mil puntos."
+          ],
+          "falla_si": "No alcanzar el mínimo de puntos en el tiempo límite.",
+          "recompensa": {"creditos": 2800, "desbloquea": ""},
+          "cinematica_inicio": {
+            "planos": ["costado_pista", "aerea"],
+            "dialogos": [
+              {"quien": "copiloto", "texto": "La cantera nos da tiempo. Derrapá y desaparecé."}
+            ]
+          },
+          "dialogos_durante": [
+            {"cuando": "al empezar", "quien": "copiloto", "texto": "El polvo te tapa. Aprovechá."},
+            {"cuando": "si el combo se corta", "quien": "copiloto", "texto": "No aflojes, seguí derrapando."}
+          ],
+          "dialogo_final_ganando": [{"quien": "copiloto", "texto": "Suficiente. Vámonos."}],
+          "dialogo_final_perdiendo": [{"quien": "copiloto", "texto": "No alcanzó. Nos vieron."}]
+        },
+        {
+          "id": "c2m4",
+          "titulo": "El primer mensaje",
+          "tipo": "cinematica",
+          "mapa": "asphaltLong",
+          "cielo": "dusk",
+          "auto": "cualquiera",
+          "rivales": 0,
+          "vueltas": 0,
+          "tiempo_limite_segundos": 0,
+          "objetivo": "Escuchar el mensaje que el padre del piloto dejó en el maletín.",
+          "estrellas": [
+            "1 estrella: ver la cinemática completa.",
+            "2 estrellas: ver la cinemática completa.",
+            "3 estrellas: ver la cinemática completa."
+          ],
+          "falla_si": "No aplica.",
+          "recompensa": {"creditos": 1000, "desbloquea": ""},
+          "cinematica_inicio": {
+            "planos": ["interior", "capo", "aerea"],
+            "dialogos": [
+              {"quien": "copiloto", "texto": "Se abrió el maletín. Hay un mensaje."},
+              {"quien": "radio", "texto": "Si escuchás esto, es porque encontraste la mina."},
+              {"quien": "radio", "texto": "No corras por mí. Corré por vos."},
+              {"quien": "copiloto", "texto": "Era tu viejo. Está vivo."}
+            ]
+          },
+          "dialogos_durante": [],
+          "dialogo_final_ganando": [{"quien": "copiloto", "texto": "Ahora sabemos qué busca El Buitre."}],
+          "dialogo_final_perdiendo": [{"quien": "copiloto", "texto": "Se cortó la señal."}]
+        }
+      ],
+      "gancho_final": "El mensaje se corta con una risa. El Buitre aparece por radio: 'Chico, ese maletín no es tuyo. Te espero en la cantera. Si no venís, tu viejo no vuelve a hablar.'"
+    },
+    {
+      "numero": 3,
+      "titulo": "La deuda",
+      "resumen": "El Buitre le da una oportunidad al piloto: correr para Los Cuervos y pagar una deuda. Si gana tres carreras, le devuelve el maletín. Si pierde, el maletín y el prototipo son de él.",
+      "misiones": [
+        {
+          "id": "c3m1",
+          "titulo": "Primera deuda",
+          "tipo": "carrera",
+          "mapa": "lake",
+          "cielo": "overcast",
+          "auto": "cualquiera",
+          "rivales": 3,
+          "vueltas": 2,
+          "tiempo_limite_segundos": 0,
+          "objetivo": "Ganar la carrera en el Circuito del Lago para pagar la primera parte de la deuda.",
+          "estrellas": [
+            "1 estrella: terminar primero.",
+            "2 estrellas: terminar primero con el auto al 60% o más.",
+            "3 estrellas: terminar primero con el auto al 90% o más."
+          ],
+          "falla_si": "Terminar segundo o peor.",
+          "recompensa": {"creditos": 3500, "desbloquea": ""},
+          "cinematica_inicio": {
+            "planos": ["de_frente", "dos_autos", "costado_pista"],
+            "dialogos": [
+              {"quien": "rival", "texto": "Bienvenido a la deuda, pibe."},
+              {"quien": "copiloto", "texto": "Dos vueltas. Ganá y seguimos vivos."}
+            ]
+          },
+          "dialogos_durante": [
+            {"cuando": "al empezar", "quien": "copiloto", "texto": "Cuidado con el lago, resbala."},
+            {"cuando": "si un rival se acerca", "quien": "rival", "texto": "Ese maletín es del Buitre."}
+          ],
+          "dialogo_final_ganando": [{"quien": "copiloto", "texto": "Una menos. Seguimos."}],
+          "dialogo_final_perdiendo": [{"quien": "copiloto", "texto": "Perdimos. Y perdimos tiempo."}]
+        },
+        {
+          "id": "c3m2",
+          "titulo": "La Hiena",
+          "tipo": "escape",
+          "mapa": "forestRev",
+          "cielo": "rain",
+          "auto": "cualquiera",
+          "rivales": 1,
+          "vueltas": 0,
+          "tiempo_limite_segundos": 0,
+          "objetivo": "Escapar de La Hiena, que te persigue para arrebatarte el maletín antes de la próxima carrera.",
+          "estrellas": [
+            "1 estrella: llegar al punto de escape.",
+            "2 estrellas: llegar con el auto al 60% o más.",
+            "3 estrellas: llegar con el auto al 85% o más."
+          ],
+          "falla_si": "El auto llega al 0%.",
+          "recompensa": {"creditos": 4000, "desbloquea": "pieza_taller_1"},
+          "cinematica_inicio": {
+            "planos": ["persecucion_cerca", "interior"],
+            "dialogos": [
+              {"quien": "rival", "texto": "¿Eso es todo? Mi abuela dobla mejor."},
+              {"quien": "copiloto", "texto": "Es La Hiena. No te dejes tocar."}
+            ]
+          },
+          "dialogos_durante": [
+            {"cuando": "si un rival se acerca", "quien": "rival", "texto": "Te tengo, no corras más."},
+            {"cuando": "si el auto baja del 50%", "quien": "copiloto", "texto": "Aguantá, ya casi llegamos."}
+          ],
+          "dialogo_final_ganando": [{"quien": "copiloto", "texto": "La dejamos atrás. Por ahora."}],
+          "dialogo_final_perdiendo": [{"quien": "copiloto", "texto": "Nos sacó el maletín."}]
+        },
+        {
+          "id": "c3m3",
+          "titulo": "Desafío en la bajada",
+          "tipo": "contrarreloj",
+          "mapa": "descent",
+          "cielo": "sunset",
+          "auto": "cualquiera",
+          "rivales": 0,
+          "vueltas": 0,
+          "tiempo_limite_segundos": 120,
+          "objetivo": "Bajar la montaña en menos de dos minutos para pagar la segunda parte de la deuda.",
+          "estrellas": [
+            "1 estrella: terminar en menos de dos minutos.",
+            "2 estrellas: terminar en menos de un minuto y cincuenta segundos.",
+            "3 estrellas: terminar en menos de un minuto y cuarenta segundos."
+          ],
+          "falla_si": "No llegar antes del tiempo objetivo.",
+          "recompensa": {"creditos": 3800, "desbloquea": ""},
+          "cinematica_inicio": {
+            "planos": ["interior", "paragolpes"],
+            "dialogos": [
+              {"quien": "copiloto", "texto": "Bajada larga. No toques el freno de más."}
+            ]
+          },
+          "dialogos_durante": [
+            {"cuando": "al empezar", "quien": "copiloto", "texto": "Cuidado con las lomas. Saltás."},
+            {"cuando": "si vamos perdiendo tiempo", "quien": "copiloto", "texto": "Apurá, el reloj corre."}
+          ],
+          "dialogo_final_ganando": [{"quien": "copiloto", "texto": "Buen tiempo. Deuda saldada."}],
+          "dialogo_final_perdiendo": [{"quien": "copiloto", "texto": "No alcanzó. Otra vez."}]
+        },
+        {
+          "id": "c3m4",
+          "titulo": "La trampa de La Sombra",
+          "tipo": "radar",
+          "mapa": "asphaltRev",
+          "cielo": "dusk",
+          "auto": "cualquiera",
+          "rivales": 0,
+          "vueltas": 0,
+          "tiempo_limite_segundos": 60,
+          "objetivo": "Pasar por el radar a más de doscientos kilómetros por hora para impresionar a Los Cuervos.",
+          "estrellas": [
+            "1 estrella: pasar el radar a doscientos kilómetros por hora.",
+            "2 estrellas: pasar el radar a doscientos veinte kilómetros por hora.",
+            "3 estrellas: pasar el radar a doscientos cuarenta kilómetros por hora."
+          ],
+          "falla_si": "Pasar el radar a menos de doscientos kilómetros por hora.",
+          "recompensa": {"creditos": 4200, "desbloquea": ""},
+          "cinematica_inicio": {
+            "planos": ["costado_pista", "de_frente"],
+            "dialogos": [
+              {"quien": "rival", "texto": "El reloj no perdona. Yo tampoco."},
+              {"quien": "copiloto", "texto": "Es La Sombra. Pisa a fondo."}
+            ]
+          },
+          "dialogos_durante": [
+            {"cuando": "al empezar", "quien": "copiloto", "texto": "Recta larga. Todo el acelerador."},
+            {"cuando": "si el radar se acerca", "quien": "copiloto", "texto": "Ahí está. Metele."}
+          ],
+          "dialogo_final_ganando": [{"quien": "copiloto", "texto": "Pasaste. Y rápido."}],
+          "dialogo_final_perdiendo": [{"quien": "copiloto", "texto": "Muy lento. No les alcanza."}]
+        }
+      ],
+      "gancho_final": "El Buitre llama por radio: 'Pagaste la deuda. Pero el maletín no es lo único que quiero. Quiero el prototipo. Y vos vas a construirlo para mí.' La Sombra aparece en el espejo con una sonrisa."
+    },
+    {
+      "numero": 4,
+      "titulo": "Las piezas",
+      "resumen": "El piloto tiene que reunir las piezas del prototipo que su padre escondió por toda la región. Cada pieza está en un lugar controlado por un lugarteniente de El Buitre.",
+      "misiones": [
+        {
+          "id": "c4m1",
+          "titulo": "La pieza del bosque",
+          "tipo": "banderas",
+          "mapa": "forest",
+          "cielo": "day",
+          "auto": "cualquiera",
+          "rivales": 0,
+          "vueltas": 0,
+          "tiempo_limite_segundos": 90,
+          "objetivo": "Juntar cinco banderas en el bosque antes de que se termine el tiempo.",
+          "estrellas": [
+            "1 estrella: juntar cinco banderas.",
+            "2 estrellas: juntar cinco banderas en menos de setenta segundos.",
+            "3 estrellas: juntar cinco banderas en menos de cincuenta segundos."
+          ],
+          "falla_si": "No juntar las cinco banderas en el tiempo límite.",
+          "recompensa": {"creditos": 3200, "desbloquea": "pieza_motor_1"},
+          "cinematica_inicio": {
+            "planos": ["aerea", "interior"],
+            "dialogos": [
+              {"quien": "copiloto", "texto": "Cinco banderas. Una pieza por cada una."}
+            ]
+          },
+          "dialogos_durante": [
+            {"cuando": "al empezar", "quien": "copiloto", "texto": "La primera está a la izquierda."},
+            {"cuando": "si queda poco tiempo", "quien": "copiloto", "texto": "Apurá, se acaba."}
+          ],
+          "dialogo_final_ganando": [{"quien": "copiloto", "texto": "Todas. Tenemos la pieza."}],
+          "dialogo_final_perdiendo": [{"quien": "copiloto", "texto": "Faltaron banderas."}]
+        },
+        {
+          "id": "c4m2",
+          "titulo": "Estacionar en la mina",
+          "tipo": "estacionar",
+          "mapa": "trinchera",
+          "cielo": "overcast",
+          "auto": "pickup",
+          "rivales": 0,
+          "vueltas": 0,
+          "tiempo_limite_segundos": 60,
+          "objetivo": "Estacionar el pickup en el lugar marcado dentro de la mina sin tocar las paredes.",
+          "estrellas": [
+            "1 estrella: estacionar sin tocar nada.",
+            "2 estrellas: estacionar sin tocar nada en menos de cuarenta segundos.",
+            "3 estrellas: estacionar sin tocar nada en menos de veinte segundos."
+          ],
+          "falla_si": "Tocar cualquier pared o no estacionar en el lugar marcado.",
+          "recompensa": {"creditos": 3000, "desbloquea": "pieza_suspension_1"},
+          "cinematica_inicio": {
+            "planos": ["interior", "capo"],
+            "dialogos": [
+              {"quien": "copiloto", "texto": "Despacio. La mina no perdona."}
+            ]
+          },
+          "dialogos_durante": [
+            {"cuando": "al empezar", "quien": "copiloto", "texto": "El lugar está al fondo, a la derecha."},
+            {"cuando": "si el auto está por tocar", "quien": "copiloto", "texto": "Cuidado, frená."}
+          ],
+          "dialogo_final_ganando": [{"quien": "copiloto", "texto": "Perfecto. Pieza conseguida."}],
+          "dialogo_final_perdiendo": [{"quien": "copiloto", "texto": "Raspaste. Otra vez."}]
+        },
+        {
+          "id": "c4m3",
+          "titulo": "El Tanque",
+          "tipo": "escape",
+          "mapa": "quarryRev",
+          "cielo": "sunset",
+          "auto": "pickup",
+          "rivales": 1,
+          "vueltas": 0,
+          "tiempo_limite_segundos": 0,
+          "objetivo": "Escapar del Tanque, que te persigue con su camión para impedir que salgas de la cantera.",
+          "estrellas": [
+            "1 estrella: llegar al punto de escape.",
+            "2 estrellas: llegar con el auto al 50% o más.",
+            "3 estrellas: llegar con el auto al 80% o más."
+          ],
+          "falla_si": "El auto llega al 0%.",
+          "recompensa": {"creditos": 4500, "desbloquea": "pieza_transmision_1"},
+          "cinematica_inicio": {
+            "planos": ["persecucion_cerca", "dos_autos", "interior"],
+            "dialogos": [
+              {"quien": "rival", "texto": "Te voy a aplastar."},
+              {"quien": "copiloto", "texto": "Es el Tanque. No te choques de frente."}
+            ]
+          },
+          "dialogos_durante": [
+            {"cuando": "si un rival se acerca", "quien": "rival", "texto": "No hay salida para vos."},
+            {"cuando": "si el auto baja del 50%", "quien": "copiloto", "texto": "Aguantá, ya casi."}
+          ],
+          "dialogo_final_ganando": [{"quien": "copiloto", "texto": "Lo dejamos atrás. Pieza nuestra."}],
+          "dialogo_final_perdiendo": [{"quien": "copiloto", "texto": "Nos aplastó."}]
+        },
+        {
+          "id": "c4m4",
+          "titulo": "La pieza del lago",
+          "tipo": "contrarreloj",
+          "mapa": "lake",
+          "cielo": "overcast",
+          "auto": "cualquiera",
+          "rivales": 0,
+          "vueltas": 2,
+          "tiempo_limite_segundos": 150,
+          "objetivo": "Dar dos vueltas al Circuito del Lago en menos de dos minutos y medio.",
+          "estrellas": [
+            "1 estrella: terminar en menos de dos minutos y medio.",
+            "2 estrellas: terminar en menos de dos minutos y veinte segundos.",
+            "3 estrellas: terminar en menos de dos minutos."
+          ],
+          "falla_si": "No terminar antes del tiempo objetivo.",
+          "recompensa": {"creditos": 4000, "desbloquea": "pieza_frenos_1"},
+          "cinematica_inicio": {
+            "planos": ["costado_pista", "aerea"],
+            "dialogos": [
+              {"quien": "copiloto", "texto": "Dos vueltas. La pieza está en la meta."}
+            ]
+          },
+          "dialogos_durante": [
+            {"cuando": "al empezar", "quien": "copiloto", "texto": "Cuidado en la curva del lago."},
+            {"cuando": "si vamos perdiendo tiempo", "quien": "copiloto", "texto": "Apurá, falta."}
+          ],
+          "dialogo_final_ganando": [{"quien": "copiloto", "texto": "Pieza del lago. Listo."}],
+          "dialogo_final_perdiendo": [{"quien": "copiloto", "texto": "Muy lento. Sin pieza."}]
+        }
+      ],
+      "gancho_final": "El piloto reúne todas las piezas. El copiloto arma el prototipo en un galpón. Cuando están por probarlo, El Buitre llama: 'Falta una pieza. La que está en la Trinchera. Tu viejo te está esperando ahí.'"
+    }
+  ]
+}
+```
