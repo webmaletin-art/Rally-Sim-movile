@@ -69,6 +69,7 @@ export class UI{
    case 'resetAll':this.sheet(`<h3>¿Borrar todo el progreso?</h3><p>Se pierden autos, dinero y medallas. No se puede deshacer.</p><div class="row"><button class="bigbtn" data-a="resetOk"><span class="bt">Borrar</span></button><button class="back" data-a="close">Cancelar</button></div>`);break;
    case 'resetOk':P.reset();location.reload();break;
    case 'quick':this.quickRun();break;
+   case 'testTrack':this.api.startQuick({mode:'timetrial',map:'descent',laps:1,ai:0,skill:1,sky:'day',seg:[0,0.47]});break;
    case 'qset':this.q[ds.k]=isNaN(+ds.v)?ds.v:+ds.v;this.show('quick');break;
    case 'world':A.openWorld();break;
    case 'claim':{const a=ACHIEVEMENTS.find(x=>x.id===ds.id),d=P.d;d.claimed=d.claimed||{};if(a&&!d.claimed[a.id]&&a.test(d)){d.claimed[a.id]=1;P.earn(a.cr);A.sfx('buy');this.toast(`${a.icon} ${a.n} · +${fmtCr(a.cr)}`,'green');}this.show('goals');break;}
@@ -115,6 +116,7 @@ export class UI{
     ${(()=>{const nx=this.nextMission();return nx?`<button class="bigbtn green" data-a="nextEv"><span class="bi">▶</span><span class="bt">Siguiente misión<span class="bs">${esc(nx.name)} · ${TYPE_INFO[nx.type].n} · ${TIERS.find(t=>t.id===nx.tier).name}</span></span></button>`:''})()}
     <button class="bigbtn" data-a="go" data-s="career"><span class="bi">🏆</span><span class="bt">Modo carrera<span class="bs">${st} ⭐ · 5 copas · ${EVENTS.length} eventos</span></span></button>
     <button class="bigbtn blue" data-a="world"><span class="bi">🗺️</span><span class="bt">Mundo abierto<span class="bs">Carteles, radares y libertad total</span></span></button>
+    <button class="bigbtn dark" data-a="testTrack"><span class="bi">⛰️</span><span class="bt">Pista de pruebas<span class="bs">Bajada de asfalto con badenes largos · probá frenos, aceleración y dirección</span></span></button>
     <button class="bigbtn dark" data-a="go" data-s="quick"><span class="bi">⚡</span><span class="bt">Evento rápido<span class="bs">Armá tu carrera: pista, rivales, clima</span></span></button>
     <div class="homeTiles">
      <button class="tile" data-a="go" data-s="garage"><span class="ti">🚘</span>Garaje</button>
