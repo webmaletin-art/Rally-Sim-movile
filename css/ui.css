@@ -211,3 +211,8 @@ body.inside #speedPanel{display:none}body.inside #paceNote{top:calc(12px + var(-
 .fxItem.on{border-color:var(--acc);background:rgba(40,24,10,.9)}.fxItem:disabled{opacity:.4}
 .fxInfo{align-self:end;justify-self:end;width:min(360px,100%);background:rgba(10,14,20,.86);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px}
 .fxInfo p{margin:0;font-size:12.5px;line-height:1.35}.fxTitle{font-size:18px;font-weight:900}.fxInfo .row{gap:8px;margin-top:4px}.fxInfo .bigbtn{flex:1;padding:9px 10px}
+
+/* modo historia */
+.soon{margin:10px auto 2px;padding:8px 18px;border:1px solid rgba(245,194,107,.6);border-radius:10px;background:rgba(245,194,107,.1);color:#f5c26b;font-weight:900;letter-spacing:4px;font-size:18px;display:inline-block}
+.soon small{display:block;font-size:10px;letter-spacing:3px;color:#cfd8e3;font-weight:800}
+.bigbtn.story{background:linear-gradient(100deg,#6b3a12,#c9861f);box-shadow:0 8px 26px rgba(200,130,30,.25),inset 0 1px 0 rgba(255,255,255,.22)}

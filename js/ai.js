@@ -46,17 +46,22 @@ export class AIDriver{
   /* velocidad objetivo: mirar un poco adelante según la velocidad */
   const look=Math.min(N-1,Math.round(2+spd*0.10));let vt=1e9;
   for(let k=0;k<=look;k+=1){vt=Math.min(vt,this.prof.v[(this.idx+k)%N]);}
-  vt*=this.boost*(0.9+0.1*this.skill);
+  vt*=this.boost*(0.9+0.1*this.skill);if(this.maxV)vt=Math.min(vt,this.maxV);
   /* carril: se cierra al centro en curvas cerradas */
   const kap=this.prof.kap[(this.idx+6)%N];const laneMax=Math.max(0,hw-1.3);
   let lane=Math.max(-laneMax,Math.min(laneMax,this.laneT))*(1-Math.min(1,kap*25));
   /* tráfico: auto adelante en el mismo carril → cambiar de carril o levantar */
   const fx=Math.sin(p.yaw),fz=Math.cos(p.yaw),lx=Math.cos(p.yaw),lz=-Math.sin(p.yaw);
   let blockV=null;
-  for(const o of others){if(o===p)continue;const dx=o.px-p.px,dz=o.pz-p.pz;const f=dx*fx+dz*fz,l=dx*lx+dz*lz;
+  for(const o of others){if(o===p||(this.hunt&&o===this.target))continue;const dx=o.px-p.px,dz=o.pz-p.pz;const f=dx*fx+dz*fz,l=dx*lx+dz*lz;
    if(f>0&&f<14&&Math.abs(l)<2.4){const ov=o.vx*fx+o.vz*fz;if(ov<spd+0.5){blockV=Math.min(blockV??1e9,ov);
      const side=(l>0?-1:1);this.laneT=Math.max(-laneMax,Math.min(laneMax,(this.lat||0)+side*2.6));}}}
   if(blockV!=null&&this.aggr<0.8)vt=Math.min(vt,blockV+2+this.aggr*4);
+  /* modo historia: los perseguidores van a buscar al jugador (se le pegan y lo embisten); después de un golpe se abren un momento */
+  if(this.hunt&&this.target){const T=this.target,dx=T.px-p.px,dz=T.pz-p.pz,f=dx*fx+dz*fz,tv=Math.hypot(T.vx,T.vz),d=Math.hypot(dx,dz);this.ramCd=Math.max(0,(this.ramCd||0)-h);
+   if(this.ramCd>0)vt=Math.min(vt,Math.max(6,tv-3));
+   else if(f>-3&&f<70){const S=tr.samples[this.idx],L=tr.laterals[this.idx];const tl=(T.px-S.x)*L.x+(T.pz-S.z)*L.z;lane=Math.max(-laneMax,Math.min(laneMax,tl*(d<25?1:0.6)));
+    vt=Math.max(vt*0.96,Math.min(vt*(this.huntK||1.1),tv+(d<12?(this.gentle?0.8:4):9)));}}
   /* dirección: pure pursuit */
   const Ld=Math.max(6,Math.min(32,5+spd*0.55));let tgt=this.pointAhead(Ld,lane);
   /* carriles con islas (trinchera): elegir un carril libre con anticipación */
@@ -77,6 +82,10 @@ export class AIDriver{
   /* círculo de fricción: si las gomas ya trabajan doblando, dosificar el acelerador (y más si el auto se abre hacia el borde) */
   {const latUse=Math.abs((p.vLong||spd)*p.yawRate)/(this.mu*G);const edge=Math.max(0,(Math.abs(this.lat||0)-(hw-1.2))/2)*(Math.sign(this.lat||0)===Math.sign(-(inp.steer||0))?0:1);
    const lim=Math.max(0.15,1-Math.max(0,latUse-0.3)*2.2-edge*0.5);if(inp.throttle>lim)inp.throttle=lim;}
+  /* cinemática: cruzar el auto en la entrada de las curvas (tirón de freno de mano y gas) → derrapes uno detrás del otro */
+  if(this.show){this.hbT=Math.max(0,(this.hbT||0)-h);this.showCd=Math.max(0,(this.showCd||0)-h);const kA=this.prof.kap[(this.idx+7)%N];
+   const sk=this.showK||1;if(kA>1/(75*sk)&&spd>13&&this.showCd<=0){this.hbT=0.3*sk;this.showCd=4;}
+   if(this.hbT>0){inp.handbrake=true;inp.brake=0;inp.throttle=Math.max(inp.throttle,0.45);}}
   inp.nitro=V.nitroCap>0&&err>6&&Math.abs(inp.steer)<0.2&&p.nitro>V.nitroCap*0.3;
   /* recuperación */
   if(time>2&&spd<1.5&&inp.throttle>0.3)this.stuckT+=h;else this.stuckT=Math.max(0,this.stuckT-h*2);

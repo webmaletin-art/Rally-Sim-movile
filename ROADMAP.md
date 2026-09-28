@@ -2,6 +2,9 @@
 
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
+## Hecho recientemente
+- ✅ Estilo visual **Cámara de acción cruda** (grano, viñeta, imagen blanda, bruma verdosa, vibración). El estilo "Claude" queda igual.
+
 ## En curso (esta tanda)
 - ✅/🔧 Menú de opciones: scroll arreglado, calidad **Auto (optimizar)** / Alta / Media / Baja.
 - 🔧 Efectos de cámara (GoPro, casero, cine…) en un submenú aparte: lista → explicación + vista previa → Volver / Aplicar.
@@ -17,6 +20,8 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 - Se mantiene también el acceso por menú (partidas cortas en el celular).
 
 ### Modo historia
+- ✅ **Capítulo 1 · La Fuga** (cinemática manejada por la IA con varias cámaras, voces con subtítulos, salto en cámara lenta, control en el túnel, perseguidores que embisten, barra del auto 100% → 0%, "Siguiente misión: próximamente").
+- Próximos capítulos: seguir la historia de la mina.
 - Al elegir "Modo historia": secuencia inicial manejada por la IA (no video): persecución por un rally rival o la policía.
   - Muestra la física: acelerones, frenadas, derrapes en tierra, cámara interior con el piloto metiendo 1ª-2ª-3ª, el perseguidor que embiste.
   - Entra a la trinchera/subterráneo (mina vieja) y a los pocos km le da el control al jugador.

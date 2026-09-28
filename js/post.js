@@ -10,6 +10,7 @@ import * as THREE from 'three';
 export const VISUAL_PRESETS={
  none:{},
  claude:{dlss5:38,bloom2:45,godrays:55,sunflare:60,lensdirt2:40,dofdepth:70,haze:60,grade:85,videolook:70,speedblur:65,chromatic:8,vignette:34,filmgrain:9,noise:5,halation:12,raindrops:100,roadshake:40},
+ accion:{},
  tv:{dlss5:50,bloom2:22,sunflare:35,grade:35,videolook:35,speedblur:35,saturation:10,contrast:10,vignette:12,chromatic:4,raindrops:60,roadshake:20},
  dlss5:{dlss5:85,sharpness:20,contrast:8,saturation:5},
  fotorrealista:{tonemapping:70,bloom:35,chromatic:20,vignette:45,filmgrain:25,exposure:40,contrast:30,halation:20,sharpness:15,camerashake:10,motionblur:15},
@@ -26,6 +27,7 @@ export const VISUAL_PRESETS={
 export const PRESET_INFO=[
  ['none','⚪','Normal','Sin postprocesado. El más liviano.'],
  ['claude','✨','Claude · Realidad','Hecho para confundirse con un video real: foco en tu auto, bruma de distancia, rayos de sol entre los árboles, destello de lente, gotas en lluvia.'],
+ ['accion','🎥','Cámara de acción cruda','Como una grabación de rally con una cámara de acción barata pegada al auto: imagen blanda y contrastada, grano que titila, viñeta oscura, bruma verdosa y vibración constante.'],
  ['tv','📺','Transmisión TV','Como una transmisión de rally por televisión: nítido, colores de broadcast, destello de sol.'],
  ['dlss5','🚀','DLSS 5','Mejora de nitidez sin cambiar el color.'],
  ['fotorrealista','🏆','Fotorrealista','Captura fotorrealista equilibrada.'],
@@ -130,7 +132,7 @@ export class PostFX{
   const keys=ALL_EFFECT_IDS;const U={u_texture:{value:this.ldr.texture},u_depth:{value:this.hdr.depthTexture},u_resolution:{value:new THREE.Vector2(1,1)},u_time:{value:0},u_speed:{value:0},u_motion:{value:0},u_rough:{value:0},u_rain:{value:0},
    u_sun:{value:new THREE.Vector3(0.5,0.5,0)},u_near:{value:0.15},u_far:{value:2500},u_focus:{value:8},u_hazeColor:{value:new THREE.Color(0.7,0.78,0.86)}};
   for(const k of keys)U['u_'+k]={value:(v[k]||0)/100};this.u=U;
-  if(this.preset==='none'){this.fx=null;return;}
+  if(this.preset==='none'||!Object.keys(v).length){this.fx=null;return;}
   let uvCode='',colCode='';for(const k of ORDER_UV)if(act(k))uvCode+=UV_FX[k]+'\n';
   for(const k of ORDER_COLOR){const id=k==='gopro_col'?'gopro':k;if(act(id))colCode+=COLOR_FX[k]+'\n';}
   const decl=Object.keys(U).map(k=>{const t=U[k].value;return `uniform ${t&&t.isVector2?'vec2':t&&t.isVector3?'vec3':t&&t.isColor?'vec3':t&&t.isTexture?'sampler2D':'float'} ${k};`;}).join('\n');

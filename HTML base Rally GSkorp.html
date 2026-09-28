@@ -120,10 +120,31 @@ body.manual.slider-mode #gearPad{left:auto;right:calc(186px + env(safe-area-inse
   .mapSelect{grid-template-columns:1fr;gap:8px}
 }
 #errorBox{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:100;display:none;max-width:88vw;background:rgba(35,5,8,.96);border:1px solid #ff5b68;border-radius:12px;color:#fff;padding:16px;font:12px/1.5 ui-monospace,monospace;box-shadow:0 12px 40px rgba(0,0,0,.6);white-space:pre-wrap}
+
+/* efecto 'Cámara de acción cruda' (solo con ese estilo elegido; el HUD queda encima) */
+#rawNoise,#rawVig{position:fixed;inset:0;pointer-events:none;z-index:5;display:none}
+#rawNoise{inset:-60px;opacity:.3;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:200px 200px;animation:rawJit .1s steps(1) infinite}
+#rawVig{background:radial-gradient(circle,rgba(0,0,0,0) 40%,rgba(0,0,0,.7) 100%)}
+body.rawcam #rawNoise,body.rawcam #rawVig{display:block}
+body.rawcam #game{filter:blur(1.5px) contrast(1.4) saturate(1.2) sepia(.15) brightness(.9);image-rendering:pixelated}
+@keyframes rawJit{0%{transform:translate(0,0)}20%{transform:translate(-23px,17px)}40%{transform:translate(31px,-9px)}60%{transform:translate(-11px,-29px)}80%{transform:translate(19px,27px)}}
+
+/* modo historia: franjas de cine, subtítulos, saltar, vida del auto */
+#cine{position:fixed;inset:0;pointer-events:none;z-index:26;display:none}body.story #cine{display:block}
+#cine .lb{position:absolute;left:0;right:0;height:11vh;background:#000;transition:transform .9s ease}#cine .top{top:0;transform:translateY(-101%)}#cine .bot{bottom:0;transform:translateY(101%)}
+body.cine #cine .lb{transform:none}
+body.cine #hud,body.cine #touch,body.cine #menu,body.cine #speedPanel,body.cine #gearPad{visibility:hidden!important}
+#cineTitle{position:absolute;left:0;right:0;top:32%;text-align:center;color:#f5c26b;font:900 44px/1.1 system-ui,sans-serif;letter-spacing:10px;text-shadow:0 3px 12px #000;opacity:0;transition:opacity 1s}#cineTitle small{display:block;font-size:12px;letter-spacing:5px;color:#e8eef5}#cineTitle.show{opacity:1}
+#cineSub{position:absolute;left:50%;bottom:calc(11vh + 12px);transform:translateX(-50%);max-width:82vw;text-align:center;color:#fff;font:800 16px/1.3 system-ui,sans-serif;text-shadow:0 2px 4px #000,0 0 10px #000;opacity:0;transition:opacity .3s}#cineSub.on{opacity:1}
+body.story:not(.cine) #cineSub{bottom:auto;top:calc(104px + env(safe-area-inset-top));font-size:14px;background:rgba(6,10,16,.55);padding:4px 12px;border-radius:8px}
+#cineSkip{position:absolute;right:calc(16px + env(safe-area-inset-right));bottom:calc(11vh + 10px);pointer-events:auto;display:none;background:rgba(10,14,20,.7);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:20px;padding:8px 16px;font:800 14px system-ui,sans-serif}body.cine #cineSkip{display:block}
+#storyHp{position:absolute;left:calc(14px + env(safe-area-inset-left));top:calc(104px + env(safe-area-inset-top));display:none;align-items:center;gap:7px;background:rgba(8,12,18,.72);padding:5px 10px;border-radius:10px;color:#eef4ff;font:900 11px system-ui,sans-serif;letter-spacing:1px}
+body.story:not(.cine) #storyHp{display:flex}#storyHp i{display:block;width:110px;height:9px;border-radius:5px;background:rgba(255,255,255,.14);overflow:hidden}#storyHp b{display:block;height:100%;width:100%;background:linear-gradient(90deg,#3ddc84,#b6f35c);transition:width .35s}
+#storyHp.low b{background:linear-gradient(90deg,#ff3b4e,#ff9a3d)}#storyHp em{font-style:normal;min-width:34px}#storyHp.hit{animation:hpHit .4s}@keyframes hpHit{0%{transform:scale(1.15);background:rgba(160,20,30,.8)}100%{transform:none}}
 </style>
 </head>
 <body>
-<canvas id="game"></canvas><div id="errorBox"></div>
+<canvas id="game"></canvas><div id="cine"><div class="lb top"></div><div class="lb bot"></div><div id="cineTitle"><small>MODO HISTORIA · CAPÍTULO 1</small>LA FUGA</div><div id="cineSub"></div><button id="cineSkip">Saltar ⏭</button><div id="storyHp"><span>AUTO</span><i><b></b></i><em>100%</em></div></div><div id="rawNoise"></div><div id="rawVig"></div><div id="errorBox"></div>
 <div id="hud" class="off">
   <div id="raceInfo" class="panel">
     <div class="riRow" id="riPos"><span class="lbl">Posición</span><span class="val big" id="pos">1/1</span></div>
