@@ -1,9 +1,9 @@
 /* ═══ Voz del copiloto: frases grabadas (audio/copilot.wav + .json) reproducidas por WebAudio
    con filtro de intercom. Funciona offline y en el WebView de Android (donde speechSynthesis suele faltar). ═══ */
 export class CoDriver{
- constructor(){this.buf=null;this.map=null;this.loading=null;this.busyUntil=0;this.queue=[];this.failed=false;}
+ constructor(name='copilot'){this.name=name;this.buf=null;this.map=null;this.loading=null;this.busyUntil=0;this.queue=[];this.failed=false;}
  load(ctx){if(this.loading||!ctx)return this.loading;this.ctx=ctx;
-  this.loading=Promise.all([fetch('audio/copilot.json').then(r=>r.json()),fetch('audio/copilot.wav').then(r=>r.arrayBuffer())])
+  this.loading=Promise.all([fetch('audio/'+this.name+'.json').then(r=>r.json()),fetch('audio/'+this.name+'.wav').then(r=>r.arrayBuffer())])
    .then(([m,ab])=>new Promise((res,rej)=>{const p=ctx.decodeAudioData(ab,res,rej);if(p&&p.then)p.then(res,rej);}).then(b=>{this.map=m;this.buf=b;this.chain();}))
    .catch(e=>{console.warn('copiloto',e);this.failed=true;});return this.loading;}
  get ready(){return !!(this.buf&&this.map);}

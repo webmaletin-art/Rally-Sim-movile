@@ -72,6 +72,7 @@ export class UI{
    case 'fxPick':this.fxSel=ds.id;this.show('effects');break;
    case 'fxBack':this.fxSel=null;A.previewVisual(null);this.show('options');break;
    case 'fxApply':{P.d.settings.visual=ds.id;P.save();this.fxSel=null;A.previewVisual(null);A.applySettings();this.toast('Efecto aplicado','blue');this.show('options');break;}
+   case 'story':this.api.startStory();break;
    case 'testTrack':this.api.startQuick({mode:'timetrial',map:'descent',laps:1,ai:0,skill:1,sky:'day',seg:[0,0.47]});break;
    case 'qset':this.q[ds.k]=isNaN(+ds.v)?ds.v:+ds.v;this.show('quick');break;
    case 'world':A.openWorld();break;
@@ -118,6 +119,7 @@ export class UI{
   this.api.showCar(id,car);
   this.mount(`${this.top('',true)}<div class="home"><div class="homeL">
     ${(()=>{const nx=this.nextMission();return nx?`<button class="bigbtn green" data-a="nextEv"><span class="bi">▶</span><span class="bt">Siguiente misión<span class="bs">${esc(nx.name)} · ${TYPE_INFO[nx.type].n} · ${TIERS.find(t=>t.id===nx.tier).name}</span></span></button>`:''})()}
+    <button class="bigbtn story" data-a="story"><span class="bi">📖</span><span class="bt">Modo historia<span class="bs">Capítulo 1 · La Fuga${P.d.story&&P.d.story.ch1?' · ✔ completado (auto al '+P.d.story.ch1+'%)':': escapá de la mina con los perseguidores encima'}</span></span></button>
     <button class="bigbtn" data-a="go" data-s="career"><span class="bi">🏆</span><span class="bt">Modo carrera<span class="bs">${st} ⭐ · 5 copas · ${EVENTS.length} eventos</span></span></button>
     <button class="bigbtn blue" data-a="world"><span class="bi">🗺️</span><span class="bt">Mundo abierto<span class="bs">Carteles, radares y libertad total</span></span></button>
     <button class="bigbtn dark" data-a="testTrack"><span class="bi">⛰️</span><span class="bt">Pista de pruebas<span class="bs">Bajada de asfalto con badenes largos · probá frenos, aceleración y dirección</span></span></button>
@@ -265,7 +267,7 @@ export class UI{
   const rows=r.standings?`<table class="standings">${r.standings.map((s,i)=>`<tr class="${s.me?'me':''}"><td>${i+1}</td><td>${esc(s.name)}</td><td>${s.dnf?'—':fmtTime(s.time)}</td></tr>`).join('')}</table>`:'';
   this.mount(`<div class="resBox"><div class="muted" style="letter-spacing:3px;font-size:11px;font-weight:800">${esc(r.eventName||'')}</div><div class="resT ${cls}">${esc(r.title)}</div>
    ${r.medal!=null&&r.showMedal!==false?`<div class="bigMedal" style="background:${['rgba(255,255,255,.08)','radial-gradient(circle at 35% 30%,#ffd9b0,#b06a2c)','radial-gradient(circle at 35% 30%,#fff,#9aa6b4)','radial-gradient(circle at 35% 30%,#fff3b0,#e0a500)'][r.medal||0]}">${icon}</div>`:''}
-   <div style="font-size:14px;font-weight:800">${esc(r.line||'')}</div>${r.sub?`<div class="muted" style="font-size:12px;margin-top:4px">${esc(r.sub)}</div>`:''}${rows}
+   <div style="font-size:14px;font-weight:800">${esc(r.line||'')}</div>${r.sub?`<div class="muted" style="font-size:12px;margin-top:4px">${esc(r.sub)}</div>`:''}${r.soon?'<div class="soon"><small>SIGUIENTE MISIÓN</small>PRÓXIMAMENTE</div>':''}${rows}
    <div class="rew"><div><b id="rCr">${fmtCr(0)}</b><span>créditos</span></div><div><b id="rXp">+0</b><span>experiencia</span></div>${r.record?'<div style="border-color:var(--gold)"><b>🏆</b><span>nuevo récord</span></div>':''}</div>
    <div>${r.cupMsg?`<span class="lvup" style="background:linear-gradient(90deg,#c98a00,#ffc83d);color:#1a1200">${esc(r.cupMsg)}</span>`:''}${(r.levelUps||[]).map(l=>`<span class="lvup">⭐ NIVEL ${l.level} · +${fmtCr(l.bonus)}</span>`).join('')}</div>
    <div class="row" style="justify-content:center;margin-top:10px"><button class="bigbtn" data-a="resOk" data-next="${r.next||'career'}"><span class="bt">Continuar</span></button><button class="bigbtn dark" data-a="retry"><span class="bi">↺</span><span class="bt">Reintentar</span></button>${r.next==='career'?'<button class="bigbtn green" data-a="resOk" data-next="nextEv"><span class="bt">Siguiente misión ▶</span></button>':''}</div></div>`,'res');
