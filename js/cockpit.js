@@ -116,10 +116,13 @@ export class Cockpit{
   /* capuchón del instrumental + display digital */
   add(new THREE.BoxGeometry(0.34,0.07,0.16),M.dash,xD,eY-0.27,eZ+0.56);
   this.dispCan=document.createElement('canvas');this.dispCan.width=512;this.dispCan.height=224;this.dispTex=new THREE.CanvasTexture(this.dispCan);this.dispTex.colorSpace=THREE.SRGBColorSpace;
-  const disp=add(new THREE.PlaneGeometry(0.24,0.105),new THREE.MeshBasicMaterial({map:this.dispTex,toneMapped:false}),xD,eY-0.325,eZ+0.495);disp.lookAt(root.localToWorld(eye.clone()));
+  /* display grande arriba del volante: se lee por el hueco superior del aro */
+  /* display grande en el centro del tablero (al costado del volante, como en los autos de rally): se ve entero */
+  const dx=xD-0.31,dy=eY-0.18;add(new THREE.BoxGeometry(0.31,0.145,0.04),M.dash,dx,dy,eZ+0.575).lookAt(root.localToWorld(eye.clone()));
+  const disp=add(new THREE.PlaneGeometry(0.28,0.123),new THREE.MeshBasicMaterial({map:this.dispTex,toneMapped:false,depthTest:false}),dx,dy,eZ+0.55);disp.renderOrder=3;disp.lookAt(root.localToWorld(eye.clone()));
   /* cronómetro central (como los de rally) */
   this.timCan=document.createElement('canvas');this.timCan.width=256;this.timCan.height=96;this.timTex=new THREE.CanvasTexture(this.timCan);this.timTex.colorSpace=THREE.SRGBColorSpace;
-  add(new THREE.BoxGeometry(0.19,0.085,0.05),M.trim,-0.02,eY-0.265,eZ+0.64);const tim=add(new THREE.PlaneGeometry(0.17,0.064),new THREE.MeshBasicMaterial({map:this.timTex,toneMapped:false}),-0.02,eY-0.265,eZ+0.612);tim.lookAt(root.localToWorld(eye.clone()));
+  add(new THREE.BoxGeometry(0.19,0.085,0.05),M.trim,xD-0.36,eY-0.36,eZ+0.60);const tim=add(new THREE.PlaneGeometry(0.17,0.064),new THREE.MeshBasicMaterial({map:this.timTex,toneMapped:false}),xD-0.36,eY-0.36,eZ+0.572);tim.lookAt(root.localToWorld(eye.clone()));
   /* panel de interruptores */
   const sw=tex(256,128,(c,w,h)=>{c.fillStyle='#16171a';c.fillRect(0,0,w,h);const lab=['IGN','FAN','PUMP','WIPE','LGT','HORN','MAP','ALS'];for(let i=0;i<8;i++){const x=16+(i%4)*60,y=14+Math.floor(i/4)*58;c.fillStyle='#2b2d31';c.fillRect(x,y,44,42);c.fillStyle=i===0?'#d12a2a':i<3?'#e0a21a':'#9aa0a8';c.fillRect(x+15,y+6,14,22);c.fillStyle='#cfd3d8';c.font='bold 10px sans-serif';c.fillText(lab[i],x+6,y+40);}});
   const swp=add(new THREE.PlaneGeometry(0.27,0.135),new THREE.MeshStandardMaterial({map:sw,roughness:0.6}),-0.04,eY-0.56,eZ+0.44);swp.lookAt(root.localToWorld(eye.clone().add(V3(0,-0.25,0))));
@@ -249,13 +252,18 @@ export class Cockpit{
   /* displays */
   this.dispT-=dt;if(this.dispT<=0){this.dispT=0.1;this.drawDisplay(p,info);}}
  link(m,A,B,box){const d=B.clone().sub(A),L=d.length()||1e-4;m.position.copy(A).addScaledVector(d,0.5);m.quaternion.setFromUnitVectors(V3(0,1,0),d.multiplyScalar(1/L));if(!box)m.scale.set(1,L,1);}
- drawDisplay(p,info){const V=p.V,c=this.dispCan.getContext('2d'),w=512,h=224;c.fillStyle='#050608';c.fillRect(0,0,w,h);
-  const rn=Math.max(0,Math.min(1,p.rpm/V.maxRpm));const leds=15;for(let i=0;i<leds;i++){const on=rn>0.55+i*0.03;c.fillStyle=on?(i<5?'#23e05a':i<10?'#ffcc18':'#ff2f3d'):'#1a1c20';if(rn>0.97&&Math.floor(info.time*12)%2)c.fillStyle='#3aa0ff';c.beginPath();c.arc(40+i*31,20,11,0,7);c.fill();}
-  const g=p.gear<0?'R':p.clutchLocked||Math.abs(p.vLong)>1?String(p.gear):'N';c.fillStyle='#fff';c.font='bold 120px monospace';c.textAlign='center';c.fillText(g,w/2,160);
-  c.font='bold 44px monospace';c.textAlign='left';c.fillStyle='#cfe8ff';c.fillText(String(Math.round(Math.abs(p.vLong)*3.6)).padStart(3,' '),20,110);c.font='18px monospace';c.fillStyle='#7f93a8';c.fillText('KM/H',24,134);
-  c.textAlign='right';c.font='bold 38px monospace';c.fillStyle='#ffd166';c.fillText(Math.round(p.rpm),w-20,110);c.font='18px monospace';c.fillStyle='#7f93a8';c.fillText('RPM',w-24,134);
-  c.fillStyle='#1d2127';c.fillRect(20,176,w-40,30);c.fillStyle=rn>0.9?'#ff2f3d':'#3aa0ff';c.fillRect(20,176,(w-40)*rn,30);
-  if(V.nitroCap>0){c.fillStyle='#39c6ff';c.fillRect(20,212,(w-40)*(p.nitro/V.nitroCap),8);}
+ drawDisplay(p,info){const V=p.V,c=this.dispCan.getContext('2d'),w=512,h=224;c.fillStyle='#040506';c.fillRect(0,0,w,h);
+  const rn=Math.max(0,Math.min(1,p.rpm/V.maxRpm)),up=V.shiftUpRpm/V.maxRpm;const leds=15;for(let i=0;i<leds;i++){const th=up*0.6+i*(up*0.42/leds);const on=rn>th;c.fillStyle=on?(i<5?'#23e05a':i<10?'#ffcc18':'#ff2f3d'):'#15171b';if(rn>up&&Math.floor(info.time*12)%2)c.fillStyle='#3aa0ff';c.beginPath();c.arc(34+i*31.5,18,12,0,7);c.fill();}
+  /* velocidad grande */
+  const kmh=Math.round(Math.abs(p.vLong)*3.6),mph=this.units==='mph';c.fillStyle='#ffffff';c.font='900 118px system-ui,sans-serif';c.textAlign='right';c.textBaseline='alphabetic';c.fillText(String(mph?Math.round(kmh*0.621):kmh),318,150);
+  c.font='800 24px system-ui,sans-serif';c.fillStyle='#8fb3d6';c.textAlign='left';c.fillText(mph?'MPH':'KM/H',326,150);
+  /* marcha en recuadro */
+  const g=p.gear<0?'R':p.clutchLocked||Math.abs(p.vLong)>1?String(p.gear):'N';c.fillStyle=rn>up?'#ff2f3d':'#12304a';c.fillRect(398,40,100,120);c.strokeStyle='#3aa0ff';c.lineWidth=4;c.strokeRect(398,40,100,120);
+  c.fillStyle='#fff';c.font='900 100px system-ui,sans-serif';c.textAlign='center';c.fillText(g,448,142);
+  /* vueltas del motor */
+  c.fillStyle='#1d2127';c.fillRect(14,176,w-28,26);c.fillStyle=rn>up?'#ff2f3d':rn>up*0.85?'#ffcc18':'#3aa0ff';c.fillRect(14,176,(w-28)*rn,26);
+  c.fillStyle='#e8f1ff';c.font='800 20px system-ui,sans-serif';c.textAlign='left';c.fillText(Math.round(p.rpm)+' rpm',20,196);
+  if(V.nitroCap>0){c.fillStyle='#39c6ff';c.fillRect(14,208,(w-28)*(p.nitro/V.nitroCap),10);}
   this.dispTex.needsUpdate=true;
   const t=this.timCan.getContext('2d');t.fillStyle='#08090a';t.fillRect(0,0,256,96);t.fillStyle='#23e05a';t.fillRect(8,8,112,80);t.fillStyle='#ff4a2f';t.fillRect(136,8,112,80);
   t.fillStyle='#051';t.font='bold 34px monospace';t.textAlign='center';t.fillStyle='#022';t.fillText((info.stage||0).toFixed(1),64,62);t.fillStyle='#200';t.fillText(info.delta!=null?(info.delta>0?'+':'')+info.delta.toFixed(1):'--',192,62);this.timTex.needsUpdate=true;}

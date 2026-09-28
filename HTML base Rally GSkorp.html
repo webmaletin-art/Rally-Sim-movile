@@ -63,7 +63,20 @@ body.cam-edit #steering,body.cam-edit #pedals{pointer-events:none !important;opa
 body.gyro-on #gyroBadge{display:block}
 #handbrakeBtn{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:21;width:64px;height:64px;border-radius:50%;pointer-events:auto;touch-action:none;background:radial-gradient(circle at 35% 30%,#5a1e1e,#1a0808);border:2px solid rgba(255,120,110,.55);color:#ffb3ab;font-size:22px;font-weight:900;box-shadow:0 6px 18px rgba(0,0,0,.5),inset 0 1px 4px rgba(0,0,0,.8);-webkit-user-select:none;user-select:none}
 #handbrakeBtn.active{background:radial-gradient(circle at 35% 30%,#ff3b30,#7a1010);box-shadow:0 0 22px rgba(255,70,60,.8),inset 0 1px 4px rgba(0,0,0,.8);color:#fff}
-body.slider-mode #handbrakeBtn{left:auto;right:16px;bottom:24px;transform:none}
+/* freno de mano al lado de la barra de freno (se alcanza con el pulgar derecho) */
+#handbrakeBtn{left:auto;right:calc(100px + env(safe-area-inset-right,0px));bottom:22px;transform:none}
+body.slider-mode #handbrakeBtn{right:calc(100px + env(safe-area-inset-right,0px));bottom:22px}
+#nitroBtn{bottom:100px !important}
+/* caja manual: tira de cambios a la izquierda (deslizar o tocar arriba/abajo) */
+#gearPad{position:absolute;left:190px;bottom:30px;width:64px;height:158px;display:none;flex-direction:column;gap:6px;pointer-events:auto;touch-action:none;z-index:22}
+body.manual #gearPad{display:flex}
+body.manual.gyro-on #steering{display:none}
+body.manual.gyro-on #gearPad{left:22px;bottom:auto;top:50%;transform:translateY(-50%);width:84px;height:56vh}
+body.manual.slider-mode #gearPad{left:auto;right:calc(186px + env(safe-area-inset-right,0px));bottom:20px;height:130px}
+#gearPad button{flex:1;border-radius:14px;border:1px solid rgba(255,255,255,.25);background:rgba(20,26,34,.62);color:#e8f1ff;font-size:24px;font-weight:900;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;touch-action:none}
+#gearPad button small{font-size:9px;letter-spacing:1px;margin-top:3px;opacity:.7}
+#gearPad button.active{background:rgba(58,160,255,.55);border-color:#8fd0ff}
+#gearInd{text-align:center;font:900 26px system-ui,sans-serif;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.8);background:rgba(10,14,20,.55);border-radius:10px;padding:2px 0}
 #parkOk{position:fixed;top:14%;left:50%;transform:translateX(-50%);z-index:15;display:none;align-items:center;gap:10px;pointer-events:none;background:rgba(20,140,70,.88);border:1px solid rgba(140,255,190,.8);color:#eafff2;border-radius:14px;padding:12px 22px;font-size:16px;font-weight:900;letter-spacing:2px;text-transform:uppercase;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 #parkOk.show{display:flex}
 #overlay{position:fixed;inset:0;z-index:60;background:linear-gradient(180deg,rgba(3,7,12,.9),rgba(5,10,16,.76));display:flex;align-items:center;justify-content:center;color:#e8f3ff}
@@ -175,6 +188,7 @@ body.slider-mode #handbrakeBtn{left:auto;right:16px;bottom:24px;transform:none}
       <div class="pedal-label bottom">FRENO</div>
     </div>
   </div>
+  <div id="gearPad"><button id="gearUp">▲<small>SUBIR</small></button><div id="gearInd">1</div><button id="gearDn">▼<small>BAJAR</small></button></div>
   <button id="handbrakeBtn">🅷</button>
   <button id="nitroBtn"><span>N₂O</span><i id="nitroFill"></i></button>
 </div>

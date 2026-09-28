@@ -115,7 +115,7 @@ class Physics{
   this.nitro=V.nitroCap||0;}
  reset(pose){const t=this.track,p=t.samples[0],tg=t.tangents[0],lat=t.laterals[0];pose=pose||this.pose;if(pose){this.px=pose.x;this.pz=pose.z;this.yaw=pose.yaw;}else{this.px=p.x+lat.x*0.35;this.pz=p.z+lat.z*0.35;this.yaw=Math.atan2(tg.x,tg.z);}t._hint=null;this.trackHint=null;/* altura de largada: la rueda más alta apenas apoyada (sin clavarse en pendientes ni baches) */{const fx=Math.sin(this.yaw),fz=Math.cos(this.yaw),lx=Math.cos(this.yaw),lz=-Math.sin(this.yaw);let gy=t.groundInfo(this.px,this.pz).y;for(const w of this.wheels)gy=Math.max(gy,t.groundInfo(this.px+fx*w.z+lx*w.x,this.pz+fz*w.z+lz*w.x).y);t._hint=null;this.py=gy+this.V.comHeight+0.01;}this.pitch=0;this.roll=0;this.vx=0;this.vy=0;this.vz=0;this.yawRate=0;this.pitchRate=0;this.rollRate=0;this.vLong=0;this.vLat=0;this.aLong=0;this.aLat=0;this.steerAngle=0;this.rpm=this.V.idleRpm;this.gear=1;this.shiftT=0;this.clutchLocked=false;this.tc=1;this.load=0;this.limiter=false;this.events=[];this.revT=0;this.airTime=0;this.slip=0;this.contacts=4;this.nitro=this.V.nitroCap||0;this.nitroActive=false;for(const w of this.wheels){w.comp=w.sMax-w.sStatic;w.s=w.sStatic;w.omega=0;w.contact=true;w.jack=0;}this.position={x:this.px,y:this.py,z:this.pz};}
  torqueAt(rpm){const c=this.V.torqueCurve;if(rpm<=c[0][0])return c[0][1];for(let i=1;i<c.length;i++){if(rpm<=c[i][0]){const u=(rpm-c[i-1][0])/(c[i][0]-c[i-1][0]);return c[i-1][1]+(c[i][1]-c[i-1][1])*u}}return c[c.length-1][1];}
- step(dt,input){const n=2,h=dt/n;for(let i=0;i<n;i++)this.sub(h,input);
+ step(dt,input){if(input&&input.shift)this.reqShift=input.shift;const n=2,h=dt/n;for(let i=0;i<n;i++)this.sub(h,input);
   if(!isFinite(this.px+this.py+this.pz+this.vx+this.vy+this.vz+this.yaw+this.pitch+this.roll+this.yawRate)){console.warn('physics NaN → recover');this.reset(this._good||this.pose);}else if(!this._gt||(this._gt=(this._gt+1)%60)===0){this._good={x:this.px,z:this.pz,yaw:this.yaw};this._gt=this._gt||1;}this.position.x=this.px;this.position.y=this.py;this.position.z=this.pz;}
  /* dirección sensible a la velocidad: a fondo el volante da lo justo para el límite de agarre
     (radio mínimo + ángulo de deriva pico) y un extra si el auto va cruzado para poder contravolantear */
@@ -177,7 +177,11 @@ class Physics{
    if(handbrake&&!w.front)w.brake=Math.max(w.brake,V.brakeTorque*0.55);}
   /* caja secuencial: sube por velocidad real (no por patinar), un cambio por vez con tiempo mínimo en cada marcha,
      y al frenar reduce de a una sin pasar de vueltas (se ve al piloto meter cada cambio) */
-  if(this.gear>0&&this.clutchLocked&&this.shiftT<=0){this.inGearT=(this.inGearT||0)+h;const wr=Math.abs(this.vLong)/V.wheelRadius*V.finalDrive*9.549,rIn=g=>wr*V.gears[g-1];
+  /* caja manual: el piloto pide el cambio; se niega a reducir si pasaría de vueltas */
+  if(this.manual&&this.reqShift){const d=this.reqShift;this.reqShift=0;const wr=Math.abs(this.vLong)/V.wheelRadius*V.finalDrive*9.549;
+   if(d>0){if(this.gear===-1)this.gear=1;else if(this.gear<V.gears.length&&this.shiftT<=0){this.gear++;this.shiftT=V.shiftTime;this.inGearT=0;this.events.push({type:'shift',up:true});}}
+   else{if(this.gear>1&&this.shiftT<=0){if(wr*V.gears[this.gear-2]<V.maxRpm*1.03){this.gear--;this.shiftT=V.shiftTime*0.6;this.inGearT=0;this.events.push({type:'shift',up:false});}else this.events.push({type:'shiftDenied'});}else if(this.gear===1&&Math.abs(this.vLong)<1.2)this.gear=-1;}}
+  if(!this.manual&&this.gear>0&&this.clutchLocked&&this.shiftT<=0){this.inGearT=(this.inGearT||0)+h;const wr=Math.abs(this.vLong)/V.wheelRadius*V.finalDrive*9.549,rIn=g=>wr*V.gears[g-1];
    const up=this.gear<V.gears.length&&thr>0.1&&this.contacts>=2&&this.inGearT>0.45&&((this.rpm>V.shiftUpRpm&&rIn(this.gear)>V.shiftUpRpm*0.8)||rIn(this.gear)>V.maxRpm*0.99);
    const brkDown=brk>0.25&&this.gear>1&&this.inGearT>0.28&&rIn(this.gear)<V.shiftDownRpm*1.7&&rIn(this.gear-1)<V.shiftUpRpm*0.92;
    const lugDown=this.gear>1&&this.rpm<V.shiftDownRpm*(thr>0.6?1:0.6)&&this.inGearT>0.2&&rIn(this.gear-1)<V.shiftUpRpm*0.95;
@@ -197,7 +201,7 @@ const CAMERAS=[
   {name:'Cerca/Alta',mode:'chase',dist:4.8,height:2.9,look:3.0,lookH:0.6,fov:64},
   {name:'Lejos/Baja',mode:'chase',dist:11.0,height:1.2,look:4.5,lookH:1.0,fov:54},
   {name:'Aérea',mode:'chase',dist:15.0,height:6.0,look:2.0,lookH:0.2,fov:50},
-  {name:'Personalizada',mode:'custom',fov:60},
+  {name:'Cámara libre',mode:'custom',fov:60},
   {name:'Interior (atrás del piloto)',mode:'rearcabin',fov:68},
   {name:'Capó',mode:'hood',fov:66},
   {name:'Paragolpes',mode:'bumper',fov:70},
@@ -214,8 +218,18 @@ class Input{
   this.handbrakeTouch=false;this.handbrake=false;
   addEventListener('keydown',e=>{this.keys[e.code]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();});
   addEventListener('keyup',e=>{this.keys[e.code]=false;});
-  this.bindWheel();this.bindSlider();this.bindPedalSingle();this.bindHandbrake();
+  this.shiftQueue=0;this.shift=0;
+  this.bindWheel();this.bindSlider();this.bindPedalSingle();this.bindHandbrake();this.bindGearPad();
  }
+ /* tira de cambios: deslizar arriba/abajo (cada 30 px = un cambio, se pueden encadenar) o tocar ▲ / ▼; multitáctil */
+ bindGearPad(){const el=$('gearPad');if(!el)return;const act=new Map();const up=$('gearUp'),dn=$('gearDn');
+  const flash=b=>{b.classList.add('active');setTimeout(()=>b.classList.remove('active'),140);};
+  const shift=d=>{this.shiftQueue=Math.max(-3,Math.min(3,this.shiftQueue+d));flash(d>0?up:dn);if(navigator.vibrate&&PROFILE.d.settings.vibrate)try{navigator.vibrate(12)}catch(e){}};
+  el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId)}catch(_){}act.set(e.pointerId,{y0:e.clientY,moved:false,t:e.target});},{passive:false});
+  el.addEventListener('pointermove',e=>{const a=act.get(e.pointerId);if(!a)return;e.preventDefault();const dy=e.clientY-a.y0;if(Math.abs(dy)>30){shift(dy<0?1:-1);a.y0=e.clientY;a.moved=true;}},{passive:false});
+  const end=e=>{const a=act.get(e.pointerId);if(!a)return;act.delete(e.pointerId);if(!a.moved){const r=el.getBoundingClientRect();shift(e.clientY<r.top+r.height/2?1:-1);}};
+  el.addEventListener('pointerup',end);el.addEventListener('pointercancel',e=>act.delete(e.pointerId));
+  addEventListener('keydown',e=>{if(e.code==='KeyE')shift(1);if(e.code==='KeyQ')shift(-1);});}
  bindHandbrake(){const el=$('handbrakeBtn');if(!el)return;
   const on=e=>{e.preventDefault();this.handbrakeTouch=true;el.classList.add('active');};
   const off=e=>{this.handbrakeTouch=false;el.classList.remove('active');};
@@ -279,16 +293,22 @@ class Input{
   el.addEventListener('touchend',touchEnd,{passive:false});el.addEventListener('touchcancel',touchEnd,{passive:false});}
  gyroOrientation(){let a=0;if(screen.orientation&&typeof screen.orientation.angle==='number')a=screen.orientation.angle;else if(typeof window.orientation==='number')a=window.orientation;a=((a%360)+360)%360;if(a===90)return 'landscape-primary';if(a===270)return 'landscape-secondary';if(a===180)return 'portrait-secondary';return 'portrait-primary';}
  gyroAxisValue(e){const o=this.gyroOrientation();const beta=(typeof e.beta==='number'&&isFinite(e.beta))?e.beta:0;const gamma=(typeof e.gamma==='number'&&isFinite(e.gamma))?e.gamma:0;if(o==='landscape-primary')return -beta;if(o==='landscape-secondary')return beta;if(o==='portrait-secondary')return -gamma;return gamma;}
- async enableGyro(){if(!('DeviceOrientationEvent' in window))return {ok:false,err:'Tu navegador no soporta acelerómetro/giroscopio.'};
-  if(location.protocol==='file:')return {ok:false,err:'Abrilo por HTTPS o servidor local para usar el acelerómetro.'};
-  if(typeof DeviceOrientationEvent.requestPermission==='function'){try{const r=await DeviceOrientationEvent.requestPermission();if(r!=='granted')return {ok:false,err:'Permiso denegado.'};}catch(e){return {ok:false,err:'Error pidiendo permiso: '+e.message};}}
+ /* inclinar el teléfono: usa el ACELERÓMETRO (gravedad), que tienen todos los teléfonos; si no manda datos, prueba la orientación */
+ async enableGyro(){if(location.protocol==='file:')return {ok:false,err:'Abrilo por HTTPS o servidor local para usar el acelerómetro.'};
+  for(const E of [window.DeviceMotionEvent,window.DeviceOrientationEvent]){if(E&&typeof E.requestPermission==='function'){try{const r=await E.requestPermission();if(r!=='granted')return {ok:false,err:'Permiso denegado para el sensor de movimiento.'};}catch(e){return {ok:false,err:'Error pidiendo permiso: '+e.message};}}}
   let events=0;this.gyroCalib=null;this.gyroRaw=0;this.gyroSteer=0;
-  this.gyroHandler=e=>{if(e.beta==null&&e.gamma==null&&e.alpha==null)return;events++;const cur=this.gyroAxisValue(e);if(this.gyroCalib===null){this.gyroCalib=cur;return;}let delta=cur-this.gyroCalib;if(delta>180)delta-=360;if(delta<-180)delta+=360;this.gyroRaw+=(delta-this.gyroRaw)*0.20;this.gyroSteer=clamp(this.gyroRaw/GYRO_TILT_FOR_FULL,-1,1);};
-  window.addEventListener('deviceorientation',this.gyroHandler,{passive:true});
+  const feed=cur=>{events++;if(this.gyroCalib===null){this.gyroCalib=cur;return;}let delta=cur-this.gyroCalib;if(delta>180)delta-=360;if(delta<-180)delta+=360;this.gyroRaw+=(delta-this.gyroRaw)*0.22;this.gyroSteer=clamp(this.gyroRaw/GYRO_TILT_FOR_FULL,-1,1);};
+  /* gravedad en el plano de la pantalla: girar el teléfono como un volante (cualquier apaisado) */
+  this.motionHandler=e=>{const g=e.accelerationIncludingGravity;if(!g||g.x==null||g.y==null)return;if(Math.hypot(g.x,g.y)<3)return;feed(Math.atan2(g.y,g.x)*180/Math.PI);};
+  if('DeviceMotionEvent' in window)window.addEventListener('devicemotion',this.motionHandler,{passive:true});
   await new Promise(r=>setTimeout(r,600));
-  if(events<2){window.removeEventListener('deviceorientation',this.gyroHandler);this.gyroHandler=null;return {ok:false,err:'El sensor no está enviando datos. Probá mover el teléfono.'};}
+  if(events<2){window.removeEventListener('devicemotion',this.motionHandler);this.motionHandler=null;
+   if(!('DeviceOrientationEvent' in window))return {ok:false,err:'Tu teléfono no manda datos del acelerómetro.'};
+   this.gyroHandler=e=>{if(e.beta==null&&e.gamma==null&&e.alpha==null)return;feed(this.gyroAxisValue(e));};window.addEventListener('deviceorientation',this.gyroHandler,{passive:true});
+   await new Promise(r=>setTimeout(r,600));
+   if(events<2){window.removeEventListener('deviceorientation',this.gyroHandler);this.gyroHandler=null;return {ok:false,err:'El sensor no está enviando datos. Probá mover el teléfono.'};}}
   this.gyroEnabled=true;document.body.classList.add('gyro-on');this.wheelTarget=0;this.sliderTarget=0;return {ok:true};}
- disableGyro(){if(this.gyroHandler){window.removeEventListener('deviceorientation',this.gyroHandler);this.gyroHandler=null;}this.gyroEnabled=false;this.gyroSteer=0;this.gyroRaw=0;this.gyroCalib=null;this.wheelTarget=0;this.sliderTarget=0;document.body.classList.remove('gyro-on');}
+ disableGyro(){if(this.gyroHandler){window.removeEventListener('deviceorientation',this.gyroHandler);this.gyroHandler=null;}if(this.motionHandler){window.removeEventListener('devicemotion',this.motionHandler);this.motionHandler=null;}this.gyroEnabled=false;this.gyroSteer=0;this.gyroRaw=0;this.gyroCalib=null;this.wheelTarget=0;this.sliderTarget=0;document.body.classList.remove('gyro-on');}
  recalibrateGyro(){this.gyroCalib=null;this.gyroRaw=0;this.gyroSteer=0;}
  update(dt){let kbSteer=0;if(this.keys.KeyA||this.keys.ArrowLeft)kbSteer-=1;if(this.keys.KeyD||this.keys.ArrowRight)kbSteer+=1;
   let desiredSteer;
@@ -309,6 +329,7 @@ class Input{
   if(!pedalActive){if(kbGas>0){this.gasTarget=kbGas;this.brakeTarget=0;}else if(kbBrake>0){this.gasTarget=0;this.brakeTarget=kbBrake;}else{this.gasTarget=0;this.brakeTarget=0;}}
   this.gas=this.gasTarget;this.brake=this.brakeTarget;this.throttle=this.gas;
   this.handbrake=this.handbrakeTouch||!!this.keys.Space;
+  this.shift=this.shiftQueue>0?1:this.shiftQueue<0?-1:0;this.shiftQueue-=this.shift;
  }
 }
 
@@ -412,9 +433,25 @@ class Track{
   const line=new THREE.Mesh(new THREE.PlaneGeometry(this.halfWidth*2,1.2),new THREE.MeshBasicMaterial({map:ck,polygonOffset:true,polygonOffsetFactor:-6}));line.position.set(p.x,this.ground(p.x,p.z)+0.05,p.z);line.rotation.x=-Math.PI/2;line.rotation.z=-Math.atan2(tg.x,tg.z);g.add(line);
   this.group.add(g);return g;}
  buildStart(){const p=this.samples[0],mat=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide});const line=new THREE.Mesh(new THREE.PlaneGeometry(this.halfWidth*2,.9),mat);line.position.copy(p);line.position.y=this.ground(p.x,p.z)+.045;line.rotation.x=-Math.PI/2;line.rotation.z=-Math.atan2(this.tangents[0].x,this.tangents[0].z);this.group.add(line)}
- buildTape(){const step=Math.max(4,Math.round(28/(this.length/this.samples.length)));for(const side of [-1,1]){const nodes=[];for(let i=0;i<this.samples.length;i+=step){const p=this.samples[i],lat=this.laterals[i],off=this.halfWidth+this.shoulder+.9;const base=p.clone().addScaledVector(lat,side*off);base.y=this.ground(base.x,base.z)+1.0;nodes.push({base:base.clone(),pos:base.clone(),vel:new THREE.Vector3(),side})}
-  const posts=new THREE.Group();const pm=new THREE.MeshStandardMaterial({color:0xd8d8d2});for(const n of nodes){const h=1.55;const pole=new THREE.Mesh(new THREE.CylinderGeometry(.035,.045,h,6),pm);pole.position.copy(n.base);pole.position.y-=.22;posts.add(pole)}this.group.add(posts);const geo=new THREE.BufferGeometry();const count=nodes.length*2;const arr=new Float32Array(count*3),ind=[];for(let i=0;i<nodes.length-1;i++){const a=i*2,b=i*2+1,c=(i+1)*2,d=(i+1)*2+1;ind.push(a,b,c,b,d,c)}geo.setAttribute('position',new THREE.BufferAttribute(arr,3));geo.setIndex(ind);const tex=document.createElement('canvas');tex.width=128;tex.height=32;const tc=tex.getContext('2d');tc.fillStyle='#f2f2ea';tc.fillRect(0,0,128,32);tc.fillStyle='#e21e1e';for(let x=-32;x<160;x+=32)tc.beginPath(),tc.moveTo(x,32),tc.lineTo(x+18,0),tc.lineTo(x+30,0),tc.lineTo(x+12,32),tc.fill();const t=new THREE.CanvasTexture(tex);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(nodes.length/2,1);const mesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({map:t,transparent:true,side:THREE.DoubleSide,depthWrite:false}));this.group.add(mesh);this.tapeNodes.push({nodes,geo,mesh})}}
- updateTape(car){for(const tape of this.tapeNodes){const nodes=tape.nodes;for(const n of nodes){const dx=n.pos.x-car.x,dz=n.pos.z-car.z,dist=Math.hypot(dx,dz);const push=dist<4?Math.pow(1-dist/4,2)*1.6:0;const dir=new THREE.Vector3(dx,0,dz);if(dir.lengthSq()<.001)dir.set(1,0,0);else dir.normalize();const target=n.base.clone().addScaledVector(dir,push);target.y+=Math.sin(performance.now()*.002+n.base.x*.03)*.03;const f=target.sub(n.pos);n.vel.addScaledVector(f,12/60);n.vel.multiplyScalar(.90);n.pos.addScaledVector(n.vel,.016)}const a=tape.geo.attributes.position.array;for(let i=0;i<nodes.length;i++){const n=nodes[i],p=i*2*3;a[p]=n.pos.x;a[p+1]=n.pos.y+.12;a[p+2]=n.pos.z;const prev=i?nodes[i-1].pos:n.pos,next=i<nodes.length-1?nodes[i+1].pos:n.pos;const dir=next.clone().sub(prev).normalize();const across=new THREE.Vector3(0,1,0).cross(dir).normalize().multiplyScalar(.07);a[p+3]=n.pos.x+across.x;a[p+4]=n.pos.y-.07;a[p+5]=n.pos.z+across.z}tape.geo.attributes.position.needsUpdate=true;tape.geo.computeBoundingSphere()}}
+ /* cinta de rally: un nodo cada ~5 m siguiendo la curva, estaca cada ~15 m, cerrada en toda la vuelta.
+    Solo se simulan los tramos que el auto toca (el resto queda quieto). */
+ buildTape(){const N=this.samples.length,step=Math.max(1,Math.round(5/(this.length/N)));const pm=new THREE.MeshStandardMaterial({color:0xd8d8d2,roughness:0.6});
+  const tex=document.createElement('canvas');tex.width=128;tex.height=32;const tc=tex.getContext('2d');tc.fillStyle='#f2f2ea';tc.fillRect(0,0,128,32);tc.fillStyle='#e21e1e';for(let x=-32;x<160;x+=32){tc.beginPath();tc.moveTo(x,32);tc.lineTo(x+18,0);tc.lineTo(x+30,0);tc.lineTo(x+12,32);tc.fill();}
+  const postGeo=new THREE.CylinderGeometry(.035,.045,1.2,6);
+  for(const side of [-1,1]){const nodes=[];for(let i=0;i<N;i+=step){const p=this.samples[i],lat=this.laterals[i],off=this.halfWidth+this.shoulder+.9;const base=p.clone().addScaledVector(lat,side*off);base.y=this.ground(base.x,base.z)+1.0;nodes.push({base:base.clone(),pos:base.clone(),vel:new THREE.Vector3(),active:false});}
+   const M=nodes.length,posts=nodes.filter((n,k)=>k%3===0);const pi=new THREE.InstancedMesh(postGeo,pm,posts.length);const d=new THREE.Object3D();posts.forEach((n,k)=>{d.position.set(n.base.x,n.base.y-0.42,n.base.z);d.updateMatrix();pi.setMatrixAt(k,d.matrix);});this.group.add(pi);
+   const arr=new Float32Array(M*2*3),uv=new Float32Array(M*2*2),ind=[];let u=0;for(let k=0;k<M;k++){if(k)u+=nodes[k].base.distanceTo(nodes[k-1].base);uv[k*4]=u/1.2;uv[k*4+1]=1;uv[k*4+2]=u/1.2;uv[k*4+3]=0;const a=k*2,b=a+1,c=((k+1)%M)*2,dd=c+1;ind.push(a,b,c,b,dd,c);}
+   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(arr,3));geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));geo.setIndex(ind);
+   const t=new THREE.CanvasTexture(tex);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;const mesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({map:t,side:THREE.DoubleSide}));mesh.frustumCulled=false;this.group.add(mesh);
+   const tape={nodes,geo,mesh};for(let k=0;k<M;k++)this.writeTape(tape,k);geo.attributes.position.needsUpdate=true;this.tapeNodes.push(tape);}}
+ writeTape(tape,k){const a=tape.geo.attributes.position.array,n=tape.nodes[k].pos,p=k*6;a[p]=n.x;a[p+1]=n.y+0.06;a[p+2]=n.z;a[p+3]=n.x;a[p+4]=n.y-0.07;a[p+5]=n.z;}
+ updateTape(car){const t=performance.now()*.002;for(const tape of this.tapeNodes){let dirty=false;const nodes=tape.nodes;for(let k=0;k<nodes.length;k++){const n=nodes[k];const dx=n.pos.x-car.x,dz=n.pos.z-car.z;
+   if(!n.active&&(Math.abs(dx)>6||Math.abs(dz)>6))continue;const dist=Math.hypot(dx,dz);if(dist<4.2)n.active=true;if(!n.active)continue;
+   const push=dist<4?Math.pow(1-dist/4,2)*1.6:0;const ux=dist>0.01?dx/dist:1,uz=dist>0.01?dz/dist:0;const tx=n.base.x+ux*push-n.pos.x,ty=n.base.y+Math.sin(t+n.base.x*.03)*.03-n.pos.y,tz=n.base.z+uz*push-n.pos.z;
+   n.vel.x=(n.vel.x+tx*0.2)*0.9;n.vel.y=(n.vel.y+ty*0.2)*0.9;n.vel.z=(n.vel.z+tz*0.2)*0.9;n.pos.x+=n.vel.x*0.016;n.pos.y+=n.vel.y*0.016;n.pos.z+=n.vel.z*0.016;
+   if(push===0&&Math.abs(tx)+Math.abs(tz)<0.01&&n.vel.lengthSq()<1e-4){n.pos.copy(n.base);n.vel.set(0,0,0);n.active=false;}
+   this.writeTape(tape,k);dirty=true;}
+  if(dirty)tape.geo.attributes.position.needsUpdate=true;}}
  buildScenery(){const rockGeo=new THREE.DodecahedronGeometry(.55,0),rockMat=new THREE.MeshStandardMaterial({color:0x77736b,roughness:1});const rocks=new THREE.InstancedMesh(rockGeo,rockMat,260);
   const bushGeo=new THREE.IcosahedronGeometry(.65,0),bushMat=new THREE.MeshStandardMaterial({color:0x314e2e,roughness:1});const bushes=new THREE.InstancedMesh(bushGeo,bushMat,200);
   const trunkGeo=new THREE.CylinderGeometry(.18,.25,2.6,6);const trunkMat=new THREE.MeshStandardMaterial({color:0x5a3f28,roughness:1});
@@ -476,7 +513,7 @@ class TrenchTrack extends Track{
  groundInfo(x,z){const n=this.nearest(x,z),i=n.idx,d=Math.abs(n.lateral),hw=this.hwA[i],o=this._gi||(this._gi={y:0,surf:'asphalt'});
   if(d<=hw+2.6){o.surf=this.surfAt(i,n.lateral);o.y=n.y+(d<hw?(1-(d/hw)**2)*0.03:0)+microBump(x,z,o.surf);}else{o.surf='outside';o.y=this.rimY(x,z,i);}
   o.tunnel=!!this.tun[i]&&d<hw+2.6;return o;}
- ground(x,z){return this.groundInfo(x,z).y;}
+ ground(x,z){const n=this.nearest(x,z),i=n.idx,d=Math.abs(n.lateral),hw=this.hwA[i];return d<=hw+2.6?n.y+(d<hw?(1-(d/hw)**2)*0.03:0):this.rimY(x,z,i);}
  surface(x,z){return this.groundInfo(x,z).surf;}
  inTunnel(x,z){const n=this.nearest(x,z);return !!this.tun[n.idx]&&Math.abs(n.lateral)<this.hwA[n.idx]+2.6;}
  /* pared o isla que toca un círculo (x,z,r): normal de empuje y penetración */
@@ -567,6 +604,32 @@ class TrenchTrack extends Track{
   /* restos de mina junto a la largada (contra las paredes, fuera de la calzada útil) */
   const crate=new THREE.MeshLambertMaterial({color:0x7a5530});for(let k=0;k<6;k++){const i=(N-30+k*9)%N,p=S[i],l=this.laterals[i],sd=k%2?1:-1,hw=this.hwA[i];const b=new THREE.Mesh(new THREE.BoxGeometry(1.1,1.1,1.1),crate);b.position.set(p.x+l.x*sd*(hw+0.9),this.ry[i]+0.55+(k%3===0?1.1:0),p.z+l.z*sd*(hw+0.9));b.rotation.y=k;G.add(b);}}
 }
+/* ═══ Conos con física: al chocarlos salen despedidos, giran, se caen y quedan desparramados ═══ */
+class ConeField{
+ constructor(group,positions,groundFn,coneGeo,coneMat,baseGeo,baseMat){this.ground=groundFn;const g=new THREE.BufferGeometry();
+  /* cono + base en una sola malla con el origen en el piso */
+  const cg=coneGeo.clone();cg.translate(0,0.44,0);const bg=baseGeo.clone();bg.translate(0,0.03,0);
+  this.mC=new THREE.InstancedMesh(cg,coneMat,positions.length);this.mB=new THREE.InstancedMesh(bg,baseMat,positions.length);
+  this.c=positions.map(([x,z])=>({x,z,y:groundFn(x,z),vx:0,vy:0,vz:0,q:new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.random()*6.28),w:new THREE.Vector3(),awake:false,tip:0,ax:new THREE.Vector3(1,0,0)}));
+  this.d=new THREE.Object3D();for(let i=0;i<this.c.length;i++)this.write(i);group.add(this.mC,this.mB);this.mC.castShadow=true;}
+ write(i){const c=this.c[i],d=this.d;d.position.set(c.x,c.y,c.z);d.quaternion.copy(c.q);d.updateMatrix();this.mC.setMatrixAt(i,d.matrix);this.mB.setMatrixAt(i,d.matrix);this.mC.instanceMatrix.needsUpdate=true;this.mB.instanceMatrix.needsUpdate=true;}
+ /* choque auto-cono (círculos del auto) */
+ collide(p,circles){for(const c of this.c){if(Math.abs(c.x-p.px)>5||Math.abs(c.z-p.pz)>5)continue;for(const [cx,cz,r] of circles){const dx=c.x-cx,dz=c.z-cz,d=Math.hypot(dx,dz),mn=r+0.34;if(d>=mn||d<1e-4)continue;
+   const nx=dx/d,nz=dz/d,vn=p.vx*nx+p.vz*nz;const sp=Math.hypot(p.vx,p.vz);c.x+=nx*(mn-d);c.z+=nz*(mn-d);
+   /* un solo golpe por cono: sale despedido más rápido que el auto (no se lo vuelve a llevar por delante) */
+   const now=performance.now();if(c.hitT&&now-c.hitT<400)continue;c.hitT=now;const k=Math.max(vn,0.5);
+   c.vx=p.vx*1.12+nx*k*0.7+(Math.random()-.5)*sp*0.12;c.vz=p.vz*1.12+nz*k*0.7+(Math.random()-.5)*sp*0.12;c.vy=Math.min(8,1.2+sp*0.16+Math.random()*1.4);
+   c.w.set((Math.random()-.5)*sp*1.2,(Math.random()-.5)*sp*0.8,(Math.random()-.5)*sp*1.2);c.awake=true;/* el cono pesa 3 kg: casi no frena al auto */p.vx*=0.997;p.vz*=0.997;break;}}}
+ update(dt){dt=Math.min(dt,0.05);const tq=this._t||(this._t=new THREE.Quaternion()),up=this._u||(this._u=new THREE.Vector3()),ax=this._a||(this._a=new THREE.Vector3());
+  for(let i=0;i<this.c.length;i++){const c=this.c[i];if(!c.awake)continue;c.vy-=9.81*dt;c.x+=c.vx*dt;c.y+=c.vy*dt;c.z+=c.vz*dt;
+   const w=c.w.length();if(w>1e-3){ax.copy(c.w).divideScalar(w);tq.setFromAxisAngle(ax,w*dt);c.q.premultiply(tq);}
+   up.set(0,1,0).applyQuaternion(c.q);const lift=0.3*Math.max(0,1-Math.abs(up.y));/* acostado apoya sobre el costado */
+   const gy=this.ground(c.x,c.z)+lift;if(c.y<=gy){c.y=gy;if(c.vy<0)c.vy=-c.vy*0.25;c.vx*=Math.exp(-dt*3.2);c.vz*=Math.exp(-dt*3.2);c.w.multiplyScalar(Math.exp(-dt*4.5));
+    if(Math.hypot(c.vx,c.vz)<0.08&&Math.abs(c.vy)<0.4&&w<0.35){/* reposo: parado si cayó derecho, si no acostado de costado */
+     if(up.y>0.85)c.q.setFromAxisAngle(ax.set(0,1,0),Math.atan2(up.x,up.z));else{let hx=up.x,hz=up.z;const hl=Math.hypot(hx,hz)||1;const tgt=ax.set(hx/hl*0.97,0.24,hz/hl*0.97).normalize();c.q.setFromUnitVectors(new THREE.Vector3(0,1,0),tgt);}
+     up.set(0,1,0).applyQuaternion(c.q);c.y=this.ground(c.x,c.z)+0.3*Math.max(0,1-Math.abs(up.y));c.awake=false;c.vx=c.vz=c.vy=0;c.w.set(0,0,0);}}
+   this.write(i);}}
+}
 class DriftTrack{
  constructor(scene){
   this.scene=scene;this.kind='drift';this.mode='asphalt';this.lapEnabled=false;
@@ -638,14 +701,7 @@ class DriftTrack{
   for(let i=0;i<12;i++){const side=(i%2===0)?-1:1;positions.push([side*3.5,-100+i*5]);}
   for(let i=0;i<12;i++){const side=(i%2===0)?1:-1;positions.push([side*3.5,45+i*5]);}
   for(let i=0;i<16;i++){const a=i*Math.PI*2/16;positions.push([Math.cos(a)*8,Math.sin(a)*8]);}
-  const cones=new THREE.InstancedMesh(coneGeo,coneMat,positions.length);
-  const bases=new THREE.InstancedMesh(baseGeo,baseMat,positions.length);
-  const dummy=new THREE.Object3D();
-  for(let i=0;i<positions.length;i++){const [x,z]=positions[i];
-   dummy.position.set(x,0.44,z);dummy.rotation.set(0,Math.random()*Math.PI*2,0);dummy.updateMatrix();cones.setMatrixAt(i,dummy.matrix);
-   dummy.position.set(x,0.03,z);dummy.updateMatrix();bases.setMatrixAt(i,dummy.matrix);}
-  cones.instanceMatrix.needsUpdate=true;bases.instanceMatrix.needsUpdate=true;
-  this.group.add(cones,bases);
+  this.cones=new ConeField(this.group,positions,()=>0,coneGeo,coneMat,baseGeo,baseMat);
 
   const R_EDGE=SIZE/2-6;
   const wallGeo=new THREE.CylinderGeometry(R_EDGE+0.3,R_EDGE+0.3,0.6,64,1,true);
@@ -1091,9 +1147,12 @@ class Effects{
      if(rnd()<0.35)this.spawn(x,y,z,fx*back*0.8+(rnd()-.5)*2,1.5+rnd()*2,fz*back*0.8+(rnd()-.5)*2,0.18,0.15,0.12,1.0,0.07,0.6,0,-9.8);}
     else{const c=0.78+rnd()*0.1;this.spawn(x+(rnd()-.5)*.3,y+0.1,z+(rnd()-.5)*.3,fx*back*0.3+(rnd()-.5)*0.8,0.5+rnd()*0.5,fz*back*0.3+(rnd()-.5)*0.8,c,c,c*1.02,0.30,0.8+rnd()*0.6,1.4+rnd(),2.2,0.25);}}
    const mark=!loose&&sl>0.22;
+   /* huellas pegadas al piso DIBUJADO (sin micro-relieve) y con la pendiente del camino: nunca quedan en el aire */
+   const tr=p.track,gv=(X,Z)=>{if(!tr)return w.gy;const h=tr._hint;const y=tr.ground(X,Z);tr._hint=h;return y;};
    if(mark&&this.last[i]){const L=this.last[i],dx=x-L.x,dz=z-L.z,dd=Math.hypot(dx,dz);
-    if(dd>0.35){const d=this.d;d.position.set((x+L.x)/2,Math.max(w.gy,L.y)+0.03,(z+L.z)/2);d.rotation.set(0,Math.atan2(dx,dz),0);d.scale.set((p.V||VEH).tireWidth*0.9,1,dd);d.updateMatrix();this.marks.setMatrixAt(this.mk,d.matrix);this.mk=(this.mk+1)%this.MK;this.marks.instanceMatrix.needsUpdate=true;L.x=x;L.z=z;L.y=w.gy}}
-   else if(mark)this.last[i]={x,z,y:w.gy};else this.last[i]=null;}}
+    if(dd>0.35&&dd<3){const y1=gv(x,z),d=this.d;d.position.set((x+L.x)/2,(y1+L.y)/2+0.025,(z+L.z)/2);d.rotation.set(0,0,0);d.rotation.order='YXZ';d.rotation.y=Math.atan2(dx,dz);d.rotation.x=-Math.atan2(y1-L.y,dd);d.scale.set((p.V||VEH).tireWidth*0.9,1,Math.hypot(dd,y1-L.y));d.updateMatrix();this.marks.setMatrixAt(this.mk,d.matrix);this.mk=(this.mk+1)%this.MK;this.marks.instanceMatrix.needsUpdate=true;L.x=x;L.z=z;L.y=y1}
+    else if(dd>=3){L.x=x;L.z=z;L.y=gv(x,z);}}
+   else if(mark)this.last[i]={x,z,y:gv(x,z)};else this.last[i]=null;}}
  update(dt){const N=this.N,P=this.pos,Vv=this.vel;
   for(let i=0;i<N;i++){if(this.life[i]<=0){if(this.alpha[i]!==0){this.alpha[i]=0}continue}
    this.life[i]-=dt;const k=this.life[i]/this.max[i];Vv[i*3+1]+=this.grav[i]*dt;const drag=Math.exp(-dt*1.6);Vv[i*3]*=drag;Vv[i*3+2]*=drag;
@@ -1444,6 +1503,7 @@ class Session{
     p.px+=w.nx*w.pen;p.pz+=w.nz*w.pen;const vn=p.vx*w.nx+p.vz*w.nz;if(vn<0){const tx=-w.nz,tz=w.nx,vt=p.vx*tx+p.vz*tz;p.vx-=1.2*vn*w.nx;p.vz-=1.2*vn*w.nz;p.vx-=tx*vt*0.08;p.vz-=tz*vt*0.08;
      p.yawRate+=((cz-p.pz)*(-vn*w.nx)-(cx-p.px)*(-vn*w.nz))*p.V.mass/p.V.Izz*0.5;
      if(car.isPlayer&&-vn>2){const imp=-vn;this.g.hitFx(imp*1.3);if(this.cfg.type!=='free'&&this.cfg.type!=='test'&&this.cfg.type!=='world'){p.damage=Math.min(1,(p.damage||0)+Math.max(0,imp-3)*0.018);}if(imp>9)this.g.toast(imp>16?'💥 ¡Contra la pared!':'💥 ¡Rozaste la pared!','');}}}}}
+  if(tr.cones)for(const car of cs)tr.cones.collide(car.phys,circ(car));
   const obs=this.track.obstacles;if(obs){const pl=this.player,p=pl.phys;for(const [cx,cz,r] of circ(pl))for(const o of obs){const qx=Math.max(o.x-o.hw,Math.min(cx,o.x+o.hw)),qz=Math.max(o.z-o.hl,Math.min(cz,o.z+o.hl));const dx=cx-qx,dz=cz-qz,d=Math.hypot(dx,dz);
     if(d<r&&d>1e-4){const nx=dx/d,nz=dz/d;p.px+=nx*(r-d);p.pz+=nz*(r-d);const vn=p.vx*nx+p.vz*nz;if(vn<0){p.vx-=1.3*vn*nx;p.vz-=1.3*vn*nz;}
      if(this.touchCd<=0){this.touches++;this.touchCd=1.0;this.g.hitFx(Math.abs(vn)+1);this.g.toast(this.cfg.hard?'¡Tocaste! Evento perdido':'¡Toque! +3 s','');if(this.cfg.hard&&this.state==='run')this.finish(false);}}}}}
@@ -1568,6 +1628,8 @@ class Game{
  splitMsg(d){const e=$('subMsg');e.textContent=(d<0?'−':'+')+Math.abs(d).toFixed(2)+' s';e.style.color=d<0?'#3ddc84':'#ff4d5e';clearTimeout(this._sm);this._sm=setTimeout(()=>{e.textContent='';e.style.color='';},1800);}
  bigMsg(t,cls){const e=$('centerMsg');e.textContent=t;e.className='anim '+(cls||'');void e.offsetWidth;e.className='anim '+(cls||'');clearTimeout(this._bm);this._bm=setTimeout(()=>{e.textContent='';e.className='';},950);}
  hitFx(v){if(v>2.5&&PROFILE.d.settings.vibrate&&navigator.vibrate)try{navigator.vibrate(Math.min(80,v*10))}catch(e){}if(v>1.5)this.audio.thump&&this.audio.thump(Math.min(1,v/8));}
+ /* ¿un punto está en cámara? (para no animar lo que no se ve) */
+ inView(x,y,z,r){const f=this._frus||(this._frus=new THREE.Frustum());if(this._fmN!==this.frameN){this._fmN=this.frameN;const m=this._fm||(this._fm=new THREE.Matrix4());m.multiplyMatrices(this.camera.projectionMatrix,this.camera.matrixWorldInverse);f.setFromProjectionMatrix(m);}const sp=this._sph||(this._sph=new THREE.Sphere());sp.center.set(x,y,z);sp.radius=r;return f.intersectsSphere(sp);}
  /* mundo abierto ↔ Trinchera */
  enterTrench(){if(this._portalBusy)return;this._portalBusy=true;const sky=this.cfg&&this.cfg.sky;this.toast('⛏️ Entrando a La Trinchera…','blue');setTimeout(()=>{this._portalBusy=false;this.launch({type:'free',map:'trinchera',sky:sky||'day',fromWorld:true});},350);}
  exitTrench(){const w=this.worldPortal;this.launch({type:'world',map:'offroad',sky:(this.cfg&&this.cfg.sky)||PROFILE.d.stats.worldSky||'day',flags:0,spawn:w?w.exit:null});}
@@ -1581,7 +1643,7 @@ class Game{
   if(ni!==i){s.autoLevel=L[ni];PROFILE.save();this.applySettings();this.toast('⚡ Calidad ajustada: '+{baja:'Baja',media:'Media',alta:'Máxima'}[L[ni]],'blue');}}
  musicCheck(){if(!this.music)return;const want=PROFILE.d.settings.music&&(this.state==='menu'||this.state==='results');if(want)this.music.start();else this.music.stop();}
  applySettings(){const s=PROFILE.d.settings;this.musicCheck&&this.musicCheck();tune.steerMode=s.steerMode;tune.gameSpeed=s.gameSpeed;tune.gyroSensitivity=s.gyroSens;GYRO_TILT_FOR_FULL=55-s.gyroSens*0.40;
-  document.body.classList.toggle('slider-mode',s.steerMode==='slider');const Q=effQuality(s);QUALITY=Q;
+  document.body.classList.toggle('slider-mode',s.steerMode==='slider');document.body.classList.toggle('manual',s.gearbox==='manual');if(this.physics)this.physics.manual=s.gearbox==='manual';const Q=effQuality(s);QUALITY=Q;
   const pr={baja:0.7,media:Math.min(devicePixelRatio,1.25),alta:Math.min(devicePixelRatio,1.75)}[Q]||1;this.renderer.setPixelRatio(pr);this.renderer.setSize(innerWidth,innerHeight);
   if(this.audio.master)this.audio.master.gain.value=SND.master*(s.volume/80);
   if(this.post&&!this.previewFx&&this.post.preset!==(s.visual||'none'))this.post.setPreset(s.visual||'none');
@@ -1611,13 +1673,15 @@ class Game{
   if(this.car){this.car.dispose();this.scene.remove(this.car.group);}
   if(this.cockpit){this.cockpit.dispose();this.cockpit=null;}
   this.car=new VehicleVisual(VEHICLES[id].visualType,VEH,{paint:st.paint});this.scene.add(this.car.group);this.makeShadow();
-  this.cockpit=new Cockpit(VEHICLES[id].visualType,VEH,st.paint);this.cockpit.root.position.y=-VEH.comHeight+(VEH.rideOffset||0);this.car.group.add(this.cockpit.root);this.cockpit.crew.position.copy(this.cockpit.root.position);this.car.group.add(this.cockpit.crew);
-  this.session=new Session(this,cfg);this.track=this.session.track;this.physics=this.session.player.phys;
+  this.cockpit=new Cockpit(VEHICLES[id].visualType,VEH,st.paint);this.cockpit.units=PROFILE.d.settings.units;this.cockpit.root.position.y=-VEH.comHeight+(VEH.rideOffset||0);this.car.group.add(this.cockpit.root);this.cockpit.crew.position.copy(this.cockpit.root.position);this.car.group.add(this.cockpit.crew);
+  this.session=new Session(this,cfg);this.track=this.session.track;this.physics=this.session.player.phys;this.physics.manual=PROFILE.d.settings.gearbox==='manual';
   if(this.renderer.shadowMap.enabled){for(const c of this.session.cars)c.vis.group.traverse(o=>{if(o.isMesh)o.castShadow=true;});this.track.group.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh)o.receiveShadow=true;});}
   this.cameraRig=new CameraRig(this.camera,this.track);this.cameraRig.cockpit=this.cockpit;this.cameraRig.mount=this.mountPoints();this.camVis();
   this.acc=0;this.odo=0;this.fx.reset();
   $('nitroBtn').classList.toggle('have',VEH.nitroCap>0);
   this.state='race';this.musicCheck();this.ui.root.innerHTML='';this.setHud(true);this.hudLayout();this.buildMinimap();
+  /* compilar todos los shaders ahora (tripulaciones, trajes, pista): sin tirones la primera vez que algo entra en cámara */
+  try{const hid=[];this.scene.traverse(o=>{if(o.isObject3D&&!o.visible&&(o.name==='crew'||o.isGroup)){hid.push(o);o.visible=true;}});this.renderer.compile(this.scene,this.camera);for(const o of hid)o.visible=false;}catch(e){}
   if(cfg.fromWorld)setTimeout(()=>{if(this.cfg===cfg)this.toast('⛏️ La Trinchera · para volver al mundo: ⏸ → Salir al mundo abierto','blue');},2500);
   this.audio.init();this.audio.resume();
   if(!PROFILE.d.tutorial){PROFILE.d.tutorial=true;PROFILE.save();const T=['Volante a la izquierda · pedal a la derecha: arriba GAS, abajo FRENO','Frenando a fondo parado → marcha atrás · botón H = freno de mano','❚❚ pausa: volver a la pista, cámara y opciones'];T.forEach((m,i)=>setTimeout(()=>this.toast(m,'blue'),600+i*2800));}
@@ -1675,8 +1739,9 @@ class Game{
  nextCamera(){
   CAM_INDEX=(CAM_INDEX+1)%CAMERAS.length;const isCustom=CAM_INDEX===CAM_CUSTOM_INDEX;
   if(this.cameraRig)this.cameraRig.setPreset(CAM_INDEX);this.camVis();
-  this.customLocked=false;document.body.classList.toggle('cam-edit',isCustom&&this.state==='race');
-  if(this.state==='race')this.toast('🎥 '+CAMERAS[CAM_INDEX].name,'blue');}
+  /* cámara libre: se usa manejando (sin modo edición ni botón aplicar): deslizar = mirar alrededor, pellizcar = zoom */
+  this.customLocked=false;document.body.classList.remove('cam-edit');
+  if(this.state==='race')this.toast(isCustom?'🎥 Cámara libre · deslizá la pantalla para mirar, pellizcá para acercar/alejar':'🎥 '+CAMERAS[CAM_INDEX].name,'blue');}
  /* puntos de cámara de capó y paragolpes medidos sobre la carrocería real (raycast), en coordenadas del auto */
  mountPoints(){const g=this.car.group,body=this.car.body,C=this.cockpit&&this.cockpit.C;g.updateWorldMatrix(true,true);const inv=g.matrixWorld.clone().invert();
   const box=new THREE.Box3(),bb=new THREE.Box3();body.traverse(o=>{if(o.isMesh&&o.geometry){if(!o.geometry.boundingBox)o.geometry.computeBoundingBox();bb.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld).applyMatrix4(inv);box.union(bb);}});
@@ -1692,7 +1757,7 @@ class Game{
   const pointers=new Map();
   let orbitPointerId=null;
   let lastMid=null,lastDist=0;
-  const isActive=()=>CAM_INDEX===CAM_CUSTOM_INDEX&&!this.customLocked&&this.cameraRig;
+  const isActive=()=>CAM_INDEX===CAM_CUSTOM_INDEX&&this.cameraRig;
   el.addEventListener('pointerdown',e=>{
    if(!isActive())return;
    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
@@ -1751,12 +1816,12 @@ class Game{
   if(this.state==='race'&&this.physics&&this.track){
    this.acc+=dt;let steps=0;while(this.acc>=this.fixed&&steps<8){this.fixedUpdate();this.acc-=this.fixed;steps++}if(steps>=8)this.acc=0;
    const S=this.session;
-   for(let i=0;i<S.cars.length;i++){const c=S.cars[i],p=c.phys;c.vis.update(p,dt);if(c.crew){const cp=this.camera.position,d=Math.hypot(p.px-cp.x,p.pz-cp.z);c.crew.group.visible=d<85;if(d<85)c.crew.update(dt,p,d<35||((this.frameN+i)%3)===0);}if(c.tag){const d=Math.hypot(p.px-this.physics.px,p.pz-this.physics.pz);c.tag.visible=d>6&&d<90;c.tag.position.set(p.px,p.py+1.9,p.pz);}const sh=c.isPlayer?this.shadows[0]:c.shadow;if(sh){this.track._hint=p.trackHint;const g=this.track.groundInfo(p.px,p.pz).y;sh.position.set(p.px,g+0.04,p.pz);sh.rotation.y=p.yaw;}}
+   for(let i=0;i<S.cars.length;i++){const c=S.cars[i],p=c.phys;c.vis.update(p,dt);if(c.crew){const cp=this.camera.position,d=Math.hypot(p.px-cp.x,p.pz-cp.z);const vis=d<70&&this.inView(p.px,p.py,p.pz,3);c.crew.group.visible=vis;if(vis)c.crew.update(dt,p,((this.frameN+i)%(d<25?2:4))===0);}if(c.tag){const d=Math.hypot(p.px-this.physics.px,p.pz-this.physics.pz);c.tag.visible=d>6&&d<90;c.tag.position.set(p.px,p.py+1.9,p.pz);}const sh=c.isPlayer?this.shadows[0]:c.shadow;if(sh){this.track._hint=p.trackHint;const g=this.track.groundInfo(p.px,p.pz).y;sh.position.set(p.px,g+0.04,p.pz);sh.rotation.y=p.yaw;}}
    this.track._hint=this.physics.trackHint;
    {const p=this.physics;let cv=0,loose=0;for(const w of p.wheels){cv+=Math.abs(w.cv||0);if(w.contact&&w.surf!=='asphalt')loose++;}const sp=Math.hypot(p.vx,p.vz);
     /* túnel: la imagen se oscurece (la vista se adapta) */
     {const tr=this.track;let inT=0;if(tr&&tr.inTunnel){tr._hint=p.trackHint;inT=tr.inTunnel(p.px,p.pz)?1:0;}this.tunnelK=(this.tunnelK||0)+(inT-(this.tunnelK||0))*(1-Math.exp(-dt*(inT?2.5:1.6)));const base=(SKIES[this.skyId]||SKIES.day).exp;this.renderer.toneMappingExposure=base*(1-0.5*this.tunnelK);}
-    this.checkPortal();
+    this.checkPortal();if(this.track&&this.track.cones)this.track.cones.update(dt);
     this.frameInfo={time:now/1000,rough:Math.min(1,cv*0.12+loose*0.08*Math.min(1,sp/15)),rain:this.isRain?1:0,stage:S.time,delta:S.lastDelta??null};
     if(this.cameraRig)this.cameraRig.info=this.frameInfo;
     if(this.cockpit&&!this.inside)this.cockpit.updateCrew(dt,p,this.frameInfo);
@@ -1776,7 +1841,7 @@ class Game{
   }catch(err){console.error(err);this.showError(err);this.state='menu';}
   requestAnimationFrame(t=>this.loop(t))}
  fixedUpdate(){this.input.update(this.fixed);this.input.nitro=!!(this.input.nitroTouch||this.input.nitroKey);this.session.fixed(this.fixed,this.input);}
- updateHud(dt){this.fpsFrames++;this.fpsAccum+=dt;if(this.fpsAccum>=.5){this.fps=Math.round(this.fpsFrames/this.fpsAccum);this.fpsAccum=0;this.fpsFrames=0;this.autoTune();}
+ updateHud(dt){if(this.physics&&document.body.classList.contains('manual')){const g=this.physics.gear,t=g<0?'R':String(g);if(this._gi!==t){this._gi=t;$('gearInd').textContent=t;}}this.fpsFrames++;this.fpsAccum+=dt;if(this.fpsAccum>=.5){this.fps=Math.round(this.fpsFrames/this.fpsAccum);this.fpsAccum=0;this.fpsFrames=0;this.autoTune();}
   const p=this.physics,S=this.session,t=this.cfg.type,mph=PROFILE.d.settings.units==='mph';const kmh=Math.abs(p.vLong)*3.6;const g=p.gear<0?'R':(p.clutchLocked||kmh>3?String(p.gear):'N');
   $('speed').innerHTML=`${Math.round(mph?kmh*0.6214:kmh)}<span class="unit">${mph?'mph':'km/h'}</span>`;$('gear').textContent=g;this.rpmFill.style.width=(clamp(p.rpm/VEH.maxRpm,0,1)*100).toFixed(1)+'%';
   if(VEH.nitroCap>0){$('nitroFill').style.height=(p.nitro/VEH.nitroCap*100).toFixed(0)+'%';$('nitroBtn').classList.toggle('active',!!p.nitroActive);}

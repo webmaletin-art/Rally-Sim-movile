@@ -90,6 +90,7 @@ export class AIDriver{
  respawn(){const tr=this.track,N=tr.samples.length;
   /* aparecer en un carril libre (no sobre una isla de roca ni encima de otro auto) */
   let i=(this.idx+2)%N,x=0,z=0;for(let k=2;k<60;k+=3){i=(this.idx+k)%N;const s=tr.samples[i],L=tr.laterals[i];const lo=tr.laneFix?tr.laneFix(i,this.laneT||0,this.pref):0;x=s.x+L.x*lo;z=s.z+L.z*lo;
-   if(!(this._others||[]).some(o=>o!==this.p&&Math.hypot(o.px-x,o.pz-z)<7))break;}
+   /* nunca delante de un auto que viene rápido (no "aparecer de golpe"): lejos de todos y a 90 m de cualquiera que venga lanzado */
+   if(!(this._others||[]).some(o=>{if(o===this.p)return false;const d=Math.hypot(o.px-x,o.pz-z);return d<7||(d<90&&Math.hypot(o.vx,o.vz)>15);}))break;}
   const tg=tr.tangents[i];this.p.reset({x,z,yaw:Math.atan2(tg.x,tg.z)});this.stuckT=0;this.offT=0;this.hint=i;}
 }
