@@ -230,7 +230,8 @@ export class UI{
     <div class="opt"><span>Sombras reales<small>Sombras de los autos sobre el piso (calidad media o alta)</small></span>${seg('shadows',[[true,'Sí'],[false,'No']])}</div></div>
    <div class="tg"><h4>Controles</h4>
     <div class="opt"><span>Dirección<small>Volante circular o palanca horizontal</small></span>${seg('steerMode',[['wheel','🎡 Volante'],['slider','↔️ Palanca']])}</div>
-    <div class="opt"><span>Acelerómetro<small>Girá inclinando el teléfono</small></span><div class="row"><button class="buy ${A.gyroOn()?'':'inst'}" data-a="gyro">${A.gyroOn()?'DESACTIVAR':'ACTIVAR'}</button>${A.gyroOn()?'<button class="back" data-a="gyroCal">Recalibrar</button>':''}</div></div>
+    <div class="opt"><span>Caja de cambios<small>Manual: ▲▼ a la izquierda (tocá o deslizá el dedo arriba/abajo)</small></span>${seg('gearbox',[['auto','Automática'],['manual','Manual ▲▼']])}</div>
+    <div class="opt"><span>Inclinar el teléfono<small>Girá como un volante (acelerómetro: anda en todos los teléfonos). Pide permiso al activarlo.</small></span><div class="row"><button class="buy ${A.gyroOn()?'':'inst'}" data-a="gyro">${A.gyroOn()?'DESACTIVAR':'ACTIVAR'}</button>${A.gyroOn()?'<button class="back" data-a="gyroCal">Recalibrar</button>':''}</div></div>
     <div class="opt"><span>Sensibilidad del acelerómetro</span>${seg('gyroSens',[[25,'Suave'],[50,'Media'],[80,'Nerviosa']])}</div>
     <div class="opt"><span>Notas del copiloto<small>Te canta cada curva: 1 = muy cerrada … 6 = casi recta</small></span>${seg('notes',[[true,'Sí'],[false,'No']])}</div>
     <div class="opt"><span>Voz del copiloto<small>Si el teléfono tiene voz en español</small></span>${seg('copilot',[[true,'Sí'],[false,'No']])}</div>
