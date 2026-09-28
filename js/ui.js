@@ -226,6 +226,8 @@ export class UI{
     <div class="opt"><span>Dirección<small>Volante circular o palanca horizontal</small></span>${seg('steerMode',[['wheel','🎡 Volante'],['slider','↔️ Palanca']])}</div>
     <div class="opt"><span>Acelerómetro<small>Girá inclinando el teléfono</small></span><div class="row"><button class="buy ${A.gyroOn()?'':'inst'}" data-a="gyro">${A.gyroOn()?'DESACTIVAR':'ACTIVAR'}</button>${A.gyroOn()?'<button class="back" data-a="gyroCal">Recalibrar</button>':''}</div></div>
     <div class="opt"><span>Sensibilidad del acelerómetro</span>${seg('gyroSens',[[25,'Suave'],[50,'Media'],[80,'Nerviosa']])}</div>
+    <div class="opt"><span>Notas del copiloto<small>Te canta cada curva: 1 = muy cerrada … 6 = casi recta</small></span>${seg('notes',[[true,'Sí'],[false,'No']])}</div>
+    <div class="opt"><span>Voz del copiloto<small>Si el teléfono tiene voz en español</small></span>${seg('copilot',[[true,'Sí'],[false,'No']])}</div>
     <div class="opt"><span>Vibración<small>En golpes y saltos</small></span>${seg('vibrate',[[true,'Sí'],[false,'No']])}</div></div>
    <div class="tg"><h4>Ayudas de manejo</h4>
     <div class="opt"><span>ABS<small>Evita que se bloqueen las ruedas al frenar</small></span>${seg('abs',[[true,'Sí'],[false,'No']])}</div>

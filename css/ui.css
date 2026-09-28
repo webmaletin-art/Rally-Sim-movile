@@ -193,3 +193,10 @@ body.slider-mode #nitroBtn{right:calc(100px + var(--safe-r));bottom:calc(100px +
  .home{grid-template-columns:1fr}
 }
 @media (orientation:portrait) and (max-width:460px){.topbar .logo{display:none}.lvl{min-width:48px}}
+
+#paceNote{position:fixed;left:50%;top:calc(100px + var(--safe-t));transform:translateX(-50%);z-index:12;pointer-events:none;display:flex;gap:8px;align-items:center}
+#paceNote .pn{display:flex;align-items:center;gap:8px;background:rgba(6,10,16,.78);border:2px solid;border-radius:12px;padding:6px 12px;font-weight:900;font-size:14px;color:#fff;letter-spacing:.3px;white-space:nowrap;animation:scrIn .2s}
+#paceNote .pn b{font-size:24px;font-style:italic}#paceNote .pn.next{opacity:.55;transform:scale(.85);transform-origin:left center}
+@media (max-height:430px){#paceNote{top:calc(92px + var(--safe-t))}#paceNote .pn{font-size:12px;padding:4px 9px}#paceNote .pn b{font-size:19px}}
+
+body.inside #speedPanel{display:none}body.inside #paceNote{top:calc(12px + var(--safe-t))}
