@@ -37,11 +37,11 @@ export const COMING_SOON=[
 /* ─── Piezas del taller ───
    eff: multiplicadores (x) o sumas (+) sobre la física.  unlock: ajustes que habilita */
 export const UPGRADES=[
- {id:'engine',name:'Motor',icon:'⚙️',info:'Más potencia en todo el rango de vueltas.',levels:[
+ {id:'engine',name:'Motor',icon:'⚙️',info:'Más potencia en todo el rango de vueltas. Los autos iniciales vienen con limitador de velocidad de fábrica: la ECU lo sube +25 km/h y el motor de competición lo quita.',levels:[
   {n:'Original'},
   {n:'Admisión y escape deportivo',cost:3500,eff:{power:0.07}},
-  {n:'ECU reprogramada + árboles de levas',cost:8500,eff:{power:0.15,rpm:0.04}},
-  {n:'Motor de competición',cost:17000,eff:{power:0.26,rpm:0.07,inertia:-0.15}}]},
+  {n:'ECU reprogramada + árboles de levas',cost:8500,eff:{power:0.15,rpm:0.04,vgov:25}},
+  {n:'Motor de competición',cost:17000,eff:{power:0.26,rpm:0.07,inertia:-0.15,vgov:999}}]},
  {id:'turbo',name:'Sobrealimentación',icon:'🌀',info:'Turbo más grande: empuje fuerte en medias y altas.',levels:[
   {n:'Original'},
   {n:'Turbo de alto soplado',cost:6000,eff:{power:0.10}},

@@ -92,7 +92,9 @@ export class AIDriver{
   if(Math.abs(this.lat)>hw+7)this.offT+=h;else this.offT=0;
   /* trabado contra algo: primero marcha atrás girando al revés; si no alcanza, reaparece */
   if(this.unstickT>0){this.unstickT-=h;inp.throttle=0;inp.brake=1;inp.steer=-this.unstickS;if(this.unstickT<=0)this.stuckT=Math.min(this.stuckT,1.4);return inp;}
-  if(this.stuckT>1.5&&this.stuckT<3&&!this.triedUnstick){this.triedUnstick=true;this.unstickT=1.3;this.unstickS=inp.steer||(Math.random()<.5?-1:1);}
+  /* intentos de destrabarse: si después de 2 marchas atrás sigue trabado, reaparece (antes podía quedar para siempre yendo y viniendo) */
+  if(spd>8){this.okT=(this.okT||0)+h;if(this.okT>6)this.unstickN=0;}else this.okT=0;
+  if(this.stuckT>1.5&&this.stuckT<3&&!this.triedUnstick){this.unstickN=(this.unstickN||0)+1;if(this.unstickN>2){this.unstickN=0;this.respawn();this.triedUnstick=false;return inp;}this.triedUnstick=true;this.unstickT=1.3;this.unstickS=inp.steer||(Math.random()<.5?-1:1);}
   if(this.stuckT<0.2)this.triedUnstick=false;
   if(this.stuckT>4||this.offT>3){this.respawn();this.triedUnstick=false;}
   return inp;}

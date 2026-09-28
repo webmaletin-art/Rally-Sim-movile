@@ -12,7 +12,7 @@ export function unlocksOf(upg){
  return s;}
 
 function effectsOf(upg){
- const e={power:0,rpm:0,inertia:0,mass:0,com:0,yaw:0,brake:0,freq:0,arb:0,damp:0,travel:0,clutch:0,shift:0,lsd:0,aeroF:0,aeroR:0,drag:0,nitro:0,nitroBoost:0,steer:0};
+ const e={power:0,rpm:0,inertia:0,mass:0,com:0,yaw:0,brake:0,freq:0,arb:0,damp:0,travel:0,clutch:0,shift:0,lsd:0,aeroF:0,aeroR:0,drag:0,nitro:0,nitroBoost:0,steer:0,vgov:0};
  for(const u of UPGRADES){const lvl=(upg&&upg[u.id])||0;if(!lvl)continue;const eff=u.levels[lvl].eff||{};for(const k in eff)e[k]+=eff[k];}
  return e;}
 
@@ -22,7 +22,7 @@ export function buildParams(base,car,assists){
  const tu={...defaultTune(base),...(car.tune||{})};
  const has=k=>un.has(k),pct=(k)=>tu[k]/100;
  /* motor */
- V.powerScale=1+e.power;
+ V.powerScale=1+e.power;V.vGov=base.vGov?(e.vgov>=500?0:base.vGov+e.vgov):0;
  V.maxRpm=base.maxRpm*(1+e.rpm);V.shiftUpRpm=base.shiftUpRpm*(1+e.rpm);V.engineInertia=base.engineInertia*(1+e.inertia);
  /* peso */
  const mm=1+e.mass;V.mass=base.mass*mm;V.Ixx=base.Ixx*mm;V.Iyy=base.Iyy*mm;V.Izz=base.Izz*(mm+e.yaw);V.comHeight=base.comHeight*(1+e.com);
@@ -68,7 +68,7 @@ export function perfOf(V){
  let kw=0;for(let r=V.idleRpm;r<=V.maxRpm;r+=100)kw=Math.max(kw,V.peakTorque*V.powerScale*torqueAt(V,r)*r/9549);
  const hp=kw*1.341,pw=hp/(V.mass/1000);
  const g=V.gears[V.gears.length-1]*V.finalDrive,vGear=V.maxRpm*2*Math.PI/60*V.wheelRadius/g,vDrag=Math.cbrt(kw*1000*V.efficiency/Math.max(0.3,V.dragCoef));
- const vmax=Math.min(vGear,vDrag)*3.6;
+ const vmax=Math.min(vGear*3.6,vDrag*3.6,V.vGov||1e9);
  const tire=(V.surfGrip.asphalt+V.surfGrip.dirt)/2,grip=V.mu*tire*((V.gripFront+V.gripRear)/2);
  const decel=Math.min(V.brakeTorque/(V.wheelRadius*V.mass),grip*9.81*1.1);
  const aero=(V.aeroF||0)+(V.aeroR||0);

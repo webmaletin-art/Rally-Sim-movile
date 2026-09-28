@@ -3,6 +3,11 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
+- ✅ Pantalla de carga con consejos (menús, modos, efectos, mecánicas) y carga de pistas más rápida.
+- ✅ Pausa: silencio total; cámara en vivo al cambiarla.
+- ✅ Autos iniciales con limitador de fábrica (170 km/h) que se libera en el Taller; cajas escalonadas reales.
+- ✅ Vista previa de efectos con tu auto andando.
+- ✅ Espejos retrovisores (central + laterales) y pantalla de cámara trasera en la vista detrás del piloto; opción para apagarlos.
 - ✅ Estilo visual **Cámara de acción cruda** (grano, viñeta, imagen blanda, bruma verdosa, vibración). El estilo "Claude" queda igual.
 
 ## En curso (esta tanda)
@@ -14,7 +19,7 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Pendiente (cuando el juego base esté terminado)
 ### Mundo abierto con misiones (estilo MTX)
-- Todas las pistas encajadas en el mundo abierto.
+- Todas las pistas encajadas en el mundo abierto. **Cómo funciona:** al abrir el Mundo abierto se carga el mundo con todas las pistas como zonas; al jugar una carrera suelta (rápida, contrarreloj, modo carrera o historia) se carga SOLO esa pista, con sus límites (paredes, cinta, terreno), sin dibujar el mundo entero. Hoy ya es así con La Trinchera (entrada desde el mundo).
 - Al acercarse a una zona aparece su misión: pista de drift → misión de drift; trinchera → carrera de trinchera; radares, saltos, etc.
 - Indicadores en el mapa y en el minimapa para invitar a recorrer.
 - Se mantiene también el acceso por menú (partidas cortas en el celular).

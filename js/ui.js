@@ -4,6 +4,7 @@ import {CAR_META,CAR_ORDER,COMING_SOON,UPGRADES,TIRES,TIRE_BY_ID,TUNE_GROUPS,TUN
 import {TIERS,EVENTS,TYPE_INFO,TARGETS,lowerIsBetter,rewardFor} from './events.js';
 import {classOf,unlocksOf,defaultTune} from './carbuild.js';
 import {PRESET_INFO} from './post.js';
+import {tipsFor} from './tips.js';
 
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 export const fmtCr=n=>'$ '+Math.round(n).toLocaleString('es-AR');
@@ -82,7 +83,8 @@ export class UI{
    case 'respawn':A.respawn();break;
    case 'restart':A.restart();break;
    case 'quit':A.quit();break;
-   case 'cam':A.nextCam();break;
+   case 'cam':A.nextCam();{const e=document.getElementById('camNm');if(e)e.textContent=A.camName();}break;
+   case 'camPrev':A.prevCam();{const e=document.getElementById('camNm');if(e)e.textContent=A.camName();}break;
    case 'resOk':A.afterResults(ds.next);break;
    case 'retry':A.retry();break;
   }}
@@ -105,9 +107,10 @@ export class UI{
  /* ─── pantallas ─── */
  show(name,arg){this.cur=name;this.api.onScreen(name);const f=this['s_'+name];if(f)f.call(this,arg);}
  s_splash(){this.mount(`<div class="stripe" style="top:30%"></div><div class="stripe" style="top:72%"></div>
-  <div class="big">GSKORP <b>RALLY</b><small>SIMULACIÓN DE MANEJO</small></div><div class="load"><i id="loadBar"></i></div><div class="tap off" id="tapGo" data-a="tap">Tocá para empezar</div>
+  <div class="big">GSKORP <b>RALLY</b><small>SIMULACIÓN DE MANEJO</small></div><div class="load"><i id="loadBar"></i></div><div class="tap off" id="tapGo" data-a="tap">Tocá para empezar</div><div class="splTip" id="splTip"></div>
   <div class="muted" style="position:absolute;bottom:calc(12px + var(--safe-b));font-size:10px;letter-spacing:2px">FÍSICA REAL · TALLER COMPLETO · MODO CARRERA</div>`,'splash');
-  this.root.firstChild.dataset.a='';}
+  this.root.firstChild.dataset.a='';const T=tipsFor(''),show=i=>{const e=document.getElementById('splTip');if(!e)return clearInterval(this._splT);const t=T[i%T.length];e.style.opacity=0;setTimeout(()=>{e.innerHTML=`<span>${t[1]}</span><div><small>${esc(t[0].toUpperCase())} · ${esc(t[2])}</small>${esc(t[3])}</div>`;e.style.opacity=1;},250);};
+  let k=0;show(0);clearInterval(this._splT);this._splT=setInterval(()=>show(++k),4800);}
  splashProgress(p,done){const b=document.getElementById('loadBar');if(b)b.style.width=Math.round(p*100)+'%';if(done){const t=document.getElementById('tapGo');if(t){t.classList.remove('off');this.root.firstChild.setAttribute('data-a','tap');}}}
  s_starter(){const sel=this.starterSel||'t1plus';const ids=CAR_ORDER.filter(i=>CAR_META[i].starter);const {perf,html}=this.carInfo(sel,null);
   this.mount(`${this.top()}<div class="split"><div class="panelBox">
@@ -229,7 +232,8 @@ export class UI{
    <div class="tg"><h4>Imagen</h4>
     <div class="opt"><span>Calidad gráfica<small>⚡ Optimizar ajusta solo según tu teléfono (recomendado)${s.quality==='auto'?' · ahora: '+({baja:'Baja',media:'Media',alta:'Máxima'}[A.autoLevel()]||'—'):''}</small></span>${seg('quality',[['auto','⚡ Optimizar'],['baja','Baja'],['media','Media'],['alta','Máxima']])}</div>
     <div class="opt"><span>Efectos de cámara<small>Filtros tipo GoPro, video casero, cine, TV… · actual: <b>${(PRESET_INFO.find(x=>x[0]===(s.visual||'none'))||PRESET_INFO[0]).slice(1,3).join(' ')}</b></small></span><button class="buy inst" data-a="go" data-s="effects">ELEGIR</button></div>
-    <div class="opt"><span>Sombras reales<small>Sombras de los autos sobre el piso (calidad media o alta)</small></span>${seg('shadows',[[true,'Sí'],[false,'No']])}</div></div>
+    <div class="opt"><span>Sombras reales<small>Sombras de los autos sobre el piso (calidad media o alta)</small></span>${seg('shadows',[[true,'Sí'],[false,'No']])}</div>
+    <div class="opt"><span>Espejos retrovisores<small>Central y laterales con imagen en las cámaras interiores. Si el teléfono va lento, apagalos.</small></span>${seg('mirrors',[[true,'Sí'],[false,'No']])}</div></div>
    <div class="tg"><h4>Controles</h4>
     <div class="opt"><span>Dirección<small>Volante circular o palanca horizontal</small></span>${seg('steerMode',[['wheel','🎡 Volante'],['slider','↔️ Palanca']])}</div>
     <div class="opt"><span>Caja de cambios<small>Manual: ▲▼ a la izquierda (tocá o deslizá el dedo arriba/abajo)</small></span>${seg('gearbox',[['auto','Automática'],['manual','Manual ▲▼']])}</div>
@@ -260,7 +264,7 @@ export class UI{
    ${this.api.canRespawn()?'<button class="bigbtn dark" data-a="respawn"><span class="bi">🔄</span><span class="bt">Volver a la pista</span></button>':''}
    ${this.api.canExitToWorld()?'<button class="bigbtn blue" data-a="toWorld"><span class="bi">🗺️</span><span class="bt">Salir al mundo abierto</span></button>':''}
    <button class="bigbtn dark" data-a="restart"><span class="bi">↺</span><span class="bt">Reiniciar</span></button>
-   <button class="bigbtn dark" data-a="cam"><span class="bi">🎥</span><span class="bt">Cambiar cámara</span></button>
+   <div class="camPick"><button class="bigbtn dark" data-a="camPrev">◀</button><div class="camName"><small>CÁMARA · mirá la vista de fondo</small><b id="camNm">${esc(this.api.camName())}</b></div><button class="bigbtn dark" data-a="cam">▶</button></div>
    <button class="bigbtn dark" data-a="go" data-s="options"><span class="bi">⚙️</span><span class="bt">Opciones</span></button>
    <button class="bigbtn dark" data-a="quit"><span class="bi">🚪</span><span class="bt">Salir al menú</span></button></div>`,'pause');}
  s_results(r){const cls=r.medal===3?'gold':r.medal===2?'silver':r.medal===1?'bronze':'';const icon=['🏳️','🥉','🥈','🥇'][r.medal||0];
