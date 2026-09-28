@@ -8,6 +8,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {RigPilot,pilotSource} from './pilot.js';
 
 const CABIN={
  pickup:{eyeY:1.40,eyeZ:0.30,cowlZ:1.22,halfW:0.80,roofY:1.70},
@@ -147,7 +148,28 @@ export class Cockpit{
   for(const a of this.arms){root.add(a.fore,a.upper,a.stripe);}
   root.updateMatrixWorld(true);this.gloves.forEach((g,i)=>{const w=g.getWorldPosition(V3(0,0,0));this.arms[i].side=Math.sign(w.x-xD)||(i?-1:1);});
   this._v=V3(0,0,0);this._w=V3(0,0,0);this._q=new THREE.Quaternion();this._m=new THREE.Matrix4();this.mirrorCam=new THREE.PerspectiveCamera(46,256/96,0.3,700);
-  this.mergeStatic();}
+  this.mergeStatic();
+  /* tripulación: fuera del habitáculo para que también se vea desde afuera (mismo marco que root) */
+  this.crew=new THREE.Group();this.crew.name='crew';
+  for(const o of [this.driver.g,this.codriver.g,...this.arms.flatMap(a=>[a.fore,a.upper,a.stripe])])this.crew.add(o);
+  this.rig=null;const src=pilotSource();
+  if(src){try{const r=[new RigPilot(src,this.crew),new RigPilot(src,this.crew)];if(r[0].ok&&r[1].ok){this.rig=r;for(const x of r)this.crew.add(x.obj);this.useRig();}}catch(e){console.warn('piloto',e);this.rig=null;}}}
+ /* piloto con esqueleto: oculta el procedural y le pone el casco del equipo si el modelo no trae */
+ useRig(){for(const P of [this.driver,this.codriver]){for(const c of P.g.children)if(c!==P.book)c.visible=false;if(P.book)P.book.children.forEach((c,i)=>{if(i>0)c.visible=false;});}
+  for(const a of this.arms){a.fore.visible=a.upper.visible=a.stripe.visible=false;}this.hands.visible=false;
+  this.rig.forEach((r,i)=>{if(r.hasHelmet)return;const P=i?this.codriver:this.driver,hb=r.B.Head;const w=new THREE.Group();const ws=hb.getWorldScale(V3(0,0,0));w.scale.setScalar(1/ws.x);w.quaternion.copy(r.rest.get(hb).wq).invert();
+   const hc=P.helmet.clone();hc.visible=true;hc.position.set(0,0.095,0.02);hc.rotation.set(0,0,0);w.add(hc);hb.add(w);r.helmet=hc;});}
+ /* pose del rig cada cuadro */
+ poseRig(){const C=this.C,xD=this.xD,b=this.body,h=this.head,fy=this.floorY;const wg=this.wheelGroup;
+  const n=V3(0,0,1).applyQuaternion(wg.quaternion);const hands=[];
+  for(let i=0;i<2;i++){const gl=this.gloves[i];const gp=gl.position.clone().applyMatrix4(this.hands.matrix).applyMatrix4(wg.matrix);const r=gp.clone().sub(this.wheelC).normalize();
+   hands.push({side:this.arms[i].side>0?'Left':'Right',wrist:gp.clone().addScaledVector(n,0.07).addScaledVector(r,0.045),fdir:r.clone().multiplyScalar(-0.15).addScaledVector(n,-0.85).normalize(),back:r.clone().multiplyScalar(0.9).addScaledVector(n,0.25).normalize()});}
+  this.rig[0].pose({hips:V3(xD+b.x*0.3,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.11+b.z*0.2),head:V3(xD+h.x,C.eyeY-0.07+h.y,C.eyeZ-0.09+h.z),roll:h.x*1.2,look:this.look||0,hands,grip:1.2,
+   feet:[{side:'Left',pos:V3(xD+0.13,fy+0.13,C.eyeZ+0.60)},{side:'Right',pos:V3(xD-0.11,fy+0.13,C.eyeZ+0.62)}]});
+  const x=-xD+b.x*0.9,by=C.eyeY-0.47+b.y,bz=C.eyeZ+0.27+b.z;
+  this.rig[1].pose({hips:V3(-xD+b.x*0.3,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.13+b.z*0.2),head:V3(-xD+h.x*0.9,C.eyeY-0.09+h.y,C.eyeZ-0.07+h.z),roll:h.x*1.1,look:-0.05,grip:0.8,
+   hands:[{side:'Left',wrist:V3(x+0.14,by,bz-0.05),fdir:V3(-0.5,-0.2,0.8).normalize(),back:V3(0.4,1,0.1).normalize()},{side:'Right',wrist:V3(x-0.14,by,bz-0.05),fdir:V3(0.5,-0.2,0.8).normalize(),back:V3(-0.4,1,0.1).normalize()}],
+   feet:[{side:'Left',pos:V3(-xD+0.13,fy+0.12,C.eyeZ+0.55)},{side:'Right',pos:V3(-xD-0.13,fy+0.12,C.eyeZ+0.55)}]});}
  /* persona sentada: casco, torso, hombros, HANS; los brazos del copiloto sostienen la hoja */
  person(x,acc,isDriver){const C=this.C,M=this.M,g=new THREE.Group();g.position.set(x,C.eyeY,C.eyeZ);this.root.add(g);
   const helmet=new THREE.Group();helmet.position.set(0,0.02,-0.02);g.add(helmet);
@@ -174,7 +196,9 @@ export class Cockpit{
   for(const [,list] of by){if(list.length<2)continue;try{const geos=list.map(o=>{o.updateMatrix();const g=(o.geometry.index?o.geometry.toNonIndexed():o.geometry.clone());g.applyMatrix4(o.matrix);for(const n of Object.keys(g.attributes))if(!['position','normal','uv'].includes(n))g.deleteAttribute(n);if(!g.attributes.uv)g.setAttribute('uv',new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count*2),2));return g;});
    const m=mergeGeometries(geos,false);if(!m)continue;this.root.add(new THREE.Mesh(m,list[0].material));for(const o of list){this.root.remove(o);o.geometry.dispose();}}catch(e){}}}
  /* cuadro por cuadro */
- update(dt,p,inp,info){const C=this.C,V=p.V;
+ update(dt,p,inp,info){this.updateCrew(dt,p,info);this.updateCabin(dt,p,inp,info);}
+ /* tripulación (también se usa con cámaras exteriores) */
+ updateCrew(dt,p,info){const C=this.C;
   /* cabeza con resorte-amortiguador: fuerzas G reales */
   const tgt=this._v.set(clamp(-p.aLat*0.011,-0.085,0.085),clamp((p.vy||0)*-0.01,-0.04,0.04)+clamp(-Math.abs(p.aLat)*0.002,-0.02,0),clamp(-p.aLong*0.0095,-0.07,0.07));
   const k=70,c=11;const hs=Math.max(1,Math.ceil(dt/0.01)),hd=dt/hs;for(let q=0;q<hs;q++)for(const ax of ['x','y','z']){const a=k*(tgt[ax]-this.head[ax])-c*this.headV[ax];this.headV[ax]+=a*hd;this.head[ax]=clamp(this.head[ax]+this.headV[ax]*hd,-0.11,0.11);}
@@ -189,6 +213,8 @@ export class Cockpit{
   /* cuerpos */
   for(const P of [this.driver,this.codriver]){P.g.position.set((P.isDriver?this.xD:-this.xD)+this.body.x*(P.isDriver?1:0.9),C.eyeY+this.body.y,C.eyeZ+this.body.z);P.helmet.position.set(this.head.x-this.body.x,0.02+this.head.y-this.body.y,-0.02+this.head.z-this.body.z);P.helmet.rotation.z=-this.head.x*1.2;}
   if(this.codriver.book){this.codriver.book.rotation.x=-0.95+Math.sin(info.time*9)*0.02*info.rough+this.head.z*0.8;}
+  this.look=clamp(p.steerAngle*0.45+p.yawRate*0.06,-0.35,0.35);if(this.rig)this.poseRig();}
+ updateCabin(dt,p,inp,info){const C=this.C;
   /* palancas */
   this.hbLever.rotation.x=inp&&inp.handbrake?-0.45:0;this.gearKick=Math.max(0,this.gearKick-dt*6);if(p.events)for(const e of p.events)if(e.type==='shift')this.gearKick=1;this.gearLever.rotation.x=-this.gearKick*0.25;
   /* limpias y lluvia */
@@ -221,9 +247,9 @@ export class Cockpit{
   cam.position.copy(wp);cam.up.copy(up);cam.lookAt(wl);cam.up.set(0,1,0);
   cam.fov=mode==='onboard'?74:72;cam.near=0.04;cam.updateProjectionMatrix();
   /* el piloto propio no se dibuja en la vista de casco */
-  this.driver.helmet.visible=mode!=='onboard';this.driver.torso.visible=mode!=='onboard';}
+  if(this.rig)this.rig[0].hideHead(mode==='onboard');else{this.driver.helmet.visible=mode!=='onboard';this.driver.torso.visible=mode!=='onboard';}}
  renderMirror(renderer,scene,hide){const C=this.C,root=this.root;root.updateWorldMatrix(true,false);const pos=root.localToWorld(V3(0,C.roofY+0.05,C.eyeZ-1.6)),look=root.localToWorld(V3(0,C.roofY-0.35,C.eyeZ-30));
   this.mirrorCam.position.copy(pos);this.mirrorCam.lookAt(look);for(const h of hide)h.visible=false;const old=renderer.getRenderTarget();renderer.setRenderTarget(this.mirrorRT);renderer.render(scene,this.mirrorCam);renderer.setRenderTarget(old);for(const h of hide)h.visible=true;}
- dispose(){this.root.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){const ms=Array.isArray(o.material)?o.material:[o.material];for(const m of ms){if(m.map)m.map.dispose();m.dispose();}}});this.mirrorRT.dispose();}
+ dispose(){const rigObjs=new Set((this.rig||[]).map(r=>r.obj));const free=o=>{if(o.geometry)o.geometry.dispose();};this.crew.removeFromParent();this.crew.traverse(o=>{let q=o;while(q){if(rigObjs.has(q))return;q=q.parent;}free(o);});this.root.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){const ms=Array.isArray(o.material)?o.material:[o.material];for(const m of ms){if(m.map)m.map.dispose();m.dispose();}}});this.mirrorRT.dispose();}
 }
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}

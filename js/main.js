@@ -12,6 +12,7 @@ import {PostFX} from './post.js';
 import {Cockpit} from './cockpit.js';
 import {buildPaceNotes,noteSpeech,noteShort,noteColor} from './pacenotes.js';
 import {CoDriver,noteKeys} from './codriver.js';
+import {loadPilot} from './pilot.js';
 const VEHICLES={
  genesis:{
   name:'Genesis X Skorpio Concept',visualType:'genesis',icon:'🦂',tagline:'Prototipo híbrido AWD · el equilibrado',firingOrder:4,
@@ -665,7 +666,7 @@ const ASSETS={voltBody:null,voltWheel:null,voltBodyLo:null,voltWheelLo:null};let
 const VOLT_META={archR:0.461,archY:0.516,hw:1.206,zf:1.508,zr:-1.392,yb:0.15,belt:1.034,cab0:-1.921,cab1:0.692,H:1.489,R:0.40};
 function loadGLB(url){return new Promise(res=>{try{new GLTFLoader().load(url,g=>res(g.scene),undefined,e=>{console.warn('GLB',url,e);res(null)})}catch(e){console.warn(e);res(null)}});}
 const _track=pr=>pr.then(v=>{ASSET_PROGRESS++;return v;});
-const ASSETS_READY=Promise.all([_track(loadGLB('models/volt_body.glb')),_track(loadGLB('models/volt_wheel.glb')),_track(loadGLB('models/volt_body_lo.glb')),_track(loadGLB('models/volt_wheel_lo.glb'))]).then(([b,w,bl,wl])=>{ASSETS.voltBody=b;ASSETS.voltWheel=w;ASSETS.voltBodyLo=bl||b;ASSETS.voltWheelLo=wl||w;
+const ASSETS_READY=Promise.all([_track(loadPilot('models/pilot.glb',{helmet:true})),_track(loadGLB('models/volt_body.glb')),_track(loadGLB('models/volt_wheel.glb')),_track(loadGLB('models/volt_body_lo.glb')),_track(loadGLB('models/volt_wheel_lo.glb'))]).then(([,b,w,bl,wl])=>{ASSETS.voltBody=b;ASSETS.voltWheel=w;ASSETS.voltBodyLo=bl||b;ASSETS.voltWheelLo=wl||w;
 });
 function glbParts(root){const out={};root.traverse(o=>{if(o.isMesh)out[o.material.name]=o.geometry;});return out;}
 /* pintura con decoración naranja dibujada por píxel (bordes nítidos sin importar la malla) */
@@ -1312,7 +1313,7 @@ class Game{
   this.bind();this.applySettings();
   addEventListener('resize',()=>this.resize());this.resize();
   this.ui.show('splash');
-  const tick=setInterval(()=>{this.ui.splashProgress(ASSET_PROGRESS/4,false);},120);
+  const tick=setInterval(()=>{this.ui.splashProgress(ASSET_PROGRESS/5,false);},120);
   ASSETS_READY.then(()=>{clearInterval(tick);this.ui.splashProgress(1,true);if(PROFILE.d.current)this.showroom.setCar(PROFILE.d.current,PROFILE.car);else this.showroom.setCar('t1plus',null);});
   requestAnimationFrame(t=>this.loop(t));}
  addLights(){this.hemi=new THREE.HemisphereLight(0xd9e9ff,0x4b4132,1.1);this.scene.add(this.hemi);this.sun=new THREE.DirectionalLight(0xfff0d2,1.6);this.sun.position.set(120,160,80);this.scene.add(this.sun);this.scene.add(this.sun.target);const sc=this.sun.shadow.camera;sc.left=-22;sc.right=22;sc.top=22;sc.bottom=-22;sc.near=1;sc.far=400;this.sun.shadow.bias=-0.0006;this.sun.shadow.normalBias=0.03;this.setSky('day');}
@@ -1381,7 +1382,7 @@ class Game{
   if(this.car){this.car.dispose();this.scene.remove(this.car.group);}
   if(this.cockpit){this.cockpit.dispose();this.cockpit=null;}
   this.car=new VehicleVisual(VEHICLES[id].visualType,VEH,{paint:st.paint});this.scene.add(this.car.group);this.makeShadow();
-  this.cockpit=new Cockpit(VEHICLES[id].visualType,VEH,st.paint);this.cockpit.root.position.y=-VEH.comHeight+(VEH.rideOffset||0);this.car.group.add(this.cockpit.root);
+  this.cockpit=new Cockpit(VEHICLES[id].visualType,VEH,st.paint);this.cockpit.root.position.y=-VEH.comHeight+(VEH.rideOffset||0);this.car.group.add(this.cockpit.root);this.cockpit.crew.position.copy(this.cockpit.root.position);this.car.group.add(this.cockpit.crew);
   this.session=new Session(this,cfg);this.track=this.session.track;this.physics=this.session.player.phys;
   if(this.renderer.shadowMap.enabled){for(const c of this.session.cars)c.vis.group.traverse(o=>{if(o.isMesh)o.castShadow=true;});this.track.group.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh)o.receiveShadow=true;});}
   this.cameraRig=new CameraRig(this.camera,this.track);this.cameraRig.cockpit=this.cockpit;this.cameraRig.mount=this.mountPoints();this.camVis();
@@ -1525,6 +1526,7 @@ class Game{
    {const p=this.physics;let cv=0,loose=0;for(const w of p.wheels){cv+=Math.abs(w.cv||0);if(w.contact&&w.surf!=='asphalt')loose++;}const sp=Math.hypot(p.vx,p.vz);
     this.frameInfo={time:now/1000,rough:Math.min(1,cv*0.12+loose*0.08*Math.min(1,sp/15)),rain:this.isRain?1:0,stage:S.time,delta:S.lastDelta??null};
     if(this.cameraRig)this.cameraRig.info=this.frameInfo;
+    if(this.cockpit&&!this.inside)this.cockpit.updateCrew(dt,p,this.frameInfo);
     if(this.inside&&this.cockpit){this.cockpit.update(dt,p,this.input,this.frameInfo);if((this.frameN%3)===0)this.cockpit.renderMirror(this.renderer,this.scene,[this.car.group,...this.shadows]);}}
    if(this.cameraRig)this.cameraRig.update(dt,this.physics);if(this.dome)this.dome.position.copy(this.camera.position);
    if(this.track.updateTape)this.track.updateTape(this.physics.position);this.updateRain(dt);if(S.ghost)S.updateGhost(dt);
