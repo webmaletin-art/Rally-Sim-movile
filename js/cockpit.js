@@ -14,7 +14,7 @@ const CABIN={
  pickup:{eyeY:1.40,eyeZ:0.30,cowlZ:1.22,halfW:0.80,roofY:1.70},
  t1plus:{eyeY:1.19,eyeZ:-0.20,cowlZ:0.78,halfW:0.82,roofY:1.44},
  truck:{eyeY:1.55,eyeZ:1.72,cowlZ:2.55,halfW:0.98,roofY:1.98},
- genesis:{eyeY:1.34,eyeZ:-0.05,cowlZ:0.92,halfW:0.78,roofY:1.66},
+ genesis:{eyeY:1.08,eyeZ:-0.12,cowlZ:0.98,halfW:0.74,roofY:1.33},
 };
 function tex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;}
 const V3=(x,y,z)=>new THREE.Vector3(x,y,z);

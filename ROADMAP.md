@@ -3,6 +3,11 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
+- ✅ Copiloto con 756 frases según la situación (Opciones → Charla del copiloto).
+- ✅ Modo historia capítulos 2 a 4 (12 misiones) con voces por personaje.
+- ✅ Genesis con el modelo 3D del dueño (el conceptual queda guardado: GENESIS_CONCEPT en main.js) y cubierta limpia.
+- ✅ Pasto, cinta y estacas ya no atraviesan el auto.
+- ✅ Android: pantalla completa y siempre horizontal.
 - ✅ Pantalla de carga con consejos (menús, modos, efectos, mecánicas) y carga de pistas más rápida.
 - ✅ Pausa: silencio total; cámara en vivo al cambiarla.
 - ✅ Autos iniciales con limitador de fábrica (170 km/h) que se libera en el Taller; cajas escalonadas reales.
@@ -33,6 +38,9 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 - Primera misión: salir del subterráneo con el enemigo embistiendo. Barra de daño 100% → si llega a 0% misión fallida; llegar con daño restante = completada.
 - Lore de las pistas (la mina, las arterias subterráneas) que se va ampliando con más capítulos.
 - Modo libre: mundo abierto, misiones, carreras, pista, drifting.
+
+### Autos
+- Modelos 3D pendientes: Titan Raptor X (camioneta), Colossus 6x6 (camión) y los 6 bloqueados de la concesionaria. Prompt de diseño en docs/prompts/autos_3d.md.
 
 ### Arranque
 - Detección automática del teléfono y calidad "Optimizar" por defecto (✅ en esta tanda).
