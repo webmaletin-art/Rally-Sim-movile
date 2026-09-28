@@ -69,6 +69,9 @@ export class UI{
    case 'resetAll':this.sheet(`<h3>¿Borrar todo el progreso?</h3><p>Se pierden autos, dinero y medallas. No se puede deshacer.</p><div class="row"><button class="bigbtn" data-a="resetOk"><span class="bt">Borrar</span></button><button class="back" data-a="close">Cancelar</button></div>`);break;
    case 'resetOk':P.reset();location.reload();break;
    case 'quick':this.quickRun();break;
+   case 'fxPick':this.fxSel=ds.id;this.show('effects');break;
+   case 'fxBack':this.fxSel=null;A.previewVisual(null);this.show('options');break;
+   case 'fxApply':{P.d.settings.visual=ds.id;P.save();this.fxSel=null;A.previewVisual(null);A.applySettings();this.toast('Efecto aplicado','blue');this.show('options');break;}
    case 'testTrack':this.api.startQuick({mode:'timetrial',map:'descent',laps:1,ai:0,skill:1,sky:'day',seg:[0,0.47]});break;
    case 'qset':this.q[ds.k]=isNaN(+ds.v)?ds.v:+ds.v;this.show('quick');break;
    case 'world':A.openWorld();break;
@@ -220,9 +223,9 @@ export class UI{
  s_options(){const s=this.P.d.settings,A=this.api;const seg=(k,opts)=>`<div class="seg">${opts.map(([v,n])=>`<button class="${s[k]==v?'on':''}" data-a="set" data-k="${k}" data-v="${v}">${n}</button>`).join('')}</div>`;
   const back=this.inRace?'<button class="back" data-a="go" data-s="pause">←</button>':'<button class="back" data-a="home">←</button>';
   this.mount(`${this.inRace?'<div class="topbar">'+back+'<div class="spacer"></div></div>':this.top(back)}<div class="head"><h2>Opciones</h2></div><div class="body"><div class="panelBox">
-   <div class="tg"><h4>Estilo visual</h4>${A.postSupported()?'':'<div class="warn">Tu teléfono no soporta el postprocesado HDR: se usa el modo Normal.</div>'}
-    <p class="muted" style="font-size:11px;margin:-2px 0 8px">Efectos de cámara sobre el juego (el HUD no se toca). Recomendado: <b style="color:var(--acc)">✨ Claude · Realidad</b>. Si baja el rendimiento, se aliviana solo.</p>
-    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${PRESET_INFO.map(([id,ic,n,d])=>`<button class="ev ${s.visual===id?'final':''}" style="min-height:84px;${s.visual===id?'border-color:var(--acc)':''}" data-a="set" data-k="visual" data-v="${id}" ${A.postSupported()||id==='none'?'':'disabled'}><span class="bgic">${ic}</span><span class="en" style="font-size:13px">${ic} ${n}${s.visual===id?' ✔':''}</span><span class="em" style="font-size:10.5px">${d}</span></button>`).join('')}</div>
+   <div class="tg"><h4>Imagen</h4>
+    <div class="opt"><span>Calidad gráfica<small>⚡ Optimizar ajusta solo según tu teléfono (recomendado)${s.quality==='auto'?' · ahora: '+({baja:'Baja',media:'Media',alta:'Máxima'}[A.autoLevel()]||'—'):''}</small></span>${seg('quality',[['auto','⚡ Optimizar'],['baja','Baja'],['media','Media'],['alta','Máxima']])}</div>
+    <div class="opt"><span>Efectos de cámara<small>Filtros tipo GoPro, video casero, cine, TV… · actual: <b>${(PRESET_INFO.find(x=>x[0]===(s.visual||'none'))||PRESET_INFO[0]).slice(1,3).join(' ')}</b></small></span><button class="buy inst" data-a="go" data-s="effects">ELEGIR</button></div>
     <div class="opt"><span>Sombras reales<small>Sombras de los autos sobre el piso (calidad media o alta)</small></span>${seg('shadows',[[true,'Sí'],[false,'No']])}</div></div>
    <div class="tg"><h4>Controles</h4>
     <div class="opt"><span>Dirección<small>Volante circular o palanca horizontal</small></span>${seg('steerMode',[['wheel','🎡 Volante'],['slider','↔️ Palanca']])}</div>
@@ -236,13 +239,18 @@ export class UI{
     <div class="opt"><span>Control de tracción<small>Corta potencia si patinan las ruedas</small></span>${seg('tc',[[0,'No'],[30,'Bajo'],[50,'Medio'],[85,'Alto']])}</div>
     <div class="opt"><span>Control de estabilidad<small>Corrige trompos solo. 0 = física pura</small></span>${seg('stab',[[0,'No'],[30,'Bajo'],[60,'Medio'],[90,'Alto']])}</div>
     <div class="opt"><span>Velocidad del juego<small>100% = tiempo real. Menos = cámara lenta, más fácil</small></span>${seg('gameSpeed',[[60,'60%'],[80,'80%'],[100,'100%']])}</div></div>
-   <div class="tg"><h4>Gráficos y sonido</h4>
-    <div class="opt"><span>Calidad gráfica<small>Bajala si el teléfono se calienta o va lento</small></span>${seg('quality',[['baja','Baja'],['media','Media'],['alta','Alta']])}</div>
+   <div class="tg"><h4>Sonido y unidades</h4>
     <div class="opt"><span>Música en menús</span>${seg('music',[[true,'Sí'],[false,'No']])}</div>
     <div class="opt"><span>Volumen</span>${seg('volume',[[0,'🔇'],[40,'40%'],[80,'80%'],[100,'100%']])}</div>
     <div class="opt"><span>Unidades</span>${seg('units',[['kmh','km/h'],['mph','mph']])}</div></div>
    ${this.inRace?'':'<div class="tg"><h4>Progreso</h4><div class="opt"><span>Borrar partida<small>Empezar de cero</small></span><button class="buy" style="background:var(--bad)" data-a="resetAll">BORRAR</button></div></div>'}
    <p class="muted" style="font-size:10.5px;margin-top:8px">GSkorp Rally · física de simulación propia · hecho con IA</p></div></div>`,'dim');}
+ /* efectos de cámara: lista → detalle con vista previa en vivo (el fondo 3D muestra el efecto) → Volver / Aplicar */
+ s_effects(){const s=this.P.d.settings,A=this.api;const sel=this.fxSel||s.visual||'none';const info=PRESET_INFO.find(x=>x[0]===sel)||PRESET_INFO[0];
+  A.previewVisual(sel);
+  this.mount(`<div class="topbar"><button class="back" data-a="fxBack">←</button><div class="spacer"></div></div><div class="fxWrap"><div class="fxList">${PRESET_INFO.map(([id,ic,n])=>`<button class="fxItem ${id===sel?'on':''}${id===(s.visual||'none')?' cur':''}" data-a="fxPick" data-id="${id}" ${A.postSupported()||id==='none'?'':'disabled'}><span>${ic}</span>${n}${id===(s.visual||'none')?' <i>✔</i>':''}</button>`).join('')}</div>
+   <div class="fxInfo"><div class="fxTitle">${info[1]} ${info[2]}</div><p>${info[3]}</p>${A.postSupported()?'':'<p class="warn">Tu teléfono no soporta estos efectos: se usa Normal.</p>'}<p class="muted" style="font-size:11px">Mirá el fondo: así se va a ver el juego.</p>
+    <div class="row"><button class="bigbtn dark" data-a="fxBack"><span class="bt">Volver</span></button><button class="bigbtn" data-a="fxApply" data-id="${sel}"><span class="bt">Aplicar</span></button></div></div></div>`,'clear');}
  s_pause(){this.mount(`<div class="pauseBox"><div class="resT" style="font-size:34px;margin-bottom:6px">Pausa</div>
    <button class="bigbtn" data-a="resume"><span class="bi">▶</span><span class="bt">Continuar</span></button>
    ${this.api.canRespawn()?'<button class="bigbtn dark" data-a="respawn"><span class="bi">🔄</span><span class="bt">Volver a la pista</span></button>':''}

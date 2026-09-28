@@ -82,8 +82,8 @@ const VEHICLES={
   peakTorque:950,idleRpm:500,launchRpm:800,maxRpm:9000,
   torqueCurve:[[0,0.95],[500,1.0],[3000,1.0],[6000,0.85],[8000,0.55],[9000,0.35]],
   engineInertia:0.10,engineBrake:140,
-  gears:[6.50,2.47],reverseRatio:6.5,finalDrive:3.23,efficiency:0.93,
-  clutchTime:0.3,shiftUpRpm:8500,shiftDownRpm:1500,shiftTime:0.08,
+  gears:[6.50,5.36,4.41,3.64,3.00,2.47],reverseRatio:6.5,finalDrive:3.23,efficiency:0.93,
+  clutchTime:0.3,shiftUpRpm:8500,shiftDownRpm:4500,shiftTime:0.08,
   driveType:'AWD',frontDriveRatio:0.50,rearDriveRatio:0.50,centerDiffBias:0.50,lsd:1100,
   tractionControl:true,tcSlip:0.16,
   brakeTorque:15000,brakeBiasFront:0.52,abs:true,absSlip:0.13,
@@ -175,7 +175,14 @@ class Physics{
    if(V.abs&&brk>0.05){if(w.kappa*Math.sign(w.vl||1)<-V.absSlip)w.absF=Math.max(0.25,(w.absF||1)-h*9);else w.absF=Math.min(1,(w.absF||1)+h*4)}else w.absF=1;
    w.brake=brk*w.absF*V.brakeTorque*(w.front?V.brakeBiasFront:1-V.brakeBiasFront)/2;
    if(handbrake&&!w.front)w.brake=Math.max(w.brake,V.brakeTorque*0.55);}
-  if(this.gear>0&&this.clutchLocked&&this.shiftT<=0){if(this.rpm>V.shiftUpRpm&&this.gear<V.gears.length&&thr>0.1&&this.contacts>=2&&Math.abs(this.vLong)/V.wheelRadius*V.gears[this.gear-1]*V.finalDrive*9.549>V.shiftUpRpm*0.8){/* cambia por velocidad real, no por patinar */this.gear++;this.shiftT=V.shiftTime;this.events.push({type:'shift',up:true})}else if(this.rpm<V.shiftDownRpm&&this.gear>1){this.gear--;this.shiftT=V.shiftTime*0.6;this.events.push({type:'shift',up:false})}}
+  /* caja secuencial: sube por velocidad real (no por patinar), un cambio por vez con tiempo mínimo en cada marcha,
+     y al frenar reduce de a una sin pasar de vueltas (se ve al piloto meter cada cambio) */
+  if(this.gear>0&&this.clutchLocked&&this.shiftT<=0){this.inGearT=(this.inGearT||0)+h;const wr=Math.abs(this.vLong)/V.wheelRadius*V.finalDrive*9.549,rIn=g=>wr*V.gears[g-1];
+   const up=this.gear<V.gears.length&&thr>0.1&&this.contacts>=2&&this.inGearT>0.45&&((this.rpm>V.shiftUpRpm&&rIn(this.gear)>V.shiftUpRpm*0.8)||rIn(this.gear)>V.maxRpm*0.99);
+   const brkDown=brk>0.25&&this.gear>1&&this.inGearT>0.28&&rIn(this.gear)<V.shiftDownRpm*1.7&&rIn(this.gear-1)<V.shiftUpRpm*0.92;
+   const lugDown=this.gear>1&&this.rpm<V.shiftDownRpm*(thr>0.6?1:0.6)&&this.inGearT>0.2&&rIn(this.gear-1)<V.shiftUpRpm*0.95;
+   if(up){this.gear++;this.shiftT=V.shiftTime;this.inGearT=0;this.events.push({type:'shift',up:true});}
+   else if(brkDown||lugDown){this.gear--;this.shiftT=V.shiftTime*0.6;this.inGearT=0;this.events.push({type:'shift',up:false});}}
   const l=this.clutchLocked?(Te>0?Te/Math.max(1,Tmax):0):thr*0.7;this.load+=(l-this.load)*(1-Math.exp(-h*10));this.throttle=thr;}
 }
 const CFG=VEH;
@@ -1095,6 +1102,10 @@ class AudioEngine{
 const tune={steerMode:'wheel',gameSpeed:100,gyroSensitivity:50};
 let QUALITY='media';
 function QF(){return {baja:0.45,media:1,alta:1.35}[QUALITY]||1;}
+/* calidad automática: estimación inicial por el hardware y luego se ajusta con los FPS reales (se recuerda) */
+function guessQuality(){try{const mem=navigator.deviceMemory||4,cores=navigator.hardwareConcurrency||4,px=screen.width*screen.height*(devicePixelRatio||1)**2;
+  if(mem<=3||cores<=4)return 'baja';if(mem>=6&&cores>=8&&px<4.5e6)return 'alta';return 'media';}catch(e){return 'media';}}
+function effQuality(s){return s.quality==='auto'?(s.autoLevel||guessQuality()):s.quality;}
 const PROFILE=new Profile();
 function assistsOf(s){return {abs:s.abs,tc:s.tc,stab:s.stab};}
 function paramsFor(id,state){return buildParams(VEHICLES[id],state||newCarState(id),assistsOf(PROFILE.d.settings));}
@@ -1359,7 +1370,7 @@ class Game{
    perf:(id,st)=>{const pf=perfOf(paramsFor(id,st));return pf;},params:(id,st)=>paramsFor(id,st),base:id=>VEHICLES[id],
    showCar:(id,st)=>{this.showroom.setCar(id,st);},carChanged:()=>{const id=PROFILE.d.current;this.showroom.setCar(id,PROFILE.car);},
    onScreen:n=>this.onScreen(n),startEvent:ev=>this.startEvent(ev),startQuick:q=>this.startQuick(q),testDrive:id=>this.testDrive(id),openWorld:()=>this.openWorld(),
-   mapName:id=>(MAPS[id]||{}).name||id,mapList:()=>Object.entries(MAPS).map(([id,m])=>({id,...m})),applySettings:()=>this.applySettings(),postSupported:()=>this.post.supported,
+   mapName:id=>(MAPS[id]||{}).name||id,mapList:()=>Object.entries(MAPS).map(([id,m])=>({id,...m})),applySettings:()=>this.applySettings(),postSupported:()=>this.post.supported,previewVisual:id=>{this.previewFx=id;if(this.post)this.post.setPreset(id||PROFILE.d.settings.visual||'none');},autoLevel:()=>effQuality(PROFILE.d.settings),
    toggleGyro:async()=>{if(this.input.gyroEnabled){this.input.disableGyro();return {};}const r=await this.input.enableGyro();return r.ok?{}:{err:r.err};},gyroOn:()=>this.input.gyroEnabled,recalGyro:()=>this.input.recalibrateGyro(),
    resume:()=>this.resume(),respawn:()=>{if(this.session){this.session.respawn();this.resume();}},canRespawn:()=>!!(this.session&&this.session.type!=='parking'),restart:()=>this.retry(),quit:()=>this.quit(),nextCam:()=>{this.nextCamera();},afterResults:n=>this.afterResults(n),retry:()=>this.retry()};
   this.music=new Music(this.audio);
@@ -1404,13 +1415,18 @@ class Game{
  splitMsg(d){const e=$('subMsg');e.textContent=(d<0?'−':'+')+Math.abs(d).toFixed(2)+' s';e.style.color=d<0?'#3ddc84':'#ff4d5e';clearTimeout(this._sm);this._sm=setTimeout(()=>{e.textContent='';e.style.color='';},1800);}
  bigMsg(t,cls){const e=$('centerMsg');e.textContent=t;e.className='anim '+(cls||'');void e.offsetWidth;e.className='anim '+(cls||'');clearTimeout(this._bm);this._bm=setTimeout(()=>{e.textContent='';e.className='';},950);}
  hitFx(v){if(v>2.5&&PROFILE.d.settings.vibrate&&navigator.vibrate)try{navigator.vibrate(Math.min(80,v*10))}catch(e){}if(v>1.5)this.audio.thump&&this.audio.thump(Math.min(1,v/8));}
+ /* modo Optimizar: mide los FPS en carrera y baja (o sube una vez) la calidad; lo aprende para la próxima */
+ autoTune(){const s=PROFILE.d.settings;if(s.quality!=='auto'||this.state!=='race'||!this.fps)return;const a=this._at||(this._at={t:0,sum:0,n:0,ups:0});a.sum+=this.fps;a.n++;a.t+=0.5;if(a.t<8)return;
+  const avg=a.sum/a.n;a.t=0;a.sum=0;a.n=0;const L=['baja','media','alta'],cur=effQuality(s),i=L.indexOf(cur);let ni=i;
+  if(avg<27&&i>0)ni=i-1;else if(avg>57&&i<2&&a.ups<1){ni=i+1;a.ups++;}
+  if(ni!==i){s.autoLevel=L[ni];PROFILE.save();this.applySettings();this.toast('⚡ Calidad ajustada: '+{baja:'Baja',media:'Media',alta:'Máxima'}[L[ni]],'blue');}}
  musicCheck(){if(!this.music)return;const want=PROFILE.d.settings.music&&(this.state==='menu'||this.state==='results');if(want)this.music.start();else this.music.stop();}
  applySettings(){const s=PROFILE.d.settings;this.musicCheck&&this.musicCheck();tune.steerMode=s.steerMode;tune.gameSpeed=s.gameSpeed;tune.gyroSensitivity=s.gyroSens;GYRO_TILT_FOR_FULL=55-s.gyroSens*0.40;
-  document.body.classList.toggle('slider-mode',s.steerMode==='slider');QUALITY=s.quality;
-  const pr={baja:0.7,media:Math.min(devicePixelRatio,1.25),alta:Math.min(devicePixelRatio,1.75)}[s.quality]||1;this.renderer.setPixelRatio(pr);this.renderer.setSize(innerWidth,innerHeight);
+  document.body.classList.toggle('slider-mode',s.steerMode==='slider');const Q=effQuality(s);QUALITY=Q;
+  const pr={baja:0.7,media:Math.min(devicePixelRatio,1.25),alta:Math.min(devicePixelRatio,1.75)}[Q]||1;this.renderer.setPixelRatio(pr);this.renderer.setSize(innerWidth,innerHeight);
   if(this.audio.master)this.audio.master.gain.value=SND.master*(s.volume/80);
-  if(this.post&&this.post.preset!==(s.visual||'none'))this.post.setPreset(s.visual||'none');
-  const shOn=s.quality!=='baja'&&s.shadows!==false;if(this.renderer.shadowMap.enabled!==shOn){this.renderer.shadowMap.enabled=shOn;this.renderer.shadowMap.type=THREE.PCFShadowMap;}this.sun.castShadow=shOn;const ms=s.quality==='alta'?2048:1024;if(this.sun.shadow.mapSize.x!==ms){this.sun.shadow.mapSize.set(ms,ms);if(this.sun.shadow.map){this.sun.shadow.map.dispose();this.sun.shadow.map=null;}}
+  if(this.post&&!this.previewFx&&this.post.preset!==(s.visual||'none'))this.post.setPreset(s.visual||'none');
+  const shOn=Q!=='baja'&&s.shadows!==false;if(this.renderer.shadowMap.enabled!==shOn){this.renderer.shadowMap.enabled=shOn;this.renderer.shadowMap.type=THREE.PCFShadowMap;}this.sun.castShadow=shOn;const ms=Q==='alta'?2048:1024;if(this.sun.shadow.mapSize.x!==ms){this.sun.shadow.mapSize.set(ms,ms);if(this.sun.shadow.map){this.sun.shadow.map.dispose();this.sun.shadow.map=null;}}
   if(this.physics&&this.session){const id=currentVehicleId;const st=this.testState||PROFILE.d.owned[id];const V=paramsFor(id,st);Object.assign(VEH,V);this.physics.setup();}}
  onScreen(n){this.ui.inRace=this.state==='paused';this.musicCheck();this.showroom.off={home:0,starter:-1.3,garage:-1.3,dealer:-1.3,paint:-1.3,tuning:-1.5,workshop:-2.2}[n]??0;}
  bind(){
@@ -1597,7 +1613,7 @@ class Game{
   }catch(err){console.error(err);this.showError(err);this.state='menu';}
   requestAnimationFrame(t=>this.loop(t))}
  fixedUpdate(){this.input.update(this.fixed);this.input.nitro=!!(this.input.nitroTouch||this.input.nitroKey);this.session.fixed(this.fixed,this.input);}
- updateHud(dt){this.fpsFrames++;this.fpsAccum+=dt;if(this.fpsAccum>=.5){this.fps=Math.round(this.fpsFrames/this.fpsAccum);this.fpsAccum=0;this.fpsFrames=0}
+ updateHud(dt){this.fpsFrames++;this.fpsAccum+=dt;if(this.fpsAccum>=.5){this.fps=Math.round(this.fpsFrames/this.fpsAccum);this.fpsAccum=0;this.fpsFrames=0;this.autoTune();}
   const p=this.physics,S=this.session,t=this.cfg.type,mph=PROFILE.d.settings.units==='mph';const kmh=Math.abs(p.vLong)*3.6;const g=p.gear<0?'R':(p.clutchLocked||kmh>3?String(p.gear):'N');
   $('speed').innerHTML=`${Math.round(mph?kmh*0.6214:kmh)}<span class="unit">${mph?'mph':'km/h'}</span>`;$('gear').textContent=g;this.rpmFill.style.width=(clamp(p.rpm/VEH.maxRpm,0,1)*100).toFixed(1)+'%';
   if(VEH.nitroCap>0){$('nitroFill').style.height=(p.nitro/VEH.nitroCap*100).toFixed(0)+'%';$('nitroBtn').classList.toggle('active',!!p.nitroActive);}
