@@ -1,0 +1,668 @@
+{
+ "ch2_hook_0": [
+  {
+   "t": "Tu viejo me debe una carrera, Correa. Y la vas a pagar vos.",
+   "i": 2
+  }
+ ],
+ "c2m1_intro_0": [
+  {
+   "t": "¿Viste la caja? Es la de tu viejo. Tiene su nombre rayado.",
+   "i": 2
+  }
+ ],
+ "c2m1_intro_1": [
+  {
+   "t": "Guardala bajo el asiento. Y agarrate, que nos vieron.",
+   "i": 2
+  }
+ ],
+ "c2m1_intro_2": [
+  {
+   "t": "Salieron dos de la mina. Los tengo en la cantera.",
+   "i": 2
+  }
+ ],
+ "c2m1_intro_3": [
+  {
+   "t": "Dos faros atrás. No les des el costado.",
+   "i": 2
+  }
+ ],
+ "c2m1_win_0": [
+  {
+   "t": "Los perdimos en el polvo. Respirá.",
+   "i": 2
+  }
+ ],
+ "c2m1_win_1": [
+  {
+   "t": "Ahora sí, abramos esa caja.",
+   "i": 2
+  }
+ ],
+ "c2m1_lose_0": [
+  {
+   "t": "Nos encerraron. Probemos otra vez, más por adentro.",
+   "i": 2
+  }
+ ],
+ "c2m1_d_inicio_0": [
+  {
+   "t": "Por la tierra roja, que ellos van pesados.",
+   "i": 2
+  }
+ ],
+ "c2m1_d_rival_cerca_0": [
+  {
+   "t": "Pará, pibe. De acá no sale nadie.",
+   "i": 2
+  }
+ ],
+ "c2m1_d_dano50_0": [
+  {
+   "t": "El auto chilla por todos lados. Aguantá.",
+   "i": 2
+  }
+ ],
+ "c2m1_d_final_cerca_0": [
+  {
+   "t": "¡Ya se ve la ruta! ¡Dale que salimos!",
+   "i": 2
+  }
+ ],
+ "c2m2_intro_0": [
+  {
+   "t": "Hay una cinta de cassette. Tu viejo grababa todo.",
+   "i": 2
+  }
+ ],
+ "c2m2_intro_1": [
+  {
+   "t": "La pongo en el estéreo. Bajá un cambio, que no se oye.",
+   "i": 2
+  }
+ ],
+ "c2m2_intro_2": [
+  {
+   "t": "Si escuchás esto, llegaste a la mina. Sabía que ibas a venir.",
+   "i": 2
+  }
+ ],
+ "c2m2_intro_3": [
+  {
+   "t": "No te enojes conmigo. Me fui para que no te buscaran a vos.",
+   "i": 2
+  }
+ ],
+ "c2m2_intro_4": [
+  {
+   "t": "Lo que sacaste es la llave del Cóndor. No se la des a nadie.",
+   "i": 2
+  }
+ ],
+ "c2m2_intro_5": [
+  {
+   "t": "El Cóndor. El prototipo. Yo creía que era un cuento de taller.",
+   "i": 2
+  }
+ ],
+ "c2m2_intro_6": [
+  {
+   "t": "Tano, si estás ahí, cuidalo. Vos sabés de quién hablo.",
+   "i": 2
+  }
+ ],
+ "c2m2_intro_7": [
+  {
+   "t": "Salvatierra. Tu viejo habla de Salvatierra.",
+   "i": 2
+  }
+ ],
+ "c2m2_intro_8": [
+  {
+   "t": "Ese tipo fue su primer copiloto. Hasta que lo vendió por plata.",
+   "i": 2
+  }
+ ],
+ "c2m3_intro_0": [
+  {
+   "t": "La cinta habla de un refugio en el bosque, pasando la loma.",
+   "i": 2
+  }
+ ],
+ "c2m3_intro_1": [
+  {
+   "t": "Los Cuervos también escuchamos la radio, Tano.",
+   "i": 2
+  }
+ ],
+ "c2m3_intro_2": [
+  {
+   "t": "Es Salvatierra. Nos pinchó la frecuencia.",
+   "i": 2
+  }
+ ],
+ "c2m3_intro_3": [
+  {
+   "t": "El que llegue primero al refugio se queda con lo que hay adentro.",
+   "i": 2
+  }
+ ],
+ "c2m3_win_0": [
+  {
+   "t": "Llegamos primero. Hay un mapa clavado en la pared.",
+   "i": 2
+  }
+ ],
+ "c2m3_win_1": [
+  {
+   "t": "Tiene la letra de tu viejo. Cinco cruces en el valle.",
+   "i": 2
+  }
+ ],
+ "c2m3_lose_0": [
+  {
+   "t": "Llegué antes, Correa. Como siempre.",
+   "i": 2
+  }
+ ],
+ "c2m3_d_inicio_0": [
+  {
+   "t": "Largá tranquilo y atacalos en las horquillas.",
+   "i": 2
+  }
+ ],
+ "c2m3_d_rival_cerca_0": [
+  {
+   "t": "Correte, nene, que atrás viene el patrón.",
+   "i": 2
+  }
+ ],
+ "c2m3_d_mitad_0": [
+  {
+   "t": "Vamos bien. El refugio está pasando la próxima loma.",
+   "i": 2
+  }
+ ],
+ "c2m3_d_final_cerca_0": [
+  {
+   "t": "¡Ahí se ve el techo del refugio!",
+   "i": 2
+  }
+ ],
+ "c2m4_intro_0": [
+  {
+   "t": "Te propongo algo, pibe. Un radar, una foto.",
+   "i": 2
+  }
+ ],
+ "c2m4_intro_1": [
+  {
+   "t": "Si pasás a más de ciento cuarenta, esta noche no te sigo.",
+   "i": 2
+  }
+ ],
+ "c2m4_intro_2": [
+  {
+   "t": "No le creas nada. Pero la recta es buena.",
+   "i": 2
+  }
+ ],
+ "c2m4_intro_3": [
+  {
+   "t": "Tomá carrera desde la curva del lago y no levantes.",
+   "i": 2
+  }
+ ],
+ "c2m4_win_0": [
+  {
+   "t": "Linda foto. Igualita a tu viejo, el mismo pie pesado.",
+   "i": 2
+  }
+ ],
+ "c2m4_win_1": [
+  {
+   "t": "Nos deja ir. Por hoy.",
+   "i": 2
+  }
+ ],
+ "c2m4_lose_0": [
+  {
+   "t": "Muy lento. Mañana te vuelvo a buscar.",
+   "i": 2
+  }
+ ],
+ "c2m4_d_inicio_0": [
+  {
+   "t": "Todo el pie, sin miedo.",
+   "i": 2
+  }
+ ],
+ "c2m4_d_radar_0": [
+  {
+   "t": "¡Ahora, ahora, no levantes!",
+   "i": 2
+  }
+ ],
+ "ch3_hook_0": [
+  {
+   "t": "Pagaste. Pero no quiero la caja. Quiero el Cóndor armado.",
+   "i": 2
+  }
+ ],
+ "ch3_hook_1": [
+  {
+   "t": "Y lo vas a armar vos.",
+   "i": 2
+  }
+ ],
+ "c3m1_intro_0": [
+  {
+   "t": "Una vuelta al lago. Si ganás, bajamos la deuda.",
+   "i": 2
+  }
+ ],
+ "c3m1_intro_1": [
+  {
+   "t": "Los del Cuervo corren sucio. Mirá los espejos.",
+   "i": 2
+  }
+ ],
+ "c3m1_intro_2": [
+  {
+   "t": "Y no mires el agua, que te hipnotiza.",
+   "i": 2
+  }
+ ],
+ "c3m1_win_0": [
+  {
+   "t": "Una cuota menos. Faltan dos.",
+   "i": 2
+  }
+ ],
+ "c3m1_lose_0": [
+  {
+   "t": "La deuda crece, Correa. Con intereses.",
+   "i": 2
+  }
+ ],
+ "c3m1_d_inicio_0": [
+  {
+   "t": "Largaste bien. Ahora a buscar la punta.",
+   "i": 2
+  }
+ ],
+ "c3m1_d_rival_cerca_0": [
+  {
+   "t": "Esta pista es de Salvatierra, nene.",
+   "i": 2
+  }
+ ],
+ "c3m1_d_final_cerca_0": [
+  {
+   "t": "¡Última curva! ¡Cerrá la puerta!",
+   "i": 2
+  }
+ ],
+ "c3m2_intro_0": [
+  {
+   "t": "¿Vos sos el hijo del Correa? Qué desilusión.",
+   "i": 2
+  }
+ ],
+ "c3m2_intro_1": [
+  {
+   "t": "La Hiena. Choca por deporte. No la dejes pegarse.",
+   "i": 2
+  }
+ ],
+ "c3m2_intro_2": [
+  {
+   "t": "Mi abuela dobla mejor que vos, y maneja un Falcon.",
+   "i": 2
+  }
+ ],
+ "c3m2_intro_3": [
+  {
+   "t": "Con lluvia ella resbala igual que nosotros. Pensá en eso.",
+   "i": 2
+  }
+ ],
+ "c3m2_win_0": [
+  {
+   "t": "Esto no terminó, Correa. Te voy a encontrar.",
+   "i": 2
+  }
+ ],
+ "c3m2_win_1": [
+  {
+   "t": "Se quedó en la cuneta. Qué pena, ¿no?",
+   "i": 2
+  }
+ ],
+ "c3m2_lose_0": [
+  {
+   "t": "¡Chau, campeón! Saludos a tu papi.",
+   "i": 2
+  }
+ ],
+ "c3m2_d_rival_cerca_0": [
+  {
+   "t": "¡Toc, toc! ¿Hay alguien en casa?",
+   "i": 2
+  }
+ ],
+ "c3m2_d_dano50_0": [
+  {
+   "t": "Otro golpe así y nos quedamos sin puerta.",
+   "i": 2
+  }
+ ],
+ "c3m2_d_mitad_0": [
+  {
+   "t": "Me estoy divirtiendo. ¿Vos no?",
+   "i": 2
+  }
+ ],
+ "c3m3_intro_0": [
+  {
+   "t": "Segunda cuota. Bajá la montaña antes que mi reloj.",
+   "i": 2
+  }
+ ],
+ "c3m3_intro_1": [
+  {
+   "t": "Los badenes te levantan. No frenes en el aire.",
+   "i": 2
+  }
+ ],
+ "c3m3_intro_2": [
+  {
+   "t": "Tu viejo la bajaba en tercera todo el camino. Un loco.",
+   "i": 2
+  }
+ ],
+ "c3m3_win_0": [
+  {
+   "t": "Buen tiempo. Tu viejo hacía uno mejor.",
+   "i": 2
+  }
+ ],
+ "c3m3_win_1": [
+  {
+   "t": "Dos cuotas. Falta la última.",
+   "i": 2
+  }
+ ],
+ "c3m3_lose_0": [
+  {
+   "t": "Se nos pasó el reloj. Otra bajada y sale.",
+   "i": 2
+  }
+ ],
+ "c3m3_d_inicio_0": [
+  {
+   "t": "Mirá lejos, no el capó.",
+   "i": 2
+  }
+ ],
+ "c3m3_d_tiempo_mal_0": [
+  {
+   "t": "Vamos atrás del reloj. Soltá los frenos.",
+   "i": 2
+  }
+ ],
+ "c3m3_d_final_cerca_0": [
+  {
+   "t": "¡Último badén y abajo!",
+   "i": 2
+  }
+ ],
+ "c3m4_intro_0": [
+  {
+   "t": "Buenas noches. Yo soy la última cuota.",
+   "i": 2
+  }
+ ],
+ "c3m4_intro_1": [
+  {
+   "t": "No corro sucio. No lo necesito.",
+   "i": 2
+  }
+ ],
+ "c3m4_intro_2": [
+  {
+   "t": "La Sombra. Nunca perdió en esta montaña.",
+   "i": 2
+  }
+ ],
+ "c3m4_intro_3": [
+  {
+   "t": "Frená donde ella frena, y salí un segundo antes.",
+   "i": 2
+  }
+ ],
+ "c3m4_win_0": [
+  {
+   "t": "Me ganaste limpio. Eso no se olvida.",
+   "i": 2
+  }
+ ],
+ "c3m4_win_1": [
+  {
+   "t": "¡Le ganaste a La Sombra! ¡No lo puedo creer!",
+   "i": 2
+  }
+ ],
+ "c3m4_lose_0": [
+  {
+   "t": "Te faltan años. Volvé cuando los tengas.",
+   "i": 2
+  }
+ ],
+ "c3m4_d_rival_cerca_0": [
+  {
+   "t": "Estás cerca. Eso es un error.",
+   "i": 2
+  }
+ ],
+ "c3m4_d_mitad_0": [
+  {
+   "t": "Le estamos comiendo metros. ¡Seguí!",
+   "i": 2
+  }
+ ],
+ "ch4_hook_0": [
+  {
+   "t": "Muy lindo el Cóndor. Pero le falta el corazón.",
+   "i": 2
+  }
+ ],
+ "ch4_hook_1": [
+  {
+   "t": "Está en la Trinchera. Y tu viejo también.",
+   "i": 2
+  }
+ ],
+ "c4m1_intro_0": [
+  {
+   "t": "El mapa tiene cinco cruces en el valle. Son sus marcas.",
+   "i": 2
+  }
+ ],
+ "c4m1_intro_1": [
+  {
+   "t": "Cada pieza del Cóndor está donde gané una carrera.",
+   "i": 2
+  }
+ ],
+ "c4m1_intro_2": [
+  {
+   "t": "Típico de tu viejo. Hasta para esconder cosas era cabulero.",
+   "i": 2
+  }
+ ],
+ "c4m1_win_0": [
+  {
+   "t": "Cinco piezas. Motor, caja y hasta el volante original.",
+   "i": 2
+  }
+ ],
+ "c4m1_lose_0": [
+  {
+   "t": "Se hizo de noche. Mañana seguimos buscando.",
+   "i": 2
+  }
+ ],
+ "c4m1_d_inicio_0": [
+  {
+   "t": "La primera marca está pasando la loma. Dale.",
+   "i": 2
+  }
+ ],
+ "c4m1_d_poco_tiempo_0": [
+  {
+   "t": "¡Se viene la noche, apurá!",
+   "i": 2
+  }
+ ],
+ "c4m2_intro_0": [
+  {
+   "t": "Don Aldo nos presta el galpón. Es angosto, eh.",
+   "i": 2
+  }
+ ],
+ "c4m2_intro_1": [
+  {
+   "t": "Si me rayás la puerta, la pintás vos.",
+   "i": 2
+  }
+ ],
+ "c4m2_intro_2": [
+  {
+   "t": "Metelo despacio, que atrás van las piezas.",
+   "i": 2
+  }
+ ],
+ "c4m2_win_0": [
+  {
+   "t": "Adentro y sin un rayón. Este pibe me gusta.",
+   "i": 2
+  }
+ ],
+ "c4m2_win_1": [
+  {
+   "t": "Esta noche armamos el Cóndor.",
+   "i": 2
+  }
+ ],
+ "c4m2_lose_0": [
+  {
+   "t": "¡Mi puerta! Probá de nuevo, pibe.",
+   "i": 2
+  }
+ ],
+ "c4m3_intro_0": [
+  {
+   "t": "Alguien le avisó a Salvatierra. Viene un camión.",
+   "i": 2
+  }
+ ],
+ "c4m3_intro_1": [
+  {
+   "t": "Correa. Bajate del auto.",
+   "i": 2
+  }
+ ],
+ "c4m3_intro_2": [
+  {
+   "t": "Te voy a aplastar como a una lata.",
+   "i": 2
+  }
+ ],
+ "c4m3_intro_3": [
+  {
+   "t": "Diez toneladas. En las curvas es lento. Usalas.",
+   "i": 2
+  }
+ ],
+ "c4m3_win_0": [
+  {
+   "t": "La próxima no te escapás.",
+   "i": 2
+  }
+ ],
+ "c4m3_win_1": [
+  {
+   "t": "Lo dejamos atascado en la tierra roja.",
+   "i": 2
+  }
+ ],
+ "c4m3_lose_0": [
+  {
+   "t": "Aplastado.",
+   "i": 2
+  }
+ ],
+ "c4m3_d_rival_cerca_0": [
+  {
+   "t": "Te veo.",
+   "i": 2
+  }
+ ],
+ "c4m3_d_dano50_0": [
+  {
+   "t": "¡Un golpe más de ese bicho y volamos!",
+   "i": 2
+  }
+ ],
+ "c4m3_d_mitad_0": [
+  {
+   "t": "Se queda en las curvas. ¡Bien!",
+   "i": 2
+  }
+ ],
+ "c4m4_intro_0": [
+  {
+   "t": "Aldo le puso la caja del Cóndor a tu auto.",
+   "i": 2
+  }
+ ],
+ "c4m4_intro_1": [
+  {
+   "t": "Una vuelta al lago. Quiero ver si aguanta.",
+   "i": 2
+  }
+ ],
+ "c4m4_intro_2": [
+  {
+   "t": "Si la caja canta en quinta, está perfecta.",
+   "i": 2
+  }
+ ],
+ "c4m4_win_0": [
+  {
+   "t": "La caja es una joya. Tu viejo era un genio.",
+   "i": 2
+  }
+ ],
+ "c4m4_lose_0": [
+  {
+   "t": "Todavía no la entendemos. Otra vuelta.",
+   "i": 2
+  }
+ ],
+ "c4m4_d_inicio_0": [
+  {
+   "t": "Escuchá los cambios. ¿Oís cómo entran?",
+   "i": 2
+  }
+ ],
+ "c4m4_d_tiempo_mal_0": [
+  {
+   "t": "Apurá, que el reloj no espera a nadie.",
+   "i": 2
+  }
+ ]
+}

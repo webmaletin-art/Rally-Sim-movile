@@ -5,6 +5,7 @@ import {TIERS,EVENTS,TYPE_INFO,TARGETS,lowerIsBetter,rewardFor} from './events.j
 import {classOf,unlocksOf,defaultTune} from './carbuild.js';
 import {PRESET_INFO} from './post.js';
 import {tipsFor} from './tips.js';
+import {CHAPTERS,MISSION_BY_ID,starText,storyProgress,missionUnlocked,chapterStars} from './mission.js';
 
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 export const fmtCr=n=>'$ '+Math.round(n).toLocaleString('es-AR');
@@ -73,7 +74,11 @@ export class UI{
    case 'fxPick':this.fxSel=ds.id;this.show('effects');break;
    case 'fxBack':this.fxSel=null;A.previewVisual(null);this.show('options');break;
    case 'fxApply':{P.d.settings.visual=ds.id;P.save();this.fxSel=null;A.previewVisual(null);A.applySettings();this.toast('Efecto aplicado','blue');this.show('options');break;}
-   case 'story':this.api.startStory();break;
+   case 'story':this.show('story');break;
+   case 'closeSheet':this.closeSheet();break;
+   case 'stPlay':this.closeSheet();this.api.startMission(ds.id);break;
+   case 'stInfo':this.missionSheet(ds.id);break;
+   case 'stNext':this.api.startMission(ds.id);break;
    case 'testTrack':this.api.startQuick({mode:'timetrial',map:'descent',laps:1,ai:0,skill:1,sky:'day',seg:[0,0.47]});break;
    case 'qset':this.q[ds.k]=isNaN(+ds.v)?ds.v:+ds.v;this.show('quick');break;
    case 'world':A.openWorld();break;
@@ -122,7 +127,7 @@ export class UI{
   this.api.showCar(id,car);
   this.mount(`${this.top('',true)}<div class="home"><div class="homeL">
     ${(()=>{const nx=this.nextMission();return nx?`<button class="bigbtn green" data-a="nextEv"><span class="bi">▶</span><span class="bt">Siguiente misión<span class="bs">${esc(nx.name)} · ${TYPE_INFO[nx.type].n} · ${TIERS.find(t=>t.id===nx.tier).name}</span></span></button>`:''})()}
-    <button class="bigbtn story" data-a="story"><span class="bi">📖</span><span class="bt">Modo historia<span class="bs">Capítulo 1 · La Fuga${P.d.story&&P.d.story.ch1?' · ✔ completado (auto al '+P.d.story.ch1+'%)':': escapá de la mina con los perseguidores encima'}</span></span></button>
+    <button class="bigbtn story" data-a="story"><span class="bi">📖</span><span class="bt">Modo historia<span class="bs">La Fuga, la deuda de Salvatierra y el Cóndor · 4 capítulos</span></span></button>
     <button class="bigbtn" data-a="go" data-s="career"><span class="bi">🏆</span><span class="bt">Modo carrera<span class="bs">${st} ⭐ · 5 copas · ${EVENTS.length} eventos</span></span></button>
     <button class="bigbtn blue" data-a="world"><span class="bi">🗺️</span><span class="bt">Mundo abierto<span class="bs">Carteles, radares y libertad total</span></span></button>
     <button class="bigbtn dark" data-a="testTrack"><span class="bi">⛰️</span><span class="bt">Pista de pruebas<span class="bs">Bajada de asfalto con badenes largos · probá frenos, aceleración y dirección</span></span></button>
@@ -241,7 +246,8 @@ export class UI{
     <div class="opt"><span>Inclinar el teléfono<small>Girá como un volante (acelerómetro: anda en todos los teléfonos). Pide permiso al activarlo.</small></span><div class="row"><button class="buy ${A.gyroOn()?'':'inst'}" data-a="gyro">${A.gyroOn()?'DESACTIVAR':'ACTIVAR'}</button>${A.gyroOn()?'<button class="back" data-a="gyroCal">Recalibrar</button>':''}</div></div>
     <div class="opt"><span>Sensibilidad del acelerómetro</span>${seg('gyroSens',[[25,'Suave'],[50,'Media'],[80,'Nerviosa']])}</div>
     <div class="opt"><span>Notas del copiloto<small>Te canta cada curva: 1 = muy cerrada … 6 = casi recta</small></span>${seg('notes',[[true,'Sí'],[false,'No']])}</div>
-    <div class="opt"><span>Voz del copiloto<small>Si el teléfono tiene voz en español</small></span>${seg('copilot',[[true,'Sí'],[false,'No']])}</div>
+    <div class="opt"><span>Voz del copiloto<small>Te canta las curvas y te habla durante la carrera</small></span>${seg('copilot',[[true,'Sí'],[false,'No']])}</div>
+    <div class="opt"><span>Charla del copiloto<small>Normal: avisa rivales, golpes, posición, te felicita y charla en las rectas. Solo avisos: lo importante. Nada: solo las curvas.</small></span>${seg('chatter',[['normal','Normal'],['poco','Solo avisos'],['nada','Nada']])}</div>
     <div class="opt"><span>Vibración<small>En golpes y saltos</small></span>${seg('vibrate',[[true,'Sí'],[false,'No']])}</div></div>
    <div class="tg"><h4>Ayudas de manejo</h4>
     <div class="opt"><span>ABS<small>Evita que se bloqueen las ruedas al frenar</small></span>${seg('abs',[[true,'Sí'],[false,'No']])}</div>
@@ -268,14 +274,29 @@ export class UI{
    <div class="camPick"><button class="bigbtn dark" data-a="camPrev">◀</button><div class="camName"><small>CÁMARA · mirá la vista de fondo</small><b id="camNm">${esc(this.api.camName())}</b></div><button class="bigbtn dark" data-a="cam">▶</button></div>
    <button class="bigbtn dark" data-a="go" data-s="options"><span class="bi">⚙️</span><span class="bt">Opciones</span></button>
    <button class="bigbtn dark" data-a="quit"><span class="bi">🚪</span><span class="bt">Salir al menú</span></button></div>`,'pause');}
+ /* ─── modo historia: capítulos y misiones ─── */
+ s_story(){const P=this.P,d=storyProgress(P);const TI={escape:'🚨',cinematica:'🎬',carrera:'🏁',contrarreloj:'⏱️',radar:'📸',banderas:'🚩',estacionar:'🅿️'};
+  const stars=n=>`<span class="stS">${[0,1,2].map(i=>i<n?'★':'☆').join('')}</span>`;
+  const c1=chapterStars(P,1);let html=`<div class="stCh"><div class="stHd"><b>Capítulo 1 · La Fuga</b><span>${stars(c1)}</span></div><p>Los encontraron. Una persecución por la montaña hasta la mina abandonada… y el control es tuyo en el túnel.</p>
+   <button class="stM on" data-a="stPlay" data-id="c1"><i>🚨</i><span>La Fuga</span>${stars(c1)}<em>▶</em></button></div>`;
+  for(const c of CHAPTERS){const open=c.missions.some(m=>missionUnlocked(P,m.id));html+=`<div class="stCh ${open?'':'lock'}"><div class="stHd"><b>Capítulo ${c.n} · ${c.title}</b><span>${chapterStars(P,c.n)}/${c.missions.length*3} ★</span></div><p>${open?c.sum:'Completá el capítulo anterior para desbloquearlo.'}</p>`;
+   c.missions.forEach((m,i)=>{const un=missionUnlocked(P,m.id),st=(d.m[m.id]||{}).stars||0;html+=`<button class="stM ${un?'on':''}" data-a="${un?'stInfo':''}" data-id="${m.id}"><i>${TI[m.type]||'🏁'}</i><span>${c.n}.${i+1} · ${m.title}</span>${un?stars(st):''}<em>${un?'▶':'🔒'}</em></button>`;});html+='</div>';}
+  html+=`<div class="stCh lock soonCh"><div class="stHd"><b>Capítulo 5 · Próximamente</b></div><p>El corazón del Cóndor está en la Trinchera… y tu viejo también.</p></div>`;
+  this.mount(`${this.top('<button class="back" data-a="home">←</button>')}<div class="head"><h2>📖 Modo historia</h2></div><div class="body"><div class="panelBox stWrap">${html}</div></div>`,'fade');}
+ missionSheet(id){const m=MISSION_BY_ID[id];if(!m)return;const d=storyProgress(this.P),st=(d.m[id]||{}).stars||0;const MAPN=this.api.mapName(m.map);
+  const TN={escape:'Escape',cinematica:'Cinemática',carrera:'Carrera',contrarreloj:'Contrarreloj',radar:'Radar',banderas:'Banderas',estacionar:'Estacionar'};
+  this.sheet(`<div class="muted" style="font-size:11px;letter-spacing:2px;font-weight:800">CAPÍTULO ${m.chapter} · ${TN[m.type]||''} · ${esc(MAPN)}</div><h3 style="margin:4px 0 8px">${esc(m.title)}</h3><p style="font-size:13px;line-height:1.4">${esc(m.goal)}</p>
+   <div class="stList">${starText(m).map((t,i)=>`<div class="${i<st?'got':''}"><b>${i<st?'★':'☆'}</b> ${esc(t)}</div>`).join('')}</div>
+   <p class="muted" style="font-size:12px">Recompensa: ${fmtCr(m.reward)}${m.gift?' + una pieza de regalo para el taller':''}</p>
+   <div class="row" style="justify-content:flex-end;gap:8px;margin-top:8px"><button class="bigbtn dark" data-a="closeSheet"><span class="bt">Cerrar</span></button><button class="bigbtn" data-a="stPlay" data-id="${m.id}"><span class="bi">▶</span><span class="bt">Jugar</span></button></div>`);}
  s_results(r){const cls=r.medal===3?'gold':r.medal===2?'silver':r.medal===1?'bronze':'';const icon=['🏳️','🥉','🥈','🥇'][r.medal||0];
   const rows=r.standings?`<table class="standings">${r.standings.map((s,i)=>`<tr class="${s.me?'me':''}"><td>${i+1}</td><td>${esc(s.name)}</td><td>${s.dnf?'—':fmtTime(s.time)}</td></tr>`).join('')}</table>`:'';
   this.mount(`<div class="resBox"><div class="muted" style="letter-spacing:3px;font-size:11px;font-weight:800">${esc(r.eventName||'')}</div><div class="resT ${cls}">${esc(r.title)}</div>
    ${r.medal!=null&&r.showMedal!==false?`<div class="bigMedal" style="background:${['rgba(255,255,255,.08)','radial-gradient(circle at 35% 30%,#ffd9b0,#b06a2c)','radial-gradient(circle at 35% 30%,#fff,#9aa6b4)','radial-gradient(circle at 35% 30%,#fff3b0,#e0a500)'][r.medal||0]}">${icon}</div>`:''}
-   <div style="font-size:14px;font-weight:800">${esc(r.line||'')}</div>${r.sub?`<div class="muted" style="font-size:12px;margin-top:4px">${esc(r.sub)}</div>`:''}${r.soon?'<div class="soon"><small>SIGUIENTE MISIÓN</small>PRÓXIMAMENTE</div>':''}${rows}
+   <div style="font-size:14px;font-weight:800">${esc(r.line||'')}</div>${r.sub?`<div class="muted" style="font-size:12px;margin-top:4px">${esc(r.sub)}</div>`:''}${r.mission?`<div class="resStars">${[0,1,2].map(i=>`<b class="${i<r.stars?'on':''}">★</b>`).join('')}</div><div class="stList small">${(r.starText||[]).map((t,i)=>`<div class="${i<r.stars?'got':''}">${i<r.stars?'✔':'·'} ${esc(t)}</div>`).join('')}</div>`:''}${r.gift?`<div class="lvup">🎁 Pieza de regalo: ${esc(r.giftName||r.gift)}</div>`:''}${r.nextMission==='soon'&&(r.stars>0)?'<div class="soon"><small>SIGUIENTE</small>CAPÍTULO 5 · PRÓXIMAMENTE</div>':''}${r.soon?'<div class="soon"><small>SIGUIENTE MISIÓN</small>PRÓXIMAMENTE</div>':''}${rows}
    <div class="rew"><div><b id="rCr">${fmtCr(0)}</b><span>créditos</span></div><div><b id="rXp">+0</b><span>experiencia</span></div>${r.record?'<div style="border-color:var(--gold)"><b>🏆</b><span>nuevo récord</span></div>':''}</div>
    <div>${r.cupMsg?`<span class="lvup" style="background:linear-gradient(90deg,#c98a00,#ffc83d);color:#1a1200">${esc(r.cupMsg)}</span>`:''}${(r.levelUps||[]).map(l=>`<span class="lvup">⭐ NIVEL ${l.level} · +${fmtCr(l.bonus)}</span>`).join('')}</div>
-   <div class="row" style="justify-content:center;margin-top:10px"><button class="bigbtn" data-a="resOk" data-next="${r.next||'career'}"><span class="bt">Continuar</span></button><button class="bigbtn dark" data-a="retry"><span class="bi">↺</span><span class="bt">Reintentar</span></button>${r.next==='career'?'<button class="bigbtn green" data-a="resOk" data-next="nextEv"><span class="bt">Siguiente misión ▶</span></button>':''}</div></div>`,'res');
+   <div class="row" style="justify-content:center;margin-top:10px"><button class="bigbtn" data-a="resOk" data-next="${r.next||'career'}"><span class="bt">Continuar</span></button><button class="bigbtn dark" data-a="retry"><span class="bi">↺</span><span class="bt">Reintentar</span></button>${r.next==='career'?'<button class="bigbtn green" data-a="resOk" data-next="nextEv"><span class="bt">Siguiente misión ▶</span></button>':''}${r.nextMission&&r.nextMission!=='soon'&&(r.stars>0||r.value>0)&&(r.mission||r.type==='story')?`<button class="bigbtn green" data-a="stNext" data-id="${r.nextMission}"><span class="bt">Siguiente misión ▶</span></button>`:''}</div></div>`,'res');
   const t0=performance.now(),cr=r.cr||0,xp=r.xp||0;const tick=()=>{const k=Math.min(1,(performance.now()-t0)/1200);const e=1-Math.pow(1-k,3);const a=document.getElementById('rCr'),b=document.getElementById('rXp');if(!a)return;a.textContent=fmtCr(cr*e);b.textContent='+'+Math.round(xp*e);if(k<1)requestAnimationFrame(tick);};requestAnimationFrame(tick);}
 }
 /* presets de ajuste rápido */

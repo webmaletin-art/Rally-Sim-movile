@@ -45,6 +45,9 @@ jobs:
           f=$(find android/app/src/main/java -name MainActivity.java | head -1)
           echo "Replacing $f"
           cp android-src/MainActivity.java "$f"
+          # juego de autos: siempre horizontal (gira sola si das vuelta el teléfono)
+          sed -i 's/android:name=".MainActivity"/android:name=".MainActivity"\n            android:screenOrientation="sensorLandscape"/' android/app/src/main/AndroidManifest.xml
+          grep -n screenOrientation android/app/src/main/AndroidManifest.xml || echo "AVISO: no se pudo fijar la orientación"
 
       - name: Sync Capacitor
         run: npx cap sync android
