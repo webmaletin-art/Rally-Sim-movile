@@ -35,7 +35,7 @@ jobs:
         run: |
           mkdir -p www
           cp "HTML base Rally GSkorp.html" www/index.html
-          cp -r vendor models js css www/
+          cp -r vendor models audio js css www/
 
       - name: Add Android platform
         run: npx cap add android
