@@ -664,5 +664,251 @@
    "t": "Apurá, que el reloj no espera a nadie.",
    "i": 2
   }
+ ],
+ "duel_buitre_intro_0": [
+  {
+   "t": "Mirá quién vino a visitarme. El hijo de Correa.",
+   "i": 2
+  }
+ ],
+ "duel_buitre_intro_1": [
+  {
+   "t": "Cinco arcos, pibe. El que pasa primero por todos se lleva la plata.",
+   "i": 2
+  }
+ ],
+ "duel_buitre_intro_2": [
+  {
+   "t": "Seguí los arcos rojos del mapa. Cada vez que pasás uno, sale el siguiente.",
+   "i": 2
+  }
+ ],
+ "duel_buitre_again_0": [
+  {
+   "t": "¿Otra vez vos? Dale, que tengo toda la tarde.",
+   "i": 2
+  }
+ ],
+ "duel_buitre_win_0": [
+  {
+   "t": "Suerte de principiante. La próxima no te regalo nada.",
+   "i": 2
+  }
+ ],
+ "duel_buitre_win_1": [
+  {
+   "t": "¡Le ganamos al Buitre en su propia casa!",
+   "i": 2
+  }
+ ],
+ "duel_buitre_lose_0": [
+  {
+   "t": "Igual que tu viejo. Mucho pie y poca cabeza.",
+   "i": 2
+  }
+ ],
+ "duel_buitre_lose_1": [
+  {
+   "t": "Tranquilo. Lo agarramos en la revancha.",
+   "i": 2
+  }
+ ],
+ "duel_hiena_intro_0": [
+  {
+   "t": "¡Ja! ¿Vos sos el que me hizo comer tierra en el bosque?",
+   "i": 2
+  }
+ ],
+ "duel_hiena_intro_1": [
+  {
+   "t": "Seis arcos. Si perdés, me dejás el volante de recuerdo.",
+   "i": 2
+  }
+ ],
+ "duel_hiena_intro_2": [
+  {
+   "t": "No le sigas el juego. Manejá limpio y dejala hablar.",
+   "i": 2
+  }
+ ],
+ "duel_hiena_again_0": [
+  {
+   "t": "¿Volviste a buscar más? ¡Me encanta!",
+   "i": 2
+  }
+ ],
+ "duel_hiena_win_0": [
+  {
+   "t": "¡No me lo puedo creer! Bueno, tomá. Te lo ganaste.",
+   "i": 2
+  }
+ ],
+ "duel_hiena_win_1": [
+  {
+   "t": "Se le fue la risa. Eso vale más que la plata.",
+   "i": 2
+  }
+ ],
+ "duel_hiena_lose_0": [
+  {
+   "t": "¡Jajaja! ¡Andá a practicar a la plaza!",
+   "i": 2
+  }
+ ],
+ "duel_hiena_lose_1": [
+  {
+   "t": "Que se ría. La próxima se la borramos.",
+   "i": 2
+  }
+ ],
+ "duel_sombra_intro_0": [
+  {
+   "t": "No hablo mucho. Ocho arcos.",
+   "i": 2
+  }
+ ],
+ "duel_sombra_intro_1": [
+  {
+   "t": "Si me ganás, te ganaste mi respeto. Y la plata.",
+   "i": 2
+  }
+ ],
+ "duel_sombra_intro_2": [
+  {
+   "t": "Es la más fina de todos. No le regales ni un metro.",
+   "i": 2
+  }
+ ],
+ "duel_sombra_again_0": [
+  {
+   "t": "Otra vez. Bien.",
+   "i": 2
+  }
+ ],
+ "duel_sombra_win_0": [
+  {
+   "t": "Bien manejado. No me lo voy a olvidar.",
+   "i": 2
+  }
+ ],
+ "duel_sombra_win_1": [
+  {
+   "t": "¿La escuchaste? La Sombra felicitando a alguien. Anotalo.",
+   "i": 2
+  }
+ ],
+ "duel_sombra_lose_0": [
+  {
+   "t": "Todavía no.",
+   "i": 2
+  }
+ ],
+ "duel_sombra_lose_1": [
+  {
+   "t": "Dos palabras y nos dejó de cama. Otra vez.",
+   "i": 2
+  }
+ ],
+ "duel_tanque_intro_0": [
+  {
+   "t": "Diez arcos, flaco. Yo no esquivo nada: paso por encima.",
+   "i": 2
+  }
+ ],
+ "duel_tanque_intro_1": [
+  {
+   "t": "Si te cruzás en mi camino, te llevo puesto.",
+   "i": 2
+  }
+ ],
+ "duel_tanque_intro_2": [
+  {
+   "t": "Es un camión. En las curvas lo pasamos. No te le pongas adelante.",
+   "i": 2
+  }
+ ],
+ "duel_tanque_again_0": [
+  {
+   "t": "¿Querés más? Subí.",
+   "i": 2
+  }
+ ],
+ "duel_tanque_win_0": [
+  {
+   "t": "Me ganaste con ese autito. Está bien, tomá lo tuyo.",
+   "i": 2
+  }
+ ],
+ "duel_tanque_win_1": [
+  {
+   "t": "¡Le ganamos al camión! Diez de diez.",
+   "i": 2
+  }
+ ],
+ "duel_tanque_lose_0": [
+  {
+   "t": "Te dije. Lo grande siempre llega.",
+   "i": 2
+  }
+ ],
+ "duel_tanque_lose_1": [
+  {
+   "t": "Buscale las curvas, no las rectas. La próxima es nuestra.",
+   "i": 2
+  }
+ ],
+ "duel_tano_cp_0": [
+  {
+   "t": "¡Adentro! Mirá el mapa, ya salió el otro.",
+   "i": 2
+  }
+ ],
+ "duel_tano_cp_1": [
+  {
+   "t": "¡Punto nuestro! El próximo está marcado.",
+   "i": 2
+  }
+ ],
+ "duel_tano_cp_2": [
+  {
+   "t": "¡Pasamos! Seguí la flecha.",
+   "i": 2
+  }
+ ],
+ "duel_tano_cp_3": [
+  {
+   "t": "¡Bien ahí! Vamos por el siguiente.",
+   "i": 2
+  }
+ ],
+ "duel_tano_behind_0": [
+  {
+   "t": "Nos sacó uno. Cortá camino por el campo.",
+   "i": 2
+  }
+ ],
+ "duel_tano_behind_1": [
+  {
+   "t": "Va adelante. No hace falta ir por la ruta, andá derecho.",
+   "i": 2
+  }
+ ],
+ "duel_tano_ahead_0": [
+  {
+   "t": "Le sacamos uno. No aflojes.",
+   "i": 2
+  }
+ ],
+ "duel_tano_ahead_1": [
+  {
+   "t": "Vamos adelante. Cuidado con los árboles.",
+   "i": 2
+  }
+ ],
+ "duel_tano_last_0": [
+  {
+   "t": "¡Último arco! ¡Todo el pie!",
+   "i": 2
+  }
  ]
 }

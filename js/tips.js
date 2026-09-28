@@ -16,6 +16,7 @@ export const TIPS=[
  ['Modos','🏆','Modo carrera','5 copas con eventos de carrera, contrarreloj, drift, radar, banderas y estacionamiento. Ganá medallas para desbloquear la copa siguiente y juntar créditos.'],
  ['Modos','📖','Modo historia','Capítulo 1 · La Fuga: una cinemática manejada por la IA y después te toca a vos escapar de la mina. Podés saltar la cinemática con "Saltar".','story'],
  ['Modos','🗺️','Mundo abierto','Recorré libre, rompé los carteles GSKORP y pasá por los radares. Buscá la entrada de la mina: te lleva a La Trinchera.','world'],
+ ['Modos','⚔','Duelos','Los rivales de la historia tienen su base en el mundo abierto (rombos de colores en el mapa). Acercate despacio y retalos: el primero en pasar por todos los arcos rojos se lleva la plata.','world'],
  ['Modos','⛏️','La Trinchera','Caminos hundidos de una mina vieja: se abren en dos o tres carriles con islas de roca y vuelven a unirse. Elegí el carril con tiempo y ojo en los túneles, que están más oscuros.'],
  ['Modos','⏱️','Contrarreloj y fantasma','En contrarreloj corrés contra tu mejor vuelta: el auto fantasma te muestra por dónde fuiste y los parciales te dicen si vas ganando o perdiendo tiempo.','timetrial'],
  ['Modos','🅿️','Estacionamiento','Entrá al lugar marcado sin tocar nada. Despacio: cada toque suma 3 segundos.','parking'],

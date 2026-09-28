@@ -3,6 +3,7 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
+- ✅ **Duelos en el mundo abierto**: el Buitre, la Hiena, la Sombra y el Tanque en sus bases (trompos, saltos en rampa, ochos). Te acercás despacio → RETAR → escena con voces → arcos de control de a uno (5 a 10) → premio en efectivo. Los que no conociste en la historia te piden avanzar primero.
 - ✅ Copiloto con 756 frases según la situación (Opciones → Charla del copiloto).
 - ✅ Modo historia capítulos 2 a 4 (12 misiones) con voces por personaje.
 - ✅ Genesis con el modelo 3D del dueño (el conceptual queda guardado: GENESIS_CONCEPT en main.js) y cubierta limpia.
@@ -28,6 +29,10 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 - Al acercarse a una zona aparece su misión: pista de drift → misión de drift; trinchera → carrera de trinchera; radares, saltos, etc.
 - Indicadores en el mapa y en el minimapa para invitar a recorrer.
 - Se mantiene también el acceso por menú (partidas cortas en el celular).
+
+### Personajes 3D (esperando los modelos)
+- Lista y requisitos en docs/prompts/personajes.md: 11 personajes + pack de animaciones.
+- Escenas con gestos al retar y al terminar los duelos; el rival te entrega su auto la primera vez que le ganás; escenas del modo historia.
 
 ### Modo historia
 - ✅ **Capítulo 1 · La Fuga** (cinemática manejada por la IA con varias cámaras, voces con subtítulos, salto en cámara lenta, control en el túnel, perseguidores que embisten, barra del auto 100% → 0%, "Siguiente misión: próximamente").
