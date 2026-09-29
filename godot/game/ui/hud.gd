@@ -4,6 +4,7 @@ extends Control
 ## Multitáctil: cada dedo se sigue por su índice.
 
 signal option_changed(key: String, value)
+signal bench_pressed
 
 var steer := 0.0
 var throttle := 0.0
@@ -13,6 +14,7 @@ var stats_text := ""
 var speed_kmh := 0.0
 var gear_text := "1"
 var rpm := 0.0
+var result_text := ""
 
 var _steer_finger := -1
 var _steer_x0 := 0.0
@@ -29,20 +31,24 @@ var _opts := {
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+
+## Tamaño de la pantalla (el HUD vive en una CanvasLayer: no hereda tamaño de un padre Control)
+func _vs() -> Vector2:
+	return get_viewport_rect().size
 
 func option_value(key: String):
 	var o: Array = _opts[key]
 	return o[1][o[0]]
 
 func _layout() -> void:
-	var s := size
+	var s := _vs()
 	_buttons.clear()
 	var bw := 150.0
 	var bh := 70.0
 	_buttons.append({"id": "gas", "rect": Rect2(s.x - 190, s.y - 210, 170, 190), "label": "ACEL"})
 	_buttons.append({"id": "brake", "rect": Rect2(s.x - 380, s.y - 170, 170, 150), "label": "FRENO"})
 	_buttons.append({"id": "hb", "rect": Rect2(s.x - 330, s.y - 330, 110, 90), "label": "MANO"})
+	_buttons.append({"id": "bench", "rect": Rect2(s.x - 2.0 * bw - 24, 10, bw, bh * 0.75), "label": "PRUEBA"})
 	var keys := ["cars", "trees", "pilots", "shadows", "hi", "threads"]
 	var names := {"cars": "Autos", "trees": "Árboles", "pilots": "Pilotos", "shadows": "Sombras", "hi": "Modelo alto", "threads": "Hilos"}
 	for i in keys.size():
@@ -63,7 +69,10 @@ func _input(event: InputEvent) -> void:
 				_fingers[ev.index] = h
 				if h.begins_with("opt:"):
 					_cycle(h.substr(4))
-			elif ev.position.x < size.x * 0.5 and _steer_finger == -1:
+				elif h == "bench":
+					result_text = ""
+					bench_pressed.emit()
+			elif ev.position.x < _vs().x * 0.5 and _steer_finger == -1:
 				_steer_finger = ev.index
 				_steer_x0 = ev.position.x
 		else:
@@ -76,7 +85,7 @@ func _input(event: InputEvent) -> void:
 	elif event is InputEventScreenDrag:
 		var ev2 := event as InputEventScreenDrag
 		if ev2.index == _steer_finger:
-			steer = clampf((ev2.position.x - _steer_x0) / (size.x * 0.12), -1.0, 1.0)
+			steer = clampf((ev2.position.x - _steer_x0) / (_vs().x * 0.12), -1.0, 1.0)
 
 func _cycle(key: String) -> void:
 	var o: Array = _opts[key]
@@ -129,11 +138,12 @@ func _draw() -> void:
 	for i in lines.size():
 		draw_string(font, Vector2(16, 30 + i * 22), lines[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1, 1, 1))
 	# velocímetro
-	draw_string(font, Vector2(size.x * 0.5 - 60, size.y - 30), "%d km/h" % int(speed_kmh), HORIZONTAL_ALIGNMENT_CENTER, 200, 30, Color(1, 1, 1))
-	draw_string(font, Vector2(size.x * 0.5 + 110, size.y - 30), "M %s" % gear_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color(1.0, 0.55, 0.15))
+	var vs := _vs()
+	draw_string(font, Vector2(vs.x * 0.5 - 60, vs.y - 30), "%d km/h" % int(speed_kmh), HORIZONTAL_ALIGNMENT_CENTER, 200, 30, Color(1, 1, 1))
+	draw_string(font, Vector2(vs.x * 0.5 + 110, vs.y - 30), "M %s" % gear_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 30, Color(1.0, 0.55, 0.15))
 	# barra de dirección
-	var cx := size.x * 0.25
-	var cy := size.y - 60.0
+	var cx := vs.x * 0.25
+	var cy := vs.y - 60.0
 	draw_rect(Rect2(cx - 150, cy - 6, 300, 12), Color(1, 1, 1, 0.18))
 	draw_circle(Vector2(cx + steer * 150.0, cy), 20.0, Color(1.0, 0.5, 0.1, 0.9))
 	# botones
@@ -152,5 +162,14 @@ func _draw() -> void:
 		draw_rect(r, Color(1, 1, 1, 0.5), false, 2.0)
 		var lab: String = b["label"]
 		if id.begins_with("opt:"):
-			lab += ": " + str(option_value(id.substr(4)))
-		draw_string(font, Vector2(r.position.x + 6, r.position.y + r.size.y * 0.62), lab, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 8, 18 if id.begins_with("opt:") else 26, Color(1, 1, 1))
+			var key := id.substr(4)
+			var val = option_value(key)
+			lab += ": " + (("sí" if int(val) == 1 else "no") if key in ["pilots", "shadows", "hi", "threads"] else str(val))
+		var fs := 18 if (id.begins_with("opt:") or id == "bench") else 26
+		draw_string(font, Vector2(r.position.x + 6, r.position.y + r.size.y * 0.62), lab, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 8, fs, Color(1, 1, 1))
+	if result_text != "":
+		var rl := result_text.split("\n")
+		var h := 30.0 + rl.size() * 24.0
+		draw_rect(Rect2(20, 20, vs.x - 40, h), Color(0, 0, 0, 0.82))
+		for i in rl.size():
+			draw_string(font, Vector2(34, 46 + i * 24), rl[i], HORIZONTAL_ALIGNMENT_LEFT, vs.x - 60, 19, Color(1, 1, 1))
