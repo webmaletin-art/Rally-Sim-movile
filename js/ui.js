@@ -273,17 +273,38 @@ export class UI{
   this.mount(`<div class="topbar"><button class="back" data-a="fxBack">←</button><div class="spacer"></div></div><div class="fxWrap"><div class="fxList">${PRESET_INFO.map(([id,ic,n])=>`<button class="fxItem ${id===sel?'on':''}${id===(s.visual||'none')?' cur':''}" data-a="fxPick" data-id="${id}" ${A.postSupported()||id==='none'?'':'disabled'}><span>${ic}</span>${n}${id===(s.visual||'none')?' <i>✔</i>':''}</button>`).join('')}</div>
    <div class="fxInfo"><div class="fxTitle">${info[1]} ${info[2]}</div><p>${info[3]}</p>${A.postSupported()?'':'<p class="warn">Tu teléfono no soporta estos efectos: se usa Normal.</p>'}<p class="muted" style="font-size:11px">Mirá el fondo: así se va a ver el juego.</p>
     <div class="row"><button class="bigbtn dark" data-a="fxBack"><span class="bt">Volver</span></button><button class="bigbtn" data-a="fxApply" data-id="${sel}"><span class="bt">Aplicar</span></button></div></div></div>`,'clear');}
- /* antes de correr: sugiere el ajuste según el piso (el recomendado primero) */
- setupPicker(info,cb){const o=document.createElement('div');o.id='setupPick';
-  o.style.cssText='position:fixed;inset:0;z-index:75;background:rgba(4,8,14,.84);display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;color:#fff';
+ /* antes de correr: sugiere el ajuste según el piso (el recomendado primero). Se puede jugar ya con el recomendado,
+    o elegir otro y retocar con barritas lo que el auto tenga desbloqueado (más control de tracción, más grip, etc.) */
+ setupPicker(info,cb){const P=this.P,car=P.car||{},st=P.d.settings,un=unlocksOf(car.upg);const o=document.createElement('div');o.id='setupPick';
+  o.style.cssText='position:fixed;inset:0;z-index:75;background:rgba(4,8,14,.86);display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;color:#fff';
+  const KEYS=['pressF','pressR','height','springF','springR','bump','rebound','arbF','arbR','steer','lsd','aeroF','aeroR','gripF','gripR'];
+  const base={};for(const k of KEYS){const it=TUNE_ITEMS[k];if(it)base[k]=it.def;}Object.assign(base,car.tune||{});
+  let sel=info.rec,edits={},as={tc:st.tc??50,stab:st.stab??30};
   const ids=[info.rec,...Object.keys(PRESETS).filter(k=>k!==info.rec)];
-  o.innerHTML=`<div style="width:min(560px,94vw);max-height:92vh;overflow:auto;background:#10161f;border:1px solid #ffffff22;border-radius:18px;padding:14px 16px;box-shadow:0 10px 40px #000a">
-   <div style="font:800 12px system-ui;opacity:.7;letter-spacing:1px">${esc(info.mapName).toUpperCase()}</div><div style="font:900 19px system-ui;margin:2px 0 4px">Vas a correr en ${esc(info.surfName)} · elegí el ajuste</div>
-   <div style="font:600 12px system-ui;opacity:.8;margin-bottom:10px">Cambia suspensión, altura, presión de gomas y más. Lo podés afinar después en el Taller → Ajuste fino.</div>
-   ${ids.map((k,i)=>`<button data-p="${k}" style="display:block;width:100%;text-align:left;margin:6px 0;padding:10px 12px;border-radius:12px;border:${i?'1px solid #ffffff22':'2px solid #ff7a1a'};background:${i?'#1a212c':'#2a1a10'};color:#fff"><b style="font:900 15px system-ui">${PRESET_N[k]}</b>${i?'':' <span style="font:900 10px system-ui;background:#ff7a1a;border-radius:6px;padding:2px 6px;margin-left:6px">RECOMENDADO</span>'}<div style="font:600 12px system-ui;opacity:.8;margin-top:2px">${PRESET_INFO_T[k]}</div></button>`).join('')}
-   <button data-p="" style="display:block;width:100%;margin:8px 0 4px;padding:10px;border-radius:12px;border:0;background:#39414d;color:#fff;font:800 14px system-ui">Dejar mi ajuste actual</button>
-   <label style="display:flex;gap:8px;align-items:center;font:600 12px system-ui;opacity:.8;margin-top:6px"><input type="checkbox" id="spNo"> No preguntar más (se vuelve a activar en Opciones)</label></div>`;
-  document.body.appendChild(o);o.addEventListener('click',e=>{const b=e.target.closest('button[data-p]');if(!b)return;if(o.querySelector('#spNo').checked){this.P.d.settings.askSetup=false;this.P.save();}o.remove();cb(b.dataset.p||null);});}
+  const vals=()=>({...base,...PRESETS[sel],...edits});
+  const show=(it,v)=>(Math.round(v*10)/10)+' '+it.u;
+  const btn='display:block;width:100%;text-align:left;margin:5px 0;padding:8px 12px;border-radius:12px;color:#fff';
+  const render=()=>{const V=vals(),open=KEYS.filter(k=>TUNE_ITEMS[k]&&(!TUNE_ITEMS[k].req||un.has(TUNE_ITEMS[k].req))),locked=KEYS.filter(k=>TUNE_ITEMS[k]&&TUNE_ITEMS[k].req&&!un.has(TUNE_ITEMS[k].req));
+   const sl=(k,n,min,max,step,v,u)=>`<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font:700 12px system-ui"><span>${n}</span><b id="spv_${k}">${Math.round(v*10)/10} ${u}</b></div><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${v}" style="width:100%;accent-color:#ff7a1a"></div>`;
+   o.innerHTML=`<div style="width:min(580px,94vw);max-height:94vh;overflow:auto;background:#10161f;border:1px solid #ffffff22;border-radius:18px;padding:12px 16px;box-shadow:0 10px 40px #000a">
+    <div style="font:800 12px system-ui;opacity:.7;letter-spacing:1px">${esc(info.mapName).toUpperCase()}</div><div style="font:900 18px system-ui;margin:2px 0 8px">Vas a correr en ${esc(info.surfName)}</div>
+    <button data-go="rec" style="${btn};text-align:center;border:0;background:linear-gradient(180deg,#ff7a1a,#d9480f);font:900 16px system-ui;padding:12px">▶ JUGAR YA con el recomendado (${PRESET_N[info.rec]})</button>
+    <div style="font:700 12px system-ui;opacity:.75;margin:10px 0 2px">O elegí otro ajuste y retocalo:</div>
+    ${ids.map((k,i)=>`<button data-p="${k}" style="${btn};border:${k===sel?'2px solid #ff7a1a':'1px solid #ffffff22'};background:${k===sel?'#2a1a10':'#1a212c'}"><b style="font:900 14px system-ui">${PRESET_N[k]}</b>${i?'':' <span style="font:900 10px system-ui;background:#ff7a1a;border-radius:6px;padding:2px 6px;margin-left:6px">RECOMENDADO</span>'}<div style="font:600 11.5px system-ui;opacity:.8;margin-top:1px">${PRESET_INFO_T[k]}</div></button>`).join('')}
+    <div style="margin-top:8px;padding:8px 10px;border-radius:12px;background:#161d27">
+     <div style="font:900 13px system-ui;margin-bottom:2px">Ajustes rápidos · ${PRESET_N[sel]}</div>
+     ${sl('tc','Control de tracción',0,100,5,as.tc,'%')}${sl('stab','Control de estabilidad',0,100,5,as.stab,'%')}
+     ${open.map(k=>{const it=TUNE_ITEMS[k];return sl(k,it.n,it.min,it.max,it.step,V[k],it.u);}).join('')}
+     ${locked.length?`<div style="font:600 11px system-ui;opacity:.65;margin-top:6px">🔒 Se desbloquean mejorando el auto en el Taller: ${locked.map(k=>TUNE_ITEMS[k].n).join(', ')}.</div>`:''}</div>
+    <button data-go="sel" style="${btn};text-align:center;border:0;background:#2f6fd0;font:900 15px system-ui;padding:11px;margin-top:8px">▶ Jugar con este ajuste</button>
+    <button data-go="keep" style="${btn};text-align:center;border:0;background:#39414d;font:800 13px system-ui">Dejar mi ajuste actual</button>
+    <label style="display:flex;gap:8px;align-items:center;font:600 12px system-ui;opacity:.8;margin-top:6px"><input type="checkbox" id="spNo"> No preguntar más (se vuelve a activar en Opciones)</label></div>`;};
+  const finish=res=>{if(o.querySelector('#spNo').checked){st.askSetup=false;P.save();}o.remove();cb(res);};
+  o.addEventListener('input',e=>{const k=e.target.dataset&&e.target.dataset.k;if(!k)return;const v=+e.target.value;if(k==='tc'||k==='stab')as[k]=v;else edits[k]=v;const it=TUNE_ITEMS[k];const lb=o.querySelector('#spv_'+k);if(lb)lb.textContent=(Math.round(v*10)/10)+' '+(it?it.u:'%');});
+  o.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+   if(b.dataset.p){sel=b.dataset.p;edits={};const sc=o.firstElementChild.scrollTop;render();o.firstElementChild.scrollTop=sc;return;}
+   const go=b.dataset.go;if(go==='rec')finish({tune:{...PRESETS[info.rec]}});else if(go==='sel')finish({tune:{...PRESETS[sel],...edits},assists:{...as}});else if(go==='keep')finish(null);});
+  render();document.body.appendChild(o);}
  /* calibración del acelerómetro paso a paso */
  gyroWiz(back){const A=this.api;gyroWizard({recal:()=>A.recalGyro(),value:()=>A.gyroValue(),invert:()=>A.gyroInvert(),setInvert:v=>A.setGyroInvert(v)},()=>this.show(back||'options'));}
  s_pause(){this.mount(`<div class="pauseBox"><div class="resT" style="font-size:34px;margin-bottom:6px">Pausa</div>
