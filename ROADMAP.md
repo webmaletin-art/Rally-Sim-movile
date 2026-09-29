@@ -3,6 +3,9 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
+- ✅ **Interior más real**: habitáculo más ancho (menos ventanilla a los costados), capó ancho y largo que se ve de punta a punta, cámaras de adentro con ángulo de simulador (antes se veía casi todo el habitáculo), display del tablero más chico.
+- ✅ **Freno de mano**: palanca más adelante y el codo va para atrás al tirar (antes se deformaba el brazo). **Copiloto** se ataja con la mano en el tablero en las frenadas fuertes.
+- ✅ **Android**: la ventana se configura una sola vez (antes titilaba) y las barras se esconden al instante si aparecen.
 - ✅ **Silbido metálico de la caja** (engranajes rectos de rally): sube con la velocidad, se nota más al levantar el pie y se corta en cada cambio. Distinto por auto. Volumen en Opciones → Caja de cambios.
 - ✅ **Turbo**: silbido que sube con la carga (con retardo, como un turbo de verdad) y «flutter» (tu-tu-tu) al soltar el acelerador y entre cambios. Cada auto suena distinto (el camión grave y lento, el Genesis agudo y rápido); la mejora de turbo lo hace más fuerte. Volumen en Opciones → Turbo.
 - ✅ **Interior con techo alto** en las dos cámaras interiores (atrás del piloto y casco): techo, marco y jaula 12 cm más arriba y el espejo más alto, así no tapa el horizonte. Elegido por el dueño. Las cámaras «Chasis 3D» se quitaron; la cabina 3D queda solo como respaldo en biblioteca/modelos/cabina_base.glb.

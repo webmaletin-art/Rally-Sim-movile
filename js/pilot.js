@@ -78,7 +78,7 @@ export class RigPilot{
   /* cabeza: inclinación lateral por G y mirada hacia adelante */
   const hd=V(Math.sin(o.roll||0),Math.cos(o.roll||0),0.05).normalize();this.orient(B.Head,hd,V(o.look||0,-0.1,1));
   /* brazos */
-  for(const h of o.hands){const S=this.side[h.side];if(!S)continue;const pole=V(S.sg*0.6,-1,-0.25);
+  for(const h of o.hands){const S=this.side[h.side];if(!S)continue;/* polo del codo (x hacia afuera del cuerpo); el freno de mano lo lleva para atrás */const pole=h.pole?V(S.sg*h.pole.x,h.pole.y,h.pole.z):V(S.sg*0.6,-1,-0.25);
    /* clavícula: acompaña un poco al brazo (sin esto el hombro se estira y deforma) */
    if(S.sh){const sp=this.fpos(S.sh,V());const tw=h.wrist.clone().sub(sp).normalize();this.orient(S.sh,V(S.sg,0,0).multiplyScalar(0.72).addScaledVector(tw,0.28).add(V(0,-0.04,0)),V(0,1,0));}
    this.twoBone(S.arm,S.fore,S.L1,S.L2,h.wrist,pole,'fold',h.back);
