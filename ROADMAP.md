@@ -3,7 +3,7 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
-- ❌ **Cámaras «Chasis 3D» quitadas** (no convencieron). La cabina 3D queda solo como respaldo en biblioteca/modelos/cabina_base.glb. El interior dibujado sigue como estaba.
+- ✅ **Interior con techo alto** en las dos cámaras interiores (atrás del piloto y casco): techo, marco y jaula 12 cm más arriba y el espejo más alto, así no tapa el horizonte. Elegido por el dueño. Las cámaras «Chasis 3D» se quitaron; la cabina 3D queda solo como respaldo en biblioteca/modelos/cabina_base.glb.
 - ✅ Android: los botones del sistema se vuelven a esconder solos si aparecen; los bordes de abajo no disparan el gesto de «atrás».
 - ✅ Pantalla de ajuste antes de correr con barritas; controles en pantalla movibles; manos que cambian de agarre; neutro; calibración del acelerómetro.
 - ✅ Pilotos más vivos: el cuerpo se va para atrás al acelerar, para adelante al frenar y al costado en curva; mano al freno de mano y a la palanca, pie derecho en acelerador/freno (sin atravesar el piso); el copiloto mira al frente con movimientos chicos de cabeza.
@@ -42,12 +42,7 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ### Próximo
 - **Interior del auto**: el dueño va a pasar material para rehacerlo (volante, tablero, palanca, espejos).
-- ⏳ **PENDIENTE (esperando que el dueño diga «listo, volvemos a la cámara») — volver a la versión «techo alto» en la cámara «Interior (atrás del piloto)»**:
-  - Al dueño le gustó más la versión del commit 5e71099 (APK #41): se siente más inmersiva. Hay que volver a ella SOLO en la cámara donde se ven los dos (piloto y copiloto).
-  - Qué tenía esa versión (js/cockpit.js, constructor de Cockpit): `rY=C.roofY+0.12` (techo, marco y travesaño del parabrisas, banda superior y jaula 12 cm más arriba) y el espejo interior en `my=Math.min(rY-0.14,eY+0.18)`.
-  - La cámara del conductor («Onboard (casco)») queda TAL CUAL está ahora (techo y espejo originales). Como las dos cámaras usan el mismo habitáculo, hay que hacer que el techo alto se aplique solo en la cámara de atrás.
-  - Después se ajusta la altura fina con el dueño («un poquito más alto de la cuenta, después lo ajustamos»).
-  - Recordárselo al dueño cuando mande la próxima orden, y no hacerlo hasta que diga «listo».
+- **Ajustes finos del interior** (cuando el dueño diga): el habitáculo quedó con el techo alto (12 cm, espejo más arriba) en las dos cámaras interiores, elegido por el dueño por ser más inmersivo. Falta afinar «un par de cositas».
 - **Público en el drift**: pared con colisión + tribuna con gente mirando el centro (animaciones Idle_Rail / Cheering de Mesh2Motion).
 - Escenas con personajes hablando (Mesh2Motion: Idle_Talking, Head_Nod, Angry, Victory…).
 
