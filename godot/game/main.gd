@@ -40,6 +40,7 @@ var threaded := true
 var bench_i := -1 # índice de la prueba automática en curso (-1 = apagada)
 var bench_t := 0.0
 var _bench_samples: Array = []
+var report_body: Array = [] # líneas detalladas por configuración
 var bench_results: Array = []
 var no_body := false
 var autobench := false
@@ -73,6 +74,7 @@ func _ready() -> void:
 	layer.add_child(hud)
 	hud.option_changed.connect(_on_option)
 	hud.bench_pressed.connect(_bench_start)
+	hud.copy_pressed.connect(_copy_report)
 	_rebuild_trees()
 	_rebuild_cars()
 	if autobench:
@@ -211,6 +213,7 @@ const BENCH_CFGS := [
 func _bench_start() -> void:
 	bench_i = -1
 	bench_results.clear()
+	report_body.clear()
 	_bench_next()
 
 func _bench_next() -> void:
@@ -220,10 +223,11 @@ func _bench_next() -> void:
 		var lines := ["RESULTADOS (mandame una captura de esto)", "autos · árboles · pilotos · sombras · hilos  →  FPS · ms/cuadro · física ms · llamadas · triángulos"]
 		for r in bench_results:
 			lines.append(r)
+		lines.append("Tocá INFORME para copiar el informe completo")
 		hud.result_text = "\n".join(lines)
 		hud.stats_text = ""
 		if autobench:
-			print("\n".join(lines))
+			_copy_report()
 			await get_tree().create_timer(0.5).timeout
 			if shot_path != "":
 				get_viewport().get_texture().get_image().save_png(shot_path)
@@ -250,6 +254,10 @@ func _bench_tick(dt: float) -> void:
 		if bench_i >= 0:
 			_bench_samples.append([dt, shown_phys_ms, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)])
 	if bench_t >= 6.0:
+		var dts: Array = []
+		for smp in _bench_samples:
+			dts.append(smp[0])
+		dts.sort()
 		var n := _bench_samples.size()
 		var sdt := 0.0
 		var sph := 0.0
@@ -260,13 +268,65 @@ func _bench_tick(dt: float) -> void:
 			sph += s[1]
 			sdc += s[2]
 			stri += s[3]
-		_bench_samples.clear()
 		var c: Array = BENCH_CFGS[bench_i]
 		if n > 0:
 			bench_results.append("%2d autos · %5d árb · pil %s · som %s · hilos %s  →  %3d FPS · %5.1f ms · fis %4.1f · %4d llam · %dk tri" % [
 				c[0], c[1], "sí" if c[2] == 1 else "no", "sí" if c[3] == 1 else "no", "sí" if c[4] == 1 else "no",
 				int(round(float(n) / sdt)), sdt / n * 1000.0, sph / n, int(sdc / n), int(stri / n / 1000.0)])
+			var slow := 0
+			var slow20 := 0
+			for d in dts:
+				if d > 0.0334:
+					slow += 1
+				if d > 0.0205:
+					slow20 += 1
+			report_body.append("  #%d: cuadros %d · p50 %.1f ms · p95 %.1f ms · p99 %.1f ms · peor %.1f ms · cuadros >20 ms (bajan de 50 FPS) %.1f%% · cuadros >33 ms (tirones) %d (%.1f%%) · memoria de video %d MB · texturas %d MB" % [
+				bench_i + 1, n, float(dts[n / 2]) * 1000.0, float(dts[int(n * 0.95)]) * 1000.0, float(dts[mini(n - 1, int(n * 0.99))]) * 1000.0, float(dts[n - 1]) * 1000.0, 100.0 * slow20 / n, slow, 100.0 * slow / n,
+				int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED) / 1048576.0), int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED) / 1048576.0)])
+		_bench_samples.clear()
 		_bench_next()
+
+## Informe completo: datos del teléfono + versión del juego + tabla de la prueba. Se copia al portapapeles y se guarda en un archivo.
+func _build_report() -> String:
+	var v := "completo (todo adentro)"
+	if FileAccess.file_exists("user://content_version.txt"):
+		v = FileAccess.get_file_as_string("user://content_version.txt").strip_edges()
+	var mem := OS.get_memory_info()
+	var out: Array = []
+	out.append("=== INFORME GSKORP RALLY (Godot) ===")
+	out.append("Fecha: " + Time.get_datetime_string_from_system())
+	out.append("Juego: versión %s" % v)
+	out.append("Motor: Godot %s · renderizador %s" % [Engine.get_version_info()["string"], str(ProjectSettings.get_setting("rendering/renderer/rendering_method"))])
+	out.append("Teléfono: %s · %s %s" % [OS.get_model_name(), OS.get_name(), OS.get_version()])
+	out.append("Procesador: %s · %d núcleos" % [OS.get_processor_name(), OS.get_processor_count()])
+	out.append("Memoria: %d MB en total · %d MB libres" % [int(float(mem.get("physical", 0)) / 1048576.0), int(float(mem.get("available", mem.get("free", 0))) / 1048576.0)])
+	out.append("GPU: %s · %s · %s" % [RenderingServer.get_video_adapter_name(), RenderingServer.get_video_adapter_vendor(), RenderingServer.get_video_adapter_api_version()])
+	var hz := DisplayServer.screen_get_refresh_rate()
+	out.append("Pantalla: %dx%d · %s Hz" % [DisplayServer.window_get_size().x, DisplayServer.window_get_size().y, ("%.0f" % hz) if is_finite(hz) and hz > 0.0 else "?"])
+	out.append("")
+	if bench_results.is_empty():
+		out.append("(No se corrió la prueba automática. Estado actual:)")
+		out.append(hud.stats_text.replace("\n", " | "))
+	else:
+		out.append("PRUEBA AUTOMÁTICA (cada configuración 6 s, sin contar el primer segundo y medio)")
+		out.append("autos · árboles · pilotos · sombras · hilos  →  FPS · ms/cuadro · física ms · llamadas · triángulos")
+		for r in bench_results:
+			out.append(r)
+		out.append("")
+		out.append("DETALLE (p50/p95/p99 = tiempo de cuadro del 50%, 95% y 99% de los cuadros; cuadros lentos = tirones)")
+		for r in report_body:
+			out.append(r)
+	return "\n".join(out)
+
+func _copy_report() -> void:
+	var txt := _build_report()
+	DisplayServer.clipboard_set(txt)
+	var f := FileAccess.open("user://informe_gskorp.txt", FileAccess.WRITE)
+	if f:
+		f.store_string(txt)
+		f.close()
+	hud.show_toast("Informe copiado ✔  Pegalo en el chat")
+	print(txt)
 
 func _on_option(key: String, value) -> void:
 	match key:
