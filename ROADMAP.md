@@ -3,6 +3,9 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
+- 🧪 **Cámaras de prueba «Chasis 3D · cabina» y «Chasis 3D · piloto»** con la cabina 3D del dueño (biblioteca/modelos/cabina_base.glb → models/cabin.glb con tools/glb/build_cabin.mjs): sin sus espejos (se usan los del juego), girada, achicada a 23k triángulos, estirada hacia atrás para que entren piloto y copiloto. Si convence, reemplaza al habitáculo actual.
+- ✅ Android: los botones del sistema se vuelven a esconder solos si aparecen; los bordes de abajo no disparan el gesto de «atrás».
+- ✅ Pantalla de ajuste antes de correr con barritas; controles en pantalla movibles; manos que cambian de agarre; neutro; calibración del acelerómetro.
 - ✅ Pilotos más vivos: el cuerpo se va para atrás al acelerar, para adelante al frenar y al costado en curva; mano al freno de mano y a la palanca, pie derecho en acelerador/freno (sin atravesar el piso); el copiloto mira al frente con movimientos chicos de cabeza.
 - ✅ Menos humo de ruedas (para teléfonos gama baja) y vibración regulable de la «Cámara de acción cruda» (Opciones → Vibración de la cámara cruda).
 - ✅ Biblioteca: pack de Mesh2Motion (178 animaciones CC0, esqueleto Mixamo) en biblioteca/animaciones/mesh2motion.
