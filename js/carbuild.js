@@ -18,7 +18,7 @@ function effectsOf(upg){
 
 /* base: preset de fábrica · car: estado guardado del auto · assists: ayudas globales */
 export function buildParams(base,car,assists){
- const V=structuredClone(base),e=effectsOf(car.upg),un=unlocksOf(car.upg);
+ const V=structuredClone(base),e=effectsOf(car.upg),un=unlocksOf(car.upg);V.turboLvl=(car.upg&&car.upg.turbo)||0;
  const tu={...defaultTune(base),...(car.tune||{})};
  const has=k=>un.has(k),pct=(k)=>tu[k]/100;
  /* motor */
