@@ -3,6 +3,10 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
+- ✅ **Optimización para celulares**: humo con tamaño tope (antes crecía sin límite y tapaba la pantalla), pilotos livianos cuando se ven desde afuera (de 55.000 a 13.000 triángulos), tripulaciones fuera de cámara sin cálculo, sombras reales solo para tu auto (Máxima: todos), búsqueda de pista 6× más rápida, calidad automática apuntando a 60 FPS.
+- ✅ **IA más real**: mide bien las curvas (antes subestimaba el vértice), deja margen de agarre como un piloto, no clava el volante ni cruza la cola, se pone prudente después de un susto y no pasa en curva. Casi no se salen de la pista y van más rápido.
+- ✅ Génesis más alto: 40 cm libres al piso, ruedas de 40" en llantas de 18", amortiguadores que ya no atraviesan el capó.
+- ✅ Mundo abierto: el cruce de las dos rutas ya no es una loma que te hace volar; bordes de ruta más suaves. Unión de las pistas cerradas sin escalón.
 - ✅ **Duelos en el mundo abierto**: el Buitre, la Hiena, la Sombra y el Tanque en sus bases (trompos, saltos en rampa, ochos). Te acercás despacio → RETAR → escena con voces → arcos de control de a uno (5 a 10) → premio en efectivo. Los que no conociste en la historia te piden avanzar primero.
 - ✅ Copiloto con 756 frases según la situación (Opciones → Charla del copiloto).
 - ✅ Modo historia capítulos 2 a 4 (12 misiones) con voces por personaje.

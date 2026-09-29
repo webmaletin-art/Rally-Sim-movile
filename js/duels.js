@@ -129,7 +129,7 @@ export class WorldDuels{
   return pts;}
  /* los rivales lejanos duermen (sin física ni dibujo) */
  sleepCheck(force){const p=this.S.player.phys;for(const c of this.rivals){const R=c.rival;const busy=this.duel&&this.duel.car===c;const far=!busy&&Math.hypot(p.px-R.x,p.pz-R.z)>WAKE_R;
-  if(far===c.sleep&&!force)continue;c.sleep=far;c.vis.group.visible=!far;if(c.shadow)c.shadow.visible=!far;if(c.crew)c.crew.group.visible=false;
+  if(far===c.sleep&&!force)continue;c.sleep=far;c.vis.group.visible=!far;if(c.shadow)c.shadow.visible=!far;
   if(far){c.ai.mode='stunt';const q=c.phys;if(Math.hypot(q.px-R.x,q.pz-R.z)>60)q.reset({x:R.x+8,z:R.z,yaw:0});}}}
  /* ─── botón ─── */
  press(){const D=this.duel;if(D){if(D.phase==='run')this.finish(false,true);return;}const c=this.near;if(!c)return;if(!this.unlocked(c.rival)){this.g.toast('🔒 '+c.rival.lock,'');return;}this.start(c);}

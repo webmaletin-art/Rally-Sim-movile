@@ -9,6 +9,9 @@ let SRC=null,PROM=null;
 /* opts.helmet: el modelo ya trae casco puesto */
 export function loadPilot(url='models/pilot.glb',opts={}){if(!PROM)PROM=new Promise(res=>{try{new GLTFLoader().load(url,g=>{g.opts=opts;SRC=g;res(g);},undefined,e=>{console.warn('piloto',e);res(null);});}catch(e){res(null);}});return PROM;}
 export function pilotSource(){return SRC;}
+/* versión liviana (misma piel y esqueleto, ~6.500 triángulos): para los pilotos vistos desde afuera */
+let LO=null;
+export function loadPilotLo(url){return new Promise(res=>{try{new GLTFLoader().load(url,g=>{const m=new Map();g.scene.traverse(n=>{if(n.isMesh)m.set(n.name,n.geometry);});LO=m;res(m);},undefined,e=>{console.warn('piloto liviano',e);res(null);});}catch(e){res(null);}});}
 
 const V=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
 /* traje de otro color: rota el tono de las zonas saturadas (el traje), deja casco/visera/gris como están */
@@ -25,7 +28,7 @@ export class RigPilot{
  constructor(src,frame,{height=1.76,hue=0}={}){
   this.frame=frame;const o=this.obj=skClone(src.scene);this.B={};this.hasHelmet=!!(src.opts&&src.opts.helmet);
   if(hue)o.traverse(n=>{if(n.isMesh&&n.material){n.material=hueMat(n.material,hue);this.ownMats=(this.ownMats||[]);this.ownMats.push(n.material);}});
-  o.traverse(n=>{if(n.isBone){const k=norm(n.name);if(!this.B[k])this.B[k]=n;}if(n.isMesh&&/helmet|casco/i.test(n.name+' '+(n.material&&n.material.name||'')))this.hasHelmet=true;if(n.isMesh){n.frustumCulled=false;n.castShadow=false;n.receiveShadow=false;}});
+  o.traverse(n=>{if(n.isBone){const k=norm(n.name);if(!this.B[k])this.B[k]=n;}if(n.isMesh&&/helmet|casco/i.test(n.name+' '+(n.material&&n.material.name||'')))this.hasHelmet=true;if(n.isMesh){n.frustumCulled=false;n.castShadow=false;n.receiveShadow=false;n.userData.fullGeo=n.geometry;(this.meshes=this.meshes||[]).push(n);}});
   const B=this.B,need=['Hips','Spine','Head','LeftArm','LeftForeArm','LeftHand','RightArm','RightForeArm','RightHand','LeftUpLeg','LeftLeg','LeftFoot','RightUpLeg','RightLeg','RightFoot'];
   this.ok=need.every(k=>B[k]);if(!this.ok){console.warn('piloto: faltan huesos',need.filter(k=>!B[k]));return;}
   /* escala: articulación de la cabeza ≈ 0.80·altura por encima del tobillo */
@@ -85,6 +88,7 @@ export class RigPilot{
   /* piernas */
   for(const f of o.feet){const S=this.side[f.side];if(!S)continue;this.twoBone(S.ul,S.lg,S.T1,S.T2,f.pos,V(0,1,0.3),V(0,1,0),V(0,0.3,1));this.orient(S.ft,V(0,0.25,1),V(0,1,-0.2));}
   }
+ setLOD(lo){if(!this.ok||this.lod===lo)return;this.lod=lo;for(const m of this.meshes||[]){const g=lo&&LO&&LO.get(m.name);m.geometry=g||m.userData.fullGeo;}}
  hideHead(v){if(!this.ok||this.headHidden===v)return;this.headHidden=v;this.B.Head.scale.setScalar(v?0.001:1);this.B.Head.updateMatrixWorld(true);}
  /* geometrías y materiales se comparten con el modelo fuente: no se liberan */
  dispose(){this.obj.removeFromParent();for(const m of this.ownMats||[])m.dispose();}
