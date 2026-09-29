@@ -36,6 +36,10 @@ var trees_n := 3000
 var pilots_on := true
 var hi_model := true
 var cam_mode := ""
+var threaded := true
+var no_body := false
+var acc := 0.0
+var step_n := 0
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -43,6 +47,8 @@ func _ready() -> void:
 			shot_path = a.substr(7)
 		elif a.begins_with("--frames="):
 			shot_frames = int(a.substr(9))
+		elif a == "--nobody":
+			no_body = true
 		elif a == "--bench":
 			bench = true
 		elif a.begins_with("--cam="):
@@ -179,6 +185,8 @@ func _rebuild_cars() -> void:
 		var sp: Array = track.start_pose(i)
 		car.place(sp[0], sp[1], sp[2])
 		add_child(car.visual)
+		if no_body:
+			car.visual.body.get_child(0).visible = false
 		if pilots_on:
 			Pilot.create(car.visual.body, 0.37, 0.49, -0.31, lo)
 			Pilot.create(car.visual.body, -0.37, 0.49, -0.31, lo)
@@ -201,9 +209,17 @@ func _on_option(key: String, value) -> void:
 		"hi":
 			hi_model = int(value) == 1
 			_rebuild_cars()
+		"threads":
+			threaded = int(value) == 1
 
-func _physics_process(dt: float) -> void:
-	if cars.is_empty():
+## Física a 120 Hz con paso fijo propio. Cada auto es independiente: se reparten entre los núcleos del teléfono
+## (una tarea por auto y por cuadro, con todos los pasos de ese cuadro adentro) y se espera a que terminen.
+func _step_physics(dt: float) -> void:
+	var h := 1.0 / 120.0
+	acc = minf(acc + dt, 0.05)
+	step_n = int(acc / h)
+	acc -= float(step_n) * h
+	if step_n <= 0 or cars.is_empty():
 		return
 	var pl: Car = cars[0]
 	pl.in_throttle = hud.throttle
@@ -211,12 +227,22 @@ func _physics_process(dt: float) -> void:
 	pl.in_steer = hud.steer
 	pl.in_handbrake = hud.handbrake
 	var t0 := Time.get_ticks_usec()
-	for c in cars:
-		c.step(dt)
+	if threaded and cars.size() > 1:
+		var gid := WorkerThreadPool.add_group_task(_step_car, cars.size(), -1, true, "fisica")
+		WorkerThreadPool.wait_for_group_task_completion(gid)
+	else:
+		for i in cars.size():
+			_step_car(i)
 	phys_us += Time.get_ticks_usec() - t0
 	phys_frames += 1
 
+func _step_car(i: int) -> void:
+	var c: Car = cars[i]
+	for k in step_n:
+		c.step(1.0 / 120.0)
+
 func _process(dt: float) -> void:
+	_step_physics(dt)
 	if cars.is_empty():
 		return
 	for c in cars:
@@ -240,6 +266,9 @@ func _process(dt: float) -> void:
 	elif cam_mode == "front":
 		cam.position = pos + fwd * 6.0 + Vector3.UP * 1.6 + Vector3(cos(p.yaw), 0, -sin(p.yaw)) * 2.5
 		cam.look_at(pos + Vector3.UP * 0.5)
+	elif cam_mode == "cabin":
+		cam.position = pos + Vector3.UP * 2.3 - fwd * 2.2 + Vector3(cos(p.yaw), 0, -sin(p.yaw)) * 1.2
+		cam.look_at(pos + Vector3.UP * 0.1 + fwd * 0.2)
 	elif cam_mode == "top":
 		cam.position = pos + Vector3.UP * 9.0 - fwd * 0.5
 		cam.look_at(pos)
@@ -252,10 +281,8 @@ func _process(dt: float) -> void:
 		var fps := Engine.get_frames_per_second()
 		if phys_frames > 0:
 			shown_phys_ms = float(phys_us) / 1000.0 / float(phys_frames)
-		# la física corre a 120 Hz: ms por paso × pasos por cuadro
-		var steps_per_frame := float(phys_frames) / maxf(1.0, float(frame_count))
-		hud.stats_text = "FPS %d · cuadro %.1f ms · física %.2f ms/paso (%.1f pasos/cuadro)\nAutos %d · pilotos %s · árboles %d · sombras %s\nLlamadas %d · objetos %d · triángulos %dk" % [
-			fps, dt * 1000.0, shown_phys_ms, steps_per_frame, cars_n, "sí" if pilots_on else "no", trees_n, "sí" if sun.shadow_enabled else "no",
+		hud.stats_text = "FPS %d · cuadro %.1f ms · física %.2f ms/cuadro (%s)\nAutos %d · pilotos %s · árboles %d · sombras %s\nLlamadas %d · objetos %d · triángulos %dk" % [
+			fps, dt * 1000.0, shown_phys_ms, "hilos" if threaded else "1 hilo", cars_n, "sí" if pilots_on else "no", trees_n, "sí" if sun.shadow_enabled else "no",
 			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
 			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
 			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME) / 1000]
