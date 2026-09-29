@@ -2,7 +2,7 @@
 import {CAR_META,UPG_BY_ID,TIRE_BY_ID,xpForLevel} from './data.js';
 
 const KEY='gskorp_rally_profile_v1';
-export const DEFAULT_SETTINGS={visual:'none',shadows:true,mirrors:true,rearCam:false,notes:true,copilot:true,chatter:'normal',steerMode:'wheel',gyroSens:50,gameSpeed:100,quality:'auto',gearbox:'auto',volume:80,volEngine:100,volSurf:30,volWind:30,volTurbo:100,rawShake:25,askSetup:true,music:true,
+export const DEFAULT_SETTINGS={visual:'none',shadows:true,mirrors:true,rearCam:false,notes:true,copilot:true,chatter:'normal',steerMode:'wheel',gyroSens:50,gameSpeed:100,quality:'auto',gearbox:'auto',volume:80,volEngine:100,volSurf:30,volWind:30,volTurbo:100,volGear:100,rawShake:25,askSetup:true,music:true,
  units:'kmh',abs:true,tc:50,stab:30,camera:1,hud:'full',vibrate:true};
 
 export function newCarState(id){
