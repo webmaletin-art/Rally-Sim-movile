@@ -1345,7 +1345,7 @@ class CameraRig{
   this.cam.fov=cam.fov;this.cam.updateProjectionMatrix();
  }
 }
-const SND={master:0.55,engine:0.5,tires:0.35,squeal:0.28,gravel:0.45,wind:0.25,turbo:0.10,pops:0.35,impacts:0.8,firingOrder:4};
+const SND={master:0.55,engine:0.62,tires:0.35,squeal:0.28,gravel:0.45,wind:0.25,turbo:0.10,pops:0.35,impacts:0.8,firingOrder:4};
 class AudioEngine{
  constructor(){this.ctx=null;this.on=false;this.prevThr=0}
  init(){if(this.on)return;try{const C=window.AudioContext||window.webkitAudioContext;const ctx=this.ctx=new C();
@@ -1380,14 +1380,17 @@ class AudioEngine{
   const rpm=p.rpm,rn=clamp((rpm-V.idleRpm)/(V.maxRpm-V.idleRpm),0,1),load=clamp(p.load,0,1);
   const f0=rpm/60*(VEH.firingOrder||SND.firingOrder);for(const o of this.oscs)o.o.frequency.setTargetAtTime(f0*o.mul,t,0.012);this.lfo.frequency.setTargetAtTime(f0*0.125,t,0.02);
   const cut=260+load*1500+rn*1600;this.engF.frequency.setTargetAtTime(cut,t,0.03);
-  const eg=SND.engine*(0.35+0.25*rn)*(0.62+0.38*load)*(p.limiter?0.7:1);this.eng.gain.setTargetAtTime(eg,t,0.03);
+  const eg=SND.engine*((this.mix&&this.mix.eng)||1)*(0.35+0.25*rn)*(0.62+0.38*load)*(p.limiter?0.7:1);this.eng.gain.setTargetAtTime(eg,t,0.03);
   this.engNF.frequency.setTargetAtTime(f0,t,0.02);this.engN.gain.setTargetAtTime(0.25*load,t,0.05);
-  let sp=Math.hypot(p.vx,p.vz),asf=0,loose=0,sl=0;
-  for(const w of p.wheels){if(!w.contact)continue;const s2=Math.max(0,Math.abs(w.kappa)-0.08)+Math.max(0,Math.abs(w.alpha)-0.1);if(w.surf==='asphalt'){asf+=0.25;sl=Math.max(sl,s2)}else loose+=0.25+s2}
+  let sp=Math.hypot(p.vx,p.vz),asf=0,loose=0,sl=0,dirt=0,nl=0;
+  for(const w of p.wheels){if(!w.contact)continue;if(w.surf!=='asphalt'){nl++;if(w.surf==='dirt'||w.surf==='mud')dirt++;}const s2=Math.max(0,Math.abs(w.kappa)-0.08)+Math.max(0,Math.abs(w.alpha)-0.1);if(w.surf==='asphalt'){asf+=0.25;sl=Math.max(sl,s2)}else loose+=0.25+s2}
+  this.dirtK=nl?dirt/nl:0;
   this.roll.gain.setTargetAtTime(SND.tires*asf*Math.min(1,sp/30),t,0.08);
   this.sq.gain.setTargetAtTime(SND.squeal*clamp((sl-0.08)*3,0,1),t,0.05);this.sqF.frequency.setTargetAtTime(1000+sl*400+Math.random()*120,t,0.03);
-  this.grav.gain.setTargetAtTime(SND.gravel*Math.min(1,loose)*Math.min(1,sp/18+0.1)*(0.75+Math.random()*0.5),t,0.03);
-  this.wind.gain.setTargetAtTime(SND.wind*Math.pow(Math.min(1,sp/45),2),t,0.1);this.windF.frequency.setTargetAtTime(500+sp*18,t,0.1);
+  /* pasto/tierra: nada parado, sube con la velocidad; el pasto suena más suave que la tierra/ripio (ajustable en Opciones) */
+  const mx=this.mix||{eng:1,surf:0.3,wind:0.3},mv=clamp((sp-0.8)/12,0,1);
+  this.grav.gain.setTargetAtTime(SND.gravel*mx.surf*Math.min(1,loose)*(0.35+0.65*this.dirtK)*mv*mv*(0.8+Math.random()*0.4),t,0.03);
+  this.wind.gain.setTargetAtTime(SND.wind*mx.wind*Math.pow(clamp((sp-6)/42,0,1),2),t,0.1);this.windF.frequency.setTargetAtTime(500+sp*18,t,0.1);
   this.tb.gain.setTargetAtTime(SND.turbo*load*rn,t,0.08);this.tbF.frequency.setTargetAtTime(2600+rn*2400,t,0.05);
   const thr=p.throttle||0;if(this.prevThr>0.6&&thr<0.15&&rpm>4200)this.pops(2+Math.floor(Math.random()*4));this.prevThr=thr;
   for(const e of p.events){if(e.type==='shift'&&e.up)this.pops(1);if(e.type==='limiter')this.pops(2);if(e.type==='land')this.thump(e.v/4)}
@@ -1822,7 +1825,7 @@ class Game{
  applySettings(){const s=PROFILE.d.settings;if(this.copilot)this.copilot.configure(s);this.musicCheck&&this.musicCheck();tune.steerMode=s.steerMode;tune.gameSpeed=s.gameSpeed;tune.gyroSensitivity=s.gyroSens;GYRO_TILT_FOR_FULL=55-s.gyroSens*0.40;
   document.body.classList.toggle('slider-mode',s.steerMode==='slider');document.body.classList.toggle('manual',s.gearbox==='manual');if(this.physics)this.physics.manual=s.gearbox==='manual';const Q=effQuality(s);QUALITY=Q;
   let pr={baja:0.7,media:Math.min(devicePixelRatio,1.25),alta:Math.min(devicePixelRatio,1.75)}[Q]||1;if(this.rawOn)pr=Math.min(pr,1)/1.2;this.renderer.setPixelRatio(pr);this.renderer.setSize(innerWidth,innerHeight);if(this.fx)this.fx.setScale(innerHeight,pr);
-  if(this.audio.master)this.audio.master.gain.value=SND.master*(s.volume/80);
+  if(this.audio.master)this.audio.master.gain.value=SND.master*(s.volume/80);this.audio.mix={eng:(s.volEngine??100)/100,surf:(s.volSurf??30)/100,wind:(s.volWind??30)/100};
   if(this.post&&!this.previewFx&&this.post.preset!==(s.visual||'none'))this.post.setPreset(s.visual||'none');
   if(this.cockpit&&this.cockpit.setMirrors)this.cockpit.setMirrors(s.mirrors!==false);
   const shOn=Q!=='baja'&&s.shadows!==false;if(this.renderer.shadowMap.enabled!==shOn){this.renderer.shadowMap.enabled=shOn;this.renderer.shadowMap.type=THREE.PCFShadowMap;}this.sun.castShadow=shOn;const ms=Q==='alta'?2048:1024;if(this.sun.shadow.mapSize.x!==ms){this.sun.shadow.mapSize.set(ms,ms);if(this.sun.shadow.map){this.sun.shadow.map.dispose();this.sun.shadow.map=null;}}

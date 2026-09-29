@@ -257,6 +257,9 @@ export class UI{
    <div class="tg"><h4>Sonido y unidades</h4>
     <div class="opt"><span>Música en menús</span>${seg('music',[[true,'Sí'],[false,'No']])}</div>
     <div class="opt"><span>Volumen</span>${seg('volume',[[0,'🔇'],[40,'40%'],[80,'80%'],[100,'100%']])}</div>
+    <div class="opt"><span>Motor<small>El sonido del auto</small></span>${seg('volEngine',[[60,'Bajo'],[100,'Normal'],[140,'Alto']])}</div>
+    <div class="opt"><span>Pasto y tierra<small>Ruido de las ruedas fuera del asfalto</small></span>${seg('volSurf',[[0,'No'],[30,'Bajo'],[60,'Medio'],[100,'Alto']])}</div>
+    <div class="opt"><span>Viento</span>${seg('volWind',[[0,'No'],[30,'Bajo'],[60,'Medio'],[100,'Alto']])}</div>
     <div class="opt"><span>Unidades</span>${seg('units',[['kmh','km/h'],['mph','mph']])}</div></div>
    ${this.inRace?'':'<div class="tg"><h4>Progreso</h4><div class="opt"><span>Borrar partida<small>Empezar de cero</small></span><button class="buy" style="background:var(--bad)" data-a="resetAll">BORRAR</button></div></div>'}
    <p class="muted" style="font-size:10.5px;margin-top:8px">GSkorp Rally · física de simulación propia · hecho con IA</p></div></div>`,'dim');}
