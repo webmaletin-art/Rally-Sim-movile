@@ -255,6 +255,7 @@ const BENCH_CFGS := [
 	[8, 3000, 1, 0, 1, 0.5], [8, 8000, 1, 0, 1, 0.5], [8, 3000, 0, 0, 1, 0.5], [8, 3000, 1, 0, 0, 0.5], [4, 3000, 1, 1, 1, 0.5]]
 
 func _bench_start() -> void:
+	DisplayServer.screen_set_keep_on(true) # que no se apague la pantalla durante la prueba
 	bench_i = -1
 	bench_results.clear()
 	report_body.clear()
@@ -267,11 +268,12 @@ func _bench_next() -> void:
 		var lines := ["RESULTADOS (mandame una captura de esto)", "autos · árboles · pilotos · sombras · hilos · resolución  →  FPS · ms/cuadro · física ms · llamadas · triángulos"]
 		for r in bench_results:
 			lines.append(r)
-		lines.append("Tocá INFORME para copiar el informe completo")
+		lines.append("LISTO. El informe ya quedó copiado (pegalo en el chat). INFORME lo vuelve a copiar.")
 		hud.result_text = "\n".join(lines)
 		hud.stats_text = ""
+		hud.banner = ""
+		_copy_report() # queda copiado solo: ya se puede pegar en el chat
 		if autobench:
-			_copy_report()
 			await get_tree().create_timer(0.5).timeout
 			if shot_path != "":
 				get_viewport().get_texture().get_image().save_png(shot_path)
@@ -296,6 +298,8 @@ func _bench_next() -> void:
 
 func _bench_tick(dt: float) -> void:
 	bench_t += dt
+	var left := int(ceil(float(BENCH_CFGS.size() - bench_i) * 7.5 - bench_t))
+	hud.banner = "PRUEBA %d/%d · faltan %d s · NO TOQUES LA PANTALLA" % [bench_i + 1, BENCH_CFGS.size(), maxi(left, 0)]
 	if bench_t > 1.5 and bench_t < 6.0:
 		if bench_i >= 0:
 			_bench_samples.append([dt, shown_phys_ms, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)])
