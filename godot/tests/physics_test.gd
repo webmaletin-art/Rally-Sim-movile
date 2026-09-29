@@ -3,10 +3,14 @@
 ## (los archivos de referencia se generan con:  node tools/godot/js_reference.mjs)
 extends SceneTree
 
+const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
+const VehicleParams := preload("res://game/physics/vehicle_params.gd")
+const FlatTrack := preload("res://game/physics/flat_track.gd")
+
 const NAMES := ["px", "py", "pz", "yaw", "pitch", "roll", "vLong", "vLat", "rpm", "gear", "steer", "w0", "w1", "w2", "w3", "aLong"]
 
 func _init() -> void:
-	var vehicles: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://data/vehicles.json"))
+	var vehicles: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
 	var expected: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://tests/expected.json"))
 	var scen: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://tests/scenario.json"))
 	var fail := false

@@ -1,6 +1,5 @@
 ## Parámetros de un auto (los mismos nombres que en la versión HTML: js/main.js → VEHICLES y js/carbuild.js → buildParams).
 ## Se cargan de un Dictionary (vehicles.json + mejoras + ajuste) a campos tipados: es mucho más rápido que leer el diccionario en cada paso.
-class_name VehicleParams
 extends RefCounted
 
 var mass := 2000.0
@@ -85,8 +84,8 @@ var turboLvl := 0
 
 const SURF_NAMES := ["asphalt", "dirt", "shoulder", "grass", "outside", "mud"]
 
-static func from_dict(d: Dictionary) -> VehicleParams:
-	var p := VehicleParams.new()
+static func from_dict(d: Dictionary) -> RefCounted:
+	var p := new()
 	for k in d.keys():
 		if k == "surfGrip":
 			var sg: Dictionary = d[k]

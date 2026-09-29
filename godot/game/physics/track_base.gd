@@ -1,6 +1,5 @@
 ## Interfaz de pista para la física: altura del piso y tipo de superficie en un punto.
 ## Las pistas reales (circuitos, mundo abierto, ciudades) heredan de esta clase.
-class_name TrackBase
 extends RefCounted
 
 ## Multiplicador de agarre global de la pista (lluvia, etc.)

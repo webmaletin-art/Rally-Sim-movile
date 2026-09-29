@@ -1,0 +1,125 @@
+name: Build Godot APK
+
+# Versión Godot de GSkorp Rally. Genera:
+#  · APK LIVIANO  (gskorp-light.apk): solo el motor + la pantalla de arranque. Al abrirlo baja el juego (content.pck).
+#  · APK COMPLETO (gskorp-full.apk):  todo adentro, por si no hay internet o para probar sin descarga.
+#  · content.pck + manifest.json: se publican en la release "godot-content"; el APK liviano los descarga solo.
+# Cada vez que se actualiza content.pck, el APK liviano NO hay que reinstalarlo: al abrir baja lo nuevo.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'godot/**'
+      - '.github/workflows/build-godot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: 4.4.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools build-tools;35.0.1 platforms;android-35'
+
+      - name: Instalar Godot y plantillas de exportación
+        run: |
+          set -e
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          curl -sSL -o godot.zip $base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          sudo mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+          curl -sSL -o tpz.zip $base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          dir=$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p $dir
+          unzip -q -j tpz.zip 'templates/android_*' 'templates/version.txt' -d $dir
+          rm -f tpz.zip godot.zip
+          ls -la $dir
+          godot --headless --version
+
+      - name: Configurar Godot (SDK de Android y firma)
+        run: |
+          mkdir -p $HOME/.config/godot
+          cat > $HOME/.config/godot/editor_settings-4.4.tres <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$GITHUB_WORKSPACE/godot/keystore/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+          cat $HOME/.config/godot/editor_settings-4.4.tres
+
+      - name: Importar recursos
+        working-directory: godot
+        run: |
+          godot --headless --import || true
+          godot --headless --import || true
+
+      - name: Probar la física contra la versión HTML
+        working-directory: godot
+        run: |
+          godot --headless --script res://tests/physics_test.gd
+          godot --headless --script res://tests/ai_test.gd
+
+      - name: Exportar APK liviano, APK completo y contenido
+        working-directory: godot
+        run: |
+          mkdir -p ../build
+          godot --headless --export-debug "Android Light" ../build/gskorp-light.apk
+          godot --headless --export-debug "Android Full" ../build/gskorp-full.apk
+          godot --headless --export-pack "Content" ../build/content.pck
+          ls -la ../build
+
+      - name: Manifiesto del contenido
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os
+          b = open('build/content.pck', 'rb').read()
+          ver = "r%s-%s" % (os.environ['GITHUB_RUN_NUMBER'], os.environ['GITHUB_SHA'][:7])
+          repo = os.environ['GITHUB_REPOSITORY']
+          json.dump({
+              "version": ver,
+              "url": "https://github.com/%s/releases/download/godot-content/content.pck" % repo,
+              "size": len(b),
+              "sha256": hashlib.sha256(b).hexdigest(),
+          }, open('build/manifest.json', 'w'), indent=1)
+          print(open('build/manifest.json').read())
+          PY
+
+      - name: Publicar el contenido (lo descarga el APK liviano)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view godot-content >/dev/null 2>&1 || gh release create godot-content \
+            --title "Contenido del juego (Godot)" \
+            --notes "Paquete que descarga solo la app liviana al abrirse. No hace falta bajarlo a mano." \
+            --prerelease
+          gh release upload godot-content build/content.pck build/manifest.json --clobber
+
+      - name: Subir APK liviano
+        uses: actions/upload-artifact@v4
+        with:
+          name: gskorp-godot-LIVIANO-apk
+          path: build/gskorp-light.apk
+
+      - name: Subir APK completo
+        uses: actions/upload-artifact@v4
+        with:
+          name: gskorp-godot-COMPLETO-apk
+          path: build/gskorp-full.apk

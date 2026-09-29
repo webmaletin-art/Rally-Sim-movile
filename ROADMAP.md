@@ -3,6 +3,7 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
+- 🚧 **Migración a Godot** (carpeta `godot/`, ver `godot/README.md`): física portada y verificada contra la versión HTML; APK liviano que descarga el juego; prueba de rendimiento en camino. La versión HTML se retira cuando la de Godot la iguale.
 - ✅ **Interior más real**: habitáculo más ancho (menos ventanilla a los costados), capó ancho y largo que se ve de punta a punta, cámaras de adentro con ángulo de simulador (antes se veía casi todo el habitáculo), display del tablero más chico.
 - ✅ **Freno de mano**: palanca más adelante y el codo va para atrás al tirar (antes se deformaba el brazo). **Copiloto** se ataja con la mano en el tablero en las frenadas fuertes.
 - ✅ **Android**: la ventana se configura una sola vez (antes titilaba) y las barras se esconden al instante si aparecen.

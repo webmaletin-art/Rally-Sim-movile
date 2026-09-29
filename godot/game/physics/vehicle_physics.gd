@@ -3,8 +3,10 @@
 ## diferenciales, ABS / control de tracción / estabilidad, aerodinámica, salto y aterrizaje.
 ## Se corre a 120 Hz con 2 sub-pasos. Nada de esto usa el motor de física de Godot: el auto es 100% nuestro.
 ## godot/tests/physics_test.gd compara paso a paso con la versión HTML (godot/tests/expected.json).
-class_name VehiclePhysics
 extends RefCounted
+
+const VehicleParams := preload("res://game/physics/vehicle_params.gd")
+const TrackBase := preload("res://game/physics/track_base.gd")
 
 const G := 9.81
 
