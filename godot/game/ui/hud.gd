@@ -5,6 +5,7 @@ extends Control
 
 signal option_changed(key: String, value)
 signal bench_pressed
+signal copy_pressed
 
 var steer := 0.0
 var throttle := 0.0
@@ -15,6 +16,8 @@ var speed_kmh := 0.0
 var gear_text := "1"
 var rpm := 0.0
 var result_text := ""
+var toast_text := ""
+var toast_t := 0.0
 
 var _steer_finger := -1
 var _steer_x0 := 0.0
@@ -49,6 +52,7 @@ func _layout() -> void:
 	_buttons.append({"id": "brake", "rect": Rect2(s.x - 380, s.y - 170, 170, 150), "label": "FRENO"})
 	_buttons.append({"id": "hb", "rect": Rect2(s.x - 330, s.y - 330, 110, 90), "label": "MANO"})
 	_buttons.append({"id": "bench", "rect": Rect2(s.x - 2.0 * bw - 24, 10, bw, bh * 0.75), "label": "PRUEBA"})
+	_buttons.append({"id": "copy", "rect": Rect2(s.x - 2.0 * bw - 24, 10 + (bh * 0.75 + 6), bw, bh * 0.75), "label": "INFORME"})
 	var keys := ["cars", "trees", "pilots", "shadows", "hi", "threads"]
 	var names := {"cars": "Autos", "trees": "Árboles", "pilots": "Pilotos", "shadows": "Sombras", "hi": "Modelo alto", "threads": "Hilos"}
 	for i in keys.size():
@@ -72,6 +76,8 @@ func _input(event: InputEvent) -> void:
 				elif h == "bench":
 					result_text = ""
 					bench_pressed.emit()
+				elif h == "copy":
+					copy_pressed.emit()
 			elif ev.position.x < _vs().x * 0.5 and _steer_finger == -1:
 				_steer_finger = ev.index
 				_steer_x0 = ev.position.x
@@ -102,7 +108,13 @@ func _recompute() -> void:
 			"brake": brake = 1.0
 			"hb": handbrake = true
 
+func show_toast(t: String) -> void:
+	toast_text = t
+	toast_t = 3.0
+
 func _process(_dt: float) -> void:
+	if toast_t > 0.0:
+		toast_t -= _dt
 	# teclado (para probar en la compu)
 	var kt := Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)
 	var kb := Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN)
@@ -165,7 +177,7 @@ func _draw() -> void:
 			var key := id.substr(4)
 			var val = option_value(key)
 			lab += ": " + (("sí" if int(val) == 1 else "no") if key in ["pilots", "shadows", "hi", "threads"] else str(val))
-		var fs := 18 if (id.begins_with("opt:") or id == "bench") else 26
+		var fs := 18 if (id.begins_with("opt:") or id == "bench" or id == "copy") else 26
 		draw_string(font, Vector2(r.position.x + 6, r.position.y + r.size.y * 0.62), lab, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 8, fs, Color(1, 1, 1))
 	if result_text != "":
 		var rl := result_text.split("\n")
@@ -173,3 +185,6 @@ func _draw() -> void:
 		draw_rect(Rect2(20, 20, vs.x - 40, h), Color(0, 0, 0, 0.82))
 		for i in rl.size():
 			draw_string(font, Vector2(34, 46 + i * 24), rl[i], HORIZONTAL_ALIGNMENT_LEFT, vs.x - 60, 19, Color(1, 1, 1))
+	if toast_t > 0.0:
+		draw_rect(Rect2(vs.x * 0.5 - 260, vs.y * 0.5 - 40, 520, 80), Color(0, 0, 0, 0.85))
+		draw_string(font, Vector2(vs.x * 0.5 - 250, vs.y * 0.5 + 8), toast_text, HORIZONTAL_ALIGNMENT_CENTER, 500, 26, Color(0.4, 1, 0.5))
