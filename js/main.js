@@ -1349,9 +1349,11 @@ class CameraRig{
   this.cam.fov=cam.fov;this.cam.updateProjectionMatrix();
  }
 }
-const SND={master:0.55,engine:0.62,tires:0.35,squeal:0.28,gravel:0.45,wind:0.25,turbo:0.10,whistle:0.06,flutter:0.75,pops:0.35,impacts:0.8,firingOrder:4};
+const SND={master:0.55,engine:0.62,tires:0.35,squeal:0.28,gravel:0.45,wind:0.25,turbo:0.10,whistle:0.06,flutter:0.75,whine:0.06,pops:0.35,impacts:0.8,firingOrder:4};
 /* turbo por auto: f = tono (silbido y flutter), spool = segundos que tarda en cargar, w = volumen del silbido, fl = volumen del flutter */
 const TURBO_SND={pickup:{f:1,spool:0.55,w:1,fl:1},t1plus:{f:1.12,spool:0.42,w:0.8,fl:0.9},truck:{f:0.55,spool:0.9,w:0.9,fl:1.2},genesis:{f:1.3,spool:0.3,w:1.1,fl:1}};
+/* silbido metálico de la caja de engranajes rectos (caja secuencial de rally): k = volumen, tooth = dientes (tono) */
+const GEAR_SND={pickup:{k:0.55,tooth:40},t1plus:{k:1,tooth:48},truck:{k:0.8,tooth:34},genesis:{k:0.8,tooth:44}};
 class AudioEngine{
  constructor(){this.ctx=null;this.on=false;this.prevThr=0}
  init(){if(this.on)return;try{const C=window.AudioContext||window.webkitAudioContext;const ctx=this.ctx=new C();
@@ -1374,6 +1376,10 @@ class AudioEngine{
   this.wind=gain(0);this.windF=filt('bandpass',700,0.5);noise().connect(this.windF).connect(this.wind).connect(this.master);
   this.tb=gain(0);this.tbF=filt('bandpass',3600,4);noise().connect(this.tbF).connect(this.tb).connect(this.master);
   /* silbido del turbo: tono puro que sube con la carga (la turbina girando) */
+  /* caja de engranajes rectos: dos tonos casi iguales (el batido suena a metal) + uno que sigue al motor */
+  this.gw=gain(0);this.gwF=filt('bandpass',900,6);this.gwF.connect(this.gw).connect(this.master);this.gwO=[];
+  for(const [type,mul,g] of [['triangle',1,0.6],['triangle',1.007,0.45],['sawtooth',2,0.12]]){const o=ctx.createOscillator();o.type=type;o.frequency.value=400*mul;const gg=gain(g);o.connect(gg).connect(this.gwF);o.start();this.gwO.push({o,mul});}
+  this.gwE=gain(0);this.gwEO=ctx.createOscillator();this.gwEO.type='triangle';this.gwEO.connect(this.gwE).connect(this.master);this.gwEO.start();
   this.tw=gain(0);this.twO=ctx.createOscillator();this.twO.type='sine';this.twO.frequency.value=2000;this.twO.connect(this.tw).connect(this.master);this.twO.start();this.boost=0;this.flT=0;
   this.on=true;}catch(e){}}
  resume(){if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume()}
@@ -1403,6 +1409,12 @@ class AudioEngine{
   const mx=this.mix||{eng:1,surf:0.3,wind:0.3},mv=clamp((sp-0.8)/12,0,1);
   this.grav.gain.setTargetAtTime(SND.gravel*mx.surf*Math.min(1,loose)*(0.35+0.65*this.dirtK)*mv*mv*(0.8+Math.random()*0.4),t,0.03);
   this.wind.gain.setTargetAtTime(SND.wind*mx.wind*Math.pow(clamp((sp-6)/42,0,1),2),t,0.1);this.windF.frequency.setTargetAtTime(500+sp*18,t,0.1);
+  /* caja: el tono sigue a la velocidad (eje de salida × dientes), suena acelerando y más todavía levantando el pie; se corta un instante en cada cambio */
+  {const G=GEAR_SND[currentVehicleId]||GEAR_SND.pickup,mg=mx.gear??1,shaft=Math.abs(p.vLong||0)/(2*Math.PI*V.wheelRadius)*V.finalDrive,wf=Math.min(4200,shaft*G.tooth);
+   const drive=p.gear!==0&&p.clutchLocked!==false&&!(p.shiftT>0),coast=Math.max(0,0.5-(p.throttle||0))*2,sk=clamp((Math.abs(p.vLong||0)-2)/20,0,1);
+   const gg=drive?SND.whine*G.k*mg*sk*(0.55+0.3*load+0.45*coast):0;this.gw.gain.setTargetAtTime(gg,t,drive?0.05:0.015);
+   for(const o of this.gwO)o.o.frequency.setTargetAtTime(Math.max(40,wf*o.mul),t,0.03);this.gwF.frequency.setTargetAtTime(Math.max(200,wf*1.05),t,0.04);
+   this.gwE.gain.setTargetAtTime(drive?gg*0.25*(0.4+0.6*rn):0,t,0.04);this.gwEO.frequency.setTargetAtTime(rpm/60*G.tooth*0.36,t,0.02);}
   /* turbo: carga con retardo (spool) al acelerar y se vacía al soltar; silbido + soplido siguen la carga */
   const T=TURBO_SND[currentVehicleId]||TURBO_SND.pickup,L=V.turboLvl||0,mt=mx.turbo??1,thr=p.throttle||0;
   const bt=thr>0.35?clamp((rpm-V.idleRpm*1.5)/((V.maxRpm-V.idleRpm)*0.45),0,1)*Math.min(1,thr*1.3)*(0.6+0.4*load):0;
@@ -1853,7 +1865,7 @@ class Game{
  applySettings(){const s=PROFILE.d.settings;if(this.copilot)this.copilot.configure(s);this.musicCheck&&this.musicCheck();tune.steerMode=s.steerMode;tune.gameSpeed=s.gameSpeed;tune.gyroSensitivity=s.gyroSens;GYRO_TILT_FOR_FULL=55-s.gyroSens*0.40;this.input.gyroInvert=!!s.gyroInvert;
   document.body.classList.toggle('slider-mode',s.steerMode==='slider');document.body.classList.toggle('manual',s.gearbox==='manual');if(this.physics)this.physics.manual=s.gearbox==='manual';const Q=effQuality(s);QUALITY=Q;
   let pr={baja:0.7,media:Math.min(devicePixelRatio,1.25),alta:Math.min(devicePixelRatio,1.75)}[Q]||1;if(this.rawOn)pr=Math.min(pr,1)/1.2;this.renderer.setPixelRatio(pr);this.renderer.setSize(innerWidth,innerHeight);if(this.fx)this.fx.setScale(innerHeight,pr);
-  if(this.audio.master)this.audio.master.gain.value=SND.master*(s.volume/80);this.audio.mix={eng:(s.volEngine??100)/100,surf:(s.volSurf??30)/100,wind:(s.volWind??30)/100,turbo:(s.volTurbo??100)/100};
+  if(this.audio.master)this.audio.master.gain.value=SND.master*(s.volume/80);this.audio.mix={eng:(s.volEngine??100)/100,surf:(s.volSurf??30)/100,wind:(s.volWind??30)/100,turbo:(s.volTurbo??100)/100,gear:(s.volGear??100)/100};
   const lim=deviceLimited(s),vis=lim?'none':(s.visual||'none');if(this.post&&!this.previewFx&&this.post.preset!==vis)this.post.setPreset(vis);
   if(this.cockpit&&this.cockpit.setMirrors)this.cockpit.setMirrors(s.mirrors!==false&&!lim);applyHud(s.hudLayout);
   const shOn=Q!=='baja'&&s.shadows!==false;if(this.renderer.shadowMap.enabled!==shOn){this.renderer.shadowMap.enabled=shOn;this.renderer.shadowMap.type=THREE.PCFShadowMap;}this.sun.castShadow=shOn;const ms=Q==='alta'?2048:1024;if(this.sun.shadow.mapSize.x!==ms){this.sun.shadow.mapSize.set(ms,ms);if(this.sun.shadow.map){this.sun.shadow.map.dispose();this.sun.shadow.map=null;}}
@@ -1975,7 +1987,7 @@ class Game{
  quit(){this.saveOdo();this.audio.resume();this.cleanupSession();if(this.car){this.car.dispose();this.scene.remove(this.car.group);this.car=null;}this.state='menu';this.setHud(false);this.ui.inRace=false;this.audio.update&&this.audioSilence();
   const back=this.cfg&&this.cfg.event?'career':this.cfg&&this.cfg.testCar?'dealer':'home';this.ui.show(back);}
  retry(){const c=this.cfg;this.saveOdo();this.ui.inRace=false;this.launch(c);}
- audioSilence(){try{const a=this.audio;if(!a.on)return;const t=a.ctx.currentTime;if(a.boost)a.boost=0;for(const g of [a.eng,a.roll,a.sq,a.grav,a.wind,a.tb,a.tw])g.gain.setTargetAtTime(0,t,0.05);}catch(e){}}
+ audioSilence(){try{const a=this.audio;if(!a.on)return;const t=a.ctx.currentTime;if(a.boost)a.boost=0;for(const g of [a.eng,a.roll,a.sq,a.grav,a.wind,a.tb,a.tw,a.gw,a.gwE])g.gain.setTargetAtTime(0,t,0.05);}catch(e){}}
  saveOdo(){if(this.odo>1){const km=this.odo/1000;PROFILE.d.stats.km+=km;if(!this.testState&&PROFILE.car)PROFILE.car.km+=km;this.odo=0;PROFILE.save();}}
  showResults(r){const cfg=this.cfg,ev=cfg.event;this.state='results';document.body.classList.remove('story','cine');this.setHud(false);this.audioSilence();this.saveOdo();
   const st=PROFILE.d.stats;st.events++;if(r.maxKmh>st.topSpeed)st.topSpeed=r.maxKmh;
