@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {CAR_META,CAR_ORDER,UPG_BY_ID,PAINTS,PRESETS} from './data.js';
+import {CAR_META,CAR_ORDER,UPG_BY_ID,PAINTS} from './data.js';
 import {buildParams,perfOf} from './carbuild.js';
 import {Profile,newCarState} from './profile.js';
 import {AIDriver} from './ai.js';
@@ -1878,7 +1878,7 @@ class Game{
   const rec=t==='drift'||m.kind==='drift'?'drift':m.kind==='offroad'||m.mode==='dirt'?'tierra':'asfalto';
   return {rec,mapName:m.name||'',surfName:{drift:'la plaza de drift',tierra:m.kind==='offroad'?'campo abierto y tierra':'tierra',asfalto:'asfalto'}[rec]};}
  launch(cfg){if(!this.copilot)this.copilot=new CoPilot();
-  if(!this.syncLaunch&&!cfg._setup&&!this.loadingOn){const inf=this.setupFor(cfg);if(inf){cfg._setup=true;this.ui.setupPicker(inf,id=>{if(id&&PROFILE.car){const car=PROFILE.car;car.tune={...(car.tune||{}),...PRESETS[id]};PROFILE.save();}this.launch(cfg);});return;}}
+  if(!this.syncLaunch&&!cfg._setup&&!this.loadingOn){const inf=this.setupFor(cfg);if(inf){cfg._setup=true;this.ui.setupPicker(inf,res=>{if(res&&PROFILE.car){const car=PROFILE.car;car.tune={...(car.tune||{}),...res.tune};if(res.assists){PROFILE.d.settings.tc=res.assists.tc;PROFILE.d.settings.stab=res.assists.stab;}PROFILE.save();this.applySettings();}this.launch(cfg);});return;}}
   if(this.syncLaunch){this._launchNow(cfg);return;}if(this.loadingOn)return;
   const L=this.load={cfg,t0:performance.now(),min:this._launchedOnce?2600:3400,frames:0,built:false,tipI:0,tips:tipsFor(cfg.story||cfg.type==='story'?'story':cfg.type)};this._launchedOnce=true;this.loadingOn=true;
   this.codriver.stop();if(this.storyVO)this.storyVO.stop();this.audioSilence();
