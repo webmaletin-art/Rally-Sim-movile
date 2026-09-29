@@ -1409,9 +1409,14 @@ const tune={steerMode:'wheel',gameSpeed:100,gyroSensitivity:50};
 let QUALITY='media';
 function QF(){return {baja:0.45,media:1,alta:1.35}[QUALITY]||1;}
 /* calidad automática: estimación inicial por el hardware y luego se ajusta con los FPS reales (se recuerda) */
-function guessQuality(){try{const mem=navigator.deviceMemory||4,cores=navigator.hardwareConcurrency||4,px=screen.width*screen.height*(devicePixelRatio||1)**2;
-  if(mem<=3||cores<=4)return 'baja';if(mem>=6&&cores>=8&&px<4.5e6)return 'alta';return 'media';}catch(e){return 'media';}}
+/* Optimizar: se analiza el teléfono UNA vez (memoria, núcleos, placa de video) y la calidad queda fija: nunca cambia en plena carrera */
+let _gq=null;function gpuName(){try{const c=document.createElement('canvas'),gl=c.getContext('webgl');const e=gl&&gl.getExtension('WEBGL_debug_renderer_info');return e?String(gl.getParameter(e.UNMASKED_RENDERER_WEBGL)):'';}catch(e){return '';}}
+function guessQuality(){if(_gq)return _gq;try{const mem=navigator.deviceMemory||4,cores=navigator.hardwareConcurrency||4,px=screen.width*screen.height*(devicePixelRatio||1)**2,gpu=gpuName();
+  const weakGpu=/Mali-(4|T[678])|Mali-G(31|51|52|57)|Adreno \(TM\) (3\d\d|4\d\d|50\d|51\d|53\d|60\d|61\d)|PowerVR|SGX|GE8320|IMG/i.test(gpu),strongGpu=/Adreno \(TM\) (6[4-9]\d|7\d\d)|Mali-G(7[1-9]|71\d|72\d)|Immortalis|Apple/i.test(gpu);
+  _gq=(mem<=3||cores<=4||weakGpu)?'baja':(strongGpu&&mem>=6&&px<4.5e6)?'alta':'media';}catch(e){_gq='media';}return _gq;}
 function effQuality(s){return s.quality==='auto'?(s.autoLevel||guessQuality()):s.quality;}
+/* teléfono justo en modo Optimizar: lo que lo pone lento queda desactivado (efectos de cámara, sombras, espejos con imagen, cámara trasera) */
+function deviceLimited(s){return s.quality==='auto'&&effQuality(s)==='baja';}
 const PROFILE=new Profile();
 function assistsOf(s){return {abs:s.abs,tc:s.tc,stab:s.stab};}
 function paramsFor(id,state){return buildParams(VEHICLES[id],state||newCarState(id),assistsOf(PROFILE.d.settings));}
@@ -1753,7 +1758,7 @@ class Game{
    perf:(id,st)=>{const pf=perfOf(paramsFor(id,st));return pf;},params:(id,st)=>paramsFor(id,st),base:id=>VEHICLES[id],
    showCar:(id,st)=>{this.showroom.setCar(id,st);},carChanged:()=>{const id=PROFILE.d.current;this.showroom.setCar(id,PROFILE.car);},
    onScreen:n=>this.onScreen(n),startEvent:ev=>this.startEvent(ev),startQuick:q=>this.startQuick(q),testDrive:id=>this.testDrive(id),openWorld:()=>this.openWorld(),startStory:()=>this.startStory(),startMission:id=>this.startMission(id),
-   mapName:id=>(MAPS[id]||{}).name||id,mapList:()=>Object.entries(MAPS).filter(([id,m])=>!m.hidden).map(([id,m])=>({id,...m})),applySettings:()=>this.applySettings(),postSupported:()=>this.post.supported,canExitToWorld:()=>!!(this.cfg&&this.cfg.fromWorld),toWorld:()=>this.exitTrench(),previewVisual:id=>{this.previewFx=id;if(this.post)this.post.setPreset(id||PROFILE.d.settings.visual||'none');this.fxStageOn=!!id&&!this.session;if(this.fxStageOn){if(!this.fxStage)this.fxStage=new FxStage();this.fxStage.setCar(PROFILE.d.current||'t1plus',PROFILE.car);}},autoLevel:()=>effQuality(PROFILE.d.settings),
+   limited:()=>deviceLimited(PROFILE.d.settings),mapName:id=>(MAPS[id]||{}).name||id,mapList:()=>Object.entries(MAPS).filter(([id,m])=>!m.hidden).map(([id,m])=>({id,...m})),applySettings:()=>this.applySettings(),postSupported:()=>this.post.supported,canExitToWorld:()=>!!(this.cfg&&this.cfg.fromWorld),toWorld:()=>this.exitTrench(),previewVisual:id=>{this.previewFx=id;if(this.post)this.post.setPreset(id||PROFILE.d.settings.visual||'none');this.fxStageOn=!!id&&!this.session;if(this.fxStageOn){if(!this.fxStage)this.fxStage=new FxStage();this.fxStage.setCar(PROFILE.d.current||'t1plus',PROFILE.car);}},autoLevel:()=>effQuality(PROFILE.d.settings),
    toggleGyro:async()=>{if(this.input.gyroEnabled){this.input.disableGyro();return {};}const r=await this.input.enableGyro();return r.ok?{}:{err:r.err};},gyroOn:()=>this.input.gyroEnabled,recalGyro:()=>this.input.recalibrateGyro(),gyroValue:()=>this.input.gyroSteer,gyroInvert:()=>!!PROFILE.d.settings.gyroInvert,setGyroInvert:v=>{PROFILE.d.settings.gyroInvert=!!v;PROFILE.save();this.input.gyroInvert=!!v;},
    resume:()=>this.resume(),editHud:()=>this.openHudEditor(),respawn:()=>{if(this.session){this.session.respawn();this.resume();}},canRespawn:()=>!!(this.session&&this.session.type!=='parking'),restart:()=>this.retry(),quit:()=>this.quit(),nextCam:()=>{this.nextCamera();},prevCam:()=>{this.nextCamera(-1);},camName:()=>CAMERAS[CAM_INDEX].name,afterResults:n=>this.afterResults(n),retry:()=>this.retry()};
   this.music=new Music(this.audio);
@@ -1807,10 +1812,10 @@ class Game{
   if(d<40&&!this._portalHint){this._portalHint=true;this.toast('⛏️ Entrada a La Trinchera: metete en la mina','blue');}if(d>60)this._portalHint=false;
   if(d<6&&(p.vx*P.tx+p.vz*P.tz)>1)this.enterTrench();}
  /* modo Optimizar: mide los FPS en carrera y baja (o sube una vez) la calidad; lo aprende para la próxima */
- autoTune(){const s=PROFILE.d.settings;if(s.quality!=='auto'||this.state!=='race'||!this.fps)return;const a=this._at||(this._at={t:0,sum:0,n:0,ups:0});a.sum+=this.fps;a.n++;a.t+=0.5;if(a.t<8)return;
-  const avg=a.sum/a.n;a.t=0;a.sum=0;a.n=0;const L=['baja','media','alta'],cur=effQuality(s),i=L.indexOf(cur);let ni=i;
-  if(avg<44&&i>0)ni=i-1;else if(avg>58&&i<2&&a.ups<1){ni=i+1;a.ups++;}
-  if(ni!==i){s.autoLevel=L[ni];PROFILE.save();this.applySettings();this.toast('⚡ Calidad ajustada: '+{baja:'Baja',media:'Media',alta:'Máxima'}[L[ni]],'blue');}}
+ /* Optimizar: en las primeras carreras solo MIDE los FPS (sin tocar nada en la carrera). Con eso fija el nivel para las próximas y deja de medir */
+ autoTune(){const s=PROFILE.d.settings;if(s.quality!=='auto'||s.autoLocked||this.state!=='race'||!this.fps)return;const a=this._at||(this._at={t:0,sum:0,n:0,done:false});if(a.done)return;a.t+=0.5;if(a.t<6)return;a.sum+=this.fps;a.n++;if(a.t<26)return;a.done=true;
+  const avg=a.sum/a.n,L=['baja','media','alta'],i=L.indexOf(effQuality(s));let ni=i;if(avg<40&&i>0)ni=i-1;else if(avg>58&&i<2&&(s.autoRuns||0)===0)ni=i+1;
+  s.autoLevel=L[ni];s.autoRuns=(s.autoRuns||0)+1;if(s.autoRuns>=2||ni===i)s.autoLocked=true;PROFILE.save();}
  /* 'Cámara de acción cruda': bruma verdosa (lineal, mismo shader que el juego → sin recompilar) y vibración solo durante el dibujado; después se deja todo como estaba */
  rawBegin(S=this.scene,c=this.camera){const R=this._raw||(this._raw={pos:new THREE.Vector3(),q:new THREE.Quaternion(),fog:new THREE.Fog(0x8fa88f,8,210),bg:new THREE.Color(),tint:new THREE.Color(0x8fa88f)});
   R.cam=c;R.S=S;R.pos.copy(c.position);R.q.copy(c.quaternion);R.oldFog=S.fog;R.oldBg=S.background;R.dome=this.dome&&this.dome.visible;
@@ -1824,7 +1829,7 @@ class Game{
  renderPost(scene,cam,info){const raw=this.post.preset==='accion';if(raw!==!!this.rawOn){this.rawOn=raw;document.body.classList.toggle('rawcam',raw);this.applySettings();}
   if(raw)this.rawBegin(scene,cam);this.post.render(scene,cam,info);if(raw)this.rawEnd();}
  /* cámara "detrás del piloto": pantalla de cámara trasera arriba al centro (usa la misma imagen del espejo, sin costo extra) */
- rearCamOn(){return PROFILE.d.settings.rearCam===true&&!(this.session&&this.session.cine);}
+ rearCamOn(){const s=PROFILE.d.settings;return s.rearCam===true&&!deviceLimited(s)&&!(this.session&&this.session.cine);}
  rearScreen(){const ck=this.cockpit;if(!ck||!this.rearCamOn()||!ck.mirrorRT)return;
   let M=this._rs;if(!M){const sc=new THREE.Scene(),cam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);const fr=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({color:0x0b0e13,depthTest:false}));
    const q=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:ck.mirrorRT.texture,depthTest:false}));q.renderOrder=1;sc.add(fr,q);M=this._rs={sc,cam,fr,q};}
@@ -1836,8 +1841,8 @@ class Game{
   document.body.classList.toggle('slider-mode',s.steerMode==='slider');document.body.classList.toggle('manual',s.gearbox==='manual');if(this.physics)this.physics.manual=s.gearbox==='manual';const Q=effQuality(s);QUALITY=Q;
   let pr={baja:0.7,media:Math.min(devicePixelRatio,1.25),alta:Math.min(devicePixelRatio,1.75)}[Q]||1;if(this.rawOn)pr=Math.min(pr,1)/1.2;this.renderer.setPixelRatio(pr);this.renderer.setSize(innerWidth,innerHeight);if(this.fx)this.fx.setScale(innerHeight,pr);
   if(this.audio.master)this.audio.master.gain.value=SND.master*(s.volume/80);this.audio.mix={eng:(s.volEngine??100)/100,surf:(s.volSurf??30)/100,wind:(s.volWind??30)/100};
-  if(this.post&&!this.previewFx&&this.post.preset!==(s.visual||'none'))this.post.setPreset(s.visual||'none');
-  if(this.cockpit&&this.cockpit.setMirrors)this.cockpit.setMirrors(s.mirrors!==false);applyHud(s.hudLayout);
+  const lim=deviceLimited(s),vis=lim?'none':(s.visual||'none');if(this.post&&!this.previewFx&&this.post.preset!==vis)this.post.setPreset(vis);
+  if(this.cockpit&&this.cockpit.setMirrors)this.cockpit.setMirrors(s.mirrors!==false&&!lim);applyHud(s.hudLayout);
   const shOn=Q!=='baja'&&s.shadows!==false;if(this.renderer.shadowMap.enabled!==shOn){this.renderer.shadowMap.enabled=shOn;this.renderer.shadowMap.type=THREE.PCFShadowMap;}this.sun.castShadow=shOn;const ms=Q==='alta'?2048:1024;if(this.sun.shadow.mapSize.x!==ms){this.sun.shadow.mapSize.set(ms,ms);if(this.sun.shadow.map){this.sun.shadow.map.dispose();this.sun.shadow.map=null;}}
   if(this.physics&&this.session){const id=currentVehicleId;const st=this.testState||PROFILE.d.owned[id];const V=paramsFor(id,st);Object.assign(VEH,V);this.physics.setup();}}
  onScreen(n){this.ui.inRace=this.state==='paused';this.musicCheck();this.showroom.off={home:0,starter:-1.3,garage:-1.3,dealer:-1.3,paint:-1.3,tuning:-1.5,workshop:-2.2}[n]??0;}
@@ -1898,7 +1903,7 @@ class Game{
   const el=performance.now()-L.t0,k=Math.min(1,el/L.min);$('lsFill').style.width=Math.round(70+30*Math.min(k,L.frames/10))+'%';if(L.frames>6)$('lsSt').textContent='¡Listo! Calentando motores…';
   if(el>=L.min&&L.frames>=10){this.loadingOn=false;clearInterval(this._tipTimer);this.state='race';this.last=performance.now();this.acc=0;this.audio.resume();const ls=$('loadScr');ls.classList.add('out');setTimeout(()=>{if(!this.loadingOn)ls.classList.remove('on');},480);}}
  _launchNow(cfg){try{if(this.audio.ctx)this.codriver.load(this.audio.ctx);this.cfg=cfg;const id=cfg.testCar||PROFILE.d.current||'t1plus';if(!cfg.testCar)this.testState=null;const st=(cfg.testCar?this.testState:PROFILE.car)||newCarState(id);
-  setPlayerCar(id,st);this.cleanupSession();this.setSky(cfg.sky||'day');
+  setPlayerCar(id,st);this.cleanupSession();this._at=null;this.applySettings();/* calidad decidida entre carreras (bajo la pantalla de carga), nunca durante */this.setSky(cfg.sky||'day');
   if(this.car){this.car.dispose();this.scene.remove(this.car.group);}
   if(this.cockpit){this.cockpit.dispose();this.cockpit=null;}
   this.car=new VehicleVisual(VEHICLES[id].visualType,VEH,{paint:st.paint,lo:QUALITY==='baja'});this.scene.add(this.car.group);this.makeShadow();
