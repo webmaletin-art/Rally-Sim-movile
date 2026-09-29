@@ -17,6 +17,7 @@ var gear_text := "1"
 var rpm := 0.0
 var result_text := ""
 var toast_text := ""
+var banner := ""
 var toast_t := 0.0
 
 var _steer_finger := -1
@@ -189,3 +190,6 @@ func _draw() -> void:
 	if toast_t > 0.0:
 		draw_rect(Rect2(vs.x * 0.5 - 260, vs.y * 0.5 - 40, 520, 80), Color(0, 0, 0, 0.85))
 		draw_string(font, Vector2(vs.x * 0.5 - 250, vs.y * 0.5 + 8), toast_text, HORIZONTAL_ALIGNMENT_CENTER, 500, 26, Color(0.4, 1, 0.5))
+	if banner != "":
+		draw_rect(Rect2(vs.x * 0.5 - 330, 8, 660, 44), Color(0.75, 0.1, 0.1, 0.9))
+		draw_string(font, Vector2(vs.x * 0.5 - 320, 39), banner, HORIZONTAL_ALIGNMENT_CENTER, 640, 24, Color(1, 1, 1))
