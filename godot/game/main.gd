@@ -37,7 +37,12 @@ var pilots_on := true
 var hi_model := true
 var cam_mode := ""
 var threaded := true
+var bench_i := -1 # índice de la prueba automática en curso (-1 = apagada)
+var bench_t := 0.0
+var _bench_samples: Array = []
+var bench_results: Array = []
 var no_body := false
+var autobench := false
 var acc := 0.0
 var step_n := 0
 
@@ -47,6 +52,8 @@ func _ready() -> void:
 			shot_path = a.substr(7)
 		elif a.begins_with("--frames="):
 			shot_frames = int(a.substr(9))
+		elif a == "--autobench":
+			autobench = true
 		elif a == "--nobody":
 			no_body = true
 		elif a == "--bench":
@@ -65,8 +72,11 @@ func _ready() -> void:
 	hud = Hud.new()
 	layer.add_child(hud)
 	hud.option_changed.connect(_on_option)
+	hud.bench_pressed.connect(_bench_start)
 	_rebuild_trees()
 	_rebuild_cars()
+	if autobench:
+		_bench_start()
 
 func _build_world() -> void:
 	var env := Environment.new()
@@ -193,6 +203,71 @@ func _rebuild_cars() -> void:
 		cars.append(car)
 	cam_ready = false
 
+## Prueba automática: recorre varias cargas (cada una 6 s, descartando el primer segundo y medio) y muestra la tabla.
+const BENCH_CFGS := [
+	[1, 0, 0, 0, 1], [1, 3000, 1, 0, 1], [4, 3000, 1, 0, 1], [8, 3000, 1, 0, 1],
+	[8, 8000, 1, 0, 1], [8, 8000, 0, 0, 1], [8, 3000, 1, 0, 0], [4, 3000, 1, 1, 1]]
+
+func _bench_start() -> void:
+	bench_i = -1
+	bench_results.clear()
+	_bench_next()
+
+func _bench_next() -> void:
+	bench_i += 1
+	if bench_i >= BENCH_CFGS.size():
+		bench_i = -1
+		var lines := ["RESULTADOS (mandame una captura de esto)", "autos · árboles · pilotos · sombras · hilos  →  FPS · ms/cuadro · física ms · llamadas · triángulos"]
+		for r in bench_results:
+			lines.append(r)
+		hud.result_text = "\n".join(lines)
+		hud.stats_text = ""
+		if autobench:
+			print("\n".join(lines))
+			await get_tree().create_timer(0.5).timeout
+			if shot_path != "":
+				get_viewport().get_texture().get_image().save_png(shot_path)
+			get_tree().quit()
+		return
+	var c: Array = BENCH_CFGS[bench_i]
+	var new_trees: int = c[1]
+	cars_n = c[0]
+	pilots_on = c[2] == 1
+	sun.shadow_enabled = c[3] == 1
+	threaded = c[4] == 1
+	if new_trees != trees_n or trees_node == null:
+		trees_n = new_trees
+		_rebuild_trees()
+	_rebuild_cars()
+	# el jugador también maneja solo, así la escena está siempre en movimiento
+	if not cars.is_empty():
+		cars[0].driver = RingDriver.new(track, 26.0, 0.0)
+	bench_t = 0.0
+
+func _bench_tick(dt: float) -> void:
+	bench_t += dt
+	if bench_t > 1.5 and bench_t < 6.0:
+		if bench_i >= 0:
+			_bench_samples.append([dt, shown_phys_ms, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)])
+	if bench_t >= 6.0:
+		var n := _bench_samples.size()
+		var sdt := 0.0
+		var sph := 0.0
+		var sdc := 0.0
+		var stri := 0.0
+		for s in _bench_samples:
+			sdt += s[0]
+			sph += s[1]
+			sdc += s[2]
+			stri += s[3]
+		_bench_samples.clear()
+		var c: Array = BENCH_CFGS[bench_i]
+		if n > 0:
+			bench_results.append("%2d autos · %5d árb · pil %s · som %s · hilos %s  →  %3d FPS · %5.1f ms · fis %4.1f · %4d llam · %dk tri" % [
+				c[0], c[1], "sí" if c[2] == 1 else "no", "sí" if c[3] == 1 else "no", "sí" if c[4] == 1 else "no",
+				int(round(float(n) / sdt)), sdt / n * 1000.0, sph / n, int(sdc / n), int(stri / n / 1000.0)])
+		_bench_next()
+
 func _on_option(key: String, value) -> void:
 	match key:
 		"cars":
@@ -243,6 +318,8 @@ func _step_car(i: int) -> void:
 
 func _process(dt: float) -> void:
 	_step_physics(dt)
+	if bench_i >= 0:
+		_bench_tick(dt)
 	if cars.is_empty():
 		return
 	for c in cars:
