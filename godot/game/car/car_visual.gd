@@ -3,7 +3,7 @@ extends Node3D
 ## Estructura igual a VehicleVisual de js/main.js: el grupo está en el centro de masa; la carrocería baja hasta el piso;
 ## cada rueda cuelga de su punto de suspensión y gira con la velocidad angular real de la física.
 
-const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
+const CarSnapshot := preload("res://game/car/car_snapshot.gd")
 const VehicleParams := preload("res://game/physics/vehicle_params.gd")
 const VOLT_WHEEL_R := 0.40 # radio de la rueda con la que se modeló el GLB
 
@@ -88,16 +88,15 @@ func _mesh_instances(root: Node) -> Array:
 	return out
 
 ## Sincroniza con el estado de la física
-func sync_from(p: VehiclePhysics, dt: float) -> void:
+func sync_from(p: CarSnapshot, dt: float) -> void:
 	position = Vector3(p.px, p.py, p.pz)
 	basis = Basis.from_euler(Vector3(p.pitch, p.yaw, p.roll), EULER_ORDER_YXZ)
 	var base := V.comHeight + V.hardpointY - V.rideOffset
 	for i in 4:
 		var w: Dictionary = wheels[i]
-		var pw = p.wheels[i]
 		var steer: Node3D = w["steer"]
-		steer.position.y = base - pw.s
+		steer.position.y = base - p.wheel_s[i]
 		if w["front"]:
 			steer.rotation.y = p.steerAngle
-		w["angle"] += pw.omega * dt
+		w["angle"] += p.wheel_omega[i] * dt
 		(w["spin"] as Node3D).rotation.x = w["angle"]

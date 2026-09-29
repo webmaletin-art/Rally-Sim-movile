@@ -79,10 +79,15 @@ jobs:
 
       - name: Exportar APK liviano, APK completo y contenido
         working-directory: godot
+        env:
+          # versión "release" del motor (más rápida que la de depuración); misma clave de firma fija
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ github.workspace }}/godot/keystore/debug.keystore
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: android
         run: |
           mkdir -p ../build
-          godot --headless --export-debug "Android Light" ../build/gskorp-light.apk
-          godot --headless --export-debug "Android Full" ../build/gskorp-full.apk
+          godot --headless --export-release "Android Light" ../build/gskorp-light.apk
+          godot --headless --export-release "Android Full" ../build/gskorp-full.apk
           godot --headless --export-pack "Content" ../build/content.pck
           ls -la ../build
 

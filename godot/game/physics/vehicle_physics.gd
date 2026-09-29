@@ -105,6 +105,7 @@ var powerMul := 1.0
 var _good := Vector3.ZERO
 var _goodYaw := 0.0
 var _gt := 0
+var tire_B := 1.0 # tan(PI / (2·tireFalloff)): constante del neumático (se calcula una vez)
 
 func _init(p_track: TrackBase, p_params: VehicleParams) -> void:
 	V = p_params
@@ -167,6 +168,7 @@ func setup() -> void:
 			w.s = old[i].s
 		wheels.append(w)
 	nitro = V.nitroCap
+	tire_B = tan(PI / (2.0 * V.tireFalloff))
 
 func reset(p_x := 0.35, p_z := 0.0, p_yaw := 0.0) -> void:
 	px = p_x
@@ -224,9 +226,8 @@ func torque_at(r: float) -> float:
 			return c[i - 1][1] + (c[i][1] - c[i - 1][1]) * u
 	return c[c.size() - 1][1]
 
-static func tire_curve(s: float, C: float) -> float:
-	var B := tan(PI / (2.0 * C))
-	return sin(C * atan(B * s))
+func tire_curve(s: float) -> float:
+	return sin(V.tireFalloff * atan(tire_B * s))
 
 ## Un paso de física (dt = 1/120). input: {throttle, brake, steer, handbrake, nitro, shift}
 func step(dt: float, throttle_in: float, brake_in: float, steer_in: float, handbrake_in: bool, nitro_in := false, shift_in := 0) -> void:
@@ -321,15 +322,15 @@ func _sub(h: float, thr_in: float, brk_in: float, steer_in: float, handbrake: bo
 			w.Fz = maxf(0.0, F)
 			if not prev_contact or cv > 1.0:
 				w.impact = maxf(w.impact, absf(cv) * (1.6 if d < w.sMin else 1.0))
-	# barras estabilizadoras
-	for pair in [[W[0], W[1], V.arbF], [W[2], W[3], V.arbR]]:
-		var L: Wheel = pair[0]
-		var Rw: Wheel = pair[1]
-		var kk: float = pair[2]
-		if L.contact and Rw.contact:
-			var df := kk * (L.comp - Rw.comp)
-			L.Fz = maxf(0.0, L.Fz + df)
-			Rw.Fz = maxf(0.0, Rw.Fz - df)
+	# barras estabilizadoras (delantera y trasera)
+	if W[0].contact and W[1].contact:
+		var dfF := V.arbF * (W[0].comp - W[1].comp)
+		W[0].Fz = maxf(0.0, W[0].Fz + dfF)
+		W[1].Fz = maxf(0.0, W[1].Fz - dfF)
+	if W[2].contact and W[3].contact:
+		var dfR := V.arbR * (W[2].comp - W[3].comp)
+		W[2].Fz = maxf(0.0, W[2].Fz + dfR)
+		W[3].Fz = maxf(0.0, W[3].Fz - dfR)
 	contacts = cnt
 	brake = brk
 	hbIn = handbrake
@@ -373,10 +374,11 @@ func _sub(h: float, thr_in: float, brk_in: float, steer_in: float, handbrake: bo
 			var Ft := 0.0
 			var lsens := clampf(1.0 - 0.12 * (Ft0 / w.Fz0 - 1.0), 0.74, 1.12)
 			if s > 1e-6:
-				F = mu * lsens * Ft0 * tire_curve(s, V.tireFalloff)
+				var tcs := tire_curve(s)
+				F = mu * lsens * Ft0 * tcs
 				fl = F * sx / s * w.longMul
 				Ft = -F * sy2 / s * w.latMul
-				var d1 := (tire_curve(s + 0.02, V.tireFalloff) - tire_curve(s, V.tireFalloff)) / 0.02
+				var d1 := (tire_curve(s + 0.02) - tcs) / 0.02
 				k = mu * Ft0 * maxf(0.08, d1 * absf(sx) / s + (0.3 if s < 1.0 else 0.0)) / V.slipPeakLong * R / den
 			else:
 				k = mu * Ft0 * 2.0 / V.slipPeakLong * R / den
