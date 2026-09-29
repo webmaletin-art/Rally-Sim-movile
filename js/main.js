@@ -16,7 +16,7 @@ import {HudEditor,applyHud} from './hudedit.js';
 import {TIERS,EVENTS,TARGETS,medalFor,rewardFor,lowerIsBetter} from './events.js';
 import {UI,fmtTime} from './ui.js';
 import {PostFX} from './post.js';
-import {Cockpit,Crew,setCabinSource} from './cockpit.js';
+import {Cockpit,Crew} from './cockpit.js';
 import {buildPaceNotes,noteSpeech,noteShort,noteColor} from './pacenotes.js';
 import {CoDriver,noteKeys} from './codriver.js';
 import {loadPilot,loadPilotLo} from './pilot.js';
@@ -217,9 +217,6 @@ const CAMERAS=[
   {name:'Interior (atrás del piloto)',mode:'rearcabin',fov:68},
   {name:'Capó',mode:'hood',fov:66},
   {name:'Paragolpes',mode:'bumper',fov:70},
-  /* de prueba: con la cabina 3D del dueño */
-  {name:'Chasis 3D · cabina',mode:'rearcabin',cabin:true,fov:68},
-  {name:'Chasis 3D · piloto',mode:'onboard',cabin:true,fov:70},
 ];
 let CAM_INDEX=1;
 
@@ -989,7 +986,7 @@ const ASSETS={voltBody:null,voltWheel:null,voltBodyLo:null,voltWheelLo:null,genB
 const VOLT_META={archR:0.461,archY:0.516,hw:1.206,zf:1.508,zr:-1.392,yb:0.15,belt:1.034,cab0:-1.921,cab1:0.692,H:1.489,R:0.40};
 function loadGLB(url){return new Promise(res=>{try{new GLTFLoader().load(url,g=>res(g.scene),undefined,e=>{console.warn('GLB',url,e);res(null)})}catch(e){console.warn(e);res(null)}});}
 const _track=pr=>pr.then(v=>{ASSET_PROGRESS++;return v;});
-const ASSETS_READY=Promise.all([_track(loadPilot('models/pilot.glb',{helmet:true})),_track(loadGLB('models/volt_body.glb')),_track(loadGLB('models/volt_wheel.glb')),_track(loadGLB('models/volt_body_lo.glb')),_track(loadGLB('models/volt_wheel_lo.glb')),_track(loadGLB('models/genesis_body.glb')),_track(loadGLB('models/genesis_body_lo.glb')),_track(loadGLB('models/genesis_rim.glb')),_track(loadGLB('models/genesis_rim_lo.glb')),_track(loadPilotLo('models/pilot_lo.glb')),_track(loadGLB('models/cabin.glb'))]).then(([,b,w,bl,wl,gb,gbl,gr,grl,,cab])=>{setCabinSource(cab);ASSETS.voltBody=b;ASSETS.voltWheel=w;ASSETS.voltBodyLo=bl||b;ASSETS.voltWheelLo=wl||w;ASSETS.genBody=gb;ASSETS.genBodyLo=gbl||gb;ASSETS.genRim=gr;ASSETS.genRimLo=grl||gr;
+const ASSETS_READY=Promise.all([_track(loadPilot('models/pilot.glb',{helmet:true})),_track(loadGLB('models/volt_body.glb')),_track(loadGLB('models/volt_wheel.glb')),_track(loadGLB('models/volt_body_lo.glb')),_track(loadGLB('models/volt_wheel_lo.glb')),_track(loadGLB('models/genesis_body.glb')),_track(loadGLB('models/genesis_body_lo.glb')),_track(loadGLB('models/genesis_rim.glb')),_track(loadGLB('models/genesis_rim_lo.glb')),_track(loadPilotLo('models/pilot_lo.glb'))]).then(([,b,w,bl,wl,gb,gbl,gr,grl])=>{ASSETS.voltBody=b;ASSETS.voltWheel=w;ASSETS.voltBodyLo=bl||b;ASSETS.voltWheelLo=wl||w;ASSETS.genBody=gb;ASSETS.genBodyLo=gbl||gb;ASSETS.genRim=gr;ASSETS.genRimLo=grl||gr;
 });
 function glbParts(root){const out={};root.traverse(o=>{if(o.isMesh)out[o.material.name]=o.geometry;});return out;}
 /* pintura con decoración naranja dibujada por píxel (bordes nítidos sin importar la malla) */
@@ -1766,7 +1763,7 @@ class Game{
   this.bind();this.applySettings();
   addEventListener('resize',()=>this.resize());this.resize();
   this.ui.show('splash');
-  const tick=setInterval(()=>{this.ui.splashProgress(ASSET_PROGRESS/11,false);},120);
+  const tick=setInterval(()=>{this.ui.splashProgress(ASSET_PROGRESS/10,false);},120);
   ASSETS_READY.then(()=>{clearInterval(tick);this.ui.splashProgress(1,true);if(PROFILE.d.current)this.showroom.setCar(PROFILE.d.current,PROFILE.car);else this.showroom.setCar('t1plus',null);});
   requestAnimationFrame(t=>this.loop(t));}
  addLights(){this.hemi=new THREE.HemisphereLight(0xd9e9ff,0x4b4132,1.1);this.scene.add(this.hemi);this.sun=new THREE.DirectionalLight(0xfff0d2,1.6);this.sun.position.set(120,160,80);this.scene.add(this.sun);this.scene.add(this.sun.target);const sc=this.sun.shadow.camera;sc.left=-22;sc.right=22;sc.top=22;sc.bottom=-22;sc.near=1;sc.far=400;this.sun.shadow.bias=-0.0006;this.sun.shadow.normalBias=0.03;this.setSky('day');}
@@ -1996,7 +1993,7 @@ class Game{
   const cowl=C?C.cowlZ:box.max.z*0.3;let hy=null;for(const dz of [0.3,0.5,0.7,0.15]){hy=surf(0,Math.min(cowl+dz,box.max.z-0.2));if(hy!=null)break;}
   body.visible=wasVis;if(hy==null)hy=ground+(C?C.eyeY-0.35:1.0);
   return {group:g,hood:{y:Math.max(hy+0.36,ground+(C?C.eyeY-0.25:0)),z:cowl+0.02,ly:-0.22},bumper:{y:ground+0.46,z:box.max.z+0.06,ly:-0.1}};}
- camVis(){if(!this.car)return;const m=CAMERAS[CAM_INDEX].mode,inside=m==='onboard'||m==='rearcabin';document.body.classList.toggle('inside',inside);this.mounted=m==='hood'||m==='bumper';this.car.body.visible=!inside;if(this.cockpit){this.cockpit.root.visible=inside;this.cockpit.setCabinMode(!!CAMERAS[CAM_INDEX].cabin);}this.inside=inside;}
+ camVis(){if(!this.car)return;const m=CAMERAS[CAM_INDEX].mode,inside=m==='onboard'||m==='rearcabin';document.body.classList.toggle('inside',inside);this.mounted=m==='hood'||m==='bumper';this.car.body.visible=!inside;if(this.cockpit)this.cockpit.root.visible=inside;this.inside=inside;}
  lockCamera(){this.customLocked=true;document.body.classList.remove('cam-edit');}
  _setupCustomCamDrag(){
   const el=this.canvas;
