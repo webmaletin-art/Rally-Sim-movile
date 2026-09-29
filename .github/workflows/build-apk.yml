@@ -48,6 +48,16 @@ jobs:
           # juego de autos: siempre horizontal (gira sola si das vuelta el teléfono)
           sed -i 's/android:name=".MainActivity"/android:name=".MainActivity"\n            android:screenOrientation="sensorLandscape"/' android/app/src/main/AndroidManifest.xml
           grep -n screenOrientation android/app/src/main/AndroidManifest.xml || echo "AVISO: no se pudo fijar la orientación"
+          # tema a pantalla completa desde que abre (sin barra de notificaciones ni en el arranque)
+          python3 - <<'PY'
+          import re
+          p='android/app/src/main/res/values/styles.xml'
+          s=open(p).read()
+          add='<item name="android:windowFullscreen">true</item><item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>'
+          s=re.sub(r'(<style name="AppTheme[^"]*"[^>]*>)',lambda m:m.group(1)+add,s)
+          open(p,'w').write(s)
+          print(s)
+          PY
 
       - name: Sync Capacitor
         run: npx cap sync android
