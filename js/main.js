@@ -138,7 +138,7 @@ class Physics{
   for(const w of W){w.wx=this.px+fx*w.z+lx*w.x;w.wz=this.pz+fz*w.z+lz*w.x;const gi=tr.groundInfo(w.wx,w.wz);w.gy=gi.y;w.surf=gi.surf;const ay=this.py+V.hardpointY+w.x*sr-w.z*sp;const d=ay-(gi.y+R);const prevContact=w.contact,prevComp=w.comp;
    if(d>=w.sMax){w.contact=false;w.comp=0;w.s=w.sMax;w.Fz=0;w.cv=0;}else{w.contact=true;contacts++;const comp=w.sMax-d;const cv=prevContact?(comp-prevComp)/h:Math.min(6,-this.vy+0);w.comp=comp;w.cv=cv;w.s=Math.max(d,w.sMin);let F=w.k*comp+(cv>0?w.cB:w.cR)*cv;if(d<w.sMin){F+=V.bumpStopK*(w.sMin-d)+(cv>0?V.bumpStopC*cv:0);}w.Fz=Math.max(0,F);if(!prevContact||cv>1.0)w.impact=Math.max(w.impact,Math.abs(cv)*(d<w.sMin?1.6:1));}}
   for(const [L,Rw,k] of [[W[0],W[1],V.arbF],[W[2],W[3],V.arbR]]){if(L.contact&&Rw.contact){const df=k*(L.comp-Rw.comp);L.Fz=Math.max(0,L.Fz+df);Rw.Fz=Math.max(0,Rw.Fz-df);}}
-  this.contacts=contacts;this.brake=brk;this.nitroOn=!!inp.nitro;this.engine(h,thr,brk,vLong,!!inp.handbrake);
+  this.contacts=contacts;this.brake=brk;this.hbIn=!!inp.handbrake;this.nitroOn=!!inp.nitro;this.engine(h,thr,brk,vLong,!!inp.handbrake);
   let FL=0,FT=0,Mz=0,tauP=0,tauR=0,FzSum=0,maxSlip=0;const hgt=Math.max(0.3,this.py-(W[0].gy+W[1].gy+W[2].gy+W[3].gy)/4);
   for(const w of W){const I=V.wheelInertia+(w.inertiaExtra||0);let fl=0,k=0;
    if(w.contact){const Ft0=Math.max(0,w.Fz+w.jack);const vpl=vLat+this.yawRate*w.z,vpg=vLong-this.yawRate*w.x;const dl=(w.front?this.steerAngle:0)+w.toeRad,cs=Math.cos(dl),sn=Math.sin(dl);const vl=vpl*sn+vpg*cs,vt=vpl*cs-vpg*sn;w.vl=vl;const den=Math.max(Math.abs(vl),2.5);const kap=(w.omega*R-vl)/den,alp=Math.atan2(vt,den);w.kappa=kap;w.alpha=alp;const po=w.surf==='asphalt'?32:26,mu=(tr.gripMul||1)*V.mu*(V.surfGrip[w.surf]||0.4)*(w.front?V.gripFront:V.gripRear)*(1-0.0009*(w.press-po)*(w.press-po));const sx=kap/V.slipPeakLong,sy2=alp/(V.slipPeakLat*w.pkLat),s=Math.hypot(sx,sy2);let F=0,Ft=0;
@@ -1226,15 +1226,15 @@ class Effects{
   this.mk=0;this.d=d;this.last=[null,null,null,null];this.acc=[0,0,0,0];}
  reset(){const d=this.d;d.position.set(0,-999,0);d.scale.set(0,0,0);d.updateMatrix();for(let i=0;i<this.MK;i++)this.marks.setMatrixAt(i,d.matrix);this.marks.instanceMatrix.needsUpdate=true;this.mk=0;this.last=[null,null,null,null];this.life.fill(0);this.alpha.fill(0);this.geo.attributes.alpha.needsUpdate=true;}
  spawn(x,y,z,vx,vy,vz,r,g,b,a,size,life,grow,grav){const i=this.next%this.cap;this.next=(i+1)%this.cap;this.colDirty=true;this.pos[i*3]=x;this.pos[i*3+1]=y;this.pos[i*3+2]=z;this.vel[i*3]=vx;this.vel[i*3+1]=vy;this.vel[i*3+2]=vz;this.col[i*3]=r;this.col[i*3+1]=g;this.col[i*3+2]=b;this.a0[i]=a;this.alpha[i]=a;this.size[i]=size;this.life[i]=life;this.max[i]=life;this.grow[i]=grow;this.grav[i]=grav;}
- emitFrom(p,dt){this.cap=QUALITY==='baja'?120:QUALITY==='alta'?this.N:170;const qk=QUALITY==='baja'?0.55:QUALITY==='alta'?1:0.8;const fx=Math.sin(p.yaw),fz=Math.cos(p.yaw),lx=Math.cos(p.yaw),lz=-Math.sin(p.yaw);
+ emitFrom(p,dt){this.cap=QUALITY==='baja'?70:QUALITY==='alta'?150:110;const qk=QUALITY==='baja'?0.3:QUALITY==='alta'?0.6:0.45;const fx=Math.sin(p.yaw),fz=Math.cos(p.yaw),lx=Math.cos(p.yaw),lz=-Math.sin(p.yaw);
   for(let i=0;i<4;i++){const w=p.wheels[i];if(!w.contact){this.last[i]=null;continue}
    const loose=w.surf!=='asphalt';const sp=Math.abs(w.vl);const sl=Math.max(0,Math.abs(w.kappa)-0.06)+Math.max(0,Math.abs(w.alpha)-0.09);
    const x=w.wx,z=w.wz,y=w.gy+0.08;const side=w.left?1:-1;let rate=0,kind=0;
    if(loose){rate=sp*0.9+sl*90;kind=1}else if(sl>0.14){rate=(sl-0.14)*120*Math.min(1,sp/3+0.3);kind=2}
-   this.acc[i]=Math.min(this.acc[i]+rate*qk*dt,3);let nS=0;
-   while(this.acc[i]>=1&&nS++<3){this.acc[i]-=1;const rnd=Math.random;const back=-(1.5+sp*0.25+Math.abs(w.kappa)*6),up=0.6+rnd()*1.2;
+   this.acc[i]=Math.min(this.acc[i]+rate*qk*dt,2);let nS=0;
+   while(this.acc[i]>=1&&nS++<2){this.acc[i]-=1;const rnd=Math.random;const back=-(1.5+sp*0.25+Math.abs(w.kappa)*6),up=0.6+rnd()*1.2;
     if(kind===1){const c=0.55+rnd()*0.1;this.spawn(x+(rnd()-.5)*.3,y,z+(rnd()-.5)*.3,fx*back+lx*side*(rnd()*1.5)+(rnd()-.5),up,fz*back+lz*side*(rnd()*1.5)+(rnd()-.5),c*0.86,c*0.72,c*0.55,0.42,0.7+rnd()*0.5,0.9+rnd()*0.7,1.6,-0.4);
-     if(rnd()<0.35)this.spawn(x,y,z,fx*back*0.8+(rnd()-.5)*2,1.5+rnd()*2,fz*back*0.8+(rnd()-.5)*2,0.18,0.15,0.12,1.0,0.07,0.6,0,-9.8);}
+     if(rnd()<0.18)this.spawn(x,y,z,fx*back*0.8+(rnd()-.5)*2,1.5+rnd()*2,fz*back*0.8+(rnd()-.5)*2,0.18,0.15,0.12,1.0,0.07,0.6,0,-9.8);}
     else{const c=0.78+rnd()*0.1;this.spawn(x+(rnd()-.5)*.3,y+0.1,z+(rnd()-.5)*.3,fx*back*0.3+(rnd()-.5)*0.8,0.5+rnd()*0.5,fz*back*0.3+(rnd()-.5)*0.8,c,c,c*1.02,0.36,0.8+rnd()*0.6,1.4+rnd(),2.2,0.25);}}
    const mark=!loose&&sl>0.22;
    /* huellas pegadas al piso DIBUJADO (sin micro-relieve) y con la pendiente del camino: nunca quedan en el aire */
@@ -1808,7 +1808,10 @@ class Game{
  rawBegin(S=this.scene,c=this.camera){const R=this._raw||(this._raw={pos:new THREE.Vector3(),q:new THREE.Quaternion(),fog:new THREE.Fog(0x8fa88f,8,210),bg:new THREE.Color(),tint:new THREE.Color(0x8fa88f)});
   R.cam=c;R.S=S;R.pos.copy(c.position);R.q.copy(c.quaternion);R.oldFog=S.fog;R.oldBg=S.background;R.dome=this.dome&&this.dome.visible;
   if(S.fog&&S.fog.color)R.fog.color.copy(S.fog.color).lerp(R.tint,0.6);S.fog=R.fog;R.bg.copy(R.fog.color);S.background=R.bg;if(this.dome&&S===this.scene)this.dome.visible=false;
-  const r=Math.random;c.position.x+=(r()-0.5)*0.15;c.position.y+=(r()-0.5)*0.15;c.position.z+=(r()-0.5)*0.15;c.rotation.z+=(r()-0.5)*0.02;c.rotation.x+=(r()-0.5)*0.01;c.rotation.y+=(r()-0.5)*0.01;c.updateMatrixWorld();}
+  /* vibración de cámara en mano: ondas suaves + un poco de temblor, regulable en Opciones (100 = la de antes) */
+  const k=(PROFILE.d.settings.rawShake??25)/100;if(k>0){const t=performance.now()/1000,r=Math.random,w=(a,b,c)=>Math.sin(t*a+c)*0.7+Math.sin(t*b+c*1.7)*0.3;
+   c.position.x+=(w(5.3,13.1,0.2)*0.05+(r()-0.5)*0.05)*k;c.position.y+=(w(6.1,15.7,1.1)*0.05+(r()-0.5)*0.05)*k;c.position.z+=(r()-0.5)*0.06*k;
+   c.rotation.z+=(w(4.7,11.3,2.3)*0.007+(r()-0.5)*0.008)*k;c.rotation.x+=(w(5.9,12.7,0.7)*0.004+(r()-0.5)*0.004)*k;c.rotation.y+=(r()-0.5)*0.004*k;}c.updateMatrixWorld();}
  rawEnd(){const R=this._raw,c=R.cam,S=R.S;c.position.copy(R.pos);c.quaternion.copy(R.q);c.updateMatrixWorld();S.fog=R.oldFog;S.background=R.oldBg;if(this.dome&&S===this.scene)this.dome.visible=R.dome;}
  /* dibujo con el efecto elegido (incluye el estilo 'cámara de acción cruda', que va por CSS + bruma + vibración) */
  renderPost(scene,cam,info){const raw=this.post.preset==='accion';if(raw!==!!this.rawOn){this.rawOn=raw;document.body.classList.toggle('rawcam',raw);this.applySettings();}
@@ -2057,7 +2060,7 @@ class Game{
    if(this.track.updateTape)this.track.updateTape(this.physics.position);this.updateRain(dt);if(S.ghost)S.updateGhost(dt);
    {let best=null,bd=1e9;for(const c of S.cars)if(c.ai){const d=Math.hypot(c.phys.px-this.physics.px,c.phys.pz-this.physics.pz);if(d<bd){bd=d;best=c;}}this.audio.aiUpdate(best?bd:null,best?best.phys.rpm:0,best?best.phys.V.firingOrder:4);}
    const p=this.physics;if(p.nitroActive){const fx=Math.sin(p.yaw),fz=Math.cos(p.yaw),L=VEH.wheelBase/2+0.9;for(let k=0;k<3;k++){const rr=Math.random;this.fx.spawn(p.px-fx*L+(rr()-.5)*0.3,p.py-VEH.comHeight+0.55,p.pz-fz*L+(rr()-.5)*0.3,-fx*(8+rr()*6)+p.vx*0.9,0.3+rr(),-fz*(8+rr()*6)+p.vz*0.9,0.35+rr()*0.3,0.6+rr()*0.3,1,0.9,0.35+rr()*0.25,0.18+rr()*0.12,2.5,0);}}
-   this.fx.emitFrom(p,dt);for(const c of S.cars)if(c.ai&&c.phys.px!==undefined){const d=Math.hypot(c.phys.px-p.px,c.phys.pz-p.pz);if(d<60&&this.inView(c.phys.px,c.phys.py,c.phys.pz,6))this.fx.emitFrom(c.phys,dt*0.6);}this.fx.update(dt);this.audio.update(p,dt);
+   this.fx.emitFrom(p,dt);for(const c of S.cars)if(c.ai&&c.phys.px!==undefined){const d=Math.hypot(c.phys.px-p.px,c.phys.pz-p.pz);if(d<40&&this.inView(c.phys.px,c.phys.py,c.phys.pz,6))this.fx.emitFrom(c.phys,dt*0.4);}this.fx.update(dt);this.audio.update(p,dt);
    for(const c of S.cars)c.phys.events.length=0;
    this.updateHud(realDt);
   }

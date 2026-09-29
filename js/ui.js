@@ -237,6 +237,7 @@ export class UI{
    <div class="tg"><h4>Imagen</h4>
     <div class="opt"><span>Calidad gráfica<small>⚡ Optimizar ajusta solo según tu teléfono (recomendado)${s.quality==='auto'?' · ahora: '+({baja:'Baja',media:'Media',alta:'Máxima'}[A.autoLevel()]||'—'):''}</small></span>${seg('quality',[['auto','⚡ Optimizar'],['baja','Baja'],['media','Media'],['alta','Máxima']])}</div>
     <div class="opt"><span>Efectos de cámara<small>Filtros tipo GoPro, video casero, cine, TV… · actual: <b>${(PRESET_INFO.find(x=>x[0]===(s.visual||'none'))||PRESET_INFO[0]).slice(1,3).join(' ')}</b></small></span><button class="buy inst" data-a="go" data-s="effects">ELEGIR</button></div>
+    <div class="opt"><span>Vibración de la cámara cruda<small>Cuánto tiembla la imagen con el efecto «Cámara de acción cruda»</small></span>${seg('rawShake',[[0,'Nada'],[25,'Poco'],[50,'Medio'],[100,'Fuerte']])}</div>
     <div class="opt"><span>Sombras reales<small>Sombras de los autos sobre el piso (calidad media o alta)</small></span>${seg('shadows',[[true,'Sí'],[false,'No']])}</div>
     <div class="opt"><span>Espejos retrovisores<small>Central y laterales con imagen en las cámaras interiores. Si el teléfono va lento, apagalos.</small></span>${seg('mirrors',[[true,'Sí'],[false,'No']])}</div>
     <div class="opt"><span>Cámara trasera en pantalla<small>Pantallita arriba al centro con lo que viene atrás, en cualquier cámara. Apagada por defecto (gasta más).</small></span>${seg('rearCam',[[true,'Sí'],[false,'No']])}</div></div>

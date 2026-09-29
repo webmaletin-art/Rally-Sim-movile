@@ -24,6 +24,12 @@ const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
    entran como sacudón de velocidad, las frenadas bruscas y volantazos por el "jerk". ═══ */
 /* peso de la mano en la palanca durante un cambio (0.5 s): va, empuja, vuelve */
 function shiftW(t){if(t===undefined||t>0.55)return 0;if(t<0.16)return (t/0.16)*(t/0.16)*(3-2*t/0.16);if(t<0.3)return 1;const u=(t-0.3)/0.25;return 1-u*u*(3-2*u);}
+/* piloto que "hace" lo que hace el auto: mano al freno de mano, pie derecho en acelerador/freno (sin atravesar el piso) */
+function limbState(o,dt,p){const k=1-Math.exp(-dt*14);o.hbW=(o.hbW||0)+((p.hbIn?1:0)-(o.hbW||0))*k;const br=p.brake||0,th=p.throttle||0;
+ o.onBrake=(o.onBrake||0)+((br>0.05?1:0)-(o.onBrake||0))*(1-Math.exp(-dt*18));o.press=(o.press||0)+((br>0.05?br:th)-(o.press||0))*(1-Math.exp(-dt*16));}
+function rightFoot(o,xD,fy,eZ){const x=xD-0.11+(o.onBrake||0)*0.10,pr=o.press||0;return V3(x,Math.max(fy+0.09,fy+0.13-pr*0.05),eZ+0.62+pr*0.09);}
+/* copiloto: mira al frente con movimientos chicos de cabeza (nunca por encima del hombro) */
+function coLook(t){return 0.10*Math.sin(t*0.41)+0.05*Math.sin(t*1.07+1.3)+0.03*Math.sin(t*2.3+0.4);}
 function makeG(o={}){return {kT:o.kT??40,cT:o.cT??8.5,kH:o.kH??95,cH:o.cH??5.2,gain:o.gain??1,t:V3(0,0,0),tv:V3(0,0,0),r:V3(0,0,0),rv:V3(0,0,0),a:V3(0,0,0),prev:null,body:V3(0,0,0),head:V3(0,0,0),cam:V3(0,0,0),kick:0};}
 function stepG(G,dt,p){dt=Math.min(dt,0.05);if(dt<=0)return;
  const fx=Math.sin(p.yaw),fz=Math.cos(p.yaw),lx=Math.cos(p.yaw),lz=-Math.sin(p.yaw);const vL=p.vx*fx+p.vz*fz,vT=p.vx*lx+p.vz*lz,vY=p.vy||0;
@@ -35,12 +41,14 @@ function stepG(G,dt,p){dt=Math.min(dt,0.05);if(dt<=0)return;
   if(Math.abs(aY)>14){const dy=clamp(aY*dt,-8,8);G.tv.y+=-dy*0.02;G.rv.y+=-dy*0.035;}
   mY=clamp(aY,-15,15);}
  G.prev=[vL,vT,vY];
- const g=G.gain,tgt=G.a.set(clamp(-mT*0.0095*g,-0.085,0.085),clamp(-mY*0.0025,-0.035,0.035)+clamp(-Math.abs(mT)*0.0018,-0.02,0),clamp(-mL*0.0085*g,-0.075,0.075));
+ /* cuerpos más sueltos: al acelerar van para atrás, al frenar bastante para adelante (el arnés los frena), en curva se van al costado */
+ const g=G.gain,tgt=G.a.set(clamp(-mT*0.015*g,-0.14,0.14),clamp(-mY*0.0025,-0.035,0.035)+clamp(-Math.abs(mT)*0.0025,-0.03,0),clamp(-mL*(mL<0?0.018:0.013)*g,-0.13,0.15));
  const n=Math.max(1,Math.ceil(dt/0.005)),h=dt/n;
- for(let i=0;i<n;i++)for(const ax of ['x','y','z']){const at=G.kT*(tgt[ax]-G.t[ax])-G.cT*G.tv[ax];G.tv[ax]+=at*h;G.t[ax]=clamp(G.t[ax]+G.tv[ax]*h,-0.1,0.1);
-  const ar=-G.kH*G.r[ax]-G.cH*G.rv[ax]-at*1.3;G.rv[ax]+=ar*h;G.r[ax]=clamp(G.r[ax]+G.rv[ax]*h,-0.075,0.075);}
+ for(let i=0;i<n;i++)for(const ax of ['x','y','z']){const at=G.kT*(tgt[ax]-G.t[ax])-G.cT*G.tv[ax];G.tv[ax]+=at*h;G.t[ax]=clamp(G.t[ax]+G.tv[ax]*h,-0.17,0.17);
+  const ar=-G.kH*G.r[ax]-G.cH*G.rv[ax]-at*1.3;G.rv[ax]+=ar*h;G.r[ax]=clamp(G.r[ax]+G.rv[ax]*h,-0.11,0.11);}
  G.kick=Math.max(0,G.kick-dt*2);
- G.body.copy(G.t).multiplyScalar(0.7);G.head.copy(G.t).add(G.r);G.cam.copy(G.t).addScaledVector(G.r,0.35);}
+ /* la cámara de adentro se mueve como antes (no marea): solo los cuerpos exageran */
+ G.body.copy(G.t).multiplyScalar(0.8);G.head.copy(G.t).add(G.r);G.cam.copy(G.t).multiplyScalar(0.6).addScaledVector(G.r,0.25);}
 
 /* lluvia sobre el parabrisas: gotas quietas, gotas que corren y barrido de limpias */
 const RAIN_VS=`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
@@ -197,10 +205,12 @@ export class Cockpit{
   /* cambio de marcha: la mano derecha va a la palanca, tira (sube) o empuja (baja) y vuelve */
   const sw=shiftW(this.shiftT);if(sw>0){const hr=hands.find(x=>x.side==='Right');if(hr){this.gearLever.updateMatrix();const knob=V3(0,0.43,0).applyMatrix4(this.gearLever.matrix);knob.z+=this.shiftUp?-0.05:0.05;knob.y+=0.035;
    hr.wrist.lerp(knob.add(V3(0.035,0.02,-0.05)),sw);hr.fdir.lerp(V3(-0.2,-0.75,0.6).normalize(),sw).normalize();hr.back.lerp(V3(-0.5,0.8,-0.2).normalize(),sw).normalize();}}
-  this.rig[0].pose({hips:V3(xD+b.x*0.3,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.11+b.z*0.2),head:V3(xD+h.x,C.eyeY-0.07+h.y,C.eyeZ-0.09+h.z),roll:h.x*1.2,look:(this.look||0)*(1-shiftW(this.shiftT)*0.3),hands,grip:1.2,
-   feet:[{side:'Left',pos:V3(xD+0.13,fy+0.13,C.eyeZ+0.60)},{side:'Right',pos:V3(xD-0.11,fy+0.13,C.eyeZ+0.62)}]});
+  /* freno de mano: la derecha agarra la palanca y tira */
+  const hw=(this.hbW||0)*(1-sw);if(hw>0.01){const hr=hands.find(x=>x.side==='Right');if(hr){this.hbLever.updateMatrix();const grip=V3(0,0.47,0).applyMatrix4(this.hbLever.matrix);grip.x+=0.03;hr.wrist.lerp(grip,hw);hr.fdir.lerp(V3(-0.1,-0.6,0.8).normalize(),hw).normalize();hr.back.lerp(V3(-0.9,0.3,0).normalize(),hw).normalize();}}
+  this.rig[0].pose({hips:V3(xD+b.x*0.4,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.11+b.z*0.3),head:V3(xD+h.x,C.eyeY-0.07+h.y,C.eyeZ-0.09+h.z),roll:h.x*1.2,look:(this.look||0)*(1-Math.max(shiftW(this.shiftT),hw)*0.3),hands,grip:1.2,
+   feet:[{side:'Left',pos:V3(xD+0.13,fy+0.13,C.eyeZ+0.60)},{side:'Right',pos:rightFoot(this,xD,fy,C.eyeZ)}]});
   const x=-xD+b.x*0.9,by=C.eyeY-0.47+b.y,bz=C.eyeZ+0.27+b.z;
-  this.rig[1].pose({hips:V3(-xD+b.x*0.3,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.13+b.z*0.2),head:V3(-xD+h.x*0.9,C.eyeY-0.09+h.y,C.eyeZ-0.07+h.z),roll:h.x*1.1,look:-0.05,grip:0.8,
+  this.rig[1].pose({hips:V3(-xD+b.x*0.4,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.13+b.z*0.3),head:V3(-xD+h.x*0.9,C.eyeY-0.09+h.y,C.eyeZ-0.07+h.z),roll:h.x*1.1,look:-0.05+coLook(this.tLook||0),grip:0.8,
    hands:[{side:'Left',wrist:V3(x+0.14,by,bz-0.05),fdir:V3(-0.5,-0.2,0.8).normalize(),back:V3(0.4,1,0.1).normalize()},{side:'Right',wrist:V3(x-0.14,by,bz-0.05),fdir:V3(0.5,-0.2,0.8).normalize(),back:V3(-0.4,1,0.1).normalize()}],
    feet:[{side:'Left',pos:V3(-xD+0.13,fy+0.12,C.eyeZ+0.55)},{side:'Right',pos:V3(-xD-0.13,fy+0.12,C.eyeZ+0.55)}]});}
  /* persona sentada: casco, torso, hombros, HANS; los brazos del copiloto sostienen la hoja */
@@ -245,7 +255,7 @@ export class Cockpit{
   /* cuerpos */
   for(const P of [this.driver,this.codriver]){P.g.position.set((P.isDriver?this.xD:-this.xD)+this.body.x*(P.isDriver?1:0.9),C.eyeY+this.body.y,C.eyeZ+this.body.z);P.helmet.position.set(this.head.x-this.body.x,0.02+this.head.y-this.body.y,-0.02+this.head.z-this.body.z);P.helmet.rotation.z=-this.head.x*1.2;}
   if(this.codriver.book){this.codriver.book.rotation.x=-0.95+Math.sin(info.time*9)*0.02*info.rough+this.head.z*0.8;}
-  this.look=clamp(p.steerAngle*0.45+p.yawRate*0.06,-0.35,0.35);if(this.rig)this.poseRig();}
+  this.look=clamp(p.steerAngle*0.45+p.yawRate*0.06,-0.35,0.35);limbState(this,dt,p);this.tLook=(this.tLook||0)+dt;if(this.rig)this.poseRig();}
  updateCabin(dt,p,inp,info){const C=this.C;
   /* palancas */
   this.hbLever.rotation.x=inp&&inp.handbrake?-0.45:0;this.gearKick=Math.max(0,this.gearKick-dt*6);if(this.shiftT!==undefined&&this.shiftT>0.14&&this.shiftT<0.2)this.gearKick=1;this.gearLever.rotation.x=(this.shiftUp?-1:1)*this.gearKick*0.25;
@@ -314,16 +324,17 @@ export class Crew{
   const G=this.G||(this.G=makeG({kT:this.k*0.6,cT:this.c*0.8,kH:90+this.k*0.6,cH:4.5+this.c*0.25,gain:this.gain}));stepG(G,dt,p);
   this.head.copy(G.head);this.body.copy(G.t).multiplyScalar(this.lean*1.3);
   if(this.lastGear!==undefined&&p.gear!==this.lastGear&&p.gear>0&&this.lastGear>0){this.shiftT=0;this.shiftUp=p.gear>this.lastGear;}this.lastGear=p.gear;if(this.shiftT!==undefined)this.shiftT+=dt;
-  this.steerVis+=((p.steerAngle*7.5)-this.steerVis)*(1-Math.exp(-dt*25));
+  this.steerVis+=((p.steerAngle*7.5)-this.steerVis)*(1-Math.exp(-dt*25));limbState(this,dt,p);this.tLook=(this.tLook||0)+dt;
   if(!pose)return;
   const xD=this.xD,b=this.body,h=this.head,fy=C.eyeY-1.05,th=clamp(this.steerVis,-1.1,1.1),cs=Math.cos(th),sn=Math.sin(th),n=this.n;const hands=[];
   for(const sd of [1,-1]){const lx=sd*0.17,ly=0.015;const gp=this.wc.clone().addScaledVector(this.wX,lx*cs-ly*sn).addScaledVector(this.wY,lx*sn+ly*cs);const r=gp.clone().sub(this.wc).normalize();
    hands.push({side:sd>0?'Right':'Left',wrist:gp.clone().addScaledVector(n,0.07).addScaledVector(r,0.045),fdir:r.clone().multiplyScalar(-0.15).addScaledVector(n,-0.85).normalize(),back:r.clone().multiplyScalar(0.9).addScaledVector(n,0.25).normalize()});}
   const sw=shiftW(this.shiftT);if(sw>0){const hr=hands.find(x=>x.side==='Right');if(hr){const knob=V3(xD-0.30+0.035,C.eyeY-0.33,C.eyeZ+0.15+(this.shiftUp?-0.05:0.05));hr.wrist.lerp(knob,sw);hr.fdir.lerp(V3(-0.2,-0.75,0.6).normalize(),sw).normalize();hr.back.lerp(V3(-0.5,0.8,-0.2).normalize(),sw).normalize();}}
-  this.rigs[0].pose({hips:V3(xD+b.x*0.3,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.11+b.z*0.2),head:V3(xD+h.x,C.eyeY-0.07+h.y,C.eyeZ-0.09+h.z),roll:h.x*1.2*this.rollK,look:clamp(p.steerAngle*0.45,-0.35,0.35),hands,grip:1.2,
-   feet:[{side:'Left',pos:V3(xD+0.13,fy+0.13,C.eyeZ+0.60)},{side:'Right',pos:V3(xD-0.11,fy+0.13,C.eyeZ+0.62)}]});
+  const hw=(this.hbW||0)*(1-sw);if(hw>0.01){const hr=hands.find(x=>x.side==='Right');if(hr){const grip=V3(xD-0.24+0.03,C.eyeY-0.33+hw*0.05,C.eyeZ+0.02-hw*0.07);hr.wrist.lerp(grip,hw);hr.fdir.lerp(V3(-0.1,-0.6,0.8).normalize(),hw).normalize();hr.back.lerp(V3(-0.9,0.3,0).normalize(),hw).normalize();}}
+  this.rigs[0].pose({hips:V3(xD+b.x*0.4,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.11+b.z*0.3),head:V3(xD+h.x,C.eyeY-0.07+h.y,C.eyeZ-0.09+h.z),roll:h.x*1.2*this.rollK,look:clamp(p.steerAngle*0.45,-0.35,0.35),hands,grip:1.2,
+   feet:[{side:'Left',pos:V3(xD+0.13,fy+0.13,C.eyeZ+0.60)},{side:'Right',pos:rightFoot(this,xD,fy,C.eyeZ)}]});
   const x=-xD+b.x*0.9,by=C.eyeY-0.47+b.y,bz=C.eyeZ+0.27+b.z;this.book.position.set(x+0.02,by+0.03,bz+0.03);
-  this.rigs[1].pose({hips:V3(-xD+b.x*0.3,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.13+b.z*0.2),head:V3(-xD+h.x*0.9,C.eyeY-0.09+h.y,C.eyeZ-0.07+h.z),roll:h.x*1.1*this.rollK,look:-0.05,grip:0.8,
+  this.rigs[1].pose({hips:V3(-xD+b.x*0.4,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.13+b.z*0.3),head:V3(-xD+h.x*0.9,C.eyeY-0.09+h.y,C.eyeZ-0.07+h.z),roll:h.x*1.1*this.rollK,look:-0.05+coLook((this.tLook||0)+this.k),grip:0.8,
    hands:[{side:'Left',wrist:V3(x+0.14,by,bz-0.05),fdir:V3(-0.5,-0.2,0.8).normalize(),back:V3(0.4,1,0.1).normalize()},{side:'Right',wrist:V3(x-0.14,by,bz-0.05),fdir:V3(0.5,-0.2,0.8).normalize(),back:V3(-0.4,1,0.1).normalize()}],
    feet:[{side:'Left',pos:V3(-xD+0.13,fy+0.12,C.eyeZ+0.55)},{side:'Right',pos:V3(-xD-0.13,fy+0.12,C.eyeZ+0.55)}]});}
  dispose(){this.group.removeFromParent();if(this.rigs)for(const r of this.rigs)r.dispose();if(this.book){this.book.geometry.dispose();this.book.material.dispose();}}
