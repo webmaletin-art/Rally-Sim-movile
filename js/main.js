@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {CAR_META,CAR_ORDER,UPG_BY_ID,PAINTS} from './data.js';
+import {CAR_META,CAR_ORDER,UPG_BY_ID,PAINTS,PRESETS} from './data.js';
 import {buildParams,perfOf} from './carbuild.js';
 import {Profile,newCarState} from './profile.js';
 import {AIDriver} from './ai.js';
@@ -1872,7 +1872,14 @@ class Game{
  openWorld(){this.launch({type:'world',map:'offroad',sky:PROFILE.d.stats.worldSky||'day',flags:0});}
  /* ─── pantalla de carga: se muestra ANTES de armar la pista (así se ve mientras carga), con consejos;
     después se dibujan unos cuadros ocultos para subir texturas y shaders y recién ahí arranca ─── */
- launch(cfg){if(!this.copilot)this.copilot=new CoPilot();if(this.syncLaunch){this._launchNow(cfg);return;}if(this.loadingOn)return;
+ /* ¿sugerir ajuste? (carreras y misiones; no en paseo, mundo abierto, prueba, estacionar ni cinemáticas) */
+ setupFor(cfg){if(PROFILE.d.settings.askSetup===false||cfg.testCar||!PROFILE.car||cfg.chapter1||cfg.cinematic)return null;const t=cfg.type;
+  if(!(['race','timetrial','drift','trap','rush'].includes(t)||(cfg.mission&&t!=='parking')))return null;const m=MAPS[cfg.map]||{};
+  const rec=t==='drift'||m.kind==='drift'?'drift':m.kind==='offroad'||m.mode==='dirt'?'tierra':'asfalto';
+  return {rec,mapName:m.name||'',surfName:{drift:'la plaza de drift',tierra:m.kind==='offroad'?'campo abierto y tierra':'tierra',asfalto:'asfalto'}[rec]};}
+ launch(cfg){if(!this.copilot)this.copilot=new CoPilot();
+  if(!this.syncLaunch&&!cfg._setup&&!this.loadingOn){const inf=this.setupFor(cfg);if(inf){cfg._setup=true;this.ui.setupPicker(inf,id=>{if(id&&PROFILE.car){const car=PROFILE.car;car.tune={...(car.tune||{}),...PRESETS[id]};PROFILE.save();}this.launch(cfg);});return;}}
+  if(this.syncLaunch){this._launchNow(cfg);return;}if(this.loadingOn)return;
   const L=this.load={cfg,t0:performance.now(),min:this._launchedOnce?2600:3400,frames:0,built:false,tipI:0,tips:tipsFor(cfg.story||cfg.type==='story'?'story':cfg.type)};this._launchedOnce=true;this.loadingOn=true;
   this.codriver.stop();if(this.storyVO)this.storyVO.stop();this.audioSilence();
   const TYPE={race:'CARRERA',timetrial:'CONTRARRELOJ',drift:'DRIFT',parking:'ESTACIONAMIENTO',rush:'BANDERAS',trap:'RADAR',free:'MANEJO LIBRE',world:'MUNDO ABIERTO',test:'PRUEBA DE MANEJO',story:'MODO HISTORIA · CAPÍTULO 1'};

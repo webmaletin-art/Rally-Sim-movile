@@ -168,3 +168,14 @@ export const ACHIEVEMENTS=[
  {id:'cup1',icon:'🏆',n:'Campeón de copa',d:'Completá una copa entera.',cr:6000,test:p=>Object.keys(p.cups||{}).length>=1},
  {id:'lvl10',icon:'🎓',n:'Nivel 10',d:'Llegá al nivel 10 de piloto.',cr:10000,test:p=>p.level>=10},
 ];
+
+/* presets de ajuste rápido */
+export const PRESETS={
+ asfalto:{pressF:32,pressR:32,camberF:-2.2,camberR:-1.4,toeF:-0.05,toeR:0.15,height:-30,springF:125,springR:120,bump:115,rebound:120,arbF:120,arbR:115,aeroF:70,aeroR:70,gripF:100,gripR:100},
+ tierra:{pressF:25,pressR:25,camberF:-1.0,camberR:-0.6,toeF:0,toeR:0.2,height:40,springF:85,springR:85,bump:90,rebound:95,arbF:80,arbR:85,aeroF:40,aeroR:50,gripF:100,gripR:100},
+ drift:{pressF:30,pressR:36,camberF:-3.5,camberR:-0.5,toeF:-0.3,toeR:0,height:-20,springF:120,springR:110,arbF:130,arbR:90,split:10,lsd:220,steer:125,gripF:100,gripR:78},
+ salto:{pressF:28,pressR:28,height:80,springF:95,springR:95,bump:125,rebound:110,arbF:90,arbR:90},
+};
+export const PRESET_N={asfalto:'Asfalto',tierra:'Tierra',drift:'Drift',salto:'Saltos'};
+/* para qué sirve cada uno (se muestra al sugerirlo antes de correr) */
+export const PRESET_INFO_T={asfalto:'Bajo y firme, gomas infladas: más agarre y respuesta en la ruta.',tierra:'Más alto y blando, menos presión: copia los pozos y tracciona en la tierra.',drift:'Cola suelta y mucho ángulo de volante: para cruzar el auto.',salto:'Muy alto y amortiguado: aterriza sin rebotar ni tocar el piso.'};

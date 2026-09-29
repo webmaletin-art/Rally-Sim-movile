@@ -1,6 +1,6 @@
 /* ═══ GSKORP RALLY — menús ═══
    Pantallas DOM sobre el showroom 3D. Toda acción de juego pasa por `api` (lo provee Game). */
-import {CAR_META,CAR_ORDER,COMING_SOON,UPGRADES,TIRES,TIRE_BY_ID,TUNE_GROUPS,TUNE_ITEMS,PAINTS,FINISHES,ACHIEVEMENTS,xpForLevel} from './data.js';
+import {CAR_META,CAR_ORDER,COMING_SOON,UPGRADES,TIRES,TIRE_BY_ID,TUNE_GROUPS,TUNE_ITEMS,PAINTS,FINISHES,ACHIEVEMENTS,xpForLevel,PRESETS,PRESET_N,PRESET_INFO_T} from './data.js';
 import {TIERS,EVENTS,TYPE_INFO,TARGETS,lowerIsBetter,rewardFor} from './events.js';
 import {classOf,unlocksOf,defaultTune} from './carbuild.js';
 import {PRESET_INFO} from './post.js';
@@ -244,6 +244,7 @@ export class UI{
     <div class="opt"><span>Espejos retrovisores<small>Central y laterales con imagen en las cámaras interiores. Si el teléfono va lento, apagalos.</small></span>${seg('mirrors',[[true,'Sí'],[false,'No']])}</div>
     <div class="opt"><span>Cámara trasera en pantalla<small>Pantallita arriba al centro con lo que viene atrás, en cualquier cámara. Apagada por defecto (gasta más).</small></span>${seg('rearCam',[[true,'Sí'],[false,'No']])}</div></div>
    <div class="tg"><h4>Controles</h4>
+    <div class="opt"><span>Sugerir ajuste antes de correr<small>Te recomienda asfalto, tierra, drift o saltos según la pista</small></span>${seg('askSetup',[[true,'Sí'],[false,'No']])}</div>
     <div class="opt"><span>Dirección<small>Volante circular o palanca horizontal</small></span>${seg('steerMode',[['wheel','🎡 Volante'],['slider','↔️ Palanca']])}</div>
     <div class="opt"><span>Caja de cambios<small>Manual: ▲▼ a la izquierda (tocá o deslizá el dedo arriba/abajo)</small></span>${seg('gearbox',[['auto','Automática'],['manual','Manual ▲▼']])}</div>
     <div class="opt"><span>Inclinar el teléfono<small>Girá como un volante (acelerómetro: anda en todos los teléfonos). Pide permiso al activarlo.</small></span><div class="row"><button class="buy ${A.gyroOn()?'':'inst'}" data-a="gyro">${A.gyroOn()?'DESACTIVAR':'ACTIVAR'}</button>${A.gyroOn()?'<button class="back" data-a="gyroCal">Recalibrar</button>':''}</div></div>
@@ -272,6 +273,17 @@ export class UI{
   this.mount(`<div class="topbar"><button class="back" data-a="fxBack">←</button><div class="spacer"></div></div><div class="fxWrap"><div class="fxList">${PRESET_INFO.map(([id,ic,n])=>`<button class="fxItem ${id===sel?'on':''}${id===(s.visual||'none')?' cur':''}" data-a="fxPick" data-id="${id}" ${A.postSupported()||id==='none'?'':'disabled'}><span>${ic}</span>${n}${id===(s.visual||'none')?' <i>✔</i>':''}</button>`).join('')}</div>
    <div class="fxInfo"><div class="fxTitle">${info[1]} ${info[2]}</div><p>${info[3]}</p>${A.postSupported()?'':'<p class="warn">Tu teléfono no soporta estos efectos: se usa Normal.</p>'}<p class="muted" style="font-size:11px">Mirá el fondo: así se va a ver el juego.</p>
     <div class="row"><button class="bigbtn dark" data-a="fxBack"><span class="bt">Volver</span></button><button class="bigbtn" data-a="fxApply" data-id="${sel}"><span class="bt">Aplicar</span></button></div></div></div>`,'clear');}
+ /* antes de correr: sugiere el ajuste según el piso (el recomendado primero) */
+ setupPicker(info,cb){const o=document.createElement('div');o.id='setupPick';
+  o.style.cssText='position:fixed;inset:0;z-index:75;background:rgba(4,8,14,.84);display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;color:#fff';
+  const ids=[info.rec,...Object.keys(PRESETS).filter(k=>k!==info.rec)];
+  o.innerHTML=`<div style="width:min(560px,94vw);max-height:92vh;overflow:auto;background:#10161f;border:1px solid #ffffff22;border-radius:18px;padding:14px 16px;box-shadow:0 10px 40px #000a">
+   <div style="font:800 12px system-ui;opacity:.7;letter-spacing:1px">${esc(info.mapName).toUpperCase()}</div><div style="font:900 19px system-ui;margin:2px 0 4px">Vas a correr en ${esc(info.surfName)} · elegí el ajuste</div>
+   <div style="font:600 12px system-ui;opacity:.8;margin-bottom:10px">Cambia suspensión, altura, presión de gomas y más. Lo podés afinar después en el Taller → Ajuste fino.</div>
+   ${ids.map((k,i)=>`<button data-p="${k}" style="display:block;width:100%;text-align:left;margin:6px 0;padding:10px 12px;border-radius:12px;border:${i?'1px solid #ffffff22':'2px solid #ff7a1a'};background:${i?'#1a212c':'#2a1a10'};color:#fff"><b style="font:900 15px system-ui">${PRESET_N[k]}</b>${i?'':' <span style="font:900 10px system-ui;background:#ff7a1a;border-radius:6px;padding:2px 6px;margin-left:6px">RECOMENDADO</span>'}<div style="font:600 12px system-ui;opacity:.8;margin-top:2px">${PRESET_INFO_T[k]}</div></button>`).join('')}
+   <button data-p="" style="display:block;width:100%;margin:8px 0 4px;padding:10px;border-radius:12px;border:0;background:#39414d;color:#fff;font:800 14px system-ui">Dejar mi ajuste actual</button>
+   <label style="display:flex;gap:8px;align-items:center;font:600 12px system-ui;opacity:.8;margin-top:6px"><input type="checkbox" id="spNo"> No preguntar más (se vuelve a activar en Opciones)</label></div>`;
+  document.body.appendChild(o);o.addEventListener('click',e=>{const b=e.target.closest('button[data-p]');if(!b)return;if(o.querySelector('#spNo').checked){this.P.d.settings.askSetup=false;this.P.save();}o.remove();cb(b.dataset.p||null);});}
  /* calibración del acelerómetro paso a paso */
  gyroWiz(back){const A=this.api;gyroWizard({recal:()=>A.recalGyro(),value:()=>A.gyroValue(),invert:()=>A.gyroInvert(),setInvert:v=>A.setGyroInvert(v)},()=>this.show(back||'options'));}
  s_pause(){this.mount(`<div class="pauseBox"><div class="resT" style="font-size:34px;margin-bottom:6px">Pausa</div>
@@ -309,11 +321,3 @@ export class UI{
    <div class="row" style="justify-content:center;margin-top:10px"><button class="bigbtn" data-a="resOk" data-next="${r.next||'career'}"><span class="bt">Continuar</span></button><button class="bigbtn dark" data-a="retry"><span class="bi">↺</span><span class="bt">Reintentar</span></button>${r.next==='career'?'<button class="bigbtn green" data-a="resOk" data-next="nextEv"><span class="bt">Siguiente misión ▶</span></button>':''}${r.nextMission&&r.nextMission!=='soon'&&(r.stars>0||r.value>0)&&(r.mission||r.type==='story')?`<button class="bigbtn green" data-a="stNext" data-id="${r.nextMission}"><span class="bt">Siguiente misión ▶</span></button>`:''}</div></div>`,'res');
   const t0=performance.now(),cr=r.cr||0,xp=r.xp||0;const tick=()=>{const k=Math.min(1,(performance.now()-t0)/1200);const e=1-Math.pow(1-k,3);const a=document.getElementById('rCr'),b=document.getElementById('rXp');if(!a)return;a.textContent=fmtCr(cr*e);b.textContent='+'+Math.round(xp*e);if(k<1)requestAnimationFrame(tick);};requestAnimationFrame(tick);}
 }
-/* presets de ajuste rápido */
-const PRESETS={
- asfalto:{pressF:32,pressR:32,camberF:-2.2,camberR:-1.4,toeF:-0.05,toeR:0.15,height:-30,springF:125,springR:120,bump:115,rebound:120,arbF:120,arbR:115,aeroF:70,aeroR:70,gripF:100,gripR:100},
- tierra:{pressF:25,pressR:25,camberF:-1.0,camberR:-0.6,toeF:0,toeR:0.2,height:40,springF:85,springR:85,bump:90,rebound:95,arbF:80,arbR:85,aeroF:40,aeroR:50,gripF:100,gripR:100},
- drift:{pressF:30,pressR:36,camberF:-3.5,camberR:-0.5,toeF:-0.3,toeR:0,height:-20,springF:120,springR:110,arbF:130,arbR:90,split:10,lsd:220,steer:125,gripF:100,gripR:78},
- salto:{pressF:28,pressR:28,height:80,springF:95,springR:95,bump:125,rebound:110,arbF:90,arbR:90},
-};
-const PRESET_N={asfalto:'Asfalto',tierra:'Tierra',drift:'Drift',salto:'Saltos'};
