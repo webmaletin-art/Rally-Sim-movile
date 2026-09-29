@@ -30,6 +30,7 @@ var _opts := {
 	"shadows": [0, [0, 1]],
 	"hi": [1, [0, 1]],
 	"threads": [1, [0, 1]],
+	"res": [1, [0.35, 0.5, 0.7, 1.0]],
 }
 
 func _ready() -> void:
@@ -48,13 +49,13 @@ func _layout() -> void:
 	_buttons.clear()
 	var bw := 150.0
 	var bh := 70.0
-	_buttons.append({"id": "gas", "rect": Rect2(s.x - 190, s.y - 210, 170, 190), "label": "ACEL"})
-	_buttons.append({"id": "brake", "rect": Rect2(s.x - 380, s.y - 170, 170, 150), "label": "FRENO"})
-	_buttons.append({"id": "hb", "rect": Rect2(s.x - 330, s.y - 330, 110, 90), "label": "MANO"})
+	_buttons.append({"id": "gas", "rect": Rect2(s.x - 190, s.y - 150, 170, 140), "label": "ACEL"})
+	_buttons.append({"id": "brake", "rect": Rect2(s.x - 380, s.y - 130, 170, 120), "label": "FRENO"})
+	_buttons.append({"id": "hb", "rect": Rect2(s.x - 330, s.y - 250, 110, 90), "label": "MANO"})
 	_buttons.append({"id": "bench", "rect": Rect2(s.x - 2.0 * bw - 24, 10, bw, bh * 0.75), "label": "PRUEBA"})
 	_buttons.append({"id": "copy", "rect": Rect2(s.x - 2.0 * bw - 24, 10 + (bh * 0.75 + 6), bw, bh * 0.75), "label": "INFORME"})
-	var keys := ["cars", "trees", "pilots", "shadows", "hi", "threads"]
-	var names := {"cars": "Autos", "trees": "Árboles", "pilots": "Pilotos", "shadows": "Sombras", "hi": "Modelo alto", "threads": "Hilos"}
+	var keys := ["cars", "trees", "pilots", "shadows", "hi", "threads", "res"]
+	var names := {"cars": "Autos", "trees": "Árboles", "pilots": "Pilotos", "shadows": "Sombras", "hi": "Modelo alto", "threads": "Hilos", "res": "Resolución"}
 	for i in keys.size():
 		_buttons.append({"id": "opt:" + keys[i], "rect": Rect2(s.x - bw - 12, 10 + i * (bh * 0.75 + 6), bw, bh * 0.75), "label": names[keys[i]]})
 
@@ -176,7 +177,7 @@ func _draw() -> void:
 		if id.begins_with("opt:"):
 			var key := id.substr(4)
 			var val = option_value(key)
-			lab += ": " + (("sí" if int(val) == 1 else "no") if key in ["pilots", "shadows", "hi", "threads"] else str(val))
+			lab += ": " + (("sí" if int(val) == 1 else "no") if key in ["pilots", "shadows", "hi", "threads"] else (("%d%%" % int(float(val) * 100.0)) if key == "res" else str(val)))
 		var fs := 18 if (id.begins_with("opt:") or id == "bench" or id == "copy") else 26
 		draw_string(font, Vector2(r.position.x + 6, r.position.y + r.size.y * 0.62), lab, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 8, fs, Color(1, 1, 1))
 	if result_text != "":

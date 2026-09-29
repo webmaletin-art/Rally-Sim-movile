@@ -37,6 +37,9 @@ var pilots_on := true
 var hi_model := true
 var cam_mode := ""
 var threaded := true
+var world: SubViewport # el mundo 3D se dibuja acá, a menor resolución que la pantalla (el HUD queda nítido)
+var view_rect: TextureRect
+var res_scale := 0.5
 var bench_i := -1 # índice de la prueba automática en curso (-1 = apagada)
 var bench_t := 0.0
 var _bench_samples: Array = []
@@ -67,8 +70,10 @@ func _ready() -> void:
 			trees_n = int(a.substr(8))
 	vehicles = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
 	track = CircuitTrack.new()
+	_setup_viewport()
 	_build_world()
 	var layer := CanvasLayer.new()
+	layer.layer = 5
 	add_child(layer)
 	hud = Hud.new()
 	layer.add_child(hud)
@@ -79,6 +84,31 @@ func _ready() -> void:
 	_rebuild_cars()
 	if autobench:
 		_bench_start()
+
+## En celulares de gama media dibujar a la resolución nativa (2400x1080) es lo que más pesa: el mundo 3D se dibuja en un
+## SubViewport a una fracción de la pantalla y se estira; el HUD se dibuja aparte, a resolución completa.
+func _setup_viewport() -> void:
+	var l0 := CanvasLayer.new()
+	l0.layer = 0
+	add_child(l0)
+	world = SubViewport.new()
+	world.msaa_3d = Viewport.MSAA_DISABLED
+	world.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(world)
+	view_rect = TextureRect.new()
+	view_rect.texture = world.get_texture()
+	view_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	view_rect.stretch_mode = TextureRect.STRETCH_SCALE
+	view_rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	l0.add_child(view_rect)
+	get_tree().root.size_changed.connect(_on_resize)
+	_on_resize()
+
+func _on_resize() -> void:
+	var win := Vector2(DisplayServer.window_get_size())
+	world.size = Vector2i(maxi(320, int(win.x * res_scale)), maxi(180, int(win.y * res_scale)))
+	view_rect.position = Vector2.ZERO
+	view_rect.size = get_viewport().get_visible_rect().size
 
 func _build_world() -> void:
 	var env := Environment.new()
@@ -92,19 +122,19 @@ func _build_world() -> void:
 	env.fog_density = 0.0016
 	var we := WorldEnvironment.new()
 	we.environment = env
-	add_child(we)
+	world.add_child(we)
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-52, 35, 0)
 	sun.light_energy = 1.25
 	sun.shadow_enabled = false
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	sun.directional_shadow_max_distance = 90.0
-	add_child(sun)
+	world.add_child(sun)
 	cam = Camera3D.new()
 	cam.fov = 62.0
 	cam.near = 0.15
-	cam.far = 2500.0
-	add_child(cam)
+	cam.far = 1200.0
+	world.add_child(cam)
 	cam.make_current()
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
@@ -114,7 +144,7 @@ func _build_world() -> void:
 	gm.albedo_color = Color(0.21, 0.35, 0.15)
 	gm.roughness = 1.0
 	ground.material_override = gm
-	add_child(ground)
+	world.add_child(ground)
 	var road := MeshInstance3D.new()
 	road.mesh = track.build_road_mesh()
 	var rm := StandardMaterial3D.new()
@@ -122,27 +152,31 @@ func _build_world() -> void:
 	rm.roughness = 0.9
 	rm.cull_mode = BaseMaterial3D.CULL_DISABLED
 	road.material_override = rm
-	add_child(road)
+	world.add_child(road)
 
+## Árboles: dos MultiMesh por zona de 300 m (troncos y copas). Cada zona se dibuja solo si está a la vista y a menos de
+## 450 m: en un bosque grande el celular no paga por lo que no se ve.
 func _rebuild_trees() -> void:
 	if trees_node != null:
 		trees_node.queue_free()
 	trees_node = Node3D.new()
-	add_child(trees_node)
+	world.add_child(trees_node)
 	if trees_n <= 0:
 		return
 	var trunk := CylinderMesh.new()
 	trunk.top_radius = 0.14
 	trunk.bottom_radius = 0.24
 	trunk.height = 2.4
-	trunk.radial_segments = 6
+	trunk.radial_segments = 5
 	trunk.rings = 1
+	trunk.cap_top = false
 	var crown := CylinderMesh.new()
 	crown.top_radius = 0.0
 	crown.bottom_radius = 1.7
 	crown.height = 4.6
-	crown.radial_segments = 8
+	crown.radial_segments = 6
 	crown.rings = 1
+	crown.cap_top = false
 	var tm := StandardMaterial3D.new()
 	tm.albedo_color = Color(0.30, 0.20, 0.12)
 	tm.roughness = 1.0
@@ -151,33 +185,42 @@ func _rebuild_trees() -> void:
 	cm.roughness = 1.0
 	trunk.material = tm
 	crown.material = cm
-	var mm_t := MultiMesh.new()
-	mm_t.transform_format = MultiMesh.TRANSFORM_3D
-	mm_t.mesh = trunk
-	mm_t.instance_count = trees_n
-	var mm_c := MultiMesh.new()
-	mm_c.transform_format = MultiMesh.TRANSFORM_3D
-	mm_c.mesh = crown
-	mm_c.instance_count = trees_n
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 12345
+	var cells := {}
 	for i in trees_n:
 		var th := rng.randf() * TAU
 		var off := rng.randf_range(11.0, 260.0) * (1.0 if rng.randf() < 0.5 else -1.0)
 		var c: Vector2 = track.center(th)
 		var t: Vector2 = track.tangent(th)
 		var p := c + Vector2(-t.y, t.x) * off
-		var sc := rng.randf_range(0.8, 1.7)
-		mm_t.set_instance_transform(i, Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3(p.x, 1.2 * sc, p.y)))
-		mm_c.set_instance_transform(i, Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3(p.x, 4.4 * sc, p.y)))
-	var a := MultiMeshInstance3D.new()
-	a.multimesh = mm_t
-	var b := MultiMeshInstance3D.new()
-	b.multimesh = mm_c
-	trees_node.add_child(a)
-	trees_node.add_child(b)
+		var key := Vector2i(floori(p.x / 300.0), floori(p.y / 300.0))
+		if not cells.has(key):
+			cells[key] = []
+		cells[key].append([p.x, p.y, rng.randf_range(0.8, 1.7)])
+	for key in cells:
+		var list: Array = cells[key]
+		var mm_t := MultiMesh.new()
+		mm_t.transform_format = MultiMesh.TRANSFORM_3D
+		mm_t.mesh = trunk
+		mm_t.instance_count = list.size()
+		var mm_c := MultiMesh.new()
+		mm_c.transform_format = MultiMesh.TRANSFORM_3D
+		mm_c.mesh = crown
+		mm_c.instance_count = list.size()
+		for i in list.size():
+			var e: Array = list[i]
+			var sc: float = e[2]
+			mm_t.set_instance_transform(i, Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3(e[0], 1.2 * sc, e[1])))
+			mm_c.set_instance_transform(i, Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3(e[0], 4.4 * sc, e[1])))
+		for mm in [mm_t, mm_c]:
+			var inst := MultiMeshInstance3D.new()
+			inst.multimesh = mm
+			inst.visibility_range_end = 450.0
+			trees_node.add_child(inst)
 
 func _rebuild_cars() -> void:
+	_finish_physics()
 	for c in cars:
 		c.visual.queue_free()
 	cars.clear()
@@ -196,7 +239,7 @@ func _rebuild_cars() -> void:
 			car.driver = RingDriver.new(track, 20.0 + float((i * 7) % 9), (float((i * 5) % 7) - 3.0) * 0.9)
 		var sp: Array = track.start_pose(i)
 		car.place(sp[0], sp[1], sp[2])
-		add_child(car.visual)
+		world.add_child(car.visual)
 		if no_body:
 			car.visual.body.get_child(0).visible = false
 		if pilots_on:
@@ -206,9 +249,10 @@ func _rebuild_cars() -> void:
 	cam_ready = false
 
 ## Prueba automática: recorre varias cargas (cada una 6 s, descartando el primer segundo y medio) y muestra la tabla.
+## [autos, árboles, pilotos, sombras, hilos, resolución]
 const BENCH_CFGS := [
-	[1, 0, 0, 0, 1], [1, 3000, 1, 0, 1], [4, 3000, 1, 0, 1], [8, 3000, 1, 0, 1],
-	[8, 8000, 1, 0, 1], [8, 8000, 0, 0, 1], [8, 3000, 1, 0, 0], [4, 3000, 1, 1, 1]]
+	[1, 0, 0, 0, 1, 1.0], [1, 0, 0, 0, 1, 0.5], [1, 3000, 1, 0, 1, 0.5], [4, 3000, 1, 0, 1, 0.5],
+	[8, 3000, 1, 0, 1, 0.5], [8, 8000, 1, 0, 1, 0.5], [8, 3000, 0, 0, 1, 0.5], [8, 3000, 1, 0, 0, 0.5], [4, 3000, 1, 1, 1, 0.5]]
 
 func _bench_start() -> void:
 	bench_i = -1
@@ -220,7 +264,7 @@ func _bench_next() -> void:
 	bench_i += 1
 	if bench_i >= BENCH_CFGS.size():
 		bench_i = -1
-		var lines := ["RESULTADOS (mandame una captura de esto)", "autos · árboles · pilotos · sombras · hilos  →  FPS · ms/cuadro · física ms · llamadas · triángulos"]
+		var lines := ["RESULTADOS (mandame una captura de esto)", "autos · árboles · pilotos · sombras · hilos · resolución  →  FPS · ms/cuadro · física ms · llamadas · triángulos"]
 		for r in bench_results:
 			lines.append(r)
 		lines.append("Tocá INFORME para copiar el informe completo")
@@ -239,6 +283,8 @@ func _bench_next() -> void:
 	pilots_on = c[2] == 1
 	sun.shadow_enabled = c[3] == 1
 	threaded = c[4] == 1
+	res_scale = c[5]
+	_on_resize()
 	if new_trees != trees_n or trees_node == null:
 		trees_n = new_trees
 		_rebuild_trees()
@@ -270,8 +316,8 @@ func _bench_tick(dt: float) -> void:
 			stri += s[3]
 		var c: Array = BENCH_CFGS[bench_i]
 		if n > 0:
-			bench_results.append("%2d autos · %5d árb · pil %s · som %s · hilos %s  →  %3d FPS · %5.1f ms · fis %4.1f · %4d llam · %dk tri" % [
-				c[0], c[1], "sí" if c[2] == 1 else "no", "sí" if c[3] == 1 else "no", "sí" if c[4] == 1 else "no",
+			bench_results.append("%2d autos · %5d árb · pil %s · som %s · hilos %s · res %3d%%  →  %3d FPS · %5.1f ms · fis %4.1f · %4d llam · %dk tri" % [
+				c[0], c[1], "sí" if c[2] == 1 else "no", "sí" if c[3] == 1 else "no", "sí" if c[4] == 1 else "no", int(c[5] * 100.0),
 				int(round(float(n) / sdt)), sdt / n * 1000.0, sph / n, int(sdc / n), int(stri / n / 1000.0)])
 			var slow := 0
 			var slow20 := 0
@@ -297,11 +343,28 @@ func _build_report() -> String:
 	out.append("Fecha: " + Time.get_datetime_string_from_system())
 	out.append("Juego: versión %s" % v)
 	out.append("Motor: Godot %s · renderizador %s" % [Engine.get_version_info()["string"], str(ProjectSettings.get_setting("rendering/renderer/rendering_method"))])
-	out.append("Teléfono: %s · %s %s" % [OS.get_model_name(), OS.get_name(), OS.get_version()])
-	out.append("Procesador: %s · %d núcleos" % [OS.get_processor_name(), OS.get_processor_count()])
-	out.append("Memoria: %d MB en total · %d MB libres" % [int(float(mem.get("physical", 0)) / 1048576.0), int(float(mem.get("available", mem.get("free", 0))) / 1048576.0)])
+	var ver := OS.get_version()
+	if ver == "" and OS.has_method("get_version_alias"):
+		ver = str(OS.call("get_version_alias"))
+	out.append("Teléfono: %s · %s %s" % [OS.get_model_name(), OS.get_name(), ver])
+	var cpu := OS.get_processor_name()
+	if cpu.strip_edges() == "":
+		cpu = _proc_value("/proc/cpuinfo", ["Hardware", "model name", "Processor"])
+	var freqs: Array = []
+	for i in OS.get_processor_count():
+		var f := "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq" % i
+		if FileAccess.file_exists(f):
+			freqs.append(str(int(FileAccess.get_file_as_string(f).strip_edges().to_int() / 1000)))
+	out.append("Procesador: %s · %d núcleos%s" % [cpu if cpu != "" else "(no informa)", OS.get_processor_count(), (" · MHz máx.: " + ", ".join(freqs)) if freqs.size() > 0 else ""])
+	var mem_total := int(float(mem.get("physical", 0)) / 1048576.0)
+	var mem_free := int(float(mem.get("available", mem.get("free", 0))) / 1048576.0)
+	if mem_total <= 0:
+		mem_total = int(_proc_value("/proc/meminfo", ["MemTotal"]).to_int() / 1024)
+		mem_free = int(_proc_value("/proc/meminfo", ["MemAvailable"]).to_int() / 1024)
+	out.append("Memoria: %d MB en total · %d MB libres" % [mem_total, mem_free])
 	out.append("GPU: %s · %s · %s" % [RenderingServer.get_video_adapter_name(), RenderingServer.get_video_adapter_vendor(), RenderingServer.get_video_adapter_api_version()])
 	var hz := DisplayServer.screen_get_refresh_rate()
+	out.append("Dibujado del mundo 3D a %d%% de la pantalla" % int(res_scale * 100.0))
 	out.append("Pantalla: %dx%d · %s Hz" % [DisplayServer.window_get_size().x, DisplayServer.window_get_size().y, ("%.0f" % hz) if is_finite(hz) and hz > 0.0 else "?"])
 	out.append("")
 	if bench_results.is_empty():
@@ -309,14 +372,27 @@ func _build_report() -> String:
 		out.append(hud.stats_text.replace("\n", " | "))
 	else:
 		out.append("PRUEBA AUTOMÁTICA (cada configuración 6 s, sin contar el primer segundo y medio)")
-		out.append("autos · árboles · pilotos · sombras · hilos  →  FPS · ms/cuadro · física ms · llamadas · triángulos")
+		out.append("autos · árboles · pilotos · sombras · hilos · resolución  →  FPS · ms/cuadro · física ms · llamadas · triángulos")
 		for r in bench_results:
 			out.append(r)
 		out.append("")
+		out.append("(fís = milisegundos por cuadro que el hilo principal pierde esperando a la física; con hilos debería ser ~0)")
 		out.append("DETALLE (p50/p95/p99 = tiempo de cuadro del 50%, 95% y 99% de los cuadros; cuadros lentos = tirones)")
 		for r in report_body:
 			out.append(r)
 	return "\n".join(out)
+
+## Lee un valor de /proc (Android lo deja leer): busca la primera línea "clave: valor"
+func _proc_value(path: String, keys: Array) -> String:
+	if not FileAccess.file_exists(path):
+		return ""
+	for line in FileAccess.get_file_as_string(path).split("\n"):
+		for k in keys:
+			if line.begins_with(k):
+				var parts := line.split(":", true, 1)
+				if parts.size() == 2:
+					return parts[1].strip_edges()
+	return ""
 
 func _copy_report() -> void:
 	var txt := _build_report()
@@ -346,10 +422,28 @@ func _on_option(key: String, value) -> void:
 			_rebuild_cars()
 		"threads":
 			threaded = int(value) == 1
+		"res":
+			res_scale = float(value)
+			_on_resize()
 
-## Física a 120 Hz con paso fijo propio. Cada auto es independiente: se reparten entre los núcleos del teléfono
-## (una tarea por auto y por cuadro, con todos los pasos de ese cuadro adentro) y se espera a que terminen.
+## Física a 120 Hz con paso fijo propio, UN CUADRO ADELANTADA y en otros núcleos:
+##  · al empezar el cuadro se espera (casi nunca) a que terminen los pasos del cuadro anterior y se toma una foto de cada auto;
+##  · enseguida se lanza la física del cuadro que viene (una tarea por auto) y el hilo principal sigue con el dibujado.
+## El dibujado y la cámara usan solo la foto. Costo: un cuadro (16 ms) más de retardo al girar el volante.
+var phys_task := -1
+var phys_wait_us := 0
+
+func _finish_physics() -> void:
+	if phys_task != -1:
+		var t0 := Time.get_ticks_usec()
+		WorkerThreadPool.wait_for_group_task_completion(phys_task)
+		phys_wait_us += Time.get_ticks_usec() - t0
+		phys_task = -1
+		for c in cars:
+			c.capture()
+
 func _step_physics(dt: float) -> void:
+	_finish_physics()
 	var h := 1.0 / 120.0
 	acc = minf(acc + dt, 0.05)
 	step_n = int(acc / h)
@@ -361,15 +455,16 @@ func _step_physics(dt: float) -> void:
 	pl.in_brake = hud.brake
 	pl.in_steer = hud.steer
 	pl.in_handbrake = hud.handbrake
-	var t0 := Time.get_ticks_usec()
-	if threaded and cars.size() > 1:
-		var gid := WorkerThreadPool.add_group_task(_step_car, cars.size(), -1, true, "fisica")
-		WorkerThreadPool.wait_for_group_task_completion(gid)
+	phys_frames += 1
+	if threaded:
+		phys_task = WorkerThreadPool.add_group_task(_step_car, cars.size(), -1, true, "fisica")
 	else:
+		var t0 := Time.get_ticks_usec()
 		for i in cars.size():
 			_step_car(i)
-	phys_us += Time.get_ticks_usec() - t0
-	phys_frames += 1
+		phys_us += Time.get_ticks_usec() - t0
+		for c in cars:
+			c.capture()
 
 func _step_car(i: int) -> void:
 	var c: Car = cars[i]
@@ -384,7 +479,7 @@ func _process(dt: float) -> void:
 		return
 	for c in cars:
 		c.update_visual(dt)
-	var p: VehiclePhysics = cars[0].phys
+	var p = cars[0].snap
 	# cámara de seguimiento
 	var target_yaw: float = p.yaw
 	if not cam_ready:
@@ -417,13 +512,14 @@ func _process(dt: float) -> void:
 	if stat_timer >= 0.5:
 		var fps := Engine.get_frames_per_second()
 		if phys_frames > 0:
-			shown_phys_ms = float(phys_us) / 1000.0 / float(phys_frames)
+			shown_phys_ms = float(phys_us + phys_wait_us) / 1000.0 / float(phys_frames)
 		hud.stats_text = "FPS %d · cuadro %.1f ms · física %.2f ms/cuadro (%s)\nAutos %d · pilotos %s · árboles %d · sombras %s\nLlamadas %d · objetos %d · triángulos %dk" % [
 			fps, dt * 1000.0, shown_phys_ms, "hilos" if threaded else "1 hilo", cars_n, "sí" if pilots_on else "no", trees_n, "sí" if sun.shadow_enabled else "no",
 			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
 			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
 			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME) / 1000]
 		phys_us = 0
+		phys_wait_us = 0
 		phys_frames = 0
 		frame_count = 0
 		stat_timer = 0.0
