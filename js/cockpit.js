@@ -26,7 +26,13 @@ const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
 function shiftW(t){if(t===undefined||t>0.55)return 0;if(t<0.16)return (t/0.16)*(t/0.16)*(3-2*t/0.16);if(t<0.3)return 1;const u=(t-0.3)/0.25;return 1-u*u*(3-2*u);}
 /* piloto que "hace" lo que hace el auto: mano al freno de mano, pie derecho en acelerador/freno (sin atravesar el piso) */
 function limbState(o,dt,p){const k=1-Math.exp(-dt*14);o.hbW=(o.hbW||0)+((p.hbIn?1:0)-(o.hbW||0))*k;const br=p.brake||0,th=p.throttle||0;
- o.onBrake=(o.onBrake||0)+((br>0.05?1:0)-(o.onBrake||0))*(1-Math.exp(-dt*18));o.press=(o.press||0)+((br>0.05?br:th)-(o.press||0))*(1-Math.exp(-dt*16));}
+ o.onBrake=(o.onBrake||0)+((br>0.05?1:0)-(o.onBrake||0))*(1-Math.exp(-dt*18));o.press=(o.press||0)+((br>0.05?br:th)-(o.press||0))*(1-Math.exp(-dt*16));
+ /* frenada fuerte (más de ~0,85 g): el copiloto se ataja con la mano en el tablero, y la saca al rato */
+ const vl=p.vLong||0,aL=p.aLong!==undefined?p.aLong:0;o.aLs=(o.aLs||0)+(clamp(aL,-30,30)-(o.aLs||0))*(1-Math.exp(-dt*10));
+ if(vl>6&&(o.aLs<-7.2||(br>0.85&&o.aLs<-5.5&&vl>15)))o.braceT=0.7;else o.braceT=Math.max(0,(o.braceT||0)-dt);const bt=o.braceT>0?1:0;o.brace=(o.brace||0)+(bt-(o.brace||0))*(1-Math.exp(-dt*(bt?10:3.5)));}
+function coHands(o,x,by,bz,xD,C){const hs=[{side:'Left',wrist:V3(x+0.14,by,bz-0.05),fdir:V3(-0.5,-0.2,0.8).normalize(),back:V3(0.4,1,0.1).normalize()},{side:'Right',wrist:V3(x-0.14,by,bz-0.05),fdir:V3(0.5,-0.2,0.8).normalize(),back:V3(-0.4,1,0.1).normalize()}];
+ const w=o.brace||0;if(w>0.01){const r=hs[1];r.wrist.lerp(V3(-xD-0.08,C.eyeY-0.35,C.eyeZ+0.46),w);r.fdir.lerp(V3(0.05,-0.45,1).normalize(),w).normalize();r.back.lerp(V3(-0.15,1,-0.3).normalize(),w).normalize();}
+ return hs;}
 function rightFoot(o,xD,fy,eZ){const x=xD-0.11+(o.onBrake||0)*0.10,pr=o.press||0;return V3(x,Math.max(fy+0.09,fy+0.13-pr*0.05),eZ+0.62+pr*0.09);}
 /* copiloto: mira al frente con movimientos chicos de cabeza (nunca por encima del hombro) */
 function coLook(t){return 0.10*Math.sin(t*0.41)+0.05*Math.sin(t*1.07+1.3)+0.03*Math.sin(t*2.3+0.4);}
@@ -90,7 +96,7 @@ export class Cockpit{
   this.type=type;this.V=V;const C=this.C={...(CABIN[type]||CABIN.t1plus)};
   const root=this.root=new THREE.Group();root.name='cockpit';this.parts={};
   this.head=V3(0,0,0);this.headV=V3(0,0,0);this.body=V3(0,0,0);this.steerVis=0;this.wipe=0;this.wipeT=0;this.dispT=0;this.gearKick=0;
-  const hw=C.halfW,eY=C.eyeY,eZ=C.eyeZ,cz=C.cowlZ,rY=C.roofY+0.12/* techo 12 cm más alto que el real (elegido por el dueño: más inmersivo y se ve el horizonte) */,floorY=eY-1.05,xD=0.37;this.xD=xD;this.floorY=floorY;
+  const hw=C.halfW*1.12/* habitáculo 12% más ancho que el real: menos ventanilla a los costados, parabrisas y capó más anchos en pantalla */,eY=C.eyeY,eZ=C.eyeZ,cz=C.cowlZ,rY=C.roofY+0.12/* techo 12 cm más alto que el real (elegido por el dueño: más inmersivo y se ve el horizonte) */,floorY=eY-1.05,xD=0.37;this.xD=xD;this.floorY=floorY;
   const acc=new THREE.Color(paint&&paint.accent||'#ff6a08'),bodyCol=new THREE.Color(paint&&paint.body||'#1a4fe0');
   /* materiales */
   const suede=tex(128,128,(c,w,h)=>{c.fillStyle='#1b1c1f';c.fillRect(0,0,w,h);for(let i=0;i<5000;i++){const v=22+Math.random()*16;c.fillStyle=`rgb(${v},${v},${v+2})`;c.fillRect(Math.random()*w,Math.random()*h,1,1);}});suede.wrapS=suede.wrapT=THREE.RepeatWrapping;suede.repeat.set(4,2);
@@ -125,8 +131,9 @@ export class Cockpit{
   const roof=add(new THREE.PlaneGeometry(2*hw,Math.max(0.6,eZ+0.5-(eZ-1.05))),M.head,0,rY+0.01,(eZ+0.5+eZ-1.05)/2);roof.rotation.x=Math.PI/2;
   /* capot visto desde adentro */
   const hoodTex=tex(256,256,(c,w,h)=>{c.fillStyle='#'+bodyCol.getHexString();c.fillRect(0,0,w,h);c.fillStyle='#'+acc.getHexString();c.fillRect(w*0.36,0,w*0.07,h);c.fillRect(w*0.57,0,w*0.07,h);c.fillStyle='rgba(0,0,0,.35)';c.fillRect(w*0.47,h*0.1,w*0.06,h*0.35);});
-  const hoodG=new THREE.PlaneGeometry(2*hw*1.12,1.4,6,4);hoodG.rotateX(-Math.PI/2);{const P=hoodG.attributes.position;for(let i=0;i<P.count;i++){const x=P.getX(i),z=P.getZ(i);P.setY(i,-0.06*(x*x)/(hw*hw)-0.12*(z+0.7)/1.4);}hoodG.computeVertexNormals();}
-  const hood=new THREE.Mesh(hoodG,new THREE.MeshStandardMaterial({map:hoodTex,metalness:0.45,roughness:0.3}));hood.position.set(0,cowlY-0.07,cz+0.72);root.add(hood);
+  /* capó ancho y largo, casi plano (apenas abombado): desde adentro se ve de punta a punta del parabrisas, como en los simuladores */
+  const hL=1.9,hoodG=new THREE.PlaneGeometry(2*hw*1.22,hL,8,6);hoodG.rotateX(-Math.PI/2);{const P=hoodG.attributes.position;for(let i=0;i<P.count;i++){const x=P.getX(i),z=P.getZ(i),u=z/hL+0.5;P.setY(i,-0.025*(x*x)/(hw*hw)-0.11*u*u-0.02*u);}hoodG.computeVertexNormals();}
+  const hood=new THREE.Mesh(hoodG,new THREE.MeshStandardMaterial({map:hoodTex,metalness:0.45,roughness:0.3}));hood.position.set(0,cowlY-0.035,cz+hL/2-0.04);root.add(hood);
   /* limpiaparabrisas */
   this.wipers=[];for(const px of [0.28,-0.32]){const piv=V3(px,cowlY+0.01,cz+0.03);const blade=new THREE.Mesh(new THREE.BoxGeometry(0.018,0.55,0.012),M.trim);root.add(blade);this.wipers.push({piv,blade,len:0.55});}
   const wu=wBR.clone().sub(wBL).normalize().negate(),wv=lerp(wBL,wBR,0.5).sub(lerp(wTL,wTR,0.5)).negate().normalize();this.wu=wu;this.wv=wv;
@@ -138,8 +145,8 @@ export class Cockpit{
   this.dispCan=document.createElement('canvas');this.dispCan.width=512;this.dispCan.height=224;this.dispTex=new THREE.CanvasTexture(this.dispCan);this.dispTex.colorSpace=THREE.SRGBColorSpace;
   /* display grande arriba del volante: se lee por el hueco superior del aro */
   /* display grande en el centro del tablero (al costado del volante, como en los autos de rally): se ve entero */
-  const dx=xD-0.31,dy=eY-0.18;add(new THREE.BoxGeometry(0.31,0.145,0.04),M.dash,dx,dy,eZ+0.575).lookAt(root.localToWorld(eye.clone()));
-  const disp=add(new THREE.PlaneGeometry(0.28,0.123),new THREE.MeshBasicMaterial({map:this.dispTex,toneMapped:false,depthTest:false}),dx,dy,eZ+0.55);disp.renderOrder=3;disp.lookAt(root.localToWorld(eye.clone()));
+  const dx=xD-0.30,dy=eY-0.2;add(new THREE.BoxGeometry(0.25,0.118,0.04),M.dash,dx,dy,eZ+0.575).lookAt(root.localToWorld(eye.clone()));
+  const disp=add(new THREE.PlaneGeometry(0.226,0.1),new THREE.MeshBasicMaterial({map:this.dispTex,toneMapped:false,depthTest:false}),dx,dy,eZ+0.55);disp.renderOrder=3;disp.lookAt(root.localToWorld(eye.clone()));
   /* cronómetro central (como los de rally) */
   this.timCan=document.createElement('canvas');this.timCan.width=256;this.timCan.height=96;this.timTex=new THREE.CanvasTexture(this.timCan);this.timTex.colorSpace=THREE.SRGBColorSpace;
   add(new THREE.BoxGeometry(0.19,0.085,0.05),M.trim,xD-0.36,eY-0.36,eZ+0.60);const tim=add(new THREE.PlaneGeometry(0.17,0.064),new THREE.MeshBasicMaterial({map:this.timTex,toneMapped:false}),xD-0.36,eY-0.36,eZ+0.572);tim.lookAt(root.localToWorld(eye.clone()));
@@ -147,9 +154,9 @@ export class Cockpit{
   const sw=tex(256,128,(c,w,h)=>{c.fillStyle='#16171a';c.fillRect(0,0,w,h);const lab=['IGN','FAN','PUMP','WIPE','LGT','HORN','MAP','ALS'];for(let i=0;i<8;i++){const x=16+(i%4)*60,y=14+Math.floor(i/4)*58;c.fillStyle='#2b2d31';c.fillRect(x,y,44,42);c.fillStyle=i===0?'#d12a2a':i<3?'#e0a21a':'#9aa0a8';c.fillRect(x+15,y+6,14,22);c.fillStyle='#cfd3d8';c.font='bold 10px sans-serif';c.fillText(lab[i],x+6,y+40);}});
   const swp=add(new THREE.PlaneGeometry(0.27,0.135),new THREE.MeshStandardMaterial({map:sw,roughness:0.6}),-0.04,eY-0.56,eZ+0.44);swp.lookAt(root.localToWorld(eye.clone().add(V3(0,-0.25,0))));
   /* palanca secuencial y freno de mano hidráulico */
-  this.gearLever=new THREE.Group();this.gearLever.position.set(xD-0.30,eY-0.78,eZ+0.20);root.add(this.gearLever);
+  this.gearLever=new THREE.Group();this.gearLever.position.set(xD-0.33,eY-0.78,eZ+0.33);root.add(this.gearLever);
   add(new THREE.CylinderGeometry(0.012,0.016,0.42,8),M.metal,0,0.21,0,this.gearLever);add(new THREE.SphereGeometry(0.035,10,8),M.dash,0,0.43,0,this.gearLever);
-  this.hbLever=new THREE.Group();this.hbLever.position.set(xD-0.24,eY-0.80,eZ+0.02);root.add(this.hbLever);
+  this.hbLever=new THREE.Group();this.hbLever.position.set(xD-0.25,eY-0.80,eZ+0.17);root.add(this.hbLever);
   add(new THREE.CylinderGeometry(0.014,0.018,0.5,8),M.red,0,0.25,0,this.hbLever);add(new THREE.CylinderGeometry(0.024,0.024,0.09,10),M.dash,0,0.48,0,this.hbLever);
   /* espejo interior y retrovisores exteriores (textura viva) */
   this.mirrorRT=new THREE.WebGLRenderTarget(256,96,{depthBuffer:true});
@@ -218,12 +225,12 @@ export class Cockpit{
   const sw=shiftW(this.shiftT);if(sw>0){const hr=hands.find(x=>x.side==='Right');if(hr){this.gearLever.updateMatrix();const knob=V3(0,0.43,0).applyMatrix4(this.gearLever.matrix);knob.z+=this.shiftUp?-0.05:0.05;knob.y+=0.035;
    hr.wrist.lerp(knob.add(V3(0.035,0.02,-0.05)),sw);hr.fdir.lerp(V3(-0.2,-0.75,0.6).normalize(),sw).normalize();hr.back.lerp(V3(-0.5,0.8,-0.2).normalize(),sw).normalize();}}
   /* freno de mano: la derecha agarra la palanca y tira */
-  const hw=(this.hbW||0)*(1-sw);if(hw>0.01){const hr=hands.find(x=>x.side==='Right');if(hr){this.hbLever.updateMatrix();const grip=V3(0,0.47,0).applyMatrix4(this.hbLever.matrix);grip.x+=0.03;hr.wrist.lerp(grip,hw);hr.fdir.lerp(V3(-0.1,-0.6,0.8).normalize(),hw).normalize();hr.back.lerp(V3(-0.9,0.3,0).normalize(),hw).normalize();}}
+  const hw=(this.hbW||0)*(1-sw);if(hw>0.01){const hr=hands.find(x=>x.side==='Right');if(hr){this.hbLever.updateMatrix();const grip=V3(0,0.47,0).applyMatrix4(this.hbLever.matrix);grip.x+=0.03;hr.wrist.lerp(grip,hw);hr.fdir.lerp(V3(-0.1,-0.6,0.8).normalize(),hw).normalize();hr.back.lerp(V3(-0.9,0.3,0).normalize(),hw).normalize();hr.pole=V3(0.6,-1,-0.25).lerp(V3(0.3,-0.55,-1),hw);}}
   this.rig[0].pose({hips:V3(xD+b.x*0.4,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.11+b.z*0.3),head:V3(xD+h.x,C.eyeY-0.07+h.y,C.eyeZ-0.09+h.z),roll:h.x*1.2,look:(this.look||0)*(1-Math.max(shiftW(this.shiftT),hw)*0.3),hands,grip:1.2,
    feet:[{side:'Left',pos:V3(xD+0.13,fy+0.13,C.eyeZ+0.60)},{side:'Right',pos:rightFoot(this,xD,fy,C.eyeZ)}]});
   const x=-xD+b.x*0.9,by=C.eyeY-0.47+b.y,bz=C.eyeZ+0.27+b.z;
   this.rig[1].pose({hips:V3(-xD+b.x*0.4,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.13+b.z*0.3),head:V3(-xD+h.x*0.9,C.eyeY-0.09+h.y,C.eyeZ-0.07+h.z),roll:h.x*1.1,look:-0.05+coLook(this.tLook||0),grip:0.8,
-   hands:[{side:'Left',wrist:V3(x+0.14,by,bz-0.05),fdir:V3(-0.5,-0.2,0.8).normalize(),back:V3(0.4,1,0.1).normalize()},{side:'Right',wrist:V3(x-0.14,by,bz-0.05),fdir:V3(0.5,-0.2,0.8).normalize(),back:V3(-0.4,1,0.1).normalize()}],
+   hands:coHands(this,x,by,bz,xD,C),
    feet:[{side:'Left',pos:V3(-xD+0.13,fy+0.12,C.eyeZ+0.55)},{side:'Right',pos:V3(-xD-0.13,fy+0.12,C.eyeZ+0.55)}]});}
  /* persona sentada: casco, torso, hombros, HANS; los brazos del copiloto sostienen la hoja */
  person(x,acc,isDriver){const C=this.C,M=this.M,g=new THREE.Group();g.position.set(x,C.eyeY,C.eyeZ);this.root.add(g);
@@ -272,7 +279,7 @@ export class Cockpit{
   this.look=clamp(p.steerAngle*0.45+p.yawRate*0.06,-0.35,0.35);limbState(this,dt,p);this.tLook=(this.tLook||0)+dt;if(this.rig)this.poseRig();}
  updateCabin(dt,p,inp,info){const C=this.C;
   /* palancas */
-  this.hbLever.rotation.x=inp&&inp.handbrake?-0.45:0;this.gearKick=Math.max(0,this.gearKick-dt*6);if(this.shiftT!==undefined&&this.shiftT>0.14&&this.shiftT<0.2)this.gearKick=1;this.gearLever.rotation.x=(this.shiftUp?-1:1)*this.gearKick*0.25;
+  this.hbLever.rotation.x=inp&&inp.handbrake?-0.32:0;this.gearKick=Math.max(0,this.gearKick-dt*6);if(this.shiftT!==undefined&&this.shiftT>0.14&&this.shiftT<0.2)this.gearKick=1;this.gearLever.rotation.x=(this.shiftUp?-1:1)*this.gearKick*0.25;
   /* limpias y lluvia */
   const rainOn=info.rain>0;this.rainMat.uniforms.uTime.value=info.time;this.rainMat.uniforms.uRain.value+=((rainOn?1:0)-this.rainMat.uniforms.uRain.value)*Math.min(1,dt);this.rainMat.uniforms.uSpeed.value=Math.min(1,Math.hypot(p.vx,p.vz)/40);
   if(rainOn)this.wipeT+=dt;const ph=rainOn?(this.wipeT%1.4)/1.4:0;const th=(0.5-0.5*Math.cos(ph*Math.PI*2))*1.65;this.rainMat.uniforms.uWipe.value=rainOn?ph:1;
@@ -300,13 +307,14 @@ export class Cockpit{
   const rough=info.rough||0,t=info.time;const vib=(0.0025+0.006*rough)*(0.3+Math.min(1,Math.abs(p.vLong)/30));
   const nx=Math.sin(t*37.1)*0.6+Math.sin(t*23.7)*0.4,ny=Math.sin(t*41.3)*0.5+Math.sin(t*29.9)*0.5;
   let pos,look;
-  const H=this.camHead||this.head;if(mode==='onboard'){pos=V3(this.xD+H.x+nx*vib,C.eyeY+0.03+H.y+ny*vib,C.eyeZ+0.04+H.z);
+  const H=this.camHead||this.head;if(mode==='onboard'){pos=V3(this.xD+H.x+nx*vib,C.eyeY+0.05+H.y+ny*vib,C.eyeZ-0.04+H.z);
    const yawLook=clamp(p.steerAngle*0.45+p.yawRate*0.06,-0.35,0.35);look=pos.clone().add(V3(Math.sin(yawLook),-0.2,Math.cos(yawLook)));}
   else{pos=V3(0.02+nx*vib*0.5,C.eyeY+Math.min(0.13,(C.roofY-C.eyeY)*0.55)+ny*vib*0.5,C.eyeZ-0.72);look=V3(0.08,C.eyeY-0.32,C.eyeZ+2.4);}
   const wp=root.localToWorld(pos.clone()),wl=root.localToWorld(look.clone());const up=V3(0,1,0).applyQuaternion(root.getWorldQuaternion(this._q));
   if(mode==='onboard')up.applyAxisAngle(wl.clone().sub(wp).normalize(),-H.x*0.9);
   cam.position.copy(wp);cam.up.copy(up);cam.lookAt(wl);cam.up.set(0,1,0);
-  cam.fov=mode==='onboard'?74:72;cam.near=0.04;cam.updateProjectionMatrix();
+  /* ángulo HORIZONTAL fijo como en los simuladores (antes 74° vertical = casi 120° de costado en un celular: se veía todo el habitáculo) */
+  const hf=(mode==='onboard'?92:102)*Math.PI/360;cam.fov=clamp(2*Math.atan(Math.tan(hf)/cam.aspect)*180/Math.PI,46,74);cam.near=0.04;cam.updateProjectionMatrix();
   /* el piloto propio no se dibuja en la vista de casco */
   if(this.rig)this.rig[0].hideHead(mode==='onboard');else{this.driver.helmet.visible=mode!=='onboard';this.driver.torso.visible=mode!=='onboard';}}
  /* espejos con imagen (se pueden apagar en Opciones para ganar rendimiento: quedan como vidrio oscuro) */
@@ -344,13 +352,13 @@ export class Crew{
   const xD=this.xD,b=this.body,h=this.head,fy=C.eyeY-1.05,th=clamp(this.steerVis,-1.1,1.1),cs=Math.cos(th),sn=Math.sin(th),n=this.n;const hands=[];
   for(const sd of [1,-1]){const i=sd>0?0:1,ph=this.phi[i];const gp=this.wc.clone().addScaledVector(this.wX,Math.cos(ph)*GRIP_R).addScaledVector(this.wY,Math.sin(ph)*GRIP_R).addScaledVector(this.n,this.lift[i]);const r=gp.clone().sub(this.wc).normalize();
    hands.push({side:sd>0?'Right':'Left',wrist:gp.clone().addScaledVector(n,0.07).addScaledVector(r,0.045),fdir:r.clone().multiplyScalar(-0.15).addScaledVector(n,-0.85).normalize(),back:r.clone().multiplyScalar(0.9).addScaledVector(n,0.25).normalize()});}
-  const sw=shiftW(this.shiftT);if(sw>0){const hr=hands.find(x=>x.side==='Right');if(hr){const knob=V3(xD-0.30+0.035,C.eyeY-0.33,C.eyeZ+0.15+(this.shiftUp?-0.05:0.05));hr.wrist.lerp(knob,sw);hr.fdir.lerp(V3(-0.2,-0.75,0.6).normalize(),sw).normalize();hr.back.lerp(V3(-0.5,0.8,-0.2).normalize(),sw).normalize();}}
-  const hw=(this.hbW||0)*(1-sw);if(hw>0.01){const hr=hands.find(x=>x.side==='Right');if(hr){const grip=V3(xD-0.24+0.03,C.eyeY-0.33+hw*0.05,C.eyeZ+0.02-hw*0.07);hr.wrist.lerp(grip,hw);hr.fdir.lerp(V3(-0.1,-0.6,0.8).normalize(),hw).normalize();hr.back.lerp(V3(-0.9,0.3,0).normalize(),hw).normalize();}}
+  const sw=shiftW(this.shiftT);if(sw>0){const hr=hands.find(x=>x.side==='Right');if(hr){const knob=V3(xD-0.33+0.035,C.eyeY-0.33,C.eyeZ+0.28+(this.shiftUp?-0.05:0.05));hr.wrist.lerp(knob,sw);hr.fdir.lerp(V3(-0.2,-0.75,0.6).normalize(),sw).normalize();hr.back.lerp(V3(-0.5,0.8,-0.2).normalize(),sw).normalize();}}
+  const hw=(this.hbW||0)*(1-sw);if(hw>0.01){const hr=hands.find(x=>x.side==='Right');if(hr){const grip=V3(xD-0.25+0.03,C.eyeY-0.32-hw*0.02,C.eyeZ+0.17-hw*0.14);hr.wrist.lerp(grip,hw);hr.fdir.lerp(V3(-0.1,-0.6,0.8).normalize(),hw).normalize();hr.back.lerp(V3(-0.9,0.3,0).normalize(),hw).normalize();hr.pole=V3(0.6,-1,-0.25).lerp(V3(0.3,-0.55,-1),hw);}}
   this.rigs[0].pose({hips:V3(xD+b.x*0.4,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.11+b.z*0.3),head:V3(xD+h.x,C.eyeY-0.07+h.y,C.eyeZ-0.09+h.z),roll:h.x*1.2*this.rollK,look:clamp(p.steerAngle*0.45,-0.35,0.35),hands,grip:1.2,
    feet:[{side:'Left',pos:V3(xD+0.13,fy+0.13,C.eyeZ+0.60)},{side:'Right',pos:rightFoot(this,xD,fy,C.eyeZ)}]});
   const x=-xD+b.x*0.9,by=C.eyeY-0.47+b.y,bz=C.eyeZ+0.27+b.z;this.book.position.set(x+0.02,by+0.03,bz+0.03);
   this.rigs[1].pose({hips:V3(-xD+b.x*0.4,C.eyeY-0.70+b.y*0.3,C.eyeZ-0.13+b.z*0.3),head:V3(-xD+h.x*0.9,C.eyeY-0.09+h.y,C.eyeZ-0.07+h.z),roll:h.x*1.1*this.rollK,look:-0.05+coLook((this.tLook||0)+this.k),grip:0.8,
-   hands:[{side:'Left',wrist:V3(x+0.14,by,bz-0.05),fdir:V3(-0.5,-0.2,0.8).normalize(),back:V3(0.4,1,0.1).normalize()},{side:'Right',wrist:V3(x-0.14,by,bz-0.05),fdir:V3(0.5,-0.2,0.8).normalize(),back:V3(-0.4,1,0.1).normalize()}],
+   hands:coHands(this,x,by,bz,xD,C),
    feet:[{side:'Left',pos:V3(-xD+0.13,fy+0.12,C.eyeZ+0.55)},{side:'Right',pos:V3(-xD-0.13,fy+0.12,C.eyeZ+0.55)}]});}
  dispose(){this.group.removeFromParent();if(this.rigs)for(const r of this.rigs)r.dispose();if(this.book){this.book.geometry.dispose();this.book.material.dispose();}}
 }
