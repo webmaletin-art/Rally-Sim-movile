@@ -90,7 +90,7 @@ export class Cockpit{
   this.type=type;this.V=V;const C=this.C={...(CABIN[type]||CABIN.t1plus)};
   const root=this.root=new THREE.Group();root.name='cockpit';this.parts={};
   this.head=V3(0,0,0);this.headV=V3(0,0,0);this.body=V3(0,0,0);this.steerVis=0;this.wipe=0;this.wipeT=0;this.dispT=0;this.gearKick=0;
-  const hw=C.halfW,eY=C.eyeY,eZ=C.eyeZ,cz=C.cowlZ,rY=C.roofY+0.12/* techo 12 cm más alto que el real: desde las cámaras interiores se ve el horizonte */,floorY=eY-1.05,xD=0.37;this.xD=xD;this.floorY=floorY;
+  const hw=C.halfW,eY=C.eyeY,eZ=C.eyeZ,cz=C.cowlZ,rY=C.roofY,floorY=eY-1.05,xD=0.37;this.xD=xD;this.floorY=floorY;
   const acc=new THREE.Color(paint&&paint.accent||'#ff6a08'),bodyCol=new THREE.Color(paint&&paint.body||'#1a4fe0');
   /* materiales */
   const suede=tex(128,128,(c,w,h)=>{c.fillStyle='#1b1c1f';c.fillRect(0,0,w,h);for(let i=0;i<5000;i++){const v=22+Math.random()*16;c.fillStyle=`rgb(${v},${v},${v+2})`;c.fillRect(Math.random()*w,Math.random()*h,1,1);}});suede.wrapS=suede.wrapT=THREE.RepeatWrapping;suede.repeat.set(4,2);
@@ -155,7 +155,7 @@ export class Cockpit{
   this.mirrorRT=new THREE.WebGLRenderTarget(256,96,{depthBuffer:true});
   const mm=new THREE.MeshBasicMaterial({map:this.mirrorRT.texture});this.mirrorRT.texture.wrapS=THREE.RepeatWrapping;this.mirrorRT.texture.repeat.x=-1;this.mirrorRT.texture.offset.x=1;
   /* el central, bajo el borde superior del parabrisas y dentro del campo visual del casco */
-  const my=Math.min(rY-0.14,eY+0.18),mpos=V3(0.02,my,eZ+0.42);this.mirrors=[];/* orientado entre el casco del piloto y la cámara de atrás de las butacas: se ve la imagen en las dos cámaras interiores */const aim=V3(xD*0.5,eY+0.06,eZ-0.36);const nrm=aim.clone().sub(mpos).normalize(),fp=mpos.clone().addScaledVector(nrm,-0.02);/* el marco va DETRÁS del vidrio (sobre su normal), no delante */const frame=add(new THREE.BoxGeometry(0.29,0.095,0.03),M.trim,fp.x,fp.y,fp.z);frame.lookAt(root.localToWorld(aim.clone()));const mir=add(new THREE.PlaneGeometry(0.27,0.08),mm,mpos.x,mpos.y,mpos.z);mir.lookAt(root.localToWorld(aim.clone()));this.mirrors.push(mir);
+  const my=Math.min(rY-0.14,eY+0.1),mpos=V3(0.02,my,eZ+0.42);this.mirrors=[];/* orientado entre el casco del piloto y la cámara de atrás de las butacas: se ve la imagen en las dos cámaras interiores */const aim=V3(xD*0.5,eY+0.06,eZ-0.36);const nrm=aim.clone().sub(mpos).normalize(),fp=mpos.clone().addScaledVector(nrm,-0.02);/* el marco va DETRÁS del vidrio (sobre su normal), no delante */const frame=add(new THREE.BoxGeometry(0.29,0.095,0.03),M.trim,fp.x,fp.y,fp.z);frame.lookAt(root.localToWorld(aim.clone()));const mir=add(new THREE.PlaneGeometry(0.27,0.08),mm,mpos.x,mpos.y,mpos.z);mir.lookAt(root.localToWorld(aim.clone()));this.mirrors.push(mir);
   add(new THREE.CylinderGeometry(0.008,0.008,Math.max(0.04,rY-my-0.02),6),M.trim,0.02,(rY+my)/2,eZ+0.44);
   /* laterales: afuera, a la altura de la vista, visibles por la ventanilla (no tapados por el parante) */
   for(const sd of [1,-1]){const sp=V3(sd*(hw+0.21),eY-0.1,cz-0.02),hn=eye.clone().sub(sp).normalize(),hp=sp.clone().addScaledVector(hn,-0.04);const hous=add(new THREE.BoxGeometry(0.25,0.16,0.07),M.paint,hp.x,hp.y,hp.z);hous.lookAt(root.localToWorld(eye.clone()));const sm=add(new THREE.PlaneGeometry(0.22,0.13),mm,sp.x,sp.y,sp.z);sm.lookAt(root.localToWorld(eye.clone()));this.mirrors.push(sm);add(new THREE.BoxGeometry(0.16,0.03,0.05),M.paint,sd*(hw+0.09),eY-0.17,cz-0.03);}
