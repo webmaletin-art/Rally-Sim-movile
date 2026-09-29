@@ -3,7 +3,7 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
-- ❌ **Cámaras «Chasis 3D» quitadas** (no convencieron). La cabina 3D queda solo como respaldo en biblioteca/modelos/cabina_base.glb. El interior dibujado ahora tiene el techo 12 cm más alto y el espejo más arriba: desde adentro se ve el horizonte.
+- ❌ **Cámaras «Chasis 3D» quitadas** (no convencieron). La cabina 3D queda solo como respaldo en biblioteca/modelos/cabina_base.glb. El interior dibujado sigue como estaba.
 - ✅ Android: los botones del sistema se vuelven a esconder solos si aparecen; los bordes de abajo no disparan el gesto de «atrás».
 - ✅ Pantalla de ajuste antes de correr con barritas; controles en pantalla movibles; manos que cambian de agarre; neutro; calibración del acelerómetro.
 - ✅ Pilotos más vivos: el cuerpo se va para atrás al acelerar, para adelante al frenar y al costado en curva; mano al freno de mano y a la palanca, pie derecho en acelerador/freno (sin atravesar el piso); el copiloto mira al frente con movimientos chicos de cabeza.
@@ -42,6 +42,11 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ### Próximo
 - **Interior del auto**: el dueño va a pasar material para rehacerlo (volante, tablero, palanca, espejos).
+- ⏳ **PENDIENTE — techo en la cámara «Interior (atrás del piloto)»** (regla del dueño):
+  - Solo en esa cámara, donde se ven los dos: esconder un poquito más para arriba la parte del techo que queda en el borde de arriba de la pantalla (la de atrás, sobre la cabeza), para que no se sienta «el techo en la frente».
+  - NO agrandar el parabrisas, NO estirar nada, NO mover el espejo: el parabrisas y el marco de adelante quedan exactamente como están.
+  - La cámara del conductor («Onboard (casco)») no se toca: está bien como estaba.
+  - Un poquito nomás, sin agrandar nada. (Un intento subiendo todo el techo 12 cm fue rechazado: estiraba el parabrisas y el espejo.)
 - **Público en el drift**: pared con colisión + tribuna con gente mirando el centro (animaciones Idle_Rail / Cheering de Mesh2Motion).
 - Escenas con personajes hablando (Mesh2Motion: Idle_Talking, Head_Nod, Angry, Victory…).
 
