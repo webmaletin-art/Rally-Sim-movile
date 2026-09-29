@@ -38,11 +38,11 @@ static func create(parent: Node3D, x: float, hip_y: float, hip_z: float, lo: boo
 	_rot(skel, "LeftLeg", Vector3.RIGHT, deg_to_rad(80.0))
 	_rot(skel, "RightLeg", Vector3.RIGHT, deg_to_rad(80.0))
 	_rot(skel, "LeftArm", Vector3.BACK, -PI / 2.0)
-	_rot(skel, "LeftArm", Vector3.RIGHT, deg_to_rad(-50.0))
+	_rot(skel, "LeftArm", Vector3.RIGHT, deg_to_rad(-70.0))
 	_rot(skel, "RightArm", Vector3.BACK, PI / 2.0)
-	_rot(skel, "RightArm", Vector3.RIGHT, deg_to_rad(-50.0))
-	_rot(skel, "LeftForeArm", Vector3.RIGHT, deg_to_rad(-50.0))
-	_rot(skel, "RightForeArm", Vector3.RIGHT, deg_to_rad(-50.0))
+	_rot(skel, "RightArm", Vector3.RIGHT, deg_to_rad(-70.0))
+	_rot(skel, "LeftForeArm", Vector3.RIGHT, deg_to_rad(30.0))
+	_rot(skel, "RightForeArm", Vector3.RIGHT, deg_to_rad(30.0))
 	# la cadera en la butaca
 	var hip_local := root.to_local(skel.to_global(skel.get_bone_global_pose(hips).origin))
 	root.position = Vector3(x, hip_y, hip_z) - root.basis * hip_local

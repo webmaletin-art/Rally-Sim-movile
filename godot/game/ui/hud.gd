@@ -24,6 +24,7 @@ var _opts := {
 	"pilots": [1, [0, 1]],
 	"shadows": [0, [0, 1]],
 	"hi": [1, [0, 1]],
+	"threads": [1, [0, 1]],
 }
 
 func _ready() -> void:
@@ -42,8 +43,8 @@ func _layout() -> void:
 	_buttons.append({"id": "gas", "rect": Rect2(s.x - 190, s.y - 210, 170, 190), "label": "ACEL"})
 	_buttons.append({"id": "brake", "rect": Rect2(s.x - 380, s.y - 170, 170, 150), "label": "FRENO"})
 	_buttons.append({"id": "hb", "rect": Rect2(s.x - 330, s.y - 330, 110, 90), "label": "MANO"})
-	var keys := ["cars", "trees", "pilots", "shadows", "hi"]
-	var names := {"cars": "Autos", "trees": "Árboles", "pilots": "Pilotos", "shadows": "Sombras", "hi": "Modelo alto"}
+	var keys := ["cars", "trees", "pilots", "shadows", "hi", "threads"]
+	var names := {"cars": "Autos", "trees": "Árboles", "pilots": "Pilotos", "shadows": "Sombras", "hi": "Modelo alto", "threads": "Hilos"}
 	for i in keys.size():
 		_buttons.append({"id": "opt:" + keys[i], "rect": Rect2(s.x - bw - 12, 10 + i * (bh * 0.75 + 6), bw, bh * 0.75), "label": names[keys[i]]})
 
