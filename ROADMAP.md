@@ -3,6 +3,7 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
+- ✅ **Turbo**: silbido que sube con la carga (con retardo, como un turbo de verdad) y «flutter» (tu-tu-tu) al soltar el acelerador y entre cambios. Cada auto suena distinto (el camión grave y lento, el Genesis agudo y rápido); la mejora de turbo lo hace más fuerte. Volumen en Opciones → Turbo.
 - ✅ **Interior con techo alto** en las dos cámaras interiores (atrás del piloto y casco): techo, marco y jaula 12 cm más arriba y el espejo más alto, así no tapa el horizonte. Elegido por el dueño. Las cámaras «Chasis 3D» se quitaron; la cabina 3D queda solo como respaldo en biblioteca/modelos/cabina_base.glb.
 - ✅ Android: los botones del sistema se vuelven a esconder solos si aparecen; los bordes de abajo no disparan el gesto de «atrás».
 - ✅ Pantalla de ajuste antes de correr con barritas; controles en pantalla movibles; manos que cambian de agarre; neutro; calibración del acelerómetro.
@@ -41,6 +42,7 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 - Se mantiene también el acceso por menú (partidas cortas en el celular).
 
 ### Próximo
+- **Autos bloqueados**: prompts para ChatGPT (carrocería + cubierta de cada uno) en docs/prompts/autos_bloqueados.md. Esperando los GLB del dueño.
 - **Interior del auto**: el dueño va a pasar material para rehacerlo (volante, tablero, palanca, espejos).
 - **Ajustes finos del interior** (cuando el dueño diga): el habitáculo quedó con el techo alto (12 cm, espejo más arriba) en las dos cámaras interiores, elegido por el dueño por ser más inmersivo. Falta afinar «un par de cositas».
 - **Público en el drift**: pared con colisión + tribuna con gente mirando el centro (animaciones Idle_Rail / Cheering de Mesh2Motion).
