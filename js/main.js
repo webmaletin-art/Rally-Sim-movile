@@ -12,6 +12,7 @@ import {tipsFor} from './tips.js';
 import {CoPilot} from './copilot.js';
 import {WorldDuels,rampHeight} from './duels.js';
 import {DUEL_RIVALS} from './duel_data.js';
+import {HudEditor,applyHud} from './hudedit.js';
 import {TIERS,EVENTS,TARGETS,medalFor,rewardFor,lowerIsBetter} from './events.js';
 import {UI,fmtTime} from './ui.js';
 import {PostFX} from './post.js';
@@ -130,15 +131,16 @@ class Physics{
  sub(h,inp){this.track._hint=this.trackHint;this._sub(h,inp);this.trackHint=this.track._hint;}
  _sub(h,inp){const V=this.V,g=9.81,W=this.wheels,R=V.wheelRadius,m=V.mass,tr=this.track;
   let thr=inp.throttle||0,brk=inp.brake||0;const spd=Math.hypot(this.vx,this.vz);
-  if(this.gear>0&&brk>0.5&&thr<0.05&&spd<0.6&&this.vLong<0.4){this.revT+=h;if(this.revT>0.35){this.gear=-1;this.revT=0}}else if(this.gear>0)this.revT=0;
-  if(this.gear===-1){if(thr>0.1&&this.vLong>-0.6){this.gear=1}else{const t=thr;thr=brk;brk=t}}
+  /* caja automática: frenando parado pasa a reversa y el pedal de freno la maneja; en manual la reversa y el neutro los elige el piloto */
+  if(!this.manual){if(this.gear===0)this.gear=1;if(this.gear>0&&brk>0.5&&thr<0.05&&spd<0.6&&this.vLong<0.4){this.revT+=h;if(this.revT>0.35){this.gear=-1;this.revT=0}}else if(this.gear>0)this.revT=0;
+  if(this.gear===-1){if(thr>0.1&&this.vLong>-0.6){this.gear=1}else{const t=thr;thr=brk;brk=t}}}
   const sf=this.steerScale(spd);const tgt=-(inp.steer||0)*V.maxSteer*sf;this.steerAngle+=(tgt-this.steerAngle)*(1-Math.exp(-h*V.steerResponse));
   const sy=Math.sin(this.yaw),cy=Math.cos(this.yaw),fx=sy,fz=cy,lx=cy,lz=-sy;const vLong=this.vx*fx+this.vz*fz,vLat=this.vx*lx+this.vz*lz;const sp=Math.sin(this.pitch),sr=Math.sin(this.roll);
   let contacts=0;
   for(const w of W){w.wx=this.px+fx*w.z+lx*w.x;w.wz=this.pz+fz*w.z+lz*w.x;const gi=tr.groundInfo(w.wx,w.wz);w.gy=gi.y;w.surf=gi.surf;const ay=this.py+V.hardpointY+w.x*sr-w.z*sp;const d=ay-(gi.y+R);const prevContact=w.contact,prevComp=w.comp;
    if(d>=w.sMax){w.contact=false;w.comp=0;w.s=w.sMax;w.Fz=0;w.cv=0;}else{w.contact=true;contacts++;const comp=w.sMax-d;const cv=prevContact?(comp-prevComp)/h:Math.min(6,-this.vy+0);w.comp=comp;w.cv=cv;w.s=Math.max(d,w.sMin);let F=w.k*comp+(cv>0?w.cB:w.cR)*cv;if(d<w.sMin){F+=V.bumpStopK*(w.sMin-d)+(cv>0?V.bumpStopC*cv:0);}w.Fz=Math.max(0,F);if(!prevContact||cv>1.0)w.impact=Math.max(w.impact,Math.abs(cv)*(d<w.sMin?1.6:1));}}
   for(const [L,Rw,k] of [[W[0],W[1],V.arbF],[W[2],W[3],V.arbR]]){if(L.contact&&Rw.contact){const df=k*(L.comp-Rw.comp);L.Fz=Math.max(0,L.Fz+df);Rw.Fz=Math.max(0,Rw.Fz-df);}}
-  this.contacts=contacts;this.brake=brk;this.nitroOn=!!inp.nitro;this.engine(h,thr,brk,vLong,!!inp.handbrake);
+  this.contacts=contacts;this.brake=brk;this.hbIn=!!inp.handbrake;this.nitroOn=!!inp.nitro;this.engine(h,thr,brk,vLong,!!inp.handbrake);
   let FL=0,FT=0,Mz=0,tauP=0,tauR=0,FzSum=0,maxSlip=0;const hgt=Math.max(0.3,this.py-(W[0].gy+W[1].gy+W[2].gy+W[3].gy)/4);
   for(const w of W){const I=V.wheelInertia+(w.inertiaExtra||0);let fl=0,k=0;
    if(w.contact){const Ft0=Math.max(0,w.Fz+w.jack);const vpl=vLat+this.yawRate*w.z,vpg=vLong-this.yawRate*w.x;const dl=(w.front?this.steerAngle:0)+w.toeRad,cs=Math.cos(dl),sn=Math.sin(dl);const vl=vpl*sn+vpg*cs,vt=vpl*cs-vpg*sn;w.vl=vl;const den=Math.max(Math.abs(vl),2.5);const kap=(w.omega*R-vl)/den,alp=Math.atan2(vt,den);w.kappa=kap;w.alpha=alp;const po=w.surf==='asphalt'?32:26,mu=(tr.gripMul||1)*V.mu*(V.surfGrip[w.surf]||0.4)*(w.front?V.gripFront:V.gripRear)*(1-0.0009*(w.press-po)*(w.press-po));const sx=kap/V.slipPeakLong,sy2=alp/(V.slipPeakLat*w.pkLat),s=Math.hypot(sx,sy2);let F=0,Ft=0;
@@ -168,7 +170,9 @@ class Physics{
  engine(h,thr,brk,vLong,handbrake){const V=this.V,W=this.wheels;let fr=V.frontDriveRatio,rr=V.rearDriveRatio;if(V.driveType==='RWD'){fr=0;rr=1}else if(V.driveType==='FWD'){fr=1;rr=0}const tot=fr+rr||1;fr/=tot;rr/=tot;
   const wF=(W[0].omega+W[1].omega)/2,wR=(W[2].omega+W[3].omega)/2,wAvg=wF*fr+wR*rr;const ratio=this.gear>0?V.gears[this.gear-1]*V.finalDrive:(this.gear<0?-V.reverseRatio*V.finalDrive:0);const rpmW=Math.abs(wAvg*ratio)*60/(2*Math.PI);
   if(this.shiftT>0)this.shiftT-=h;
-  if(!this.clutchLocked){if(thr>0.05)this.engage=Math.min(1,(this.engage||0)+h/V.clutchTime);else this.engage=0;const free=V.idleRpm+thr*(V.launchRpm-V.idleRpm);const target=Math.max(rpmW,free+(Math.max(rpmW,V.idleRpm)-free)*this.engage);this.rpm+=(target-this.rpm)*(1-Math.exp(-h*(thr>0.05?10:4)));if(thr>0.05&&(rpmW>=this.rpm*0.97||this.engage>=1))this.clutchLocked=true;if(thr<0.05&&rpmW>V.idleRpm*1.2)this.clutchLocked=true;}else{this.rpm+=(Math.max(V.idleRpm*0.85,rpmW)-this.rpm)*(1-Math.exp(-h*30));if(rpmW<V.idleRpm*0.8&&(thr<0.05||brk>0.3)){this.clutchLocked=false;this.engage=0;}}
+  /* neutro: el motor gira libre (se puede acelerar parado hasta el corte) */
+  if(this.gear===0){this.clutchLocked=false;this.engage=0;this.cutT=Math.max(0,(this.cutT||0)-h);const tgt=this.cutT>0?V.idleRpm:V.idleRpm+thr*(V.maxRpm*1.02-V.idleRpm);this.rpm+=(tgt-this.rpm)*(1-Math.exp(-h*(tgt>this.rpm?7:2.5)));if(this.rpm>=V.maxRpm){this.rpm=V.maxRpm;this.cutT=0.07;}}
+  else if(!this.clutchLocked){if(thr>0.05)this.engage=Math.min(1,(this.engage||0)+h/V.clutchTime);else this.engage=0;const free=V.idleRpm+thr*(V.launchRpm-V.idleRpm);const target=Math.max(rpmW,free+(Math.max(rpmW,V.idleRpm)-free)*this.engage);this.rpm+=(target-this.rpm)*(1-Math.exp(-h*(thr>0.05?10:4)));if(thr>0.05&&(rpmW>=this.rpm*0.97||this.engage>=1))this.clutchLocked=true;if(thr<0.05&&rpmW>V.idleRpm*1.2)this.clutchLocked=true;}else{this.rpm+=(Math.max(V.idleRpm*0.85,rpmW)-this.rpm)*(1-Math.exp(-h*30));if(rpmW<V.idleRpm*0.8&&(thr<0.05||brk>0.3)){this.clutchLocked=false;this.engage=0;}}
   this.limiter=this.rpm>=V.maxRpm;let Te;const Tmax=V.peakTorque*V.powerScale*this.torqueAt(this.rpm);
   if(this.shiftT>0)Te=0;else if(this.clutchLocked){Te=thr*Tmax-(1-thr)*V.engineBrake*(this.rpm/V.maxRpm);if(this.limiter)Te=Math.min(Te,-V.engineBrake*0.5);}else Te=thr*Tmax;
   /* limitador de velocidad de fábrica (se libera con la ECU / motor de competición del taller) */
@@ -187,8 +191,8 @@ class Physics{
      y al frenar reduce de a una sin pasar de vueltas (se ve al piloto meter cada cambio) */
   /* caja manual: el piloto pide el cambio; se niega a reducir si pasaría de vueltas */
   if(this.manual&&this.reqShift){const d=this.reqShift;this.reqShift=0;const wr=Math.abs(this.vLong)/V.wheelRadius*V.finalDrive*9.549;
-   if(d>0){if(this.gear===-1)this.gear=1;else if(this.gear<V.gears.length&&this.shiftT<=0){this.gear++;this.shiftT=V.shiftTime;this.inGearT=0;this.events.push({type:'shift',up:true});}}
-   else{if(this.gear>1&&this.shiftT<=0){if(wr*V.gears[this.gear-2]<V.maxRpm*1.03){this.gear--;this.shiftT=V.shiftTime*0.6;this.inGearT=0;this.events.push({type:'shift',up:false});}else this.events.push({type:'shiftDenied'});}else if(this.gear===1&&Math.abs(this.vLong)<1.2)this.gear=-1;}}
+   if(d>0){if(this.gear===-1)this.gear=0;else if(this.gear===0)this.gear=1;else if(this.gear<V.gears.length&&this.shiftT<=0){this.gear++;this.shiftT=V.shiftTime;this.inGearT=0;this.events.push({type:'shift',up:true});}}
+   else{if(this.gear>1&&this.shiftT<=0){if(wr*V.gears[this.gear-2]<V.maxRpm*1.03){this.gear--;this.shiftT=V.shiftTime*0.6;this.inGearT=0;this.events.push({type:'shift',up:false});}else this.events.push({type:'shiftDenied'});}else if(this.gear===1)this.gear=0;else if(this.gear===0&&Math.abs(this.vLong)<1.2)this.gear=-1;}}
   if(!this.manual&&this.gear>0&&this.clutchLocked&&this.shiftT<=0){this.inGearT=(this.inGearT||0)+h;const wr=Math.abs(this.vLong)/V.wheelRadius*V.finalDrive*9.549,rIn=g=>wr*V.gears[g-1];
    const up=this.gear<V.gears.length&&thr>0.1&&this.contacts>=2&&this.inGearT>0.45&&((this.rpm>V.shiftUpRpm&&rIn(this.gear)>V.shiftUpRpm*0.8)||rIn(this.gear)>V.maxRpm*0.99);
    const brkDown=brk>0.25&&this.gear>1&&this.inGearT>0.28&&rIn(this.gear)<V.shiftDownRpm*1.7&&rIn(this.gear-1)<V.shiftUpRpm*0.92;
@@ -305,7 +309,7 @@ class Input{
  async enableGyro(){if(location.protocol==='file:')return {ok:false,err:'Abrilo por HTTPS o servidor local para usar el acelerómetro.'};
   for(const E of [window.DeviceMotionEvent,window.DeviceOrientationEvent]){if(E&&typeof E.requestPermission==='function'){try{const r=await E.requestPermission();if(r!=='granted')return {ok:false,err:'Permiso denegado para el sensor de movimiento.'};}catch(e){return {ok:false,err:'Error pidiendo permiso: '+e.message};}}}
   let events=0;this.gyroCalib=null;this.gyroRaw=0;this.gyroSteer=0;
-  const feed=cur=>{events++;if(this.gyroCalib===null){this.gyroCalib=cur;return;}let delta=cur-this.gyroCalib;if(delta>180)delta-=360;if(delta<-180)delta+=360;this.gyroRaw+=(delta-this.gyroRaw)*0.22;this.gyroSteer=clamp(this.gyroRaw/GYRO_TILT_FOR_FULL,-1,1);};
+  const feed=cur=>{events++;if(this.gyroCalib===null){this.gyroCalib=cur;return;}let delta=cur-this.gyroCalib;if(delta>180)delta-=360;if(delta<-180)delta+=360;this.gyroRaw+=(delta-this.gyroRaw)*0.22;this.gyroSteer=clamp((this.gyroInvert?-1:1)*this.gyroRaw/GYRO_TILT_FOR_FULL,-1,1);};
   /* gravedad en el plano de la pantalla: girar el teléfono como un volante (cualquier apaisado) */
   this.motionHandler=e=>{const g=e.accelerationIncludingGravity;if(!g||g.x==null||g.y==null)return;if(Math.hypot(g.x,g.y)<3)return;feed(Math.atan2(g.y,g.x)*180/Math.PI);};
   if('DeviceMotionEvent' in window)window.addEventListener('devicemotion',this.motionHandler,{passive:true});
@@ -1226,15 +1230,15 @@ class Effects{
   this.mk=0;this.d=d;this.last=[null,null,null,null];this.acc=[0,0,0,0];}
  reset(){const d=this.d;d.position.set(0,-999,0);d.scale.set(0,0,0);d.updateMatrix();for(let i=0;i<this.MK;i++)this.marks.setMatrixAt(i,d.matrix);this.marks.instanceMatrix.needsUpdate=true;this.mk=0;this.last=[null,null,null,null];this.life.fill(0);this.alpha.fill(0);this.geo.attributes.alpha.needsUpdate=true;}
  spawn(x,y,z,vx,vy,vz,r,g,b,a,size,life,grow,grav){const i=this.next%this.cap;this.next=(i+1)%this.cap;this.colDirty=true;this.pos[i*3]=x;this.pos[i*3+1]=y;this.pos[i*3+2]=z;this.vel[i*3]=vx;this.vel[i*3+1]=vy;this.vel[i*3+2]=vz;this.col[i*3]=r;this.col[i*3+1]=g;this.col[i*3+2]=b;this.a0[i]=a;this.alpha[i]=a;this.size[i]=size;this.life[i]=life;this.max[i]=life;this.grow[i]=grow;this.grav[i]=grav;}
- emitFrom(p,dt){this.cap=QUALITY==='baja'?120:QUALITY==='alta'?this.N:170;const qk=QUALITY==='baja'?0.55:QUALITY==='alta'?1:0.8;const fx=Math.sin(p.yaw),fz=Math.cos(p.yaw),lx=Math.cos(p.yaw),lz=-Math.sin(p.yaw);
+ emitFrom(p,dt){this.cap=QUALITY==='baja'?70:QUALITY==='alta'?150:110;const qk=QUALITY==='baja'?0.3:QUALITY==='alta'?0.6:0.45;const fx=Math.sin(p.yaw),fz=Math.cos(p.yaw),lx=Math.cos(p.yaw),lz=-Math.sin(p.yaw);
   for(let i=0;i<4;i++){const w=p.wheels[i];if(!w.contact){this.last[i]=null;continue}
    const loose=w.surf!=='asphalt';const sp=Math.abs(w.vl);const sl=Math.max(0,Math.abs(w.kappa)-0.06)+Math.max(0,Math.abs(w.alpha)-0.09);
    const x=w.wx,z=w.wz,y=w.gy+0.08;const side=w.left?1:-1;let rate=0,kind=0;
    if(loose){rate=sp*0.9+sl*90;kind=1}else if(sl>0.14){rate=(sl-0.14)*120*Math.min(1,sp/3+0.3);kind=2}
-   this.acc[i]=Math.min(this.acc[i]+rate*qk*dt,3);let nS=0;
-   while(this.acc[i]>=1&&nS++<3){this.acc[i]-=1;const rnd=Math.random;const back=-(1.5+sp*0.25+Math.abs(w.kappa)*6),up=0.6+rnd()*1.2;
+   this.acc[i]=Math.min(this.acc[i]+rate*qk*dt,2);let nS=0;
+   while(this.acc[i]>=1&&nS++<2){this.acc[i]-=1;const rnd=Math.random;const back=-(1.5+sp*0.25+Math.abs(w.kappa)*6),up=0.6+rnd()*1.2;
     if(kind===1){const c=0.55+rnd()*0.1;this.spawn(x+(rnd()-.5)*.3,y,z+(rnd()-.5)*.3,fx*back+lx*side*(rnd()*1.5)+(rnd()-.5),up,fz*back+lz*side*(rnd()*1.5)+(rnd()-.5),c*0.86,c*0.72,c*0.55,0.42,0.7+rnd()*0.5,0.9+rnd()*0.7,1.6,-0.4);
-     if(rnd()<0.35)this.spawn(x,y,z,fx*back*0.8+(rnd()-.5)*2,1.5+rnd()*2,fz*back*0.8+(rnd()-.5)*2,0.18,0.15,0.12,1.0,0.07,0.6,0,-9.8);}
+     if(rnd()<0.18)this.spawn(x,y,z,fx*back*0.8+(rnd()-.5)*2,1.5+rnd()*2,fz*back*0.8+(rnd()-.5)*2,0.18,0.15,0.12,1.0,0.07,0.6,0,-9.8);}
     else{const c=0.78+rnd()*0.1;this.spawn(x+(rnd()-.5)*.3,y+0.1,z+(rnd()-.5)*.3,fx*back*0.3+(rnd()-.5)*0.8,0.5+rnd()*0.5,fz*back*0.3+(rnd()-.5)*0.8,c,c,c*1.02,0.36,0.8+rnd()*0.6,1.4+rnd(),2.2,0.25);}}
    const mark=!loose&&sl>0.22;
    /* huellas pegadas al piso DIBUJADO (sin micro-relieve) y con la pendiente del camino: nunca quedan en el aire */
@@ -1747,8 +1751,8 @@ class Game{
    showCar:(id,st)=>{this.showroom.setCar(id,st);},carChanged:()=>{const id=PROFILE.d.current;this.showroom.setCar(id,PROFILE.car);},
    onScreen:n=>this.onScreen(n),startEvent:ev=>this.startEvent(ev),startQuick:q=>this.startQuick(q),testDrive:id=>this.testDrive(id),openWorld:()=>this.openWorld(),startStory:()=>this.startStory(),startMission:id=>this.startMission(id),
    mapName:id=>(MAPS[id]||{}).name||id,mapList:()=>Object.entries(MAPS).filter(([id,m])=>!m.hidden).map(([id,m])=>({id,...m})),applySettings:()=>this.applySettings(),postSupported:()=>this.post.supported,canExitToWorld:()=>!!(this.cfg&&this.cfg.fromWorld),toWorld:()=>this.exitTrench(),previewVisual:id=>{this.previewFx=id;if(this.post)this.post.setPreset(id||PROFILE.d.settings.visual||'none');this.fxStageOn=!!id&&!this.session;if(this.fxStageOn){if(!this.fxStage)this.fxStage=new FxStage();this.fxStage.setCar(PROFILE.d.current||'t1plus',PROFILE.car);}},autoLevel:()=>effQuality(PROFILE.d.settings),
-   toggleGyro:async()=>{if(this.input.gyroEnabled){this.input.disableGyro();return {};}const r=await this.input.enableGyro();return r.ok?{}:{err:r.err};},gyroOn:()=>this.input.gyroEnabled,recalGyro:()=>this.input.recalibrateGyro(),
-   resume:()=>this.resume(),respawn:()=>{if(this.session){this.session.respawn();this.resume();}},canRespawn:()=>!!(this.session&&this.session.type!=='parking'),restart:()=>this.retry(),quit:()=>this.quit(),nextCam:()=>{this.nextCamera();},prevCam:()=>{this.nextCamera(-1);},camName:()=>CAMERAS[CAM_INDEX].name,afterResults:n=>this.afterResults(n),retry:()=>this.retry()};
+   toggleGyro:async()=>{if(this.input.gyroEnabled){this.input.disableGyro();return {};}const r=await this.input.enableGyro();return r.ok?{}:{err:r.err};},gyroOn:()=>this.input.gyroEnabled,recalGyro:()=>this.input.recalibrateGyro(),gyroValue:()=>this.input.gyroSteer,gyroInvert:()=>!!PROFILE.d.settings.gyroInvert,setGyroInvert:v=>{PROFILE.d.settings.gyroInvert=!!v;PROFILE.save();this.input.gyroInvert=!!v;},
+   resume:()=>this.resume(),editHud:()=>this.openHudEditor(),respawn:()=>{if(this.session){this.session.respawn();this.resume();}},canRespawn:()=>!!(this.session&&this.session.type!=='parking'),restart:()=>this.retry(),quit:()=>this.quit(),nextCam:()=>{this.nextCamera();},prevCam:()=>{this.nextCamera(-1);},camName:()=>CAMERAS[CAM_INDEX].name,afterResults:n=>this.afterResults(n),retry:()=>this.retry()};
   this.music=new Music(this.audio);
   this.ui=new UI(api);
   this.bind();this.applySettings();
@@ -1808,7 +1812,10 @@ class Game{
  rawBegin(S=this.scene,c=this.camera){const R=this._raw||(this._raw={pos:new THREE.Vector3(),q:new THREE.Quaternion(),fog:new THREE.Fog(0x8fa88f,8,210),bg:new THREE.Color(),tint:new THREE.Color(0x8fa88f)});
   R.cam=c;R.S=S;R.pos.copy(c.position);R.q.copy(c.quaternion);R.oldFog=S.fog;R.oldBg=S.background;R.dome=this.dome&&this.dome.visible;
   if(S.fog&&S.fog.color)R.fog.color.copy(S.fog.color).lerp(R.tint,0.6);S.fog=R.fog;R.bg.copy(R.fog.color);S.background=R.bg;if(this.dome&&S===this.scene)this.dome.visible=false;
-  const r=Math.random;c.position.x+=(r()-0.5)*0.15;c.position.y+=(r()-0.5)*0.15;c.position.z+=(r()-0.5)*0.15;c.rotation.z+=(r()-0.5)*0.02;c.rotation.x+=(r()-0.5)*0.01;c.rotation.y+=(r()-0.5)*0.01;c.updateMatrixWorld();}
+  /* vibración de cámara en mano: ondas suaves + un poco de temblor, regulable en Opciones (100 = la de antes) */
+  const k=(PROFILE.d.settings.rawShake??25)/100;if(k>0){const t=performance.now()/1000,r=Math.random,w=(a,b,c)=>Math.sin(t*a+c)*0.7+Math.sin(t*b+c*1.7)*0.3;
+   c.position.x+=(w(5.3,13.1,0.2)*0.05+(r()-0.5)*0.05)*k;c.position.y+=(w(6.1,15.7,1.1)*0.05+(r()-0.5)*0.05)*k;c.position.z+=(r()-0.5)*0.06*k;
+   c.rotation.z+=(w(4.7,11.3,2.3)*0.007+(r()-0.5)*0.008)*k;c.rotation.x+=(w(5.9,12.7,0.7)*0.004+(r()-0.5)*0.004)*k;c.rotation.y+=(r()-0.5)*0.004*k;}c.updateMatrixWorld();}
  rawEnd(){const R=this._raw,c=R.cam,S=R.S;c.position.copy(R.pos);c.quaternion.copy(R.q);c.updateMatrixWorld();S.fog=R.oldFog;S.background=R.oldBg;if(this.dome&&S===this.scene)this.dome.visible=R.dome;}
  /* dibujo con el efecto elegido (incluye el estilo 'cámara de acción cruda', que va por CSS + bruma + vibración) */
  renderPost(scene,cam,info){const raw=this.post.preset==='accion';if(raw!==!!this.rawOn){this.rawOn=raw;document.body.classList.toggle('rawcam',raw);this.applySettings();}
@@ -1822,12 +1829,12 @@ class Game{
   const W=innerWidth,H=innerHeight,w=Math.min(0.5,300/W*2),h=w*W/(256/96)/H;M.q.scale.set(w,h,1);const top=this.inside?0.05:Math.min(0.45,112/H*2);M.q.position.set(0,1-top-h/2,0);M.fr.scale.set(w+8/W*2,h+8/H*2,1);M.fr.position.copy(M.q.position);
   const r=this.renderer,ac=r.autoClear;r.autoClear=false;r.setRenderTarget(null);r.render(M.sc,M.cam);r.autoClear=ac;}
  musicCheck(){if(!this.music)return;const want=PROFILE.d.settings.music&&(this.state==='menu'||this.state==='results');if(want)this.music.start();else this.music.stop();}
- applySettings(){const s=PROFILE.d.settings;if(this.copilot)this.copilot.configure(s);this.musicCheck&&this.musicCheck();tune.steerMode=s.steerMode;tune.gameSpeed=s.gameSpeed;tune.gyroSensitivity=s.gyroSens;GYRO_TILT_FOR_FULL=55-s.gyroSens*0.40;
+ applySettings(){const s=PROFILE.d.settings;if(this.copilot)this.copilot.configure(s);this.musicCheck&&this.musicCheck();tune.steerMode=s.steerMode;tune.gameSpeed=s.gameSpeed;tune.gyroSensitivity=s.gyroSens;GYRO_TILT_FOR_FULL=55-s.gyroSens*0.40;this.input.gyroInvert=!!s.gyroInvert;
   document.body.classList.toggle('slider-mode',s.steerMode==='slider');document.body.classList.toggle('manual',s.gearbox==='manual');if(this.physics)this.physics.manual=s.gearbox==='manual';const Q=effQuality(s);QUALITY=Q;
   let pr={baja:0.7,media:Math.min(devicePixelRatio,1.25),alta:Math.min(devicePixelRatio,1.75)}[Q]||1;if(this.rawOn)pr=Math.min(pr,1)/1.2;this.renderer.setPixelRatio(pr);this.renderer.setSize(innerWidth,innerHeight);if(this.fx)this.fx.setScale(innerHeight,pr);
   if(this.audio.master)this.audio.master.gain.value=SND.master*(s.volume/80);this.audio.mix={eng:(s.volEngine??100)/100,surf:(s.volSurf??30)/100,wind:(s.volWind??30)/100};
   if(this.post&&!this.previewFx&&this.post.preset!==(s.visual||'none'))this.post.setPreset(s.visual||'none');
-  if(this.cockpit&&this.cockpit.setMirrors)this.cockpit.setMirrors(s.mirrors!==false);
+  if(this.cockpit&&this.cockpit.setMirrors)this.cockpit.setMirrors(s.mirrors!==false);applyHud(s.hudLayout);
   const shOn=Q!=='baja'&&s.shadows!==false;if(this.renderer.shadowMap.enabled!==shOn){this.renderer.shadowMap.enabled=shOn;this.renderer.shadowMap.type=THREE.PCFShadowMap;}this.sun.castShadow=shOn;const ms=Q==='alta'?2048:1024;if(this.sun.shadow.mapSize.x!==ms){this.sun.shadow.mapSize.set(ms,ms);if(this.sun.shadow.map){this.sun.shadow.map.dispose();this.sun.shadow.map=null;}}
   if(this.physics&&this.session){const id=currentVehicleId;const st=this.testState||PROFILE.d.owned[id];const V=paramsFor(id,st);Object.assign(VEH,V);this.physics.setup();}}
  onScreen(n){this.ui.inRace=this.state==='paused';this.musicCheck();this.showroom.off={home:0,starter:-1.3,garage:-1.3,dealer:-1.3,paint:-1.3,tuning:-1.5,workshop:-2.2}[n]??0;}
@@ -1934,6 +1941,8 @@ class Game{
    else{ctx.fillStyle=c.color;ctx.strokeStyle='#000';ctx.lineWidth=1;ctx.beginPath();ctx.arc(u,v,4,0,7);ctx.fill();ctx.stroke();}}}
  /* ─── pausa / salir / resultados ─── */
  pause(){if(this.state!=='race')return;this.codriver.stop();if(this.storyVO)this.storyVO.stop();this.audioSilence();if(this.copilot)this.copilot.stop();try{if(this.audio.ctx&&this.audio.ctx.state==='running')this.audio.ctx.suspend();}catch(e){}this.state='paused';this.setHud(false);this.ui.inRace=true;this.ui.show('pause');}
+ /* editor de controles en pantalla (desde la pausa): el juego sigue pausado mientras se acomodan */
+ openHudEditor(){if(this.state!=='paused')return;this.ui.root.innerHTML='';this.setHud(true);this.hudEd=new HudEditor(PROFILE,()=>{this.hudEd=null;this.setHud(false);this.ui.show('pause');});this.hudEd.open();}
  resume(){if(this.state!=='paused')return;this.audio.resume();this.ui.root.innerHTML='';this.state='race';this.setHud(true);this.hudLayout();this.last=performance.now();}
  quit(){this.saveOdo();this.audio.resume();this.cleanupSession();if(this.car){this.car.dispose();this.scene.remove(this.car.group);this.car=null;}this.state='menu';this.setHud(false);this.ui.inRace=false;this.audio.update&&this.audioSilence();
   const back=this.cfg&&this.cfg.event?'career':this.cfg&&this.cfg.testCar?'dealer':'home';this.ui.show(back);}
@@ -2057,7 +2066,7 @@ class Game{
    if(this.track.updateTape)this.track.updateTape(this.physics.position);this.updateRain(dt);if(S.ghost)S.updateGhost(dt);
    {let best=null,bd=1e9;for(const c of S.cars)if(c.ai){const d=Math.hypot(c.phys.px-this.physics.px,c.phys.pz-this.physics.pz);if(d<bd){bd=d;best=c;}}this.audio.aiUpdate(best?bd:null,best?best.phys.rpm:0,best?best.phys.V.firingOrder:4);}
    const p=this.physics;if(p.nitroActive){const fx=Math.sin(p.yaw),fz=Math.cos(p.yaw),L=VEH.wheelBase/2+0.9;for(let k=0;k<3;k++){const rr=Math.random;this.fx.spawn(p.px-fx*L+(rr()-.5)*0.3,p.py-VEH.comHeight+0.55,p.pz-fz*L+(rr()-.5)*0.3,-fx*(8+rr()*6)+p.vx*0.9,0.3+rr(),-fz*(8+rr()*6)+p.vz*0.9,0.35+rr()*0.3,0.6+rr()*0.3,1,0.9,0.35+rr()*0.25,0.18+rr()*0.12,2.5,0);}}
-   this.fx.emitFrom(p,dt);for(const c of S.cars)if(c.ai&&c.phys.px!==undefined){const d=Math.hypot(c.phys.px-p.px,c.phys.pz-p.pz);if(d<60&&this.inView(c.phys.px,c.phys.py,c.phys.pz,6))this.fx.emitFrom(c.phys,dt*0.6);}this.fx.update(dt);this.audio.update(p,dt);
+   this.fx.emitFrom(p,dt);for(const c of S.cars)if(c.ai&&c.phys.px!==undefined){const d=Math.hypot(c.phys.px-p.px,c.phys.pz-p.pz);if(d<40&&this.inView(c.phys.px,c.phys.py,c.phys.pz,6))this.fx.emitFrom(c.phys,dt*0.4);}this.fx.update(dt);this.audio.update(p,dt);
    for(const c of S.cars)c.phys.events.length=0;
    this.updateHud(realDt);
   }
@@ -2070,7 +2079,7 @@ class Game{
   requestAnimationFrame(t=>this.loop(t))}
  fixedUpdate(){this.input.update(this.fixed);this.input.nitro=!!(this.input.nitroTouch||this.input.nitroKey);this.session.fixed(this.fixed,this.input);}
  updateHud(dt){if(this.physics&&document.body.classList.contains('manual')){const g=this.physics.gear,t=g<0?'R':String(g);if(this._gi!==t){this._gi=t;$('gearInd').textContent=t;}}this.fpsFrames++;this.fpsAccum+=dt;if(this.fpsAccum>=.5){this.fps=Math.round(this.fpsFrames/this.fpsAccum);this.fpsAccum=0;this.fpsFrames=0;this.autoTune();}
-  const p=this.physics,S=this.session,t=this.cfg.type,mph=PROFILE.d.settings.units==='mph';const kmh=Math.abs(p.vLong)*3.6;const g=p.gear<0?'R':(p.clutchLocked||kmh>3?String(p.gear):'N');
+  const p=this.physics,S=this.session,t=this.cfg.type,mph=PROFILE.d.settings.units==='mph';const kmh=Math.abs(p.vLong)*3.6;const g=p.gear<0?'R':p.gear===0?'N':(p.clutchLocked||kmh>3?String(p.gear):'N');
   $('speed').innerHTML=`${Math.round(mph?kmh*0.6214:kmh)}<span class="unit">${mph?'mph':'km/h'}</span>`;$('gear').textContent=g;this.rpmFill.style.width=(clamp(p.rpm/VEH.maxRpm,0,1)*100).toFixed(1)+'%';
   if(VEH.nitroCap>0){$('nitroFill').style.height=(p.nitro/VEH.nitroCap*100).toFixed(0)+'%';$('nitroBtn').classList.toggle('active',!!p.nitroActive);}
   if(t==='race'){const st=S.standings();$('pos').textContent=`${st.indexOf(S.player)+1}/${st.length}`;}

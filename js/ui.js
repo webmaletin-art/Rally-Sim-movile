@@ -5,6 +5,7 @@ import {TIERS,EVENTS,TYPE_INFO,TARGETS,lowerIsBetter,rewardFor} from './events.j
 import {classOf,unlocksOf,defaultTune} from './carbuild.js';
 import {PRESET_INFO} from './post.js';
 import {tipsFor} from './tips.js';
+import {gyroWizard} from './gyrowiz.js';
 import {CHAPTERS,MISSION_BY_ID,starText,storyProgress,missionUnlocked,chapterStars} from './mission.js';
 
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -66,8 +67,8 @@ export class UI{
    case 'paint':{const car=P.car;car.paint[ds.slot]=ds.c;P.save();A.carChanged();this.show('paint');break;}
    case 'finish':{const car=P.car;car.paint.finish=ds.id;P.save();A.carChanged();this.show('paint');break;}
    case 'set':{const s=P.d.settings;let v=ds.v;if(v==='true')v=true;else if(v==='false')v=false;else if(!isNaN(+v))v=+v;s[ds.k]=v;P.save();A.applySettings();this.show('options');break;}
-   case 'gyro':A.toggleGyro().then(r=>{if(r&&r.err)this.toast(r.err);this.show(this.cur==='pause'?'pause':'options');});break;
-   case 'gyroCal':A.recalGyro();this.toast('Acelerómetro recalibrado','blue');break;
+   case 'gyro':{const back=this.cur==='pause'?'pause':'options';A.toggleGyro().then(r=>{if(r&&r.err)this.toast(r.err);this.show(back);if(A.gyroOn())this.gyroWiz(back);});break;}
+   case 'gyroCal':this.gyroWiz(this.cur==='pause'?'pause':'options');break;
    case 'resetAll':this.sheet(`<h3>¿Borrar todo el progreso?</h3><p>Se pierden autos, dinero y medallas. No se puede deshacer.</p><div class="row"><button class="bigbtn" data-a="resetOk"><span class="bt">Borrar</span></button><button class="back" data-a="close">Cancelar</button></div>`);break;
    case 'resetOk':P.reset();location.reload();break;
    case 'quick':this.quickRun();break;
@@ -85,6 +86,7 @@ export class UI{
    case 'toWorld':A.toWorld();break;
    case 'claim':{const a=ACHIEVEMENTS.find(x=>x.id===ds.id),d=P.d;d.claimed=d.claimed||{};if(a&&!d.claimed[a.id]&&a.test(d)){d.claimed[a.id]=1;P.earn(a.cr);A.sfx('buy');this.toast(`${a.icon} ${a.n} · +${fmtCr(a.cr)}`,'green');}this.show('goals');break;}
    case 'resume':A.resume();break;
+   case 'editHud':A.editHud();break;
    case 'respawn':A.respawn();break;
    case 'restart':A.restart();break;
    case 'quit':A.quit();break;
@@ -237,6 +239,7 @@ export class UI{
    <div class="tg"><h4>Imagen</h4>
     <div class="opt"><span>Calidad gráfica<small>⚡ Optimizar ajusta solo según tu teléfono (recomendado)${s.quality==='auto'?' · ahora: '+({baja:'Baja',media:'Media',alta:'Máxima'}[A.autoLevel()]||'—'):''}</small></span>${seg('quality',[['auto','⚡ Optimizar'],['baja','Baja'],['media','Media'],['alta','Máxima']])}</div>
     <div class="opt"><span>Efectos de cámara<small>Filtros tipo GoPro, video casero, cine, TV… · actual: <b>${(PRESET_INFO.find(x=>x[0]===(s.visual||'none'))||PRESET_INFO[0]).slice(1,3).join(' ')}</b></small></span><button class="buy inst" data-a="go" data-s="effects">ELEGIR</button></div>
+    <div class="opt"><span>Vibración de la cámara cruda<small>Cuánto tiembla la imagen con el efecto «Cámara de acción cruda»</small></span>${seg('rawShake',[[0,'Nada'],[25,'Poco'],[50,'Medio'],[100,'Fuerte']])}</div>
     <div class="opt"><span>Sombras reales<small>Sombras de los autos sobre el piso (calidad media o alta)</small></span>${seg('shadows',[[true,'Sí'],[false,'No']])}</div>
     <div class="opt"><span>Espejos retrovisores<small>Central y laterales con imagen en las cámaras interiores. Si el teléfono va lento, apagalos.</small></span>${seg('mirrors',[[true,'Sí'],[false,'No']])}</div>
     <div class="opt"><span>Cámara trasera en pantalla<small>Pantallita arriba al centro con lo que viene atrás, en cualquier cámara. Apagada por defecto (gasta más).</small></span>${seg('rearCam',[[true,'Sí'],[false,'No']])}</div></div>
@@ -269,12 +272,16 @@ export class UI{
   this.mount(`<div class="topbar"><button class="back" data-a="fxBack">←</button><div class="spacer"></div></div><div class="fxWrap"><div class="fxList">${PRESET_INFO.map(([id,ic,n])=>`<button class="fxItem ${id===sel?'on':''}${id===(s.visual||'none')?' cur':''}" data-a="fxPick" data-id="${id}" ${A.postSupported()||id==='none'?'':'disabled'}><span>${ic}</span>${n}${id===(s.visual||'none')?' <i>✔</i>':''}</button>`).join('')}</div>
    <div class="fxInfo"><div class="fxTitle">${info[1]} ${info[2]}</div><p>${info[3]}</p>${A.postSupported()?'':'<p class="warn">Tu teléfono no soporta estos efectos: se usa Normal.</p>'}<p class="muted" style="font-size:11px">Mirá el fondo: así se va a ver el juego.</p>
     <div class="row"><button class="bigbtn dark" data-a="fxBack"><span class="bt">Volver</span></button><button class="bigbtn" data-a="fxApply" data-id="${sel}"><span class="bt">Aplicar</span></button></div></div></div>`,'clear');}
+ /* calibración del acelerómetro paso a paso */
+ gyroWiz(back){const A=this.api;gyroWizard({recal:()=>A.recalGyro(),value:()=>A.gyroValue(),invert:()=>A.gyroInvert(),setInvert:v=>A.setGyroInvert(v)},()=>this.show(back||'options'));}
  s_pause(){this.mount(`<div class="pauseBox"><div class="resT" style="font-size:34px;margin-bottom:6px">Pausa</div>
    <button class="bigbtn" data-a="resume"><span class="bi">▶</span><span class="bt">Continuar</span></button>
    ${this.api.canRespawn()?'<button class="bigbtn dark" data-a="respawn"><span class="bi">🔄</span><span class="bt">Volver a la pista</span></button>':''}
    ${this.api.canExitToWorld()?'<button class="bigbtn blue" data-a="toWorld"><span class="bi">🗺️</span><span class="bt">Salir al mundo abierto</span></button>':''}
    <button class="bigbtn dark" data-a="restart"><span class="bi">↺</span><span class="bt">Reiniciar</span></button>
    <div class="camPick"><button class="bigbtn dark" data-a="camPrev">◀</button><div class="camName"><small>CÁMARA · mirá la vista de fondo</small><b id="camNm">${esc(this.api.camName())}</b></div><button class="bigbtn dark" data-a="cam">▶</button></div>
+   ${this.api.gyroOn()?'<button class="bigbtn dark" data-a="gyroCal"><span class="bi">📱</span><span class="bt">Calibrar acelerómetro</span></button>':''}
+   <button class="bigbtn dark" data-a="editHud"><span class="bi">🎛️</span><span class="bt">Mover y agrandar controles</span></button>
    <button class="bigbtn dark" data-a="go" data-s="options"><span class="bi">⚙️</span><span class="bt">Opciones</span></button>
    <button class="bigbtn dark" data-a="quit"><span class="bi">🚪</span><span class="bt">Salir al menú</span></button></div>`,'pause');}
  /* ─── modo historia: capítulos y misiones ─── */

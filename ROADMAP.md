@@ -3,6 +3,9 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
+- ✅ Pilotos más vivos: el cuerpo se va para atrás al acelerar, para adelante al frenar y al costado en curva; mano al freno de mano y a la palanca, pie derecho en acelerador/freno (sin atravesar el piso); el copiloto mira al frente con movimientos chicos de cabeza.
+- ✅ Menos humo de ruedas (para teléfonos gama baja) y vibración regulable de la «Cámara de acción cruda» (Opciones → Vibración de la cámara cruda).
+- ✅ Biblioteca: pack de Mesh2Motion (178 animaciones CC0, esqueleto Mixamo) en biblioteca/animaciones/mesh2motion.
 - ✅ **Optimización para celulares**: humo con tamaño tope (antes crecía sin límite y tapaba la pantalla), pilotos livianos cuando se ven desde afuera (de 55.000 a 13.000 triángulos), tripulaciones fuera de cámara sin cálculo, sombras reales solo para tu auto (Máxima: todos), búsqueda de pista 6× más rápida, calidad automática apuntando a 60 FPS.
 - ✅ **IA más real**: mide bien las curvas (antes subestimaba el vértice), deja margen de agarre como un piloto, no clava el volante ni cruza la cola, se pone prudente después de un susto y no pasa en curva. Casi no se salen de la pista y van más rápido.
 - ✅ Génesis más alto: 40 cm libres al piso, ruedas de 40" en llantas de 18", amortiguadores que ya no atraviesan el capó.
@@ -33,6 +36,11 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 - Al acercarse a una zona aparece su misión: pista de drift → misión de drift; trinchera → carrera de trinchera; radares, saltos, etc.
 - Indicadores en el mapa y en el minimapa para invitar a recorrer.
 - Se mantiene también el acceso por menú (partidas cortas en el celular).
+
+### Próximo
+- **Cámara chasis 3D** (prueba): cuando llegue la cabina 3D del dueño → color, volante, palanca, tablero con velocímetro, espejos; tercera y primera persona.
+- **Público en el drift**: pared con colisión + tribuna con gente mirando el centro (animaciones Idle_Rail / Cheering de Mesh2Motion).
+- Escenas con personajes hablando (Mesh2Motion: Idle_Talking, Head_Nod, Angry, Victory…).
 
 ### Personajes 3D (esperando los modelos)
 - Lista y requisitos en docs/prompts/personajes.md: 11 personajes + pack de animaciones.
