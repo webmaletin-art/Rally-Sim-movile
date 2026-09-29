@@ -42,11 +42,12 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ### Próximo
 - **Interior del auto**: el dueño va a pasar material para rehacerlo (volante, tablero, palanca, espejos).
-- ⏳ **PENDIENTE — techo en la cámara «Interior (atrás del piloto)»** (regla del dueño):
-  - Solo en esa cámara, donde se ven los dos: esconder un poquito más para arriba la parte del techo que queda en el borde de arriba de la pantalla (la de atrás, sobre la cabeza), para que no se sienta «el techo en la frente».
-  - NO agrandar el parabrisas, NO estirar nada, NO mover el espejo: el parabrisas y el marco de adelante quedan exactamente como están.
-  - La cámara del conductor («Onboard (casco)») no se toca: está bien como estaba.
-  - Un poquito nomás, sin agrandar nada. (Un intento subiendo todo el techo 12 cm fue rechazado: estiraba el parabrisas y el espejo.)
+- ⏳ **PENDIENTE (esperando que el dueño diga «listo, volvemos a la cámara») — volver a la versión «techo alto» en la cámara «Interior (atrás del piloto)»**:
+  - Al dueño le gustó más la versión del commit 5e71099 (APK #41): se siente más inmersiva. Hay que volver a ella SOLO en la cámara donde se ven los dos (piloto y copiloto).
+  - Qué tenía esa versión (js/cockpit.js, constructor de Cockpit): `rY=C.roofY+0.12` (techo, marco y travesaño del parabrisas, banda superior y jaula 12 cm más arriba) y el espejo interior en `my=Math.min(rY-0.14,eY+0.18)`.
+  - La cámara del conductor («Onboard (casco)») queda TAL CUAL está ahora (techo y espejo originales). Como las dos cámaras usan el mismo habitáculo, hay que hacer que el techo alto se aplique solo en la cámara de atrás.
+  - Después se ajusta la altura fina con el dueño («un poquito más alto de la cuenta, después lo ajustamos»).
+  - Recordárselo al dueño cuando mande la próxima orden, y no hacerlo hasta que diga «listo».
 - **Público en el drift**: pared con colisión + tribuna con gente mirando el centro (animaciones Idle_Rail / Cheering de Mesh2Motion).
 - Escenas con personajes hablando (Mesh2Motion: Idle_Talking, Head_Nod, Angry, Victory…).
 
