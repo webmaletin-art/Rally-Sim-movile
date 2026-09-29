@@ -62,7 +62,7 @@ export class CoPilot{
   const p=S.player.phys,V=p.V;this.prof=null;
   if(S.route){const surf=S.track.mode==='asphalt'?'asphalt':'dirt';const mu=V.mu*(V.surfGrip[surf]||0.8)*Math.min(V.gripFront,V.gripRear)*0.98;this.prof=speedProfile(S.track,Math.round(mu*50)/50);}}
  /* eventos que avisa la sesión */
- event(name,d={}){if(!this.S)return;const S=this.S;
+ event(name,d={}){if(!this.S||!this.ctx)return;const S=this.S;
   switch(name){
    case 'go':if(!['free','world','test','story'].includes(S.type))this.say('largada');this.st.goT=S.time;break;
    case 'pos':{const now=this.ctx.currentTime;if(now-(this.st.posSaid||-99)<8)break;if(this.say(d.to<d.from?'pasamos_rival':'nos_pasaron'))this.st.posSaid=now;break;}

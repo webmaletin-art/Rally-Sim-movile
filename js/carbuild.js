@@ -34,7 +34,7 @@ export function buildParams(base,car,assists){
  V.arbF=base.arbF*(1+e.arb)*(has('arb')?pct('arbF'):1);V.arbR=base.arbR*(1+e.arb)*(has('arb')?pct('arbR'):1);
  V.travel=base.travel*(1+e.travel);
  if(has('height'))V.comHeight+=tu.height/1000;
- V.rideOffset=has('height')?tu.height/1000:0;
+ V.rideOffset=(base.rideOffset||0)+(has('height')?tu.height/1000:0);
  /* alineación */
  V.camberF=has('camber')?tu.camberF:-1.0;V.camberR=has('camber')?tu.camberR:-0.5;
  if(has('stance')){V.camberF-=tu.stanceCamber;V.camberR-=tu.stanceCamber;}

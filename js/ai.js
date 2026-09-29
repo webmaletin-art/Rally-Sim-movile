@@ -4,6 +4,7 @@
    - Seguimiento de trayectoria "pure pursuit" con carril propio
    - Evitan autos de adelante, se recuperan si se salen o se quedan */
 const G=9.81;
+const clamp01=x=>Math.max(0,Math.min(1,x));
 
 /* Perfil de velocidad de la pista para un nivel de agarre dado (se cachea por pista) */
 export function speedProfile(track,mu){
@@ -15,8 +16,13 @@ export function speedProfile(track,mu){
   const ds=Math.hypot(c.x-a.x,c.z-a.z)/2+1e-3;kap[i]=Math.abs(d)/ds;}
  /* suavizado */
  const k2=new Float32Array(N);for(let i=0;i<N;i++){let s=0;for(let j=-3;j<=3;j++)s+=kap[(i+j+N)%N];k2[i]=s/7;}
+ /* sin perder el pico: la curvatura medida en ±2 muestras (el promedio largo subestimaba el vértice hasta un 25% y la IA entraba pasada) */
+ {const kc=new Float32Array(N);for(let i=0;i<N;i++){const a=S[(i-2+N)%N],b=S[i],c=S[(i+2)%N];const h1=Math.atan2(b.x-a.x,b.z-a.z),h2=Math.atan2(c.x-b.x,c.z-b.z);let d=h2-h1;d=Math.atan2(Math.sin(d),Math.cos(d));kc[i]=Math.abs(d)/(Math.hypot(c.x-a.x,c.z-a.z)/2+1e-3);}
+  for(let i=0;i<N;i++){const m=(kc[(i-1+N)%N]+kc[i]+kc[(i+1)%N])/3;if(m>k2[i])k2[i]=m;}}
  /* en bajada se deja margen: cualquier error cuesta más metros para corregir */
- for(let i=0;i<N;i++){const k=Math.max(k2[i],1e-4),j=(i+4)%N,gd=Math.max(0,(S[i].y-S[j].y)/Math.max(1,Math.hypot(S[j].x-S[i].x,S[j].z-S[i].z)));v[i]=Math.min(95,Math.sqrt(mu*(1-1.6*Math.min(0.2,gd))*G/k));}
+ /* lomas: sobre una cresta el auto pesa menos y agarra menos (a·lat = mu·(g − v²·kv)) → v² = mu·g/(k + mu·kv) */
+ const kvA=new Float32Array(N);for(let i=0;i<N;i++){const a=S[(i-3+N)%N],b=S[i],c=S[(i+3)%N];const d1=Math.hypot(b.x-a.x,b.z-a.z)||1,d2=Math.hypot(c.x-b.x,c.z-b.z)||1;kvA[i]=Math.max(0,((b.y-a.y)/d1-(c.y-b.y)/d2)/((d1+d2)/2));}
+ for(let i=0;i<N;i++){let kv=0;for(let j=-2;j<=2;j++)kv=Math.max(kv,kvA[(i+j+N)%N]);const k=Math.max(k2[i],1e-4),j=(i+4)%N,gd=Math.max(0,(S[i].y-S[j].y)/Math.max(1,Math.hypot(S[j].x-S[i].x,S[j].z-S[i].z)));v[i]=Math.min(95,Math.sqrt(mu*(1-1.6*Math.min(0.2,gd))*G/(k+mu*kv)));}
  /* crestas: con curvatura vertical convexa el auto se aliviana; no pasar tan rápido que despegue */
  for(let i=0;i<N;i++){const a=S[(i-3+N)%N],b=S[i],c=S[(i+3)%N];const d1=Math.hypot(b.x-a.x,b.z-a.z)||1,d2=Math.hypot(c.x-b.x,c.z-b.z)||1;const kv=((b.y-a.y)/d1-(c.y-b.y)/d2)/((d1+d2)/2);if(kv>1e-4)v[i]=Math.min(v[i],Math.sqrt(0.5*G/kv));}
  /* frenada: v_i <= sqrt(v_{i+1}^2 + 2 a ds) — dos vueltas hacia atrás para cerrar el circuito */
@@ -29,7 +35,7 @@ export class AIDriver{
  constructor(track,phys,o){
   this.track=track;this.p=phys;this.skill=o.skill??0.9;this.lane=o.lane??0;this.laneT=this.lane;this.aggr=o.aggr??0.5;
   const V=phys.V,surf=track.mode==='asphalt'?'asphalt':'dirt';
-  this.mu=V.mu*(V.surfGrip[surf]||0.8)*Math.min(V.gripFront,V.gripRear)*(0.78+0.2*this.skill);
+  this.mu=V.mu*(V.surfGrip[surf]||0.8)*Math.min(V.gripFront,V.gripRear)*(surf==='asphalt'?0.92:0.84)*(0.8+0.15*this.skill);/* 0.92 asfalto / 0.84 tierra: lo que el auto realmente sostiene en curva (medido en círculo) */
   this.prof=speedProfile(track,Math.round(this.mu*50)/50);
   this.inp={throttle:0,brake:0,steer:0,handbrake:false,nitro:false};
   this.stuckT=0;this.offT=0;this.boost=1;this.idx=0;this.hint=null;this.enabled=false;this.wobble=Math.random()*10;}
@@ -46,17 +52,21 @@ export class AIDriver{
   /* velocidad objetivo: mirar un poco adelante según la velocidad */
   const look=Math.min(N-1,Math.round(2+spd*0.10));let vt=1e9;
   for(let k=0;k<=look;k+=1){vt=Math.min(vt,this.prof.v[(this.idx+k)%N]);}
-  vt*=this.boost*(0.9+0.1*this.skill);if(this.maxV)vt=Math.min(vt,this.maxV);
+  vt*=(this.boost>1?1+(this.boost-1)*0.35:this.boost)*(0.82+0.18*this.skill);if(this.maxV)vt=Math.min(vt,this.maxV);
+  /* prudencia: después de un susto (cola cruzada o salirse del camino) baja un poco el ritmo y lo recupera de a poco, como un piloto */
+  {const b=spd>4?Math.abs(Math.atan2(p.vLat||0,Math.max(1,Math.abs(p.vLong||0)))):0;this.caution=Math.max(0,(this.caution||0)-h*0.07);
+   if(spd>14&&(b>0.12||Math.abs(this.lat||0)>hw+0.4))this.caution=Math.min(1,this.caution+h*1.6);if(!this.show)vt*=1-0.2*this.caution;}
   /* carril: se cierra al centro en curvas cerradas */
-  const kap=this.prof.kap[(this.idx+6)%N];const laneMax=Math.max(0,hw-1.3);
-  let lane=Math.max(-laneMax,Math.min(laneMax,this.laneT))*(1-Math.min(1,kap*25));
+  /* carril: margen al borde y, antes de una curva, de vuelta a la trazada (mira ~25 muestras adelante) */
+  let kap=0;for(let k=2;k<26;k+=3)kap=Math.max(kap,this.prof.kap[(this.idx+k)%N]);const laneMax=Math.max(0,hw-1.8);
+  let lane=Math.max(-laneMax,Math.min(laneMax,this.laneT))*(1-Math.min(1,kap*40));
   /* tráfico: auto adelante en el mismo carril → cambiar de carril o levantar */
   const fx=Math.sin(p.yaw),fz=Math.cos(p.yaw),lx=Math.cos(p.yaw),lz=-Math.sin(p.yaw);
   let blockV=null;
   for(const o of others){if(o===p||(this.hunt&&o===this.target))continue;const dx=o.px-p.px,dz=o.pz-p.pz;const f=dx*fx+dz*fz,l=dx*lx+dz*lz;
-   if(f>0&&f<14&&Math.abs(l)<2.4){const ov=o.vx*fx+o.vz*fz;if(ov<spd+0.5){blockV=Math.min(blockV??1e9,ov);
-     const side=(l>0?-1:1);this.laneT=Math.max(-laneMax,Math.min(laneMax,(this.lat||0)+side*2.6));}}}
-  if(blockV!=null&&this.aggr<0.8)vt=Math.min(vt,blockV+2+this.aggr*4);
+   if(f>0&&f<16&&Math.abs(l)<2.4){const ov=o.vx*fx+o.vz*fz;if(ov<spd+0.5){blockV=Math.min(blockV??1e9,ov);
+     /* pasar solo en recta: en curva se espera atrás */if(kap<1/250){const side=(l>0?-1:1);this.laneT=Math.max(-laneMax,Math.min(laneMax,(this.lat||0)+side*2.6));}}}}
+  if(blockV!=null)vt=Math.min(vt,blockV+1.5+this.aggr*2.5);
   /* modo historia: los perseguidores van a buscar al jugador (se le pegan y lo embisten); después de un golpe se abren un momento */
   if(this.hunt&&this.target){const T=this.target,dx=T.px-p.px,dz=T.pz-p.pz,f=dx*fx+dz*fz,tv=Math.hypot(T.vx,T.vz),d=Math.hypot(dx,dz);this.ramCd=Math.max(0,(this.ramCd||0)-h);
    if(this.ramCd>0)vt=Math.min(vt,Math.max(6,tv-3));
@@ -72,6 +82,8 @@ export class AIDriver{
   delta+=Math.atan(0.4*((this.lat||0)-lane)/Math.max(6,spd));
   /* contravolanteo suave si la cola se va (ángulo de deriva grande) */
   const slipAng=spd>4?Math.atan2(p.vLat||0,Math.max(1,Math.abs(p.vLong||0))):0;delta+=slipAng*0.55;
+  /* amortiguación de giro: si el auto ya gira más de lo que pide la trazada, afloja (a alta velocidad un poco de volante es mucho giro) */
+  if(spd>12&&!(this.show&&this.hbT>0)){const rDes=2*spd*Math.sin(alpha)/Ld;delta+=0.8*V.wheelBase*(rDes-(p.yawRate||0))/spd;}
   const sf=p.steerScale?p.steerScale(spd):1-0.45*Math.min(1,spd/40);const st=-delta/(V.maxSteer*sf);
   inp.steer=Math.max(-1,Math.min(1,st));
   /* acelerador / freno */
@@ -86,6 +98,13 @@ export class AIDriver{
   if(this.show){this.hbT=Math.max(0,(this.hbT||0)-h);this.showCd=Math.max(0,(this.showCd||0)-h);const kA=this.prof.kap[(this.idx+7)%N];
    const sk=this.showK||1;if(kA>1/(75*sk)&&spd>13&&this.showCd<=0){this.hbT=0.3*sk;this.showCd=4;}
    if(this.hbT>0){inp.handbrake=true;inp.brake=0;inp.throttle=Math.max(inp.throttle,0.45);}}
+  /* subviraje: si las ruedas de adelante ya patinan de costado, abrir un poco el volante y levantar (en vez de clavar el volante y seguir derecho) */
+  {const pk=V.slipPeakLat||0.16,fa=Math.max(Math.abs(p.wheels[0].alpha||0),Math.abs(p.wheels[1].alpha||0));
+   if(spd>8&&fa>pk*1.2&&!this.show){const k=clamp01(pk*1.15/fa);inp.steer*=Math.max(0.6,k);inp.throttle=Math.min(inp.throttle,0.25);if(fa>pk*1.7)inp.brake=Math.max(inp.brake,0.3);this.usT=(this.usT||0)+h;}else this.usT=0;}
+  /* sobreviraje o patinada: levantar como un piloto (sin esto los autos potentes cruzaban la cola en plena recta) */
+  if(!this.show&&spd>6){const pk=V.slipPeakLat||0.16,W=p.wheels,ra=Math.max(Math.abs(W[2].alpha||0),Math.abs(W[3].alpha||0)),b=Math.abs(slipAng);
+   if(ra>pk*1.4||b>0.13){inp.throttle=Math.min(inp.throttle,b>0.3?0:b>0.2?0.2:0.4);}
+   let ks=0;for(const w of W)ks=Math.max(ks,Math.abs(w.kappa||0));if(ks>(V.slipPeakLong||0.12)*1.6)inp.throttle*=0.6;}
   inp.nitro=V.nitroCap>0&&err>6&&Math.abs(inp.steer)<0.2&&p.nitro>V.nitroCap*0.3;
   /* recuperación */
   if(time>2&&spd<1.5&&inp.throttle>0.3)this.stuckT+=h;else this.stuckT=Math.max(0,this.stuckT-h*2);

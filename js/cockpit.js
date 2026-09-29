@@ -183,6 +183,8 @@ export class Cockpit{
   this.rig=null;const src=pilotSource();
   if(src){try{const r=[new RigPilot(src,this.crew),new RigPilot(src,this.crew)];if(r[0].ok&&r[1].ok){this.rig=r;for(const x of r)this.crew.add(x.obj);this.useRig();}}catch(e){console.warn('piloto',e);this.rig=null;}}}
  /* piloto con esqueleto: oculta el procedural y le pone el casco del equipo si el modelo no trae */
+ /* desde afuera los pilotos usan la malla liviana; adentro, la completa */
+ setLOD(lo){if(this.rig)for(const r of this.rig)r.setLOD(lo);}
  useRig(){for(const P of [this.driver,this.codriver]){for(const c of P.g.children)if(c!==P.book)c.visible=false;if(P.book)P.book.children.forEach((c,i)=>{if(i>0)c.visible=false;});}
   for(const a of this.arms){a.fore.visible=a.upper.visible=a.stripe.visible=false;}this.hands.visible=false;
   this.rig.forEach((r,i)=>{if(r.hasHelmet)return;const P=i?this.codriver:this.driver,hb=r.B.Head;const w=new THREE.Group();const ws=hb.getWorldScale(V3(0,0,0));w.scale.setScalar(1/ws.x);w.quaternion.copy(r.rest.get(hb).wq).invert();
@@ -270,7 +272,7 @@ export class Cockpit{
   const t=this.timCan.getContext('2d');t.fillStyle='#08090a';t.fillRect(0,0,256,96);t.fillStyle='#23e05a';t.fillRect(8,8,112,80);t.fillStyle='#ff4a2f';t.fillRect(136,8,112,80);
   t.fillStyle='#051';t.font='bold 34px monospace';t.textAlign='center';t.fillStyle='#022';t.fillText((info.stage||0).toFixed(1),64,62);t.fillStyle='#200';t.fillText(info.delta!=null?(info.delta>0?'+':'')+info.delta.toFixed(1):'--',192,62);this.timTex.needsUpdate=true;}
  /* cámaras: 'onboard' = casco del piloto · 'rearcabin' = atrás de las butacas */
- applyCamera(cam,mode,p,info){const C=this.C,root=this.root;root.updateWorldMatrix(true,true);
+ applyCamera(cam,mode,p,info){const C=this.C,root=this.root;root.updateWorldMatrix(true,false);
   const rough=info.rough||0,t=info.time;const vib=(0.0025+0.006*rough)*(0.3+Math.min(1,Math.abs(p.vLong)/30));
   const nx=Math.sin(t*37.1)*0.6+Math.sin(t*23.7)*0.4,ny=Math.sin(t*41.3)*0.5+Math.sin(t*29.9)*0.5;
   let pos,look;
@@ -302,7 +304,7 @@ export class Crew{
   let q=(Math.imul(seed+1,2654435761)>>>0)||1;const rnd=()=>{q^=q<<13;q>>>=0;q^=q>>>17;q^=q<<5;q>>>=0;return q/4294967296;};rnd();rnd();
   this.k=52+rnd()*42;this.c=7+rnd()*6;this.lean=0.35+rnd()*0.4;this.rollK=0.8+rnd()*0.8;this.gain=0.8+rnd()*0.45;
   const hue=SUIT_HUES[seed%SUIT_HUES.length];
-  try{this.rigs=[new RigPilot(src,this.group,{hue}),new RigPilot(src,this.group,{hue})];}catch(e){console.warn('tripulación',e);return;}
+  try{this.rigs=[new RigPilot(src,this.group,{hue}),new RigPilot(src,this.group,{hue})];for(const r of this.rigs)r.setLOD(true);}catch(e){console.warn('tripulación',e);return;}
   if(!this.rigs.every(r=>r.ok))return;for(const r of this.rigs)this.group.add(r.obj);
   const xD=this.xD=0.37;this.wc=V3(xD,C.eyeY-0.31,C.eyeZ+0.37);this.n=V3(xD,C.eyeY-0.12,C.eyeZ).sub(this.wc).normalize();
   this.wX=V3(0,1,0).cross(this.n).normalize();this.wY=this.n.clone().cross(this.wX);
