@@ -12,6 +12,7 @@ import {tipsFor} from './tips.js';
 import {CoPilot} from './copilot.js';
 import {WorldDuels,rampHeight} from './duels.js';
 import {DUEL_RIVALS} from './duel_data.js';
+import {HudEditor,applyHud} from './hudedit.js';
 import {TIERS,EVENTS,TARGETS,medalFor,rewardFor,lowerIsBetter} from './events.js';
 import {UI,fmtTime} from './ui.js';
 import {PostFX} from './post.js';
@@ -130,8 +131,9 @@ class Physics{
  sub(h,inp){this.track._hint=this.trackHint;this._sub(h,inp);this.trackHint=this.track._hint;}
  _sub(h,inp){const V=this.V,g=9.81,W=this.wheels,R=V.wheelRadius,m=V.mass,tr=this.track;
   let thr=inp.throttle||0,brk=inp.brake||0;const spd=Math.hypot(this.vx,this.vz);
-  if(this.gear>0&&brk>0.5&&thr<0.05&&spd<0.6&&this.vLong<0.4){this.revT+=h;if(this.revT>0.35){this.gear=-1;this.revT=0}}else if(this.gear>0)this.revT=0;
-  if(this.gear===-1){if(thr>0.1&&this.vLong>-0.6){this.gear=1}else{const t=thr;thr=brk;brk=t}}
+  /* caja automática: frenando parado pasa a reversa y el pedal de freno la maneja; en manual la reversa y el neutro los elige el piloto */
+  if(!this.manual){if(this.gear===0)this.gear=1;if(this.gear>0&&brk>0.5&&thr<0.05&&spd<0.6&&this.vLong<0.4){this.revT+=h;if(this.revT>0.35){this.gear=-1;this.revT=0}}else if(this.gear>0)this.revT=0;
+  if(this.gear===-1){if(thr>0.1&&this.vLong>-0.6){this.gear=1}else{const t=thr;thr=brk;brk=t}}}
   const sf=this.steerScale(spd);const tgt=-(inp.steer||0)*V.maxSteer*sf;this.steerAngle+=(tgt-this.steerAngle)*(1-Math.exp(-h*V.steerResponse));
   const sy=Math.sin(this.yaw),cy=Math.cos(this.yaw),fx=sy,fz=cy,lx=cy,lz=-sy;const vLong=this.vx*fx+this.vz*fz,vLat=this.vx*lx+this.vz*lz;const sp=Math.sin(this.pitch),sr=Math.sin(this.roll);
   let contacts=0;
@@ -168,7 +170,9 @@ class Physics{
  engine(h,thr,brk,vLong,handbrake){const V=this.V,W=this.wheels;let fr=V.frontDriveRatio,rr=V.rearDriveRatio;if(V.driveType==='RWD'){fr=0;rr=1}else if(V.driveType==='FWD'){fr=1;rr=0}const tot=fr+rr||1;fr/=tot;rr/=tot;
   const wF=(W[0].omega+W[1].omega)/2,wR=(W[2].omega+W[3].omega)/2,wAvg=wF*fr+wR*rr;const ratio=this.gear>0?V.gears[this.gear-1]*V.finalDrive:(this.gear<0?-V.reverseRatio*V.finalDrive:0);const rpmW=Math.abs(wAvg*ratio)*60/(2*Math.PI);
   if(this.shiftT>0)this.shiftT-=h;
-  if(!this.clutchLocked){if(thr>0.05)this.engage=Math.min(1,(this.engage||0)+h/V.clutchTime);else this.engage=0;const free=V.idleRpm+thr*(V.launchRpm-V.idleRpm);const target=Math.max(rpmW,free+(Math.max(rpmW,V.idleRpm)-free)*this.engage);this.rpm+=(target-this.rpm)*(1-Math.exp(-h*(thr>0.05?10:4)));if(thr>0.05&&(rpmW>=this.rpm*0.97||this.engage>=1))this.clutchLocked=true;if(thr<0.05&&rpmW>V.idleRpm*1.2)this.clutchLocked=true;}else{this.rpm+=(Math.max(V.idleRpm*0.85,rpmW)-this.rpm)*(1-Math.exp(-h*30));if(rpmW<V.idleRpm*0.8&&(thr<0.05||brk>0.3)){this.clutchLocked=false;this.engage=0;}}
+  /* neutro: el motor gira libre (se puede acelerar parado hasta el corte) */
+  if(this.gear===0){this.clutchLocked=false;this.engage=0;this.cutT=Math.max(0,(this.cutT||0)-h);const tgt=this.cutT>0?V.idleRpm:V.idleRpm+thr*(V.maxRpm*1.02-V.idleRpm);this.rpm+=(tgt-this.rpm)*(1-Math.exp(-h*(tgt>this.rpm?7:2.5)));if(this.rpm>=V.maxRpm){this.rpm=V.maxRpm;this.cutT=0.07;}}
+  else if(!this.clutchLocked){if(thr>0.05)this.engage=Math.min(1,(this.engage||0)+h/V.clutchTime);else this.engage=0;const free=V.idleRpm+thr*(V.launchRpm-V.idleRpm);const target=Math.max(rpmW,free+(Math.max(rpmW,V.idleRpm)-free)*this.engage);this.rpm+=(target-this.rpm)*(1-Math.exp(-h*(thr>0.05?10:4)));if(thr>0.05&&(rpmW>=this.rpm*0.97||this.engage>=1))this.clutchLocked=true;if(thr<0.05&&rpmW>V.idleRpm*1.2)this.clutchLocked=true;}else{this.rpm+=(Math.max(V.idleRpm*0.85,rpmW)-this.rpm)*(1-Math.exp(-h*30));if(rpmW<V.idleRpm*0.8&&(thr<0.05||brk>0.3)){this.clutchLocked=false;this.engage=0;}}
   this.limiter=this.rpm>=V.maxRpm;let Te;const Tmax=V.peakTorque*V.powerScale*this.torqueAt(this.rpm);
   if(this.shiftT>0)Te=0;else if(this.clutchLocked){Te=thr*Tmax-(1-thr)*V.engineBrake*(this.rpm/V.maxRpm);if(this.limiter)Te=Math.min(Te,-V.engineBrake*0.5);}else Te=thr*Tmax;
   /* limitador de velocidad de fábrica (se libera con la ECU / motor de competición del taller) */
@@ -187,8 +191,8 @@ class Physics{
      y al frenar reduce de a una sin pasar de vueltas (se ve al piloto meter cada cambio) */
   /* caja manual: el piloto pide el cambio; se niega a reducir si pasaría de vueltas */
   if(this.manual&&this.reqShift){const d=this.reqShift;this.reqShift=0;const wr=Math.abs(this.vLong)/V.wheelRadius*V.finalDrive*9.549;
-   if(d>0){if(this.gear===-1)this.gear=1;else if(this.gear<V.gears.length&&this.shiftT<=0){this.gear++;this.shiftT=V.shiftTime;this.inGearT=0;this.events.push({type:'shift',up:true});}}
-   else{if(this.gear>1&&this.shiftT<=0){if(wr*V.gears[this.gear-2]<V.maxRpm*1.03){this.gear--;this.shiftT=V.shiftTime*0.6;this.inGearT=0;this.events.push({type:'shift',up:false});}else this.events.push({type:'shiftDenied'});}else if(this.gear===1&&Math.abs(this.vLong)<1.2)this.gear=-1;}}
+   if(d>0){if(this.gear===-1)this.gear=0;else if(this.gear===0)this.gear=1;else if(this.gear<V.gears.length&&this.shiftT<=0){this.gear++;this.shiftT=V.shiftTime;this.inGearT=0;this.events.push({type:'shift',up:true});}}
+   else{if(this.gear>1&&this.shiftT<=0){if(wr*V.gears[this.gear-2]<V.maxRpm*1.03){this.gear--;this.shiftT=V.shiftTime*0.6;this.inGearT=0;this.events.push({type:'shift',up:false});}else this.events.push({type:'shiftDenied'});}else if(this.gear===1)this.gear=0;else if(this.gear===0&&Math.abs(this.vLong)<1.2)this.gear=-1;}}
   if(!this.manual&&this.gear>0&&this.clutchLocked&&this.shiftT<=0){this.inGearT=(this.inGearT||0)+h;const wr=Math.abs(this.vLong)/V.wheelRadius*V.finalDrive*9.549,rIn=g=>wr*V.gears[g-1];
    const up=this.gear<V.gears.length&&thr>0.1&&this.contacts>=2&&this.inGearT>0.45&&((this.rpm>V.shiftUpRpm&&rIn(this.gear)>V.shiftUpRpm*0.8)||rIn(this.gear)>V.maxRpm*0.99);
    const brkDown=brk>0.25&&this.gear>1&&this.inGearT>0.28&&rIn(this.gear)<V.shiftDownRpm*1.7&&rIn(this.gear-1)<V.shiftUpRpm*0.92;
@@ -305,7 +309,7 @@ class Input{
  async enableGyro(){if(location.protocol==='file:')return {ok:false,err:'Abrilo por HTTPS o servidor local para usar el acelerómetro.'};
   for(const E of [window.DeviceMotionEvent,window.DeviceOrientationEvent]){if(E&&typeof E.requestPermission==='function'){try{const r=await E.requestPermission();if(r!=='granted')return {ok:false,err:'Permiso denegado para el sensor de movimiento.'};}catch(e){return {ok:false,err:'Error pidiendo permiso: '+e.message};}}}
   let events=0;this.gyroCalib=null;this.gyroRaw=0;this.gyroSteer=0;
-  const feed=cur=>{events++;if(this.gyroCalib===null){this.gyroCalib=cur;return;}let delta=cur-this.gyroCalib;if(delta>180)delta-=360;if(delta<-180)delta+=360;this.gyroRaw+=(delta-this.gyroRaw)*0.22;this.gyroSteer=clamp(this.gyroRaw/GYRO_TILT_FOR_FULL,-1,1);};
+  const feed=cur=>{events++;if(this.gyroCalib===null){this.gyroCalib=cur;return;}let delta=cur-this.gyroCalib;if(delta>180)delta-=360;if(delta<-180)delta+=360;this.gyroRaw+=(delta-this.gyroRaw)*0.22;this.gyroSteer=clamp((this.gyroInvert?-1:1)*this.gyroRaw/GYRO_TILT_FOR_FULL,-1,1);};
   /* gravedad en el plano de la pantalla: girar el teléfono como un volante (cualquier apaisado) */
   this.motionHandler=e=>{const g=e.accelerationIncludingGravity;if(!g||g.x==null||g.y==null)return;if(Math.hypot(g.x,g.y)<3)return;feed(Math.atan2(g.y,g.x)*180/Math.PI);};
   if('DeviceMotionEvent' in window)window.addEventListener('devicemotion',this.motionHandler,{passive:true});
@@ -1747,8 +1751,8 @@ class Game{
    showCar:(id,st)=>{this.showroom.setCar(id,st);},carChanged:()=>{const id=PROFILE.d.current;this.showroom.setCar(id,PROFILE.car);},
    onScreen:n=>this.onScreen(n),startEvent:ev=>this.startEvent(ev),startQuick:q=>this.startQuick(q),testDrive:id=>this.testDrive(id),openWorld:()=>this.openWorld(),startStory:()=>this.startStory(),startMission:id=>this.startMission(id),
    mapName:id=>(MAPS[id]||{}).name||id,mapList:()=>Object.entries(MAPS).filter(([id,m])=>!m.hidden).map(([id,m])=>({id,...m})),applySettings:()=>this.applySettings(),postSupported:()=>this.post.supported,canExitToWorld:()=>!!(this.cfg&&this.cfg.fromWorld),toWorld:()=>this.exitTrench(),previewVisual:id=>{this.previewFx=id;if(this.post)this.post.setPreset(id||PROFILE.d.settings.visual||'none');this.fxStageOn=!!id&&!this.session;if(this.fxStageOn){if(!this.fxStage)this.fxStage=new FxStage();this.fxStage.setCar(PROFILE.d.current||'t1plus',PROFILE.car);}},autoLevel:()=>effQuality(PROFILE.d.settings),
-   toggleGyro:async()=>{if(this.input.gyroEnabled){this.input.disableGyro();return {};}const r=await this.input.enableGyro();return r.ok?{}:{err:r.err};},gyroOn:()=>this.input.gyroEnabled,recalGyro:()=>this.input.recalibrateGyro(),
-   resume:()=>this.resume(),respawn:()=>{if(this.session){this.session.respawn();this.resume();}},canRespawn:()=>!!(this.session&&this.session.type!=='parking'),restart:()=>this.retry(),quit:()=>this.quit(),nextCam:()=>{this.nextCamera();},prevCam:()=>{this.nextCamera(-1);},camName:()=>CAMERAS[CAM_INDEX].name,afterResults:n=>this.afterResults(n),retry:()=>this.retry()};
+   toggleGyro:async()=>{if(this.input.gyroEnabled){this.input.disableGyro();return {};}const r=await this.input.enableGyro();return r.ok?{}:{err:r.err};},gyroOn:()=>this.input.gyroEnabled,recalGyro:()=>this.input.recalibrateGyro(),gyroValue:()=>this.input.gyroSteer,gyroInvert:()=>!!PROFILE.d.settings.gyroInvert,setGyroInvert:v=>{PROFILE.d.settings.gyroInvert=!!v;PROFILE.save();this.input.gyroInvert=!!v;},
+   resume:()=>this.resume(),editHud:()=>this.openHudEditor(),respawn:()=>{if(this.session){this.session.respawn();this.resume();}},canRespawn:()=>!!(this.session&&this.session.type!=='parking'),restart:()=>this.retry(),quit:()=>this.quit(),nextCam:()=>{this.nextCamera();},prevCam:()=>{this.nextCamera(-1);},camName:()=>CAMERAS[CAM_INDEX].name,afterResults:n=>this.afterResults(n),retry:()=>this.retry()};
   this.music=new Music(this.audio);
   this.ui=new UI(api);
   this.bind();this.applySettings();
@@ -1825,12 +1829,12 @@ class Game{
   const W=innerWidth,H=innerHeight,w=Math.min(0.5,300/W*2),h=w*W/(256/96)/H;M.q.scale.set(w,h,1);const top=this.inside?0.05:Math.min(0.45,112/H*2);M.q.position.set(0,1-top-h/2,0);M.fr.scale.set(w+8/W*2,h+8/H*2,1);M.fr.position.copy(M.q.position);
   const r=this.renderer,ac=r.autoClear;r.autoClear=false;r.setRenderTarget(null);r.render(M.sc,M.cam);r.autoClear=ac;}
  musicCheck(){if(!this.music)return;const want=PROFILE.d.settings.music&&(this.state==='menu'||this.state==='results');if(want)this.music.start();else this.music.stop();}
- applySettings(){const s=PROFILE.d.settings;if(this.copilot)this.copilot.configure(s);this.musicCheck&&this.musicCheck();tune.steerMode=s.steerMode;tune.gameSpeed=s.gameSpeed;tune.gyroSensitivity=s.gyroSens;GYRO_TILT_FOR_FULL=55-s.gyroSens*0.40;
+ applySettings(){const s=PROFILE.d.settings;if(this.copilot)this.copilot.configure(s);this.musicCheck&&this.musicCheck();tune.steerMode=s.steerMode;tune.gameSpeed=s.gameSpeed;tune.gyroSensitivity=s.gyroSens;GYRO_TILT_FOR_FULL=55-s.gyroSens*0.40;this.input.gyroInvert=!!s.gyroInvert;
   document.body.classList.toggle('slider-mode',s.steerMode==='slider');document.body.classList.toggle('manual',s.gearbox==='manual');if(this.physics)this.physics.manual=s.gearbox==='manual';const Q=effQuality(s);QUALITY=Q;
   let pr={baja:0.7,media:Math.min(devicePixelRatio,1.25),alta:Math.min(devicePixelRatio,1.75)}[Q]||1;if(this.rawOn)pr=Math.min(pr,1)/1.2;this.renderer.setPixelRatio(pr);this.renderer.setSize(innerWidth,innerHeight);if(this.fx)this.fx.setScale(innerHeight,pr);
   if(this.audio.master)this.audio.master.gain.value=SND.master*(s.volume/80);this.audio.mix={eng:(s.volEngine??100)/100,surf:(s.volSurf??30)/100,wind:(s.volWind??30)/100};
   if(this.post&&!this.previewFx&&this.post.preset!==(s.visual||'none'))this.post.setPreset(s.visual||'none');
-  if(this.cockpit&&this.cockpit.setMirrors)this.cockpit.setMirrors(s.mirrors!==false);
+  if(this.cockpit&&this.cockpit.setMirrors)this.cockpit.setMirrors(s.mirrors!==false);applyHud(s.hudLayout);
   const shOn=Q!=='baja'&&s.shadows!==false;if(this.renderer.shadowMap.enabled!==shOn){this.renderer.shadowMap.enabled=shOn;this.renderer.shadowMap.type=THREE.PCFShadowMap;}this.sun.castShadow=shOn;const ms=Q==='alta'?2048:1024;if(this.sun.shadow.mapSize.x!==ms){this.sun.shadow.mapSize.set(ms,ms);if(this.sun.shadow.map){this.sun.shadow.map.dispose();this.sun.shadow.map=null;}}
   if(this.physics&&this.session){const id=currentVehicleId;const st=this.testState||PROFILE.d.owned[id];const V=paramsFor(id,st);Object.assign(VEH,V);this.physics.setup();}}
  onScreen(n){this.ui.inRace=this.state==='paused';this.musicCheck();this.showroom.off={home:0,starter:-1.3,garage:-1.3,dealer:-1.3,paint:-1.3,tuning:-1.5,workshop:-2.2}[n]??0;}
@@ -1937,6 +1941,8 @@ class Game{
    else{ctx.fillStyle=c.color;ctx.strokeStyle='#000';ctx.lineWidth=1;ctx.beginPath();ctx.arc(u,v,4,0,7);ctx.fill();ctx.stroke();}}}
  /* ─── pausa / salir / resultados ─── */
  pause(){if(this.state!=='race')return;this.codriver.stop();if(this.storyVO)this.storyVO.stop();this.audioSilence();if(this.copilot)this.copilot.stop();try{if(this.audio.ctx&&this.audio.ctx.state==='running')this.audio.ctx.suspend();}catch(e){}this.state='paused';this.setHud(false);this.ui.inRace=true;this.ui.show('pause');}
+ /* editor de controles en pantalla (desde la pausa): el juego sigue pausado mientras se acomodan */
+ openHudEditor(){if(this.state!=='paused')return;this.ui.root.innerHTML='';this.setHud(true);this.hudEd=new HudEditor(PROFILE,()=>{this.hudEd=null;this.setHud(false);this.ui.show('pause');});this.hudEd.open();}
  resume(){if(this.state!=='paused')return;this.audio.resume();this.ui.root.innerHTML='';this.state='race';this.setHud(true);this.hudLayout();this.last=performance.now();}
  quit(){this.saveOdo();this.audio.resume();this.cleanupSession();if(this.car){this.car.dispose();this.scene.remove(this.car.group);this.car=null;}this.state='menu';this.setHud(false);this.ui.inRace=false;this.audio.update&&this.audioSilence();
   const back=this.cfg&&this.cfg.event?'career':this.cfg&&this.cfg.testCar?'dealer':'home';this.ui.show(back);}
@@ -2073,7 +2079,7 @@ class Game{
   requestAnimationFrame(t=>this.loop(t))}
  fixedUpdate(){this.input.update(this.fixed);this.input.nitro=!!(this.input.nitroTouch||this.input.nitroKey);this.session.fixed(this.fixed,this.input);}
  updateHud(dt){if(this.physics&&document.body.classList.contains('manual')){const g=this.physics.gear,t=g<0?'R':String(g);if(this._gi!==t){this._gi=t;$('gearInd').textContent=t;}}this.fpsFrames++;this.fpsAccum+=dt;if(this.fpsAccum>=.5){this.fps=Math.round(this.fpsFrames/this.fpsAccum);this.fpsAccum=0;this.fpsFrames=0;this.autoTune();}
-  const p=this.physics,S=this.session,t=this.cfg.type,mph=PROFILE.d.settings.units==='mph';const kmh=Math.abs(p.vLong)*3.6;const g=p.gear<0?'R':(p.clutchLocked||kmh>3?String(p.gear):'N');
+  const p=this.physics,S=this.session,t=this.cfg.type,mph=PROFILE.d.settings.units==='mph';const kmh=Math.abs(p.vLong)*3.6;const g=p.gear<0?'R':p.gear===0?'N':(p.clutchLocked||kmh>3?String(p.gear):'N');
   $('speed').innerHTML=`${Math.round(mph?kmh*0.6214:kmh)}<span class="unit">${mph?'mph':'km/h'}</span>`;$('gear').textContent=g;this.rpmFill.style.width=(clamp(p.rpm/VEH.maxRpm,0,1)*100).toFixed(1)+'%';
   if(VEH.nitroCap>0){$('nitroFill').style.height=(p.nitro/VEH.nitroCap*100).toFixed(0)+'%';$('nitroBtn').classList.toggle('active',!!p.nitroActive);}
   if(t==='race'){const st=S.standings();$('pos').textContent=`${st.indexOf(S.player)+1}/${st.length}`;}
