@@ -3,7 +3,7 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
-- 🧪 **Cámaras de prueba «Chasis 3D · cabina» y «Chasis 3D · piloto»** con la cabina 3D del dueño (biblioteca/modelos/cabina_base.glb → models/cabin.glb con tools/glb/build_cabin.mjs): sin sus espejos (se usan los del juego), girada, achicada a 23k triángulos, estirada hacia atrás para que entren piloto y copiloto. Si convence, reemplaza al habitáculo actual.
+- ❌ **Cámaras «Chasis 3D» quitadas** (no convencieron). La cabina 3D queda solo como respaldo en biblioteca/modelos/cabina_base.glb. El interior dibujado ahora tiene el techo 12 cm más alto y el espejo más arriba: desde adentro se ve el horizonte.
 - ✅ Android: los botones del sistema se vuelven a esconder solos si aparecen; los bordes de abajo no disparan el gesto de «atrás».
 - ✅ Pantalla de ajuste antes de correr con barritas; controles en pantalla movibles; manos que cambian de agarre; neutro; calibración del acelerómetro.
 - ✅ Pilotos más vivos: el cuerpo se va para atrás al acelerar, para adelante al frenar y al costado en curva; mano al freno de mano y a la palanca, pie derecho en acelerador/freno (sin atravesar el piso); el copiloto mira al frente con movimientos chicos de cabeza.
@@ -41,7 +41,7 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 - Se mantiene también el acceso por menú (partidas cortas en el celular).
 
 ### Próximo
-- **Cámara chasis 3D** (prueba): cuando llegue la cabina 3D del dueño → color, volante, palanca, tablero con velocímetro, espejos; tercera y primera persona.
+- **Interior del auto**: el dueño va a pasar material para rehacerlo (volante, tablero, palanca, espejos).
 - **Público en el drift**: pared con colisión + tribuna con gente mirando el centro (animaciones Idle_Rail / Cheering de Mesh2Motion).
 - Escenas con personajes hablando (Mesh2Motion: Idle_Talking, Head_Nod, Angry, Victory…).
 
