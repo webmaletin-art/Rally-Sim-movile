@@ -1,0 +1,5 @@
+config_version=5
+
+[application]
+config/name="GSkorp Rally"
+config/features=PackedStringArray("4.4", "Mobile")
