@@ -175,8 +175,10 @@ func rain(on: bool) -> void:
 func _r() -> float:
 	return rng.randf()
 
-func pops(n: int) -> void:
-	for i in n:
+func pops(_n: int) -> void:
+	return # sin petardeos del escape (sonaban como golpes de lata al llegar al corte de vueltas)
+	@warning_ignore("unreachable_code")
+	for i in _n:
 		var d := 0.03 + _r() * 0.35
 		var f := 700.0 + _r() * 700.0
 		var a: float = SND["pops"] * (0.5 + _r() * 0.5)
@@ -213,7 +215,7 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 	var sp := sqrt(p.vx * p.vx + p.vz * p.vz)
 	# parado y sin acelerar el motor no suena (el ralentí sonaba a motor de turismo carretera con petardeos): el sonido entra con el pedal o al andar
 	var alive := clampf(maxf(p.throttle * 2.5, (sp - 0.6) / 3.0), 0.0, 1.0)
-	tgt["eng"] = SND["engine"] * mix["eng"] * (0.35 + 0.25 * rn) * (0.62 + 0.38 * load) * (0.7 if p.limiter else 1.0) * alive
+	tgt["eng"] = SND["engine"] * mix["eng"] * (0.35 + 0.25 * rn) * (0.62 + 0.38 * load) * alive
 	tgt["engn"] = 0.25 * load
 	var asf := 0.0
 	var loose := 0.0
