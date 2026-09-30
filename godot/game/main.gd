@@ -368,6 +368,7 @@ func _rebuild_cars() -> void:
 			cam_rig.mount = car.visual.compute_mounts(float(cockpit.C["cowlZ"]), float(cockpit.C["eyeY"]))
 			cam_rig.set_preset(cam_index)
 			was_inside = false
+			_load_cabin_cfg()
 		cars.append(car)
 		if i <= 3 and fx != null:
 			fx.prepare(i)
@@ -584,8 +585,29 @@ func _next_camera() -> void:
 	cam_rig.next()
 	hud.show_toast("🎥 " + cam_rig.cam_name())
 
+func _load_cabin_cfg() -> void:
+	var cf := ConfigFile.new()
+	if cf.load("user://cabina.cfg") == OK and cockpit != null:
+		cockpit.rear_dist = float(cf.get_value("cam", "rear", cockpit.rear_dist))
+		cockpit.ob_dist = float(cf.get_value("cam", "ob", cockpit.ob_dist))
+	if cockpit != null:
+		hud.sliders["cam_rear"]["val"] = cockpit.rear_dist
+		hud.sliders["cam_ob"]["val"] = cockpit.ob_dist
+
+func _save_cabin_cfg() -> void:
+	var cf := ConfigFile.new()
+	cf.set_value("cam", "rear", cockpit.rear_dist)
+	cf.set_value("cam", "ob", cockpit.ob_dist)
+	cf.save("user://cabina.cfg")
+
 func _on_option(key: String, value) -> void:
 	match key:
+		"cam_rear":
+			cockpit.rear_dist = float(value)
+			_save_cabin_cfg()
+		"cam_ob":
+			cockpit.ob_dist = float(value)
+			_save_cabin_cfg()
 		"cars":
 			cars_n = int(value)
 			_rebuild_cars()
