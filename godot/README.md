@@ -32,8 +32,10 @@ tools/godot/run_shot.sh /tmp/captura.png --cars=4 --cam=side
 
 ## Estado
 - ✅ Física completa portada y verificada (diferencias de 1e-13 con la versión HTML).
-- ✅ Circuito de prueba, Volt con su modelo real, pilotos en pose fija, bosque, controles táctiles, contador de rendimiento.
-- ⏳ Fase 2: IA completa, cámaras (incluidas las dos interiores), pilotos animados con IK, humo y efectos.
+- ✅ Circuito de prueba, Volt con su modelo real, pilotos en pose fija, bosque, contador de rendimiento (botón PRUEBAS).
+- ✅ Controles reales portados de la versión HTML: volante, barra, pedal único, tira de cambios, freno de mano, nitro, acelerómetro, tablero.
+- ✅ Rendimiento: dibujado a resolución ajustable, árboles por zonas, física en hilos un cuadro adelantada con interpolación.
+- ⏳ Fase 2: IA completa, cámaras (incluidas las dos interiores), pilotos animados con IK, humo y efectos, minimapa, editor de controles.
 - ⏳ Fase 3: sonido (motor, turbo, flutter, caja), menús, garaje, mejoras, guardado.
 - ⏳ Fase 4: modos de juego, duelos, historia y voces.
 - ⏳ Fase 5: ciudades y pistas nuevas con los mapas del dueño.

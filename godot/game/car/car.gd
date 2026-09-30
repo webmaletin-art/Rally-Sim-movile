@@ -17,6 +17,8 @@ var in_throttle := 0.0
 var in_brake := 0.0
 var in_steer := 0.0
 var in_handbrake := false
+var in_nitro := false
+var in_shift := 0 # cambio pedido (se consume en el primer paso)
 
 func _init(track: TrackBase, params: VehicleParams, player: bool, lo: bool, paint: Color, rim: Color) -> void:
 	phys = VehiclePhysics.new(track, params)
@@ -34,7 +36,9 @@ func step(dt: float) -> void:
 		var c: Vector3 = driver.update(phys, dt)
 		phys.step(dt, c.x, c.y, c.z, false)
 	else:
-		phys.step(dt, in_throttle, in_brake, in_steer, in_handbrake)
+		var sh := in_shift
+		in_shift = 0
+		phys.step(dt, in_throttle, in_brake, in_steer, in_handbrake, in_nitro, sh)
 
 ## Reinicia el historial del dibujado en la hora t (al colocar el auto)
 func restart_history(t: float) -> void:
