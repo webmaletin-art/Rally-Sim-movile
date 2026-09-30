@@ -54,6 +54,10 @@ func setup(p_env: Environment, p_sun: DirectionalLight3D, p_cam: Camera3D, p_tra
 	_build_rain()
 	apply("dia", true)
 
+func set_sky_enabled(on: bool) -> void:
+	env.background_mode = Environment.BG_SKY if on else Environment.BG_COLOR
+	env.background_color = Color(PRESETS[current]["bg"])
+
 func _rain_tex(name: String) -> Texture2D:
 	return load(TEX_DIR + name)
 
@@ -172,9 +176,11 @@ func apply(name: String, instant := false) -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(h[0]).lerp(Color(h[1]), 0.25)
 	env.ambient_light_energy = float(h[2]) * 0.72
-	env.tonemap_exposure = float(P["exp"])
+	# el brillo va en las luces: con exposición distinta de 1 el teléfono tendría que dibujar en un buffer más pesado
+	var ex := float(P["exp"])
+	env.ambient_light_energy *= ex
 	sun.light_color = Color(P["sun"][0])
-	sun.light_energy = float(P["sun"][1]) * 0.8
+	sun.light_energy = float(P["sun"][1]) * 0.8 * ex
 	var sp: Array = P["pos"]
 	var dir := -Vector3(sp[0], sp[1], sp[2]).normalized()
 	sun.transform = Transform3D(Basis.looking_at(dir, Vector3.UP), Vector3.ZERO)

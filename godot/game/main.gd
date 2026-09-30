@@ -13,6 +13,7 @@ const DebugPanel := preload("res://game/ui/debug_panel.gd")
 const Controls := preload("res://game/ui/controls.gd")
 const Effects := preload("res://game/fx/effects.gd")
 const Weather := preload("res://game/fx/weather.gd")
+const Lens := preload("res://game/fx/lens.gd")
 const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
 
 var track: CircuitTrack
@@ -65,6 +66,11 @@ var dirt_test := false
 var autobench := false
 var acc := 0.0
 var step_n := 0
+var fx_on := true
+var res_auto := true # la resolución del mundo 3D se ajusta sola según los cuadros por segundo
+var script_ms := 0.0
+var lens_auto := true # el filtro se apaga solo si el teléfono no llega
+var lens: Node # filtro de cámara (Lente Rally)
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -139,6 +145,9 @@ func _setup_viewport() -> void:
 	view_rect.stretch_mode = TextureRect.STRETCH_SCALE
 	view_rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	l0.add_child(view_rect)
+	lens = Lens.new()
+	add_child(lens)
+	lens.attach(view_rect)
 	get_tree().root.size_changed.connect(_on_resize)
 	_on_resize()
 
@@ -166,7 +175,9 @@ func _build_world() -> void:
 	sun.light_energy = 1.25
 	sun.shadow_enabled = false
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
-	sun.directional_shadow_max_distance = 55.0
+	sun.directional_shadow_max_distance = 45.0
+	sun.shadow_opacity = 0.42 # sombra clara y suave, no negra
+	sun.shadow_blur = 2.5
 	world.add_child(sun)
 	cam = Camera3D.new()
 	cam.fov = 62.0
@@ -322,6 +333,8 @@ func _rebuild_cars() -> void:
 			Pilot.create(car.visual.body, 0.37, 0.49, -0.31, lo)
 			Pilot.create(car.visual.body, -0.37, 0.49, -0.31, lo)
 		cars.append(car)
+		if i <= 3 and fx != null:
+			fx.prepare(i)
 	if not cars.is_empty():
 		cars[0].phys.manual = manual_gearbox
 		controls.manual = manual_gearbox
@@ -330,9 +343,13 @@ func _rebuild_cars() -> void:
 
 ## Prueba automática: recorre varias cargas (cada una 6 s, descartando el primer segundo y medio) y muestra la tabla.
 ## [autos, árboles, pilotos, sombras, hilos, resolución]
+## El 7º dato son cosas que se APAGAN para medir cuánto cuestan: e = efectos, c = cielo, n = niebla, h = controles/HUD, m = mundo 3D,
+## f = filtro de cámara, b = sombritas de los autos.
 const BENCH_CFGS := [
-	[1, 0, 0, 0, 1, 1.0], [1, 0, 0, 0, 1, 0.5], [1, 3000, 1, 0, 1, 0.5], [4, 3000, 1, 0, 1, 0.5],
-	[8, 3000, 1, 0, 1, 0.5], [8, 8000, 1, 0, 1, 0.5], [8, 3000, 0, 0, 1, 0.5], [8, 3000, 1, 0, 0, 0.5], [4, 3000, 1, 1, 1, 0.5]]
+	[1, 0, 0, 0, 1, 1.0, ""], [1, 0, 0, 0, 1, 0.5, ""], [1, 3000, 1, 0, 1, 0.5, ""], [4, 3000, 1, 0, 1, 0.5, ""],
+	[8, 3000, 1, 0, 1, 0.5, ""], [8, 8000, 1, 0, 1, 0.5, ""], [8, 3000, 0, 0, 1, 0.5, ""], [8, 3000, 1, 0, 0, 0.5, ""], [4, 3000, 1, 1, 1, 0.5, ""],
+	[1, 3000, 0, 0, 1, 0.5, ""], [1, 3000, 0, 0, 1, 0.5, "e"], [1, 3000, 0, 0, 1, 0.5, "c"], [1, 3000, 0, 0, 1, 0.5, "n"],
+	[1, 3000, 0, 0, 1, 0.5, "f"], [1, 3000, 0, 0, 1, 0.5, "h"], [1, 3000, 0, 0, 1, 0.5, "m"], [1, 3000, 0, 0, 1, 0.5, "ecnf"]]
 
 func _bench_start() -> void:
 	DisplayServer.screen_set_keep_on(true) # que no se apague la pantalla durante la prueba
@@ -366,6 +383,8 @@ func _bench_next() -> void:
 	sun.shadow_enabled = c[3] == 1
 	threaded = c[4] == 1
 	res_scale = c[5]
+	res_auto = false
+	_apply_diag(str(c[6]))
 	_on_resize()
 	if new_trees != trees_n or trees_node == null:
 		trees_n = new_trees
@@ -376,13 +395,24 @@ func _bench_next() -> void:
 		cars[0].driver = RingDriver.new(track, 26.0, 0.0)
 	bench_t = 0.0
 
+## Apaga a propósito partes del juego para medir cuánto cuesta cada una (ver BENCH_CFGS)
+func _apply_diag(flags: String) -> void:
+	fx_on = not flags.contains("e")
+	if not fx_on:
+		fx.reset()
+	weather.set_sky_enabled(not flags.contains("c"))
+	env.fog_enabled = not flags.contains("n")
+	controls.visible = not flags.contains("h")
+	world.render_target_update_mode = SubViewport.UPDATE_DISABLED if flags.contains("m") else SubViewport.UPDATE_ALWAYS
+	lens.enabled = not flags.contains("f")
+
 func _bench_tick(dt: float) -> void:
 	bench_t += dt
 	var left := int(ceil(float(BENCH_CFGS.size() - bench_i) * 7.5 - bench_t))
 	hud.banner = "PRUEBA %d/%d · faltan %d s · NO TOQUES LA PANTALLA" % [bench_i + 1, BENCH_CFGS.size(), maxi(left, 0)]
 	if bench_t > 1.5 and bench_t < 6.0:
 		if bench_i >= 0:
-			_bench_samples.append([dt, shown_phys_ms, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)])
+			_bench_samples.append([dt, shown_phys_ms, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), script_ms])
 	if bench_t >= 6.0:
 		var dts: Array = []
 		for smp in _bench_samples:
@@ -393,16 +423,19 @@ func _bench_tick(dt: float) -> void:
 		var sph := 0.0
 		var sdc := 0.0
 		var stri := 0.0
+		var sscr := 0.0
 		for s in _bench_samples:
 			sdt += s[0]
 			sph += s[1]
 			sdc += s[2]
 			stri += s[3]
+			sscr += s[4]
 		var c: Array = BENCH_CFGS[bench_i]
 		if n > 0:
-			bench_results.append("%2d autos · %5d árb · pil %s · som %s · hilos %s · res %3d%%  →  %3d FPS · %5.1f ms · fis %4.1f · %4d llam · %dk tri" % [
+			bench_results.append("%2d autos · %5d árb · pil %s · som %s · hilos %s · res %3d%%%s  →  %3d FPS · %5.1f ms · fis %4.1f · código %4.1f ms · %4d llam · %dk tri" % [
 				c[0], c[1], "sí" if c[2] == 1 else "no", "sí" if c[3] == 1 else "no", "sí" if c[4] == 1 else "no", int(c[5] * 100.0),
-				int(round(float(n) / sdt)), sdt / n * 1000.0, sph / n, int(sdc / n), int(stri / n / 1000.0)])
+				(" · SIN " + str(c[6])) if str(c[6]) != "" else "",
+				int(round(float(n) / sdt)), sdt / n * 1000.0, sph / n, sscr / n, int(sdc / n), int(stri / n / 1000.0)])
 			var slow := 0
 			var slow20 := 0
 			for d in dts:
@@ -456,10 +489,11 @@ func _build_report() -> String:
 		out.append(hud.stats_text.replace("\n", " | "))
 	else:
 		out.append("PRUEBA AUTOMÁTICA (cada configuración 6 s, sin contar el primer segundo y medio)")
-		out.append("autos · árboles · pilotos · sombras · hilos · resolución  →  FPS · ms/cuadro · física ms · llamadas · triángulos")
+		out.append("autos · árboles · pilotos · sombras · hilos · resolución  →  FPS · ms/cuadro · física ms · código ms · llamadas · triángulos")
 		for r in bench_results:
 			out.append(r)
 		out.append("")
+		out.append("(SIN e=efectos c=cielo n=niebla f=filtro de cámara h=controles m=mundo 3D: se apaga a propósito para medir cuánto cuesta; código = tiempo del script por cuadro)")
 		out.append("(fís = milisegundos por cuadro que el hilo principal pierde esperando a la física; con hilos debería ser ~0)")
 		out.append("DETALLE (p50/p95/p99 = tiempo de cuadro del 50%, 95% y 99% de los cuadros; cuadros lentos = tirones)")
 		for r in report_body:
@@ -491,7 +525,10 @@ func _copy_report() -> void:
 ## Humo/polvo/marcas: el propio siempre; los rivales solo si están cerca y a la vista (y a menor ritmo). Los rivales muy
 ## lejanos ni se dibujan.
 func _update_fx(dt: float) -> void:
+	if not fx_on:
+		return
 	var cp := cam.position
+	fx.tick(cp)
 	for i in cars.size():
 		var c: Car = cars[i]
 		var pos := Vector3(c.snap.px, c.snap.py, c.snap.pz)
@@ -522,8 +559,13 @@ func _on_option(key: String, value) -> void:
 		"threads":
 			threaded = int(value) == 1
 		"res":
-			res_scale = float(value)
-			_on_resize()
+			res_auto = float(value) == 0.0
+			if not res_auto:
+				res_scale = float(value)
+				_on_resize()
+		"lens":
+			lens.level = int(value)
+			lens_auto = false
 		"steer":
 			controls.steer_mode = "wheel" if str(value) == "volante" else "slider"
 		"gearbox":
@@ -597,6 +639,46 @@ func _step_car(i: int) -> void:
 		c.step_and_record(1.0 / 120.0, batch_t0 + float(k + 1) / 120.0)
 
 func _process(dt: float) -> void:
+	var t0 := Time.get_ticks_usec()
+	_frame(dt)
+	script_ms = lerpf(script_ms, float(Time.get_ticks_usec() - t0) / 1000.0, 0.1)
+	if res_auto:
+		_auto_res(dt)
+
+## Resolución automática del mundo 3D: baja si el teléfono no llega y sube de a poco si le sobra
+var _ar_t := 0.0
+var _ar_sum := 0.0
+var _ar_n := 0
+var _ar_cool := 0.0
+var _ar_cap := 0.8
+func _auto_res(dt: float) -> void:
+	if bench_i >= 0 or dt > 0.25:
+		return
+	_ar_t += dt
+	_ar_sum += dt
+	_ar_n += 1
+	_ar_cool -= dt
+	if _ar_t < 1.5:
+		return
+	var avg := _ar_sum / float(_ar_n)
+	_ar_t = 0.0
+	_ar_sum = 0.0
+	_ar_n = 0
+	var target := 1.0 / maxf(DisplayServer.screen_get_refresh_rate(), 30.0) if is_finite(DisplayServer.screen_get_refresh_rate()) else 0.0167
+	target = clampf(target, 0.0083, 0.0167)
+	if avg > target * 1.25 and res_scale <= 0.45 and lens.level > 0 and lens_auto:
+		lens.level = 0 # ni bajando la resolución llega: el filtro de cámara es lo primero que se apaga
+	elif avg > target * 1.25 and res_scale > 0.36:
+		res_scale = maxf(0.35, res_scale - 0.05)
+		_ar_cap = minf(_ar_cap, res_scale + 0.05) # ahí ya no llegaba: no vuelve a probar arriba enseguida
+		_ar_cool = 20.0
+		_on_resize()
+	elif avg < target * 1.08 and res_scale < _ar_cap and _ar_cool <= 0.0:
+		res_scale = minf(_ar_cap, res_scale + 0.05)
+		_ar_cool = 6.0
+		_on_resize()
+
+func _frame(dt: float) -> void:
 	controls.update_inputs(dt)
 	if force_gas:
 		controls.gas = 1.0
@@ -642,6 +724,7 @@ func _process(dt: float) -> void:
 	controls.speed_kmh = absf(p.vLong) * 3.6
 	controls.gear_text = "R" if p.gear < 0 else ("N" if p.gear == 0 else str(p.gear))
 	controls.rpm_frac = p.rpm / cars[0].phys.V.maxRpm
+	lens.update(dt, controls.speed_kmh, 1.0 if controls.nitro else 0.0)
 	stat_timer += dt
 	frame_count += 1
 	if stat_timer >= 0.5:

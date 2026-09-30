@@ -11,6 +11,8 @@ var V: VehicleParams
 var body: Node3D
 var wheels: Array = [] # {steer, spin, front, angle}
 var lo := false
+var blob: MeshInstance3D # sombrita suave en el piso (no hace falta una sombra de verdad)
+static var _blob_mat: StandardMaterial3D
 
 func setup(p_params: VehicleParams, p_lo: bool, paint: Color, rim: Color) -> void:
 	V = p_params
@@ -41,6 +43,7 @@ func setup(p_params: VehicleParams, p_lo: bool, paint: Color, rim: Color) -> voi
 				m.metallic = 0.45
 				m.roughness = 0.35
 			mi.set_surface_override_material(s, m)
+	_make_blob()
 	# ruedas
 	var wheel_scene: PackedScene = load("res://game/models/volt_wheel%s.glb" % suffix)
 	var R := V.wheelRadius
@@ -76,6 +79,32 @@ func setup(p_params: VehicleParams, p_lo: bool, paint: Color, rim: Color) -> voi
 				mi.set_surface_override_material(s, tire_mat if n2 == "tire" else (ring_mat if n2 == "ring" else rim_mat))
 		wheels.append({"steer": steer, "spin": spin, "front": d[2], "angle": 0.0})
 
+func _make_blob() -> void:
+	if _blob_mat == null:
+		var g := Gradient.new()
+		g.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+		g.colors = PackedColorArray([Color(0, 0, 0, 0.5), Color(0, 0, 0, 0.28), Color(0, 0, 0, 0.0)])
+		var gt := GradientTexture2D.new()
+		gt.gradient = g
+		gt.fill = GradientTexture2D.FILL_SQUARE
+		gt.fill_from = Vector2(0.5, 0.5)
+		gt.fill_to = Vector2(1.0, 0.5)
+		gt.width = 64
+		gt.height = 64
+		_blob_mat = StandardMaterial3D.new()
+		_blob_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_blob_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_blob_mat.albedo_texture = gt
+		_blob_mat.disable_receive_shadows = true
+	blob = MeshInstance3D.new()
+	var q := PlaneMesh.new()
+	q.size = Vector2(V.trackF + 1.3, V.wheelBase + 2.4)
+	q.material = _blob_mat
+	blob.mesh = q
+	blob.top_level = true
+	blob.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(blob)
+
 func _mesh_instances(root: Node) -> Array:
 	var out := []
 	var stack := [root]
@@ -91,6 +120,8 @@ func _mesh_instances(root: Node) -> Array:
 func sync_from(p: CarSnapshot, dt: float) -> void:
 	position = Vector3(p.px, p.py, p.pz)
 	basis = Basis.from_euler(Vector3(p.pitch, p.yaw, p.roll), EULER_ORDER_YXZ)
+	blob.global_position = Vector3(p.px, p.py - V.comHeight + 0.05, p.pz)
+	blob.global_rotation = Vector3(0.0, p.yaw, 0.0)
 	var base := V.comHeight + V.hardpointY - V.rideOffset
 	for i in 4:
 		var w: Dictionary = wheels[i]

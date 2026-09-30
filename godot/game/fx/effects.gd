@@ -243,10 +243,25 @@ func _make_debris() -> GPUParticles3D:
 	(p.draw_pass_1.material as StandardMaterial3D).distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_DISABLED
 	return p
 
+## Crea los emisores de un auto antes de que hagan falta y los "calienta" unos cuadros (invisibles) para que el teléfono
+## compile los shaders ahora y no en el primer derrape.
+func prepare(key: int) -> void:
+	_ensure_car(key)
+
+func tick(cam_pos: Vector3) -> void:
+	for k in _cars:
+		var car: Dictionary = _cars[k]
+		if car["warm"] > 0:
+			car["warm"] -= 1
+			for kind in ["smoke", "dust", "spray", "debris"]:
+				for e in car[kind]:
+					(e as GPUParticles3D).global_position = cam_pos
+					(e as GPUParticles3D).emitting = car["warm"] > 0
+
 func _ensure_car(key: int) -> Dictionary:
 	if _cars.has(key):
 		return _cars[key]
-	var d := {"smoke": [], "dust": [], "spray": [], "debris": [], "last": [null, null, null, null], "acc": [0.0, 0.0, 0.0, 0.0], "idle": 0.0}
+	var d := {"smoke": [], "dust": [], "spray": [], "debris": [], "last": [null, null, null, null], "acc": [0.0, 0.0, 0.0, 0.0], "idle": 0.0, "warm": 4}
 	for i in 4:
 		d["smoke"].append(_make_smoke())
 		d["dust"].append(_make_dust())
@@ -261,6 +276,8 @@ func _ensure_car(key: int) -> Dictionary:
 ## detail 1.0 = jugador (todas las ruedas); rivales cercanos 0.5 (las mismas reglas, menos cantidad)
 func emit_from(key: int, s: CarSnapshot, dt: float, tire_w: float, detail := 1.0) -> void:
 	var car := _ensure_car(key)
+	if car["warm"] > 0:
+		return
 	var fwd := Vector3(sin(s.yaw), 0.0, cos(s.yaw))
 	var left := Vector3(cos(s.yaw), 0.0, -sin(s.yaw))
 	var any := false
