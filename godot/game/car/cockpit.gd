@@ -20,7 +20,7 @@ const CABIN := {
 	"truck": {"eyeY": 1.55, "eyeZ": 1.72, "cowlZ": 2.55, "halfW": 0.98, "roofY": 1.98},
 	"genesis": {"eyeY": 1.08, "eyeZ": -0.12, "cowlZ": 0.98, "halfW": 0.74, "roofY": 1.33},
 }
-const WHEEL_R := 0.14 # radio del aro (volante de 28 cm)
+const WHEEL_R := 0.17 # radio del aro (el mismo de la versión anterior)
 
 var C: Dictionary
 var xD := 0.37
@@ -52,6 +52,8 @@ var raining := false
 var units := "kmh"
 var look_yaw := 0.0
 var rig_ok := false
+var rear_dist := 1.08 # cámara de atrás de las butacas: metros detrás de los ojos del piloto
+var ob_dist := 0.17 # cámara del casco: metros hacia atrás de la cabeza
 var read_w := 0.0 # cuánto está leyendo la hoja el copiloto (0 mira al frente … 1 mira la hoja)
 var _body_col := Color(0.10, 0.31, 0.88)
 var _acc := Color(1.0, 0.42, 0.03)
@@ -394,17 +396,17 @@ func _b_seats() -> void:
 	for sd in [1.0, -1.0]:
 		var sx: float = sd * xD
 		# base y respaldo (inclinado hacia atrás)
-		_box(Vector3(0.50, 0.10, 0.50), Vector3(sx, 0.34, eZ - 0.10), "seat")
-		_box(Vector3(0.48, 0.66, 0.10), Vector3(sx, 0.72, eZ - 0.50), "seat", Basis(Vector3.RIGHT, -0.20))
-		_box(Vector3(0.10, 0.02, 0.44), Vector3(sx, 0.395, eZ - 0.10), "seat_acc")
-		_box(Vector3(0.10, 0.60, 0.02), Vector3(sx, 0.72, eZ - 0.44), "seat_acc", Basis(Vector3.RIGHT, -0.20))
+		_box(Vector3(0.44, 0.08, 0.44), Vector3(sx, 0.34, eZ - 0.12), "seat")
+		_box(Vector3(0.42, 0.52, 0.07), Vector3(sx, 0.66, eZ - 0.47), "seat", Basis(Vector3.RIGHT, -0.20))
+		_box(Vector3(0.09, 0.02, 0.38), Vector3(sx, 0.385, eZ - 0.12), "seat_acc")
+		_box(Vector3(0.09, 0.44, 0.01), Vector3(sx, 0.66, eZ - 0.435), "seat_acc", Basis(Vector3.RIGHT, -0.20))
 		# laterales (torso y muslos) y apoyacabezas con orejas
 		for side in [-1.0, 1.0]:
-			_box(Vector3(0.09, 0.42, 0.22), Vector3(sx + side * 0.255, 0.66, eZ - 0.40), "seat", Basis(Vector3.RIGHT, -0.20))
-			_box(Vector3(0.07, 0.12, 0.34), Vector3(sx + side * 0.25, 0.42, eZ - 0.10), "seat")
-			_box(Vector3(0.06, 0.15, 0.16), Vector3(sx + side * 0.155, 1.02, eZ - 0.52), "seat", Basis(Vector3.UP, -side * 0.35))
-		_box(Vector3(0.26, 0.15, 0.08), Vector3(sx, 1.02, eZ - 0.58), "seat", Basis(Vector3.RIGHT, -0.10))
-		_box(Vector3(0.20, 0.025, 0.005), Vector3(sx, 1.03, eZ - 0.62), "seat_acc", Basis(Vector3.RIGHT, -0.10))
+			_box(Vector3(0.06, 0.32, 0.16), Vector3(sx + side * 0.225, 0.62, eZ - 0.40), "seat", Basis(Vector3.RIGHT, -0.20))
+			_box(Vector3(0.05, 0.09, 0.30), Vector3(sx + side * 0.225, 0.40, eZ - 0.12), "seat")
+			_box(Vector3(0.04, 0.11, 0.12), Vector3(sx + side * 0.125, 0.99, eZ - 0.50), "seat", Basis(Vector3.UP, -side * 0.35))
+		_box(Vector3(0.20, 0.11, 0.06), Vector3(sx, 0.98, eZ - 0.56), "seat", Basis(Vector3.RIGHT, -0.10))
+		_box(Vector3(0.16, 0.02, 0.005), Vector3(sx, 0.99, eZ - 0.595), "seat_acc", Basis(Vector3.RIGHT, -0.10))
 		# cinturones de 4 puntos: tiras que salen del respaldo y se juntan en la hebilla
 		for side in [-1.0, 1.0]:
 			_box(Vector3(0.05, 0.012, 0.36), Vector3(sx + side * 0.16, 0.415, eZ - 0.15), "seat_acc")
@@ -594,13 +596,13 @@ func _b_wheel() -> void:
 	_mesh_node(_rim_mesh(), rm, Vector3.ZERO, Basis.IDENTITY, rim)
 	# cubo de carbono con botones de colores, perillas y una pantallita
 	var hub := BoxMesh.new()
-	hub.size = Vector3(0.15, 0.085, 0.024)
+	hub.size = Vector3(0.17, 0.095, 0.026)
 	var cm := _mats["carbon"] as StandardMaterial3D
 	_mesh_node(hub, cm, Vector3(0, 0.0, 0.004), Basis.IDENTITY, rim)
 	for sx in [-1.0, 1.0]:
 		var wing := BoxMesh.new()
-		wing.size = Vector3(0.07, 0.055, 0.02)
-		_mesh_node(wing, cm, Vector3(sx * 0.105, 0.0, 0.0), Basis.IDENTITY, rim)
+		wing.size = Vector3(0.09, 0.06, 0.022)
+		_mesh_node(wing, cm, Vector3(sx * 0.125, 0.0, 0.0), Basis.IDENTITY, rim)
 	var btn := CylinderMesh.new()
 	btn.top_radius = 0.0075
 	btn.bottom_radius = 0.0075
@@ -613,8 +615,8 @@ func _b_wheel() -> void:
 		bm.emission_enabled = true
 		bm.emission = cols[i]
 		bm.emission_energy_multiplier = 0.35
-		var bx := (float(i % 4) - 1.5) * 0.026
-		var by := 0.017 - float(i / 4) * 0.032
+		var bx := (float(i % 4) - 1.5) * 0.029
+		var by := 0.019 - float(i / 4) * 0.035
 		_mesh_node(btn, bm, Vector3(bx, by, 0.0175), Basis(Vector3.RIGHT, PI / 2.0), rim)
 	for sx in [-1.0, 1.0]:
 		var kn := CylinderMesh.new()
@@ -622,7 +624,7 @@ func _b_wheel() -> void:
 		kn.bottom_radius = 0.014
 		kn.height = 0.014
 		kn.radial_segments = 10
-		_mesh_node(kn, _mats["metal"], Vector3(sx * 0.098, 0.0, 0.019), Basis(Vector3.RIGHT, PI / 2.0), rim)
+		_mesh_node(kn, _mats["metal"], Vector3(sx * 0.118, 0.0, 0.020), Basis(Vector3.RIGHT, PI / 2.0), rim)
 
 ## Aro de fondo plano (tipo GT): tubo que recorre un círculo con la parte de abajo cortada; la marca naranja de las 12 va pintada
 func _rim_mesh() -> ArrayMesh:
@@ -632,7 +634,7 @@ func _rim_mesh() -> ArrayMesh:
 	var cols := PackedColorArray()
 	var idx := PackedInt32Array()
 	var nrms := PackedVector3Array()
-	var flat := -0.112
+	var flat := -0.138
 	var path: Array = []
 	for i in n:
 		var th := TAU * float(i) / float(n)
@@ -646,7 +648,7 @@ func _rim_mesh() -> ArrayMesh:
 		var tan2 := (q - pr).normalized()
 		var out2 := Vector2(tan2.y, -tan2.x) # hacia afuera del aro
 		var th := atan2(p.y, p.x)
-		var grip := 0.0165 + 0.0035 * (absf(cos(th)) if p.y > flat + 0.005 else 0.0) # más grueso en las manos (3 y 9)
+		var grip := 0.021 + 0.004 * (absf(cos(th)) if p.y > flat + 0.005 else 0.0) # más grueso en las manos (3 y 9)
 		var mark := 1.0 if (absf(wrapf(th - PI / 2.0, -PI, PI)) < 0.11 and p.y > 0.0) else 0.0
 		for j in seg:
 			var a := TAU * float(j) / float(seg)
@@ -820,7 +822,7 @@ func update_crew(dt: float, p: CarSnapshot, in_handbrake: bool, time: float, rou
 	var wX := Vector3.UP.cross(n).normalized()
 	var wY := n.cross(wX)
 	var hands := []
-	var gr := WHEEL_R + 0.03
+	var gr := WHEEL_R
 	for i in 2:
 		var ph: float = m0.phi[i]
 		var gp := wheel_c + wX * (cos(ph) * gr) + wY * (sin(ph) * gr) + n * float(m0.lift[i])
@@ -937,13 +939,13 @@ func camera_local(mode: String, p: CarSnapshot, time: float, rough: float) -> Di
 	var roll := 0.0
 	if mode == "onboard":
 		# un poco más atrás y arriba que la cabeza: se ven los antebrazos y más tablero; mira apenas hacia la ventanilla del piloto
-		pos = Vector3(xD + H.x + nx * vib, eY + 0.075 + H.y + ny * vib, eZ - 0.17 + H.z)
+		pos = Vector3(xD + H.x + nx * vib, eY + 0.075 + H.y + ny * vib, eZ - ob_dist + H.z)
 		var yl := clampf(p.steerAngle * 0.45 + p.yawRate * 0.06, -0.35, 0.35) + 0.075
 		look = pos + Vector3(sin(yl), -0.17, cos(yl))
 		roll = -H.x * 0.9
 	else:
 		# atrás de las butacas, más lejos: se ven los respaldos, las cabezas y el tablero
-		pos = Vector3(0.02 + nx * vib * 0.5, eY + minf(0.14, (float(C["roofY"]) - eY) * 0.55) + ny * vib * 0.5, eZ - 1.08)
+		pos = Vector3(0.02 + nx * vib * 0.5, eY + minf(0.14, (float(C["roofY"]) - eY) * 0.55) + ny * vib * 0.5, eZ - rear_dist)
 		look = Vector3(0.06, eY - 0.32, eZ + 2.4)
 	if OS.has_environment("CAB_POS"): # depuración: cámara libre dentro de la cabina  CAB_POS=x,y,z CAB_LOOK=x,y,z
 		var a := OS.get_environment("CAB_POS").split_floats(",")
