@@ -217,7 +217,7 @@ func pose(o: Dictionary) -> void:
 	# cabeza: inclinación lateral por G y mirada hacia adelante
 	var roll: float = o.get("roll", 0.0)
 	var hd := Vector3(sin(roll), cos(roll), 0.05).normalized()
-	_orient(B["Head"], hd, Vector3(o.get("look", 0.0), -0.1, 1))
+	_orient(B["Head"], hd, Vector3(o.get("look", 0.0), o.get("look_y", -0.1), 1))
 	# brazos
 	var grip: float = o.get("grip", 1.1)
 	for h in o["hands"]:
