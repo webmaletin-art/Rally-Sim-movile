@@ -6,6 +6,9 @@ const HALF_W := 5.5
 const SHOULDER := 3.0
 const N_POINTS := 480
 
+## Superficie de lo que queda fuera del camino (3 = pasto; 1 = tierra, para probar el polvo)
+var outside_surf := 3.0
+
 func radius(th: float) -> float:
 	return 300.0 + 55.0 * sin(3.0 * th) + 25.0 * sin(5.0 * th + 1.0) + 18.0 * sin(2.0 * th + 2.0)
 
@@ -24,7 +27,7 @@ func ground_info(x: float, z: float) -> Vector2:
 		return Vector2(0.0, 0.0)
 	if d < HALF_W + SHOULDER:
 		return Vector2(0.0, 2.0)
-	return Vector2(0.0, 3.0)
+	return Vector2(0.0, outside_surf)
 
 ## Pose de largada en la fila "slot" (0 = adelante): x, z, yaw
 func start_pose(slot: int) -> Array:

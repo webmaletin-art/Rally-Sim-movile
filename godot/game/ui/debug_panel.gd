@@ -35,6 +35,7 @@ var _opts := {
 	"gearbox": [0, ["auto", "manual"]],
 	"gyro": [0, [0, 1]],
 	"nitro": [0, [0, 1]],
+	"weather": [0, ["dia", "nublado", "lluvia", "atardecer", "ocaso"]],
 }
 
 func _ready() -> void:
@@ -62,8 +63,8 @@ func _layout() -> void:
 	_buttons.append({"id": "bench", "rect": Rect2(10, 56, 150, 44), "label": "PRUEBA"})
 	_buttons.append({"id": "copy", "rect": Rect2(10, 106, 150, 44), "label": "INFORME"})
 	_buttons.append({"id": "recal", "rect": Rect2(10, 156, 150, 44), "label": "CALIBRAR"})
-	var keys := ["cars", "trees", "pilots", "shadows", "hi", "threads", "res", "steer", "gearbox", "gyro", "nitro"]
-	var names := {"cars": "Autos", "trees": "Árboles", "pilots": "Pilotos", "shadows": "Sombras", "hi": "Modelo alto", "threads": "Hilos", "res": "Resolución", "steer": "Dirección", "gearbox": "Caja", "gyro": "Acelerómetro", "nitro": "Nitro"}
+	var keys := ["cars", "trees", "pilots", "shadows", "hi", "threads", "res", "steer", "gearbox", "gyro", "nitro", "weather"]
+	var names := {"cars": "Autos", "trees": "Árboles", "pilots": "Pilotos", "shadows": "Sombras", "hi": "Modelo alto", "threads": "Hilos", "res": "Resolución", "steer": "Dirección", "gearbox": "Caja", "gyro": "Acelerómetro", "nitro": "Nitro", "weather": "Clima"}
 	for i in keys.size():
 		var col := i / 6
 		var row := i % 6
