@@ -58,6 +58,11 @@ func set_sky_enabled(on: bool) -> void:
 	env.background_mode = Environment.BG_SKY if on else Environment.BG_COLOR
 	env.background_color = Color(PRESETS[current]["bg"])
 
+func set_ground_mat(m: StandardMaterial3D) -> void:
+	ground_mat = m
+	_ground_col = m.albedo_color
+	_apply_wet()
+
 func _rain_tex(name: String) -> Texture2D:
 	return load(TEX_DIR + name)
 
@@ -196,7 +201,11 @@ func _apply_wet() -> void:
 	road_mat.metallic_specular = lerpf(0.5, 0.9, wet)
 	ground_mat.albedo_color = _ground_col.lerp(_ground_col * 0.78, wet)
 	ground_mat.roughness = lerpf(1.0, 0.7, wet)
-	track.grip_mul = lerpf(1.0, 0.86, wet)
+	var gm := lerpf(1.0, 0.86, wet)
+	if track.has_method("set_grip"):
+		track.set_grip(gm)
+	else:
+		track.grip_mul = gm
 	if fx != null:
 		fx.wetness = wet
 	var raining := wet_target > 0.5

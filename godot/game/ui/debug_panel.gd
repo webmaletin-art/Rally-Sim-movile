@@ -41,6 +41,7 @@ var _opts := {
 	"threads": [1, [0, 1]],
 	"res": [0, [0.0, 0.35, 0.5, 0.7, 1.0]],
 	"lens": [1, ["apagado", "suave", "fuerte"]],
+	"track": [0, ["prueba", "forest", "forestRev", "lake", "quarry", "quarryRev", "descent", "asphaltLong", "asphaltRev"]],
 	"steer": [0, ["volante", "barra"]],
 	"gearbox": [0, ["auto", "manual"]],
 	"gyro": [0, [0, 1]],
@@ -73,8 +74,8 @@ func _layout() -> void:
 	_buttons.append({"id": "bench", "rect": Rect2(10, 56, 150, 44), "label": "PRUEBA"})
 	_buttons.append({"id": "copy", "rect": Rect2(10, 106, 150, 44), "label": "INFORME"})
 	_buttons.append({"id": "recal", "rect": Rect2(10, 156, 150, 44), "label": "CALIBRAR"})
-	var keys := ["cars", "trees", "pilots", "shadows", "hi", "threads", "res", "steer", "gearbox", "gyro", "nitro", "weather", "lens"]
-	var names := {"cars": "Autos", "trees": "Árboles", "pilots": "Pilotos", "shadows": "Sombras", "hi": "Modelo alto", "threads": "Hilos", "res": "Resolución", "steer": "Dirección", "gearbox": "Caja", "gyro": "Acelerómetro", "nitro": "Nitro", "weather": "Clima", "lens": "Lente"}
+	var keys := ["cars", "trees", "pilots", "shadows", "hi", "threads", "res", "steer", "gearbox", "gyro", "nitro", "weather", "lens", "track"]
+	var names := {"cars": "Autos", "trees": "Árboles", "pilots": "Pilotos", "shadows": "Sombras", "hi": "Modelo alto", "threads": "Hilos", "res": "Resolución", "steer": "Dirección", "gearbox": "Caja", "gyro": "Acelerómetro", "nitro": "Nitro", "weather": "Clima", "lens": "Lente", "track": "Pista"}
 	for i in keys.size():
 		var col := i / 5
 		var row := i % 5

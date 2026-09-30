@@ -34,7 +34,7 @@ func place(x: float, z: float, yaw: float) -> void:
 func step(dt: float) -> void:
 	if driver != null:
 		var c: Vector3 = driver.update(phys, dt)
-		phys.step(dt, c.x, c.y, c.z, false)
+		phys.step(dt, c.x, c.y, c.z, driver.get("hb") == true, driver.get("nitro") == true)
 	else:
 		var sh := in_shift
 		in_shift = 0

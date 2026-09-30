@@ -5,6 +5,8 @@ extends Node3D
 ## (autos, árboles, pilotos, sombras) para medir hasta dónde llega el teléfono.
 
 const CircuitTrack := preload("res://game/track/circuit_track.gd")
+const RouteTrack := preload("res://game/track/route_track.gd")
+const AIDriver := preload("res://game/ai/ai_driver.gd")
 const Car := preload("res://game/car/car.gd")
 const VehicleParams := preload("res://game/physics/vehicle_params.gd")
 const RingDriver := preload("res://game/ai/ring_driver.gd")
@@ -19,7 +21,14 @@ const CarAudio := preload("res://game/audio/car_audio.gd")
 const CameraRig := preload("res://game/car/camera_rig.gd")
 const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
 
-var track: CircuitTrack
+var track # CircuitTrack o RouteTrack
+var track_id := "prueba"
+var auto_player := false
+var track_root: Node3D
+var terrain_task := -1
+var terrain_rows: Array = []
+var terrain_r := 0
+var track_maps: Dictionary
 var cars: Array = []
 var vehicles: Dictionary
 var cam: Camera3D
@@ -113,14 +122,17 @@ func _ready() -> void:
 		elif a.begins_with("--cam="):
 			cam_mode = a.substr(6)
 			cam_index = {"onboard": 0, "cabin": 0, "chase": 1, "near": 2, "far": 3, "aerial": 4, "rear": 6, "hood": 7, "bumper": 8}.get(cam_mode, 1)
+		elif a == "--auto":
+			auto_player = true
+		elif a.begins_with("--track="):
+			track_id = a.substr(8)
 		elif a.begins_with("--cars="):
 			cars_n = int(a.substr(7))
 		elif a.begins_with("--trees="):
 			trees_n = int(a.substr(8))
 	vehicles = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
-	track = CircuitTrack.new()
-	if dirt_test:
-		track.outside_surf = 1.0
+	track_maps = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["maps"]
+	_make_track()
 	_setup_viewport()
 	_build_world()
 	var layer := CanvasLayer.new()
@@ -210,6 +222,26 @@ func _build_world() -> void:
 	cam.far = 1200.0
 	world.add_child(cam)
 	cam.make_current()
+	_build_track_nodes()
+
+## Crea la pista elegida (el circuito de prueba o una de las rutas de la versión web)
+func _make_track() -> void:
+	if track_id == "prueba" or not track_maps.has(track_id):
+		track_id = "prueba"
+		track = CircuitTrack.new()
+		if dirt_test:
+			track.outside_surf = 1.0
+		return
+	var m: Dictionary = track_maps[track_id]
+	track = RouteTrack.new(str(m["route"]), str(m["mode"]), m.get("reverse", false) == true)
+
+## Suelo, camino, banquina y terreno de la pista (el terreno se calcula en hilos y aparece cuando está listo)
+func _build_track_nodes() -> void:
+	if track_root != null:
+		track_root.queue_free()
+	track_root = Node3D.new()
+	world.add_child(track_root)
+	terrain_task = -1
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(6000, 6000)
@@ -219,16 +251,49 @@ func _build_world() -> void:
 	gm.roughness = 1.0
 	ground.material_override = gm
 	ground_mat = gm
-	world.add_child(ground)
+	track_root.add_child(ground)
 	var road := MeshInstance3D.new()
 	road.mesh = track.build_road_mesh()
-	var rm := StandardMaterial3D.new()
-	rm.vertex_color_use_as_albedo = true
-	rm.roughness = 0.9
-	rm.cull_mode = BaseMaterial3D.CULL_DISABLED
-	road.material_override = rm
-	road_mat = rm
-	world.add_child(road)
+	if track is RouteTrack:
+		var miny := 1e9
+		for sp in track.samples:
+			miny = minf(miny, sp.y)
+		ground.position = Vector3(track.center_xz().x, miny - 6.0, track.center_xz().y)
+		road_mat = (road.mesh as ArrayMesh).surface_get_material(0)
+		road.material_override = road_mat
+		var sh := MeshInstance3D.new()
+		sh.mesh = track.build_shoulder_mesh()
+		track_root.add_child(sh)
+		track_root.add_child(track.build_start_gate())
+		var dims: Dictionary = track.terrain_dims()
+		terrain_r = int(dims["R"])
+		terrain_rows.clear()
+		terrain_rows.resize(terrain_r + 1)
+		terrain_task = WorkerThreadPool.add_group_task(_terrain_row_job, terrain_r + 1, -1, true, "terreno")
+	else:
+		var rm := StandardMaterial3D.new()
+		rm.vertex_color_use_as_albedo = true
+		rm.roughness = 0.9
+		rm.cull_mode = BaseMaterial3D.CULL_DISABLED
+		road.material_override = rm
+		road_mat = rm
+	track_root.add_child(road)
+
+func _terrain_row_job(iz: int) -> void:
+	terrain_rows[iz] = track.terrain_row(iz, terrain_r)
+
+func _check_terrain() -> void:
+	if terrain_task == -1 or not WorkerThreadPool.is_group_task_completed(terrain_task):
+		return
+	WorkerThreadPool.wait_for_group_task_completion(terrain_task)
+	terrain_task = -1
+	var mi := MeshInstance3D.new()
+	mi.mesh = track.build_terrain_mesh(terrain_rows, terrain_r)
+	ground_mat = (mi.mesh as ArrayMesh).surface_get_material(0)
+	if weather != null:
+		weather.set_ground_mat(ground_mat)
+	track_root.add_child(mi)
+	terrain_rows.clear()
 
 ## Bosque con tres capas de detalle según la distancia (zonas de 200 m; cada capa se dibuja solo dentro de su rango):
 ##   cerca  (0–190 m)     tronco + copa, con forma
@@ -278,19 +343,73 @@ func _rebuild_trees() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 12345
 	var cells := {}
+	var route := track is RouteTrack
+	var grid := {}
+	var near_min := 0.0
+	if route:
+		near_min = track.half_width + track.shoulder + 4.0
+		for si in range(0, track.n, 2):
+			var sp: Vector3 = track.samples[si]
+			var gk := Vector2i(floori(sp.x / 30.0), floori(sp.z / 30.0))
+			if not grid.has(gk):
+				grid[gk] = []
+			grid[gk].append(si)
+		track.hint = -1
 	for i in trees_n:
-		var th := rng.randf() * TAU
-		var off := rng.randf_range(11.0, 260.0) * (1.0 if rng.randf() < 0.5 else -1.0)
-		var c: Vector2 = track.center(th)
-		var t: Vector2 = track.tangent(th)
-		var p := c + Vector2(-t.y, t.x) * off
-		var key := Vector2i(floori(p.x / CHUNK), floori(p.y / CHUNK))
+		var px := 0.0
+		var pz := 0.0
+		var py := 0.0
+		if route:
+			var ok := false
+			for attempt in 6:
+				var si: int = rng.randi() % int(track.n)
+				var sp: Vector3 = track.samples[si]
+				var l: Vector3 = track.laterals[si]
+				var off := rng.randf_range(near_min, near_min + 250.0) * (1.0 if rng.randf() < 0.5 else -1.0)
+				px = sp.x + l.x * off
+				pz = sp.z + l.z * off
+				# que no caiga sobre otro tramo de la pista (curvas cerradas y cruces)
+				var clear := true
+				var gk2 := Vector2i(floori(px / 30.0), floori(pz / 30.0))
+				for gx in range(gk2.x - 1, gk2.x + 2):
+					for gz in range(gk2.y - 1, gk2.y + 2):
+						var lst: Array = grid.get(Vector2i(gx, gz), [])
+						for sj in lst:
+							var q: Vector3 = track.samples[sj]
+							if (q.x - px) * (q.x - px) + (q.z - pz) * (q.z - pz) < near_min * near_min:
+								clear = false
+								break
+						if not clear:
+							break
+					if not clear:
+						break
+				if clear:
+					track.hint = si
+					py = track.ground_smooth(px, pz)
+					ok = true
+					break
+			if not ok:
+				continue
+		else:
+			var th := rng.randf() * TAU
+			var off2 := rng.randf_range(11.0, 260.0) * (1.0 if rng.randf() < 0.5 else -1.0)
+			var c: Vector2 = track.center(th)
+			var t: Vector2 = track.tangent(th)
+			var pp := c + Vector2(-t.y, t.x) * off2
+			px = pp.x
+			pz = pp.y
+		var key := Vector2i(floori(px / CHUNK), floori(pz / CHUNK))
 		if not cells.has(key):
 			cells[key] = []
-		cells[key].append([p.x, p.y, rng.randf_range(0.8, 1.7)])
+		cells[key].append([px, pz, rng.randf_range(0.8, 1.7), py])
 	for key in cells:
 		var list: Array = cells[key]
 		var center := Vector3((float(key.x) + 0.5) * CHUNK, 0.0, (float(key.y) + 0.5) * CHUNK)
+		if route:
+			var ysum := 0.0
+			for e in list:
+				ysum += float(e[3])
+			center.y = ysum / float(list.size())
 		# cerca: tronco y copa
 		var mm_t := _multimesh(trunk, list, center, 1.2, 1.0, 1)
 		var mm_c := _multimesh(crown, list, center, 4.4, 1.0, 1)
@@ -312,7 +431,7 @@ func _multimesh(mesh: Mesh, list: Array, center: Vector3, y_off: float, size_k: 
 	for j in n:
 		var e: Array = list[j * step]
 		var sc: float = float(e[2]) * size_k
-		mm.set_instance_transform(j, Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3(float(e[0]) - center.x, y_off * sc, float(e[1]) - center.z)))
+		mm.set_instance_transform(j, Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3(float(e[0]) - center.x, y_off * sc + float(e[3]) - center.y, float(e[1]) - center.z)))
 	return mm
 
 func _add_tree_layer(mm: MultiMesh, center: Vector3, r_begin: float, r_end: float) -> void:
@@ -344,9 +463,13 @@ func _rebuild_cars() -> void:
 	var paints := [Color(0.10, 0.31, 0.88), Color(0.85, 0.15, 0.15), Color(0.95, 0.75, 0.1), Color(0.15, 0.7, 0.35), Color(0.9, 0.9, 0.92), Color(0.6, 0.2, 0.8), Color(0.95, 0.45, 0.1), Color(0.1, 0.75, 0.8)]
 	for i in cars_n:
 		var lo := (i > 0) or not hi_model
-		var car := Car.new(track, VehicleParams.from_dict(d), i == 0, lo, paints[i % paints.size()], Color(1.0, 0.42, 0.03))
+		var route := track is RouteTrack
+		var car := Car.new(track.make_view() if route else track, VehicleParams.from_dict(d), i == 0, lo, paints[i % paints.size()], Color(1.0, 0.42, 0.03))
 		if i > 0:
-			car.driver = RingDriver.new(track, 20.0 + float((i * 7) % 9), (float((i * 5) % 7) - 3.0) * 0.9)
+			if route:
+				car.driver = AIDriver.new(track.make_view(), car.phys, {"skill": 0.92 + 0.02 * float(i % 4), "lane": (float(i % 3) - 1.0) * 1.6, "aggr": 0.3 + 0.1 * float(i % 5)})
+			else:
+				car.driver = RingDriver.new(track, 20.0 + float((i * 7) % 9), (float((i * 5) % 7) - 3.0) * 0.9)
 		var sp: Array = track.start_pose(i)
 		car.place(sp[0], sp[1], sp[2])
 		car.restart_history(sim_t)
@@ -370,8 +493,16 @@ func _rebuild_cars() -> void:
 			was_inside = false
 			_load_cabin_cfg()
 		cars.append(car)
+		if auto_player and i == 0 and route:
+			car.driver = AIDriver.new(track.make_view(), car.phys, {"skill": 0.95})
 		if i <= 3 and fx != null:
 			fx.prepare(i)
+	var all_phys: Array = []
+	for c in cars:
+		all_phys.append(c.phys)
+	for c in cars:
+		if c.driver is AIDriver:
+			c.driver.others = all_phys
 	if not cars.is_empty():
 		cars[0].phys.manual = manual_gearbox
 		controls.manual = manual_gearbox
@@ -429,7 +560,7 @@ func _bench_next() -> void:
 	_rebuild_cars()
 	# el jugador también maneja solo, así la escena está siempre en movimiento
 	if not cars.is_empty():
-		cars[0].driver = RingDriver.new(track, 26.0, 0.0)
+		cars[0].driver = AIDriver.new(track.make_view(), cars[0].phys, {"skill": 0.95}) if track is RouteTrack else RingDriver.new(track, 26.0, 0.0)
 	bench_t = 0.0
 
 ## Apaga a propósito partes del juego para medir cuánto cuesta cada una (ver BENCH_CFGS)
@@ -579,6 +710,21 @@ func _update_fx(dt: float) -> void:
 		elif i <= 3 and d < 60.0 and cam.is_position_in_frustum(pos):
 			fx.emit_from(i, c.snap, dt, 0.325, 0.5)
 
+## Cambia de pista: se rehace el suelo, el bosque y los autos
+func _change_track(id: String) -> void:
+	track_id = id
+	_finish_physics()
+	_make_track()
+	_build_track_nodes()
+	fx.track = track
+	weather.track = track
+	weather.road_mat = road_mat
+	weather.ground_mat = ground_mat
+	weather.set_ground_mat(ground_mat)
+	weather.apply(weather.current, true)
+	_rebuild_trees()
+	_rebuild_cars()
+
 func _next_camera() -> void:
 	if cam_rig == null:
 		return
@@ -648,6 +794,8 @@ func _on_option(key: String, value) -> void:
 			if not res_auto:
 				res_scale = float(value)
 				_on_resize()
+		"track":
+			_change_track(str(value))
 		"lens":
 			lens.level = int(value)
 			lens_auto = false
@@ -774,6 +922,7 @@ func _auto_res(dt: float) -> void:
 		_on_resize()
 
 func _frame(dt: float) -> void:
+	_check_terrain()
 	controls.update_inputs(dt)
 	if force_gas:
 		controls.gas = 1.0
