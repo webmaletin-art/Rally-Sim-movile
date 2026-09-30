@@ -71,11 +71,13 @@ jobs:
           godot --headless --import || true
           godot --headless --import || true
 
-      - name: Probar la física contra la versión HTML
+      - name: Pruebas (física contra la versión HTML, IA, suavidad, controles)
         working-directory: godot
         run: |
           godot --headless --script res://tests/physics_test.gd
           godot --headless --script res://tests/ai_test.gd
+          godot --headless --script res://tests/interp_test.gd
+          godot --headless --script res://tests/controls_test.gd
 
       - name: Exportar APK liviano, APK completo y contenido
         working-directory: godot

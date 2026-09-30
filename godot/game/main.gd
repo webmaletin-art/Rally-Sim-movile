@@ -9,7 +9,8 @@ const Car := preload("res://game/car/car.gd")
 const VehicleParams := preload("res://game/physics/vehicle_params.gd")
 const RingDriver := preload("res://game/ai/ring_driver.gd")
 const Pilot := preload("res://game/car/pilot.gd")
-const Hud := preload("res://game/ui/hud.gd")
+const DebugPanel := preload("res://game/ui/debug_panel.gd")
+const Controls := preload("res://game/ui/controls.gd")
 const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
 
 var track: CircuitTrack
@@ -17,7 +18,8 @@ var cars: Array = []
 var vehicles: Dictionary
 var cam: Camera3D
 var sun: DirectionalLight3D
-var hud: Control
+var hud: Control # panel de pruebas
+var controls: Control # controles de manejo
 var trees_node: Node3D
 var cam_yaw := 0.0
 var cam_ready := false
@@ -37,6 +39,8 @@ var pilots_on := true
 var hi_model := true
 var cam_mode := ""
 var threaded := true
+var manual_gearbox := false
+var nitro_test := false
 var world: SubViewport # el mundo 3D se dibuja acá, a menor resolución que la pantalla (el HUD queda nítido)
 var view_rect: TextureRect
 var res_scale := 0.5
@@ -46,6 +50,7 @@ var _bench_samples: Array = []
 var report_body: Array = [] # líneas detalladas por configuración
 var bench_results: Array = []
 var no_body := false
+var force_gas := false
 var autobench := false
 var acc := 0.0
 var step_n := 0
@@ -58,6 +63,8 @@ func _ready() -> void:
 			shot_frames = int(a.substr(9))
 		elif a == "--autobench":
 			autobench = true
+		elif a == "--gas":
+			force_gas = true
 		elif a == "--nobody":
 			no_body = true
 		elif a == "--bench":
@@ -75,7 +82,9 @@ func _ready() -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 5
 	add_child(layer)
-	hud = Hud.new()
+	controls = Controls.new()
+	layer.add_child(controls)
+	hud = DebugPanel.new()
 	layer.add_child(hud)
 	hud.option_changed.connect(_on_option)
 	hud.bench_pressed.connect(_bench_start)
@@ -128,7 +137,7 @@ func _build_world() -> void:
 	sun.light_energy = 1.25
 	sun.shadow_enabled = false
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
-	sun.directional_shadow_max_distance = 90.0
+	sun.directional_shadow_max_distance = 55.0
 	world.add_child(sun)
 	cam = Camera3D.new()
 	cam.fov = 62.0
@@ -217,6 +226,7 @@ func _rebuild_trees() -> void:
 			var inst := MultiMeshInstance3D.new()
 			inst.multimesh = mm
 			inst.visibility_range_end = 450.0
+			inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF # las sombras son solo de los autos: mucho más barato
 			trees_node.add_child(inst)
 
 func _rebuild_cars() -> void:
@@ -225,6 +235,9 @@ func _rebuild_cars() -> void:
 		c.visual.queue_free()
 	cars.clear()
 	var d: Dictionary = vehicles["t1plus"].duplicate()
+	if nitro_test:
+		d["nitroCap"] = 8.0
+		d["nitroBoost"] = 0.35
 	d["camberF"] = -1.0
 	d["camberR"] = -0.5
 	d["toeF"] = 0.0
@@ -247,6 +260,10 @@ func _rebuild_cars() -> void:
 			Pilot.create(car.visual.body, 0.37, 0.49, -0.31, lo, 0.0 if i == 0 else 55.0)
 			Pilot.create(car.visual.body, -0.37, 0.49, -0.31, lo, 0.0 if i == 0 else 55.0)
 		cars.append(car)
+	if not cars.is_empty():
+		cars[0].phys.manual = manual_gearbox
+		controls.manual = manual_gearbox
+		controls.has_nitro = cars[0].phys.V.nitroCap > 0.0
 	cam_ready = false
 
 ## Prueba automática: recorre varias cargas (cada una 6 s, descartando el primer segundo y medio) y muestra la tabla.
@@ -430,6 +447,22 @@ func _on_option(key: String, value) -> void:
 		"res":
 			res_scale = float(value)
 			_on_resize()
+		"steer":
+			controls.steer_mode = "wheel" if str(value) == "volante" else "slider"
+		"gearbox":
+			manual_gearbox = str(value) == "manual"
+			if not cars.is_empty():
+				cars[0].phys.manual = manual_gearbox
+			controls.manual = manual_gearbox
+		"gyro":
+			controls.gyro_on = int(value) == 1
+			controls.recalibrate_gyro()
+		"nitro":
+			nitro_test = int(value) == 1
+			_rebuild_cars()
+		"recal":
+			controls.recalibrate_gyro()
+			hud.show_toast("Acelerómetro calibrado: sostené el teléfono como para jugar")
 
 ## Física a 120 Hz con paso fijo propio, UN CUADRO ADELANTADA y en otros núcleos:
 ##  · al empezar el cuadro se espera (casi nunca) a que terminen los pasos del cuadro anterior y se toma una foto de cada auto;
@@ -463,10 +496,13 @@ func _step_physics(dt: float) -> void:
 	if step_n <= 0 or cars.is_empty():
 		return
 	var pl: Car = cars[0]
-	pl.in_throttle = hud.throttle
-	pl.in_brake = hud.brake
-	pl.in_steer = hud.steer
-	pl.in_handbrake = hud.handbrake
+	pl.in_throttle = controls.gas
+	pl.in_brake = controls.brake
+	pl.in_steer = controls.steer
+	pl.in_handbrake = controls.handbrake
+	pl.in_nitro = controls.nitro
+	if controls.shift != 0:
+		pl.in_shift = controls.shift
 	phys_frames += 1
 	if threaded:
 		phys_task = WorkerThreadPool.add_group_task(_step_car, cars.size(), -1, true, "fisica")
@@ -482,6 +518,9 @@ func _step_car(i: int) -> void:
 		c.step_and_record(1.0 / 120.0, batch_t0 + float(k + 1) / 120.0)
 
 func _process(dt: float) -> void:
+	controls.update_inputs(dt)
+	if force_gas:
+		controls.gas = 1.0
 	_step_physics(dt)
 	if bench_i >= 0:
 		_bench_tick(dt)
@@ -516,8 +555,9 @@ func _process(dt: float) -> void:
 		cam.position = pos + Vector3.UP * 9.0 - fwd * 0.5
 		cam.look_at(pos)
 	# HUD
-	hud.speed_kmh = absf(p.vLong) * 3.6
-	hud.gear_text = "R" if p.gear < 0 else ("N" if p.gear == 0 else str(p.gear))
+	controls.speed_kmh = absf(p.vLong) * 3.6
+	controls.gear_text = "R" if p.gear < 0 else ("N" if p.gear == 0 else str(p.gear))
+	controls.rpm_frac = p.rpm / cars[0].phys.V.maxRpm
 	stat_timer += dt
 	frame_count += 1
 	if stat_timer >= 0.5:
@@ -538,6 +578,7 @@ func _process(dt: float) -> void:
 			fps_sum += fps
 			fps_n += 1
 	if shot_frames > 0 and Engine.get_frames_drawn() >= shot_frames:
+		print("VEL ", int(controls.speed_kmh), " km/h · marcha ", controls.gear_text)
 		if shot_path != "":
 			get_viewport().get_texture().get_image().save_png(shot_path)
 		if bench and fps_n > 0:
