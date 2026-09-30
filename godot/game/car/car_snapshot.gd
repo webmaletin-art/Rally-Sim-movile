@@ -5,7 +5,7 @@ extends RefCounted
 ## "salta" cuando un cuadro avanza 2 pasos y el siguiente 3. Los hilos solo escriben (push) y el principal solo lee, nunca a la vez.
 
 const RING := 24
-const STRIDE := 19
+const STRIDE := 51 # 19 del estado + 32 de datos por rueda para humo/marcas
 
 var data := PackedFloat64Array()
 var count := 0
@@ -23,9 +23,12 @@ var gear := 1
 var rpm := 0.0
 var wheel_s := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
 var wheel_omega := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
+## por rueda (8 valores): contacto, superficie, velocidad longitudinal, kappa, alfa, x, z del contacto, altura del piso (último paso)
+var wheel_fx := PackedFloat64Array()
 
 func _init() -> void:
 	data.resize(RING * STRIDE)
+	wheel_fx.resize(32)
 
 ## Borra el historial y deja un solo estado a la hora t
 func reset_to(t: float, p) -> void:
@@ -50,6 +53,16 @@ func push(t: float, p) -> void:
 	for i in 4:
 		data[o + 11 + i] = p.wheels[i].s
 		data[o + 15 + i] = p.wheels[i].omega
+		var w = p.wheels[i]
+		var q := o + 19 + i * 8
+		data[q] = 1.0 if w.contact else 0.0
+		data[q + 1] = float(w.surf)
+		data[q + 2] = w.vl
+		data[q + 3] = w.kappa
+		data[q + 4] = w.alpha
+		data[q + 5] = w.wx
+		data[q + 6] = w.wz
+		data[q + 7] = w.gy
 	count += 1
 
 func sample(t: float) -> void:
@@ -85,6 +98,9 @@ func sample(t: float) -> void:
 	vLong = lerpf(data[o0 + 8], data[o1 + 8], a)
 	rpm = lerpf(data[o0 + 9], data[o1 + 9], a)
 	gear = int(data[o1 + 10])
+	var on := newest * STRIDE
+	for j in 32:
+		wheel_fx[j] = data[on + 19 + j] # datos de las ruedas: los del último paso
 	for i in 4:
 		wheel_s[i] = lerpf(data[o0 + 11 + i], data[o1 + 11 + i], a)
 		wheel_omega[i] = lerpf(data[o0 + 15 + i], data[o1 + 15 + i], a)

@@ -11,6 +11,7 @@ const RingDriver := preload("res://game/ai/ring_driver.gd")
 const Pilot := preload("res://game/car/pilot.gd")
 const DebugPanel := preload("res://game/ui/debug_panel.gd")
 const Controls := preload("res://game/ui/controls.gd")
+const Effects := preload("res://game/fx/effects.gd")
 const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
 
 var track: CircuitTrack
@@ -21,6 +22,8 @@ var sun: DirectionalLight3D
 var hud: Control # panel de pruebas
 var controls: Control # controles de manejo
 var trees_node: Node3D
+var fx: Node3D # humo, polvo y marcas
+var force_steer := 0.0
 var cam_yaw := 0.0
 var cam_ready := false
 var phys_us := 0
@@ -63,6 +66,8 @@ func _ready() -> void:
 			shot_frames = int(a.substr(9))
 		elif a == "--autobench":
 			autobench = true
+		elif a.begins_with("--steer="):
+			force_steer = float(a.substr(8))
 		elif a == "--gas":
 			force_gas = true
 		elif a == "--nobody":
@@ -89,6 +94,9 @@ func _ready() -> void:
 	hud.option_changed.connect(_on_option)
 	hud.bench_pressed.connect(_bench_start)
 	hud.copy_pressed.connect(_copy_report)
+	fx = Effects.new()
+	world.add_child(fx)
+	fx.setup(track)
 	_rebuild_trees()
 	_rebuild_cars()
 	if autobench:
@@ -163,8 +171,13 @@ func _build_world() -> void:
 	road.material_override = rm
 	world.add_child(road)
 
-## Árboles: dos MultiMesh por zona de 300 m (troncos y copas). Cada zona se dibuja solo si está a la vista y a menos de
-## 450 m: en un bosque grande el celular no paga por lo que no se ve.
+## Bosque con tres capas de detalle según la distancia (zonas de 200 m; cada capa se dibuja solo dentro de su rango):
+##   cerca  (0–190 m)     tronco + copa, con forma
+##   media  (170–520 m)   un solo cono chato por árbol (barato) — con la niebla parece bosque
+##   lejos  (500–950 m)   una cuarta parte de los árboles, más grandes: una "cortina" que se nota que hay bosque
+## Al acercarte, las capas se cambian solas. Antes se dibujaba todo el campo.
+const CHUNK := 200.0
+
 func _rebuild_trees() -> void:
 	if trees_node != null:
 		trees_node.queue_free()
@@ -186,6 +199,14 @@ func _rebuild_trees() -> void:
 	crown.radial_segments = 6
 	crown.rings = 1
 	crown.cap_top = false
+	var low := CylinderMesh.new()
+	low.top_radius = 0.0
+	low.bottom_radius = 1.8
+	low.height = 6.4
+	low.radial_segments = 4
+	low.rings = 1
+	low.cap_top = false
+	low.cap_bottom = false
 	var tm := StandardMaterial3D.new()
 	tm.albedo_color = Color(0.30, 0.20, 0.12)
 	tm.roughness = 1.0
@@ -194,6 +215,7 @@ func _rebuild_trees() -> void:
 	cm.roughness = 1.0
 	trunk.material = tm
 	crown.material = cm
+	low.material = cm
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 12345
 	var cells := {}
@@ -203,34 +225,50 @@ func _rebuild_trees() -> void:
 		var c: Vector2 = track.center(th)
 		var t: Vector2 = track.tangent(th)
 		var p := c + Vector2(-t.y, t.x) * off
-		var key := Vector2i(floori(p.x / 300.0), floori(p.y / 300.0))
+		var key := Vector2i(floori(p.x / CHUNK), floori(p.y / CHUNK))
 		if not cells.has(key):
 			cells[key] = []
 		cells[key].append([p.x, p.y, rng.randf_range(0.8, 1.7)])
 	for key in cells:
 		var list: Array = cells[key]
-		var mm_t := MultiMesh.new()
-		mm_t.transform_format = MultiMesh.TRANSFORM_3D
-		mm_t.mesh = trunk
-		mm_t.instance_count = list.size()
-		var mm_c := MultiMesh.new()
-		mm_c.transform_format = MultiMesh.TRANSFORM_3D
-		mm_c.mesh = crown
-		mm_c.instance_count = list.size()
-		for i in list.size():
-			var e: Array = list[i]
-			var sc: float = e[2]
-			mm_t.set_instance_transform(i, Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3(e[0], 1.2 * sc, e[1])))
-			mm_c.set_instance_transform(i, Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3(e[0], 4.4 * sc, e[1])))
-		for mm in [mm_t, mm_c]:
-			var inst := MultiMeshInstance3D.new()
-			inst.multimesh = mm
-			inst.visibility_range_end = 450.0
-			inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF # las sombras son solo de los autos: mucho más barato
-			trees_node.add_child(inst)
+		var center := Vector3((float(key.x) + 0.5) * CHUNK, 0.0, (float(key.y) + 0.5) * CHUNK)
+		# cerca: tronco y copa
+		var mm_t := _multimesh(trunk, list, center, 1.2, 1.0, 1)
+		var mm_c := _multimesh(crown, list, center, 4.4, 1.0, 1)
+		_add_tree_layer(mm_t, center, 0.0, 190.0)
+		_add_tree_layer(mm_c, center, 0.0, 190.0)
+		# media: un cono por árbol
+		_add_tree_layer(_multimesh(low, list, center, 3.2, 1.0, 1), center, 170.0, 520.0)
+		# lejos: uno de cada cuatro, más grande
+		if list.size() >= 4:
+			_add_tree_layer(_multimesh(low, list, center, 3.2, 1.7, 4), center, 500.0, 950.0)
+
+## MultiMesh con los árboles de una zona (posiciones relativas al centro de la zona); cada "step"-ésimo árbol
+func _multimesh(mesh: Mesh, list: Array, center: Vector3, y_off: float, size_k: float, step: int) -> MultiMesh:
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mesh
+	var n := int(ceil(float(list.size()) / float(step)))
+	mm.instance_count = n
+	for j in n:
+		var e: Array = list[j * step]
+		var sc: float = float(e[2]) * size_k
+		mm.set_instance_transform(j, Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3(float(e[0]) - center.x, y_off * sc, float(e[1]) - center.z)))
+	return mm
+
+func _add_tree_layer(mm: MultiMesh, center: Vector3, r_begin: float, r_end: float) -> void:
+	var inst := MultiMeshInstance3D.new()
+	inst.multimesh = mm
+	inst.position = center # la distancia de visibilidad se mide hasta el origen del nodo: va en el centro de la zona
+	inst.visibility_range_begin = r_begin
+	inst.visibility_range_end = r_end
+	inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF # las sombras son solo de los autos
+	trees_node.add_child(inst)
 
 func _rebuild_cars() -> void:
 	_finish_physics()
+	if fx != null:
+		fx.reset()
 	for c in cars:
 		c.visual.queue_free()
 	cars.clear()
@@ -256,9 +294,10 @@ func _rebuild_cars() -> void:
 		world.add_child(car.visual)
 		if no_body:
 			car.visual.body.get_child(0).visible = false
-		if pilots_on:
-			Pilot.create(car.visual.body, 0.37, 0.49, -0.31, lo, 0.0 if i == 0 else 55.0)
-			Pilot.create(car.visual.body, -0.37, 0.49, -0.31, lo, 0.0 if i == 0 else 55.0)
+		# los rivales llevan vidrios oscuros: su tripulación no se dibuja (solo en cinemáticas, cuando haga falta)
+		if pilots_on and i == 0:
+			Pilot.create(car.visual.body, 0.37, 0.49, -0.31, lo)
+			Pilot.create(car.visual.body, -0.37, 0.49, -0.31, lo)
 		cars.append(car)
 	if not cars.is_empty():
 		cars[0].phys.manual = manual_gearbox
@@ -426,6 +465,22 @@ func _copy_report() -> void:
 	hud.show_toast("Informe copiado ✔  Pegalo en el chat")
 	print(txt)
 
+## Humo/polvo/marcas: el propio siempre; los rivales solo si están cerca y a la vista (y a menor ritmo). Los rivales muy
+## lejanos ni se dibujan.
+func _update_fx(dt: float) -> void:
+	var cp := cam.position
+	for i in cars.size():
+		var c: Car = cars[i]
+		var pos := Vector3(c.snap.px, c.snap.py, c.snap.pz)
+		var d := pos.distance_to(cp)
+		if i > 0:
+			c.visual.visible = d < 380.0
+		if i == 0:
+			fx.emit_from(0, c.snap, dt, 0.325)
+		elif d < 40.0 and cam.is_position_in_frustum(pos):
+			fx.emit_from(i, c.snap, dt * 0.4, 0.325)
+	fx.update(dt, cp)
+
 func _on_option(key: String, value) -> void:
 	match key:
 		"cars":
@@ -521,6 +576,8 @@ func _process(dt: float) -> void:
 	controls.update_inputs(dt)
 	if force_gas:
 		controls.gas = 1.0
+	if force_steer != 0.0:
+		controls.steer = force_steer
 	_step_physics(dt)
 	if bench_i >= 0:
 		_bench_tick(dt)
@@ -529,6 +586,7 @@ func _process(dt: float) -> void:
 	for c in cars:
 		c.snap.sample(render_t)
 		c.update_visual(dt)
+	_update_fx(dt)
 	var p = cars[0].snap
 	# cámara de seguimiento
 	var target_yaw: float = p.yaw
