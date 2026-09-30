@@ -114,6 +114,7 @@ var cam_rig: RefCounted
 var was_inside := false
 var was_onboard := false
 var cam_index := 1
+var fx_arg := "" # prueba: efectos 2.0 por argumento (p. ej. --fx=11,3,0)
 var lens_auto := true # el filtro se apaga solo si el teléfono no llega
 var lens: Node # filtro de cámara (Lente Rally)
 
@@ -146,6 +147,8 @@ func _ready() -> void:
 			cam_index = {"onboard": 0, "cabin": 0, "chase": 1, "near": 2, "far": 3, "aerial": 4, "rear": 6, "hood": 7, "bumper": 8}.get(cam_mode, 1)
 		elif a == "--auto":
 			auto_player = true
+		elif a.begins_with("--fx="):
+			fx_arg = a.substr(5)
 		elif a.begins_with("--track="):
 			track_id = a.substr(8)
 		elif a.begins_with("--cars="):
@@ -205,9 +208,17 @@ func _ready() -> void:
 		AudioServer.add_bus_effect(0, audiorec)
 		audiorec.set_recording_active(true)
 	audio.rain(weather_name == "lluvia")
+	if fx_arg != "":
+		var fa: Array = []
+		for t in fx_arg.split(","):
+			fa.append(int(t))
+		while fa.size() < 3:
+			fa.append(0)
+		lens.fx = fa
 	if menu_mode:
 		# opciones del jugador
-		lens.level = int(profile.setting("lens"))
+		lens.level = int(profile.setting("lens2"))
+		lens.fx = _fx_setting()
 		lens_auto = true
 		var rs := float(profile.setting("res"))
 		if rs > 0.0:
@@ -215,6 +226,7 @@ func _ready() -> void:
 			res_scale = rs
 			_on_resize()
 		AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(profile.setting("volume")) / 80.0, 0.001)))
+		_apply_quality_settings()
 	_rebuild_trees()
 	_rebuild_cars()
 	if autobench:
@@ -895,11 +907,39 @@ func _make_result() -> Dictionary:
 		r["standings"].append({"name": session.names[id], "time": session.finish_time[id] if session.finished[id] else -1.0, "player": id == 0, "color": rival_info[id]["color"].to_html(false)})
 	return r
 
+## Calidad (baja/media/alta/automática), texturas y volúmenes elegidos en Opciones
+func _apply_quality_settings() -> void:
+	var q := str(profile.setting("quality"))
+	var tree_q := {"low": 1500, "mid": 3000, "high": 6000, "auto": 3000}
+	var cap := {"low": 0.45, "mid": 0.65, "high": 0.85, "auto": 0.8}
+	var t = profile.setting("trees")
+	trees_n = int(tree_q.get(q, 3000)) if str(t) == "auto" else int(t)
+	var sh = profile.setting("shadowsQ")
+	sun.shadow_enabled = (q == "high") if str(sh) == "auto" else bool(sh)
+	_ar_cap = float(cap.get(q, 0.8))
+	res_scale = minf(res_scale, _ar_cap)
+	if q == "low":
+		res_scale = 0.4
+	_on_resize()
+	var tx := str(profile.setting("textures"))
+	world.anisotropic_filtering_level = {"low": Viewport.ANISOTROPY_DISABLED, "mid": Viewport.ANISOTROPY_4X, "high": Viewport.ANISOTROPY_16X}.get(tx, Viewport.ANISOTROPY_4X)
+	audio.mix["eng"] = float(profile.setting("volEngine")) / 100.0
+	audio.mix["surf"] = float(profile.setting("volSurf")) / 100.0
+	audio.mix["wind"] = float(profile.setting("volWind")) / 100.0
+	audio.mix["turbo"] = float(profile.setting("volTurbo")) / 100.0
+	audio.mix["gear"] = float(profile.setting("volGear")) / 100.0
+
+func _fx_setting() -> Array:
+	var a = profile.setting("fx")
+	return [int(a[0]), int(a[1]), int(a[2])] if a is Array and a.size() >= 3 else [0, 0, 0]
+
 func _toggle_pause() -> void:
 	if not menu_mode or session == null:
 		return
 	paused = not paused
-	get_tree().paused = paused
+	if paused:
+		_finish_physics() # la simulación queda quieta; la imagen y la cámara siguen vivas para poder cambiar de cámara
+	AudioServer.set_bus_mute(0, paused)
 	race_hud.set_paused(paused)
 	controls.visible = not paused
 	controls.set_process_input(not paused)
@@ -916,21 +956,24 @@ func _show_tests(on := true) -> void:
 		race_hud.pause_box.visible = false
 
 func _restart() -> void:
-	get_tree().paused = false
+	AudioServer.set_bus_mute(0, false)
 	var c := cfg
 	var a := get_parent()
 	a.call_deferred("start_race", c)
 	queue_free()
 
 func _quit() -> void:
-	get_tree().paused = false
+	AudioServer.set_bus_mute(0, false)
 	exit_requested.emit(str(cfg.get("back", "home")))
 
 func _next_camera() -> void:
 	if cam_rig == null:
 		return
 	cam_rig.next()
-	hud.show_toast("🎥 " + cam_rig.cam_name())
+	if menu_mode and race_hud != null:
+		race_hud.toast("🎥 " + cam_rig.cam_name())
+	else:
+		hud.show_toast("🎥 " + cam_rig.cam_name())
 
 func _load_cabin_cfg() -> void:
 	if cockpit == null:
@@ -941,7 +984,7 @@ func _load_cabin_cfg() -> void:
 		cockpit.ob_dist = float(cf.get_value("cam", "ob", cockpit.ob_dist))
 		cockpit.rear_fov = float(cf.get_value("cam", "rear_fov", cockpit.rear_fov))
 		cockpit.ob_fov = float(cf.get_value("cam", "ob_fov", cockpit.ob_fov))
-		cockpit.set_disp_off(float(cf.get_value("cam", "disp", cockpit.disp_off)))
+		cockpit.set_disp_off(float(cf.get_value("cam", "disp2", cockpit.disp_off)))
 	hud.sliders["cam_rear"]["val"] = cockpit.rear_dist
 	hud.sliders["cam_rear_fov"]["val"] = cockpit.rear_fov
 	hud.sliders["cam_ob"]["val"] = cockpit.ob_dist
@@ -954,11 +997,14 @@ func _save_cabin_cfg() -> void:
 	cf.set_value("cam", "ob", cockpit.ob_dist)
 	cf.set_value("cam", "rear_fov", cockpit.rear_fov)
 	cf.set_value("cam", "ob_fov", cockpit.ob_fov)
-	cf.set_value("cam", "disp", cockpit.disp_off)
+	cf.set_value("cam", "disp2", cockpit.disp_off)
 	cf.save("user://cabina.cfg")
 
 func _on_option(key: String, value) -> void:
 	match key:
+		"to_menu":
+			AudioServer.set_bus_mute(0, false)
+			exit_requested.emit("home")
 		"panel_closed":
 			if menu_mode:
 				_show_tests(false)
@@ -1144,12 +1190,13 @@ func _frame(dt: float) -> void:
 		controls.steer = force_steer
 	if force_hb:
 		controls.handbrake = true
-	_step_physics(dt)
+	if not paused:
+		_step_physics(dt)
 	if bench_i >= 0:
 		_bench_tick(dt)
 	if cars.is_empty():
 		return
-	if session != null:
+	if session != null and not paused:
 		_tick_session(dt)
 		if OS.get_cmdline_user_args().has("--pausetest") and Engine.get_frames_drawn() == 100:
 			_toggle_pause()
@@ -1158,8 +1205,9 @@ func _frame(dt: float) -> void:
 			get_tree().quit()
 	for c in cars:
 		c.snap.sample(render_t)
-		c.update_visual(dt)
-	_update_fx(dt)
+		c.update_visual(0.0 if paused else dt)
+	if not paused:
+		_update_fx(dt)
 	var p = cars[0].snap
 	# cámara (las de seguimiento, capó, paragolpes, libre y las dos interiores)
 	var pos := Vector3(p.px, p.py, p.pz)
@@ -1192,7 +1240,7 @@ func _frame(dt: float) -> void:
 	controls.gear_text = "R" if p.gear < 0 else ("N" if p.gear == 0 else str(p.gear))
 	controls.rpm_frac = p.rpm / cars[0].phys.V.maxRpm
 	lens.update(dt, controls.speed_kmh, 1.0 if controls.nitro else 0.0)
-	if audio_on:
+	if audio_on and not paused:
 		audio.update(p, cars[0].phys.V, dt, pl_events, pl_impact)
 		pl_events = []
 		pl_impact = 0.0

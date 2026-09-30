@@ -11,7 +11,7 @@ const DEFAULT_SETTINGS := {
 	"visual": "none", "shadows": true, "mirrors": true, "rearCam": false, "notes": true, "copilot": true, "chatter": "normal",
 	"steerMode": "wheel", "gyroSens": 50, "gameSpeed": 100, "quality": "auto", "gearbox": "auto", "volume": 80, "volEngine": 100,
 	"volSurf": 30, "volWind": 30, "volTurbo": 100, "volGear": 100, "rawShake": 25, "askSetup": true, "music": true, "units": "kmh",
-	"abs": true, "tc": 50, "stab": 30, "camera": 1, "hud": "full", "vibrate": true, "lens": 1, "res": 0, "weather": "dia",
+	"abs": true, "tc": 50, "stab": 30, "camera": 1, "hud": "full", "vibrate": true, "lens2": 0, "fx": [0, 0, 0], "textures": "mid", "trees": "auto", "shadowsQ": "auto", "res": 0, "weather": "dia",
 }
 
 var d: Dictionary

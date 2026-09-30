@@ -121,16 +121,18 @@ func _build_pause() -> void:
 	pause_box.visible = false
 	add_child(pause_box)
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.62)
+	dim.color = Color(0, 0, 0, 0.18)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	pause_box.add_child(dim)
-	var cc := CenterContainer.new()
+	var cc := Control.new()
 	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pause_box.add_child(cc)
-	var p := Kit.panel(22)
+	var p := Kit.panel(18)
+	p.position = Vector2(20, 80) # a un costado: se ve la cámara detrás mientras se elige
 	cc.add_child(p)
 	var v := Kit.vbox(12)
-	v.custom_minimum_size = Vector2(420, 0)
+	v.custom_minimum_size = Vector2(340, 0)
 	p.add_child(v)
 	v.add_child(Kit.label("PAUSA", 38, Kit.ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(Kit.button("▶  SEGUIR", func(): resume_pressed.emit(), true))
@@ -140,5 +142,9 @@ func _build_pause() -> void:
 	v.add_child(Kit.button("✕  SALIR", func(): quit_pressed.emit()))
 
 func set_paused(on: bool) -> void:
+	if on:
+		big_t = 0.0
+		big_l.text = ""
+		toast_t = 0.0 if toast_l.text == "" else toast_t
 	pause_box.visible = on
 	pause_box.mouse_filter = Control.MOUSE_FILTER_STOP

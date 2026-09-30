@@ -56,7 +56,7 @@ var rear_dist := 1.08 # cámara de atrás de las butacas: metros detrás de los 
 var ob_dist := 0.17 # cámara del casco: metros hacia atrás de la cabeza
 var rear_fov := 92.0 # ángulo horizontal de las cámaras interiores (menos = más zoom)
 var ob_fov := 96.0
-var disp_off := 0.13 # cuánto se corre la pantalla del tablero hacia el costado (hacia la derecha del piloto)
+var disp_off := 0.30 # cuánto se corre la pantalla del tablero desde delante del piloto hacia el centro del tablero (hacia su derecha)
 var dome: Node3D
 var read_w := 0.0 # cuánto está leyendo la hoja el copiloto (0 mira al frente … 1 mira la hoja)
 var _body_col := Color(0.10, 0.31, 0.88)
@@ -279,7 +279,7 @@ func _build() -> void:
 	rY = float(C["roofY"]) + 0.12 # techo 12 cm más alto que el real (más inmersivo: se ve el horizonte)
 	floor_y = eY - 1.05
 	eye = Vector3(xD, eY, eZ)
-	dz0 = eZ + 0.40 # cara del tablero que mira al piloto
+	dz0 = eZ + 0.52 # cara del tablero que mira al piloto (el volante queda adelante de ella, sin atravesarla)
 	fw = cz + 0.05 # cortafuegos
 	cowl_y = eY - 0.30
 	# materiales
@@ -338,18 +338,20 @@ func _b_dash() -> void:
 	pts.append_array(_bez(Vector2(cz - 0.14, cowl_y - 0.02), Vector2(cz - 0.06, cowl_y + 0.035), Vector2(fw, cowl_y + 0.012), 4))
 	pts.append_array([Vector2(fw, floor_y), Vector2(fw - 0.10, floor_y), Vector2(fw - 0.30, eY - 0.80)])
 	_add_mesh(_extrude(PackedVector2Array(pts), -hw, hw), Transform3D.IDENTITY, "dash")
-	# cúpula del instrumental con la pantalla: se puede correr hacia el costado (barra en PRUEBAS)
+	# pantallita de marchas y velocidad (como la de la versión HTML): chica, sobre el tablero cerca del centro, girada hacia el piloto
 	dome = Node3D.new()
-	dome.position.x = -disp_off
 	interior.add_child(dome)
-	# cara trasera inclinada (la pantalla mira al piloto), tapa redondeada
-	var bp: Array = [Vector2(dz0 + 0.02, eY - 0.32), Vector2(dz0 + 0.075, eY - 0.06)]
-	bp.append_array(_bez(Vector2(dz0 + 0.075, eY - 0.06), Vector2(dz0 + 0.09, eY - 0.02), Vector2(dz0 + 0.16, eY - 0.02), 5))
-	bp.append_array(_bez(Vector2(dz0 + 0.16, eY - 0.02), Vector2(dz0 + 0.26, eY - 0.02), Vector2(dz0 + 0.28, eY - 0.30), 5))
-	_mesh_node(_extrude(PackedVector2Array(bp), xD - 0.21, xD + 0.21, 4.0), _mats["trim"], Vector3.ZERO, Basis.IDENTITY, dome)
-	var face_c := Vector3(xD, eY - 0.14, dz0 + 0.062 - 0.006)
-	var face_n := Vector3(0, 0.19, -0.98).normalized()
-	_build_display(face_c, face_n)
+	var tilt := Node3D.new() # la cara del visor se inclina hacia arriba para mirar al piloto
+	tilt.rotation.x = 0.58
+	dome.add_child(tilt)
+	var pod := BoxMesh.new()
+	pod.size = Vector3(0.175, 0.075, 0.05)
+	_mesh_node(pod, _mats["trim"], Vector3.ZERO, Basis.IDENTITY, tilt)
+	var stalk := BoxMesh.new()
+	stalk.size = Vector3(0.05, 0.05, 0.05)
+	_mesh_node(stalk, _mats["trim"], Vector3(0, -0.05, 0.0), Basis.IDENTITY, dome)
+	_build_display(Vector3(0, 0, -0.0258), Vector3(0, 0, -1), tilt)
+	set_disp_off(disp_off)
 	# panel central de llaves (inclinado hacia el piloto) y salidas de aire
 	var pc := Vector3(-0.02, eY - 0.42, dz0 - 0.005)
 	_box(Vector3(0.34, 0.15, 0.02), pc, "trim", _face(pc, pc + Vector3(0, 0.15, -1)))
@@ -655,7 +657,7 @@ func _hood_mesh(w: float, l: float, hwid: float) -> ArrayMesh:
 
 # ───────────────────────── volante ─────────────────────────
 func _b_wheel() -> void:
-	wheel_c = Vector3(xD, eY - 0.31, eZ + 0.37)
+	wheel_c = Vector3(xD, eY - 0.31, eZ + 0.31)
 	wheel_group = Node3D.new()
 	wheel_group.position = wheel_c
 	wheel_group.basis = _face(wheel_c, eye + Vector3(0, -0.12, 0))
@@ -801,7 +803,7 @@ func _finish_batches() -> void:
 	_batch.clear()
 
 # ───────────────────────── pantalla del tablero ─────────────────────────
-func _build_display(pos: Vector3, normal: Vector3) -> void:
+func _build_display(pos: Vector3, normal: Vector3, parent: Node3D) -> void:
 	disp_vp = SubViewport.new()
 	disp_vp.size = Vector2i(256, 112)
 	disp_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
@@ -811,11 +813,11 @@ func _build_display(pos: Vector3, normal: Vector3) -> void:
 	disp_ctl.size = Vector2(256, 112)
 	disp_vp.add_child(disp_ctl)
 	var qm := QuadMesh.new()
-	qm.size = Vector2(0.21, 0.092)
+	qm.size = Vector2(0.155, 0.0678)
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.albedo_texture = disp_vp.get_texture()
-	_mesh_node(qm, m, pos, Basis.looking_at(normal, Vector3.UP, true), dome)
+	_mesh_node(qm, m, pos, Basis.looking_at(normal, Vector3.UP, true), parent)
 
 ## Pantalla del tablero (se dibuja en un SubViewport chiquito, 10 veces por segundo)
 class DisplayPanel extends Control:
@@ -1036,7 +1038,10 @@ func camera_local(mode: String, p: CarSnapshot, time: float, rough: float) -> Di
 func set_disp_off(v: float) -> void:
 	disp_off = v
 	if dome != null:
-		dome.position.x = -v
+		var top_y := eY - 0.31 + 0.075
+		dome.position = Vector3(xD - v, top_y, dz0 + 0.17)
+		# mira hacia el piloto (la cara del visor apunta a -z local)
+		dome.rotation = Vector3(0, atan2(-(xD - dome.position.x), -(eZ - dome.position.z)), 0)
 
 func set_inside(v: bool, driver_head_visible: bool) -> void:
 	interior.visible = v
