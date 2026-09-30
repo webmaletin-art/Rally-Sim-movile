@@ -210,9 +210,11 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 	var f0 := rpm / 60.0 * V.firingOrder
 	tgt["f0"] = f0
 	tgt["cut"] = 260.0 + load * 1500.0 + rn * 1600.0
-	tgt["eng"] = SND["engine"] * mix["eng"] * (0.35 + 0.25 * rn) * (0.62 + 0.38 * load) * (0.7 if p.limiter else 1.0)
-	tgt["engn"] = 0.25 * load
 	var sp := sqrt(p.vx * p.vx + p.vz * p.vz)
+	# parado y sin acelerar el motor no suena (el ralentí sonaba a motor de turismo carretera con petardeos): el sonido entra con el pedal o al andar
+	var alive := clampf(maxf(p.throttle * 2.5, (sp - 0.6) / 3.0), 0.0, 1.0)
+	tgt["eng"] = SND["engine"] * mix["eng"] * (0.35 + 0.25 * rn) * (0.62 + 0.38 * load) * (0.7 if p.limiter else 1.0) * alive
+	tgt["engn"] = 0.25 * load
 	var asf := 0.0
 	var loose := 0.0
 	var sl := 0.0
@@ -240,7 +242,7 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 	# pasto/tierra: nada parado, sube con la velocidad; el pasto suena más suave que la tierra/ripio
 	var mv := clampf((sp - 0.8) / 12.0, 0.0, 1.0)
 	tgt["grav"] = SND["gravel"] * mix["surf"] * minf(1.0, loose) * (0.35 + 0.65 * dirt_k) * mv * mv * (0.8 + _r() * 0.4)
-	tgt["wind"] = SND["wind"] * mix["wind"] * pow(clampf((sp - 6.0) / 42.0, 0.0, 1.0), 2.0)
+	tgt["wind"] = SND["wind"] * mix["wind"] * 0.7 * pow(clampf((sp - 6.0) / 42.0, 0.0, 1.0), 2.0)
 	tgt["windf"] = 500.0 + sp * 18.0
 	# caja: el tono sigue a la velocidad (eje de salida × dientes); suena acelerando y más aún levantando el pie; se corta en cada cambio
 	var G: Dictionary = GEAR_SND.get(vehicle_id, GEAR_SND["pickup"])
@@ -286,14 +288,14 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 			flutter(b * 0.55, T, L, mt)
 			fl_t = time
 			boost *= 0.6
-	if prev_thr > 0.6 and thr < 0.15 and rpm > 4200.0:
+	if prev_thr > 0.6 and thr < 0.15 and rpm > 4200.0 and sp > 3.0:
 		pops(2 + int(_r() * 4.0))
 	prev_thr = thr
 	for e in events:
 		if e is String:
-			if e == "shift_up":
+			if e == "shift_up" and sp > 3.0:
 				pops(1)
-			elif e == "limiter":
+			elif e == "limiter" and sp > 3.0:
 				pops(2)
 		elif e is Array and e[0] == "land":
 			thump(float(e[1]) / 4.0)

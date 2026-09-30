@@ -27,7 +27,7 @@ var sliders := {
 	"cam_rear_fov": {"label": "Trasera: ángulo (° menos = zoom)", "min": 60.0, "max": 120.0, "val": 92.0},
 	"cam_ob": {"label": "Casco: distancia (m)", "min": -0.10, "max": 0.50, "val": 0.17},
 	"cam_ob_fov": {"label": "Casco: ángulo (°)", "min": 60.0, "max": 120.0, "val": 96.0},
-	"disp_x": {"label": "Pantalla: corrida al costado (m)", "min": 0.0, "max": 0.40, "val": 0.13},
+	"disp_x": {"label": "Pantalla: corrida hacia el centro (m)", "min": 0.0, "max": 0.70, "val": 0.30},
 }
 var _slider_finger := {} # dedo → clave
 var _fingers := {} # index → botón que sostiene
@@ -40,7 +40,7 @@ var _opts := {
 	"hi": [1, [0, 1]],
 	"threads": [1, [0, 1]],
 	"res": [0, [0.0, 0.35, 0.5, 0.7, 1.0]],
-	"lens": [1, ["apagado", "suave", "fuerte"]],
+	"lens": [0, ["apagado", "suave", "fuerte"]],
 	"track": [0, ["prueba", "forest", "forestRev", "lake", "quarry", "quarryRev", "descent", "asphaltLong", "asphaltRev"]],
 	"steer": [0, ["volante", "barra"]],
 	"gearbox": [0, ["auto", "manual"]],
@@ -69,6 +69,7 @@ func _layout() -> void:
 	var bw := 150.0
 	var bh := 70.0
 	_buttons.append({"id": "toggle", "rect": Rect2(10, 8, 120, 40), "label": "PRUEBAS" if not open else "CERRAR"})
+	_buttons.append({"id": "menu", "rect": Rect2(140, 8, 110, 40), "label": "← MENÚ"})
 	if not open:
 		return
 	_buttons.append({"id": "bench", "rect": Rect2(10, 56, 150, 44), "label": "PRUEBA"})
@@ -141,6 +142,8 @@ func _input(event: InputEvent) -> void:
 				elif h == "bench":
 					result_text = ""
 					bench_pressed.emit()
+				elif h == "menu":
+					option_changed.emit("to_menu", 1)
 				elif h == "copy":
 					copy_pressed.emit()
 				elif h == "recal":
