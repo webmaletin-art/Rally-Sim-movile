@@ -12,6 +12,7 @@ const Pilot := preload("res://game/car/pilot.gd")
 const DebugPanel := preload("res://game/ui/debug_panel.gd")
 const Controls := preload("res://game/ui/controls.gd")
 const Effects := preload("res://game/fx/effects.gd")
+const Weather := preload("res://game/fx/weather.gd")
 const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
 
 var track: CircuitTrack
@@ -23,6 +24,11 @@ var hud: Control # panel de pruebas
 var controls: Control # controles de manejo
 var trees_node: Node3D
 var fx: Node3D # humo, polvo y marcas
+var weather: Node3D
+var env: Environment
+var road_mat: StandardMaterial3D
+var ground_mat: StandardMaterial3D
+var weather_name := "dia"
 var force_steer := 0.0
 var cam_yaw := 0.0
 var cam_ready := false
@@ -54,6 +60,8 @@ var report_body: Array = [] # líneas detalladas por configuración
 var bench_results: Array = []
 var no_body := false
 var force_gas := false
+var force_hb := false
+var dirt_test := false
 var autobench := false
 var acc := 0.0
 var step_n := 0
@@ -68,6 +76,12 @@ func _ready() -> void:
 			autobench = true
 		elif a.begins_with("--steer="):
 			force_steer = float(a.substr(8))
+		elif a.begins_with("--weather="):
+			weather_name = a.substr(10)
+		elif a == "--dirt":
+			dirt_test = true
+		elif a == "--hb":
+			force_hb = true
 		elif a == "--gas":
 			force_gas = true
 		elif a == "--nobody":
@@ -82,6 +96,8 @@ func _ready() -> void:
 			trees_n = int(a.substr(8))
 	vehicles = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
 	track = CircuitTrack.new()
+	if dirt_test:
+		track.outside_surf = 1.0
 	_setup_viewport()
 	_build_world()
 	var layer := CanvasLayer.new()
@@ -97,6 +113,11 @@ func _ready() -> void:
 	fx = Effects.new()
 	world.add_child(fx)
 	fx.setup(track)
+	fx.set_quality("media")
+	weather = Weather.new()
+	world.add_child(weather)
+	weather.setup(env, sun, cam, track, fx, road_mat, ground_mat)
+	weather.apply(weather_name, true)
 	_rebuild_trees()
 	_rebuild_cars()
 	if autobench:
@@ -128,7 +149,7 @@ func _on_resize() -> void:
 	view_rect.size = get_viewport().get_visible_rect().size
 
 func _build_world() -> void:
-	var env := Environment.new()
+	env = Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.62, 0.78, 0.95)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -161,6 +182,7 @@ func _build_world() -> void:
 	gm.albedo_color = Color(0.21, 0.35, 0.15)
 	gm.roughness = 1.0
 	ground.material_override = gm
+	ground_mat = gm
 	world.add_child(ground)
 	var road := MeshInstance3D.new()
 	road.mesh = track.build_road_mesh()
@@ -169,6 +191,7 @@ func _build_world() -> void:
 	rm.roughness = 0.9
 	rm.cull_mode = BaseMaterial3D.CULL_DISABLED
 	road.material_override = rm
+	road_mat = rm
 	world.add_child(road)
 
 ## Bosque con tres capas de detalle según la distancia (zonas de 200 m; cada capa se dibuja solo dentro de su rango):
@@ -477,9 +500,8 @@ func _update_fx(dt: float) -> void:
 			c.visual.visible = d < 380.0
 		if i == 0:
 			fx.emit_from(0, c.snap, dt, 0.325)
-		elif d < 40.0 and cam.is_position_in_frustum(pos):
-			fx.emit_from(i, c.snap, dt * 0.4, 0.325)
-	fx.update(dt, cp)
+		elif i <= 3 and d < 60.0 and cam.is_position_in_frustum(pos):
+			fx.emit_from(i, c.snap, dt, 0.325, 0.5)
 
 func _on_option(key: String, value) -> void:
 	match key:
@@ -515,6 +537,8 @@ func _on_option(key: String, value) -> void:
 		"nitro":
 			nitro_test = int(value) == 1
 			_rebuild_cars()
+		"weather":
+			weather.apply(str(value))
 		"recal":
 			controls.recalibrate_gyro()
 			hud.show_toast("Acelerómetro calibrado: sostené el teléfono como para jugar")
@@ -578,6 +602,8 @@ func _process(dt: float) -> void:
 		controls.gas = 1.0
 	if force_steer != 0.0:
 		controls.steer = force_steer
+	if force_hb:
+		controls.handbrake = true
 	_step_physics(dt)
 	if bench_i >= 0:
 		_bench_tick(dt)
@@ -636,7 +662,7 @@ func _process(dt: float) -> void:
 			fps_sum += fps
 			fps_n += 1
 	if shot_frames > 0 and Engine.get_frames_drawn() >= shot_frames:
-		print("VEL ", int(controls.speed_kmh), " km/h · marcha ", controls.gear_text)
+		print("VEL ", int(controls.speed_kmh), " km/h · marcha ", controls.gear_text, " · ", fx.debug_info())
 		if shot_path != "":
 			get_viewport().get_texture().get_image().save_png(shot_path)
 		if bench and fps_n > 0:
