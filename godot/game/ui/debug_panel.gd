@@ -23,8 +23,11 @@ var _last_size := Vector2.ZERO
 var _steer_x0 := 0.0
 ## barras deslizables (clave → {label, min, max, val}); se ven con el panel abierto
 var sliders := {
-	"cam_rear": {"label": "Cámara de atrás de las butacas: distancia", "min": 0.60, "max": 1.70, "val": 1.08},
-	"cam_ob": {"label": "Cámara del casco: distancia", "min": -0.10, "max": 0.50, "val": 0.17},
+	"cam_rear": {"label": "Trasera: distancia (m)", "min": 0.60, "max": 1.70, "val": 1.08},
+	"cam_rear_fov": {"label": "Trasera: ángulo (° menos = zoom)", "min": 60.0, "max": 120.0, "val": 92.0},
+	"cam_ob": {"label": "Casco: distancia (m)", "min": -0.10, "max": 0.50, "val": 0.17},
+	"cam_ob_fov": {"label": "Casco: ángulo (°)", "min": 60.0, "max": 120.0, "val": 96.0},
+	"disp_x": {"label": "Pantalla: corrida al costado (m)", "min": 0.0, "max": 0.40, "val": 0.13},
 }
 var _slider_finger := {} # dedo → clave
 var _fingers := {} # index → botón que sostiene
@@ -79,7 +82,8 @@ func _layout() -> void:
 
 func slider_rect(i: int) -> Rect2:
 	var s := _vs()
-	return Rect2(s.x * 0.5 - 260.0, s.y - 62.0 - float(i) * 62.0, 520.0, 46.0)
+	var col := i / 3
+	return Rect2(s.x * 0.5 - 400.0 + float(col) * 410.0, s.y - 62.0 - float(i % 3) * 58.0, 390.0, 46.0)
 
 func _slider_key_at(pos: Vector2) -> String:
 	var i := 0
