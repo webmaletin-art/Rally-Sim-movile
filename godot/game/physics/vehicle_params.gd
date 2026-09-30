@@ -81,6 +81,7 @@ var toeR := 0.1
 var pressF := 30.0
 var pressR := 30.0
 var turboLvl := 0
+var firingOrder := 4.0
 
 const SURF_NAMES := ["asphalt", "dirt", "shoulder", "grass", "outside", "mud"]
 

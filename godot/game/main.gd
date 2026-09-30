@@ -15,6 +15,7 @@ const Effects := preload("res://game/fx/effects.gd")
 const Weather := preload("res://game/fx/weather.gd")
 const Lens := preload("res://game/fx/lens.gd")
 const Cockpit := preload("res://game/car/cockpit.gd")
+const CarAudio := preload("res://game/audio/car_audio.gd")
 const CameraRig := preload("res://game/car/camera_rig.gd")
 const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
 
@@ -72,6 +73,12 @@ var fx_on := true
 var res_auto := true # la resolución del mundo 3D se ajusta sola según los cuadros por segundo
 var script_ms := 0.0
 var cockpit: Node3D
+var audio: Node
+var pl_events: Array = []
+var pl_impact := 0.0
+var audio_on := true
+var audiorec_path := ""
+var audiorec: AudioEffectRecord
 var cam_rig: RefCounted
 var was_inside := false
 var was_onboard := false
@@ -85,6 +92,8 @@ func _ready() -> void:
 			shot_path = a.substr(7)
 		elif a.begins_with("--frames="):
 			shot_frames = int(a.substr(9))
+		elif a.begins_with("--audiorec="):
+			audiorec_path = a.substr(11)
 		elif a == "--autobench":
 			autobench = true
 		elif a.begins_with("--steer="):
@@ -133,6 +142,13 @@ func _ready() -> void:
 	world.add_child(weather)
 	weather.setup(env, sun, cam, track, fx, road_mat, ground_mat)
 	weather.apply(weather_name, true)
+	audio = CarAudio.new()
+	add_child(audio)
+	if audiorec_path != "":
+		audiorec = AudioEffectRecord.new()
+		AudioServer.add_bus_effect(0, audiorec)
+		audiorec.set_recording_active(true)
+	audio.rain(weather_name == "lluvia")
 	_rebuild_trees()
 	_rebuild_cars()
 	if autobench:
@@ -364,12 +380,12 @@ func _rebuild_cars() -> void:
 ## Prueba automática: recorre varias cargas (cada una 6 s, descartando el primer segundo y medio) y muestra la tabla.
 ## [autos, árboles, pilotos, sombras, hilos, resolución]
 ## El 7º dato son cosas que se APAGAN para medir cuánto cuestan: e = efectos, c = cielo, n = niebla, h = controles/HUD, m = mundo 3D,
-## f = filtro de cámara, b = sombritas de los autos.
+## f = filtro de cámara, a = sonido.
 const BENCH_CFGS := [
 	[1, 0, 0, 0, 1, 1.0, ""], [1, 0, 0, 0, 1, 0.5, ""], [1, 3000, 1, 0, 1, 0.5, ""], [4, 3000, 1, 0, 1, 0.5, ""],
 	[8, 3000, 1, 0, 1, 0.5, ""], [8, 8000, 1, 0, 1, 0.5, ""], [8, 3000, 0, 0, 1, 0.5, ""], [8, 3000, 1, 0, 0, 0.5, ""], [4, 3000, 1, 1, 1, 0.5, ""],
 	[1, 3000, 0, 0, 1, 0.5, ""], [1, 3000, 0, 0, 1, 0.5, "e"], [1, 3000, 0, 0, 1, 0.5, "c"], [1, 3000, 0, 0, 1, 0.5, "n"],
-	[1, 3000, 0, 0, 1, 0.5, "f"], [1, 3000, 0, 0, 1, 0.5, "h"], [1, 3000, 0, 0, 1, 0.5, "m"], [1, 3000, 0, 0, 1, 0.5, "ecnf"]]
+	[1, 3000, 0, 0, 1, 0.5, "f"], [1, 3000, 0, 0, 1, 0.5, "h"], [1, 3000, 0, 0, 1, 0.5, "m"], [1, 3000, 0, 0, 1, 0.5, "a"], [1, 3000, 0, 0, 1, 0.5, "ecnfa"]]
 
 func _bench_start() -> void:
 	DisplayServer.screen_set_keep_on(true) # que no se apague la pantalla durante la prueba
@@ -425,6 +441,8 @@ func _apply_diag(flags: String) -> void:
 	controls.visible = not flags.contains("h")
 	world.render_target_update_mode = SubViewport.UPDATE_DISABLED if flags.contains("m") else SubViewport.UPDATE_ALWAYS
 	lens.enabled = not flags.contains("f")
+	audio_on = not flags.contains("a")
+	audio.set_active(audio_on)
 
 func _bench_tick(dt: float) -> void:
 	bench_t += dt
@@ -607,6 +625,7 @@ func _on_option(key: String, value) -> void:
 			_rebuild_cars()
 		"weather":
 			weather.apply(str(value))
+			audio.rain(str(value) == "lluvia")
 		"recal":
 			controls.recalibrate_gyro()
 			hud.show_toast("Acelerómetro calibrado: sostené el teléfono como para jugar")
@@ -631,6 +650,15 @@ func _finish_physics() -> void:
 
 func _step_physics(dt: float) -> void:
 	_finish_physics()
+	# eventos de la física (cambios, limitador, aterrizajes, golpes): se toman ahora, con los hilos parados
+	for i in cars.size():
+		var sn = cars[i].snap
+		if i == 0:
+			pl_events = sn.take_events()
+			pl_impact = maxf(pl_impact, sn.take_impact())
+		else:
+			sn.pending_events.clear()
+			sn.pending_impact = 0.0
 	var h := 1.0 / 120.0
 	smooth_dt = lerpf(smooth_dt, minf(dt, 0.1), 0.02)
 	acc = minf(acc + dt, 0.05)
@@ -752,6 +780,19 @@ func _frame(dt: float) -> void:
 	controls.gear_text = "R" if p.gear < 0 else ("N" if p.gear == 0 else str(p.gear))
 	controls.rpm_frac = p.rpm / cars[0].phys.V.maxRpm
 	lens.update(dt, controls.speed_kmh, 1.0 if controls.nitro else 0.0)
+	if audio_on:
+		audio.update(p, cars[0].phys.V, dt, pl_events, pl_impact)
+		pl_events = []
+		pl_impact = 0.0
+		# el rival más cercano (a menos de 55 m) también suena
+		var nd := -1.0
+		var nrpm := 0.0
+		for i in range(1, cars.size()):
+			var d2 := Vector2(cars[i].snap.px - p.px, cars[i].snap.pz - p.pz).length()
+			if d2 < 55.0 and (nd < 0.0 or d2 < nd):
+				nd = d2
+				nrpm = cars[i].snap.rpm
+		audio.rival(nd, nrpm, cars[0].phys.V.firingOrder)
 	stat_timer += dt
 	frame_count += 1
 	if stat_timer >= 0.5:
@@ -772,6 +813,9 @@ func _frame(dt: float) -> void:
 			fps_sum += fps
 			fps_n += 1
 	if shot_frames > 0 and Engine.get_frames_drawn() >= shot_frames:
+		if audiorec != null:
+			audiorec.set_recording_active(false)
+			audiorec.get_recording().save_to_wav(audiorec_path)
 		print("VEL ", int(controls.speed_kmh), " km/h · marcha ", controls.gear_text, " · ", fx.debug_info())
 		if shot_path != "":
 			get_viewport().get_texture().get_image().save_png(shot_path)
