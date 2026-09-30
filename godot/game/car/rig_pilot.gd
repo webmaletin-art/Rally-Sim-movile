@@ -205,14 +205,16 @@ func pose(o: Dictionary) -> void:
 	var hips: int = B["Hips"]
 	skel.set_bone_pose_position(hips, (o["hips"] as Vector3) / s)
 	var fwd := Vector3(0, 0, 1)
-	_orient(hips, Vector3(0, 1, -0.18).normalized(), fwd)
+	_orient(hips, Vector3(0, 1, o.get("hip_tilt", -0.18)).normalized(), fwd)
 	# columna hacia la cabeza (reclinada, cuello adelante)
 	var hp := _fpos(hips)
 	var dir: Vector3 = ((o["head"] as Vector3) - hp).normalized()
 	var n := _spine.size()
 	for i in n:
 		var tt := float(i) / float(n - 1) if n > 1 else 1.0
-		var d := (dir + Vector3(0, 0, -0.10 + 0.28 * tt)).normalized()
+		var l0: float = o.get("lean0", -0.10)
+		var l1: float = o.get("lean1", 0.18)
+		var d := (dir + Vector3(0, 0, l0 + (l1 - l0) * tt)).normalized()
 		_orient(_spine[i], d, fwd)
 	# cabeza: inclinación lateral por G y mirada hacia adelante
 	var roll: float = o.get("roll", 0.0)
@@ -245,8 +247,8 @@ func pose(o: Dictionary) -> void:
 		var S2: Dictionary = _side.get(f["side"], {})
 		if S2.is_empty():
 			continue
-		_two_bone(S2["ul"], S2["lg"], S2["T1"], S2["T2"], f["pos"], Vector3(0, 1, 0.3), Vector3(0, 1, 0), Vector3(0, 0.3, 1))
-		_orient(S2["ft"], Vector3(0, 0.25, 1), Vector3(0, 1, -0.2))
+		_two_bone(S2["ul"], S2["lg"], S2["T1"], S2["T2"], f["pos"], f.get("pole", Vector3(0, 1, 0.3)), Vector3(0, 1, 0), Vector3(0, 0.3, 1))
+		_orient(S2["ft"], Vector3(0, o.get("foot_up", 0.25), 1), Vector3(0, 1, -0.2))
 
 func hide_head(v: bool) -> void:
 	if not ok or head_hidden == v:

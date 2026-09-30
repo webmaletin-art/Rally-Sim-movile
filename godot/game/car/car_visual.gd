@@ -15,7 +15,9 @@ var shell: Node3D
 var blob: MeshInstance3D # sombrita suave en el piso (no hace falta una sombra de verdad)
 static var _blob_mat: StandardMaterial3D
 
-func setup(p_params: VehicleParams, p_lo: bool, paint: Color, rim: Color) -> void:
+const FINISH := {"gloss": [0.45, 0.35], "metal": [0.9, 0.24], "matte": [0.08, 0.88], "chrome": [1.0, 0.07]} # metálico, rugosidad
+
+func setup(p_params: VehicleParams, p_lo: bool, paint: Color, rim: Color, finish := "gloss") -> void:
 	V = p_params
 	lo = p_lo
 	body = Node3D.new()
@@ -41,8 +43,9 @@ func setup(p_params: VehicleParams, p_lo: bool, paint: Color, rim: Color) -> voi
 				m.cull_mode = BaseMaterial3D.CULL_DISABLED
 			else:
 				m.albedo_color = paint
-				m.metallic = 0.45
-				m.roughness = 0.35
+				var fin: Array = FINISH.get(finish, FINISH["gloss"])
+				m.metallic = fin[0]
+				m.roughness = fin[1]
 			mi.set_surface_override_material(s, m)
 	_make_blob()
 	# ruedas

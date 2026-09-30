@@ -334,9 +334,9 @@ func ground_smooth(x: float, z: float) -> float:
 
 # ───────────────────────── largada y progreso ─────────────────────────
 ## Pose de largada en el lugar "slot" de la parrilla (0 = adelante a la derecha): x, z, yaw
-func start_pose(slot: int) -> Array:
+func start_pose(slot: int, from_idx := 0) -> Array:
 	var back := 6.0 + float(slot / 2) * 9.0
-	var i := 0
+	var i := from_idx
 	var acc := 0.0
 	while acc < back:
 		var j := posmod(i - 1, n)
@@ -568,11 +568,11 @@ func build_terrain_mesh(rows: Array, r: int) -> ArrayMesh:
 	return out
 
 ## Línea de largada con dos postes y el cartel
-func build_start_gate() -> Node3D:
+func build_start_gate(gi := 0, text := "GSKORP RALLY", color := Color(1, 1, 1)) -> Node3D:
 	var g := Node3D.new()
-	var p := samples[0]
-	var l := laterals[0]
-	var tg := tangents[0]
+	var p := samples[gi]
+	var l := laterals[gi]
+	var tg := tangents[gi]
 	var w := half_width + shoulder * 0.6
 	var yaw := atan2(tg.x, tg.z)
 	# línea a cuadros pegada al camino
@@ -589,7 +589,7 @@ func build_start_gate() -> Node3D:
 	var line := MeshInstance3D.new()
 	line.mesh = lp
 	line.material_override = lm
-	line.position = Vector3(p.x, cy[0] + 0.04, p.z)
+	line.position = Vector3(p.x, cy[gi] + 0.04, p.z)
 	line.rotation.y = yaw
 	g.add_child(line)
 	# postes y cartel
@@ -603,18 +603,18 @@ func build_start_gate() -> Node3D:
 		var post := MeshInstance3D.new()
 		post.mesh = bm
 		post.material_override = pm
-		post.position = Vector3(p.x + l.x * w * sd, cy[0] + 2.6, p.z + l.z * w * sd)
+		post.position = Vector3(p.x + l.x * w * sd, cy[gi] + 2.6, p.z + l.z * w * sd)
 		g.add_child(post)
 	var ban := Label3D.new()
-	ban.text = "GSKORP RALLY"
+	ban.text = text
 	ban.font_size = 96
 	ban.pixel_size = 0.012
-	ban.modulate = Color(1, 1, 1)
+	ban.modulate = color
 	ban.outline_size = 24
 	ban.outline_modulate = Color(0.05, 0.07, 0.1)
 	ban.double_sided = true
 	ban.shaded = false
-	ban.position = Vector3(p.x, cy[0] + 4.7, p.z)
+	ban.position = Vector3(p.x, cy[gi] + 4.7, p.z)
 	ban.rotation.y = yaw + PI
 	g.add_child(ban)
 	return g

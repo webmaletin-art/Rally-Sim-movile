@@ -20,6 +20,27 @@ const Cockpit := preload("res://game/car/cockpit.gd")
 const CarAudio := preload("res://game/audio/car_audio.gd")
 const CameraRig := preload("res://game/car/camera_rig.gd")
 const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
+const CarBuild := preload("res://game/data/car_build.gd")
+const AiCars := preload("res://game/data/ai_cars.gd")
+const Session := preload("res://game/session.gd")
+const RaceHud := preload("res://game/ui/race_hud.gd")
+const UiSfx := preload("res://game/audio/ui_sfx.gd")
+
+## La carrera terminó (result: value, medal, position, time, etc.; lo arma _make_result) o se pidió salir al menú
+signal finished(result: Dictionary)
+signal exit_requested(back: String)
+
+## Configuración de la carrera (la arma el menú): car, state, track, weather, ai, laps, seg, type, event, tier…
+## Vacía = escena de pruebas (la de los argumentos --shot, --bench, etc.)
+var cfg: Dictionary = {}
+var profile: RefCounted
+var menu_mode := false
+var session: Session
+var race_hud: Control
+var paused := false
+var done_t := 0.0
+var sim_hold := false
+var rival_info: Array = [] # {name, color} por auto
 
 var track # CircuitTrack o RouteTrack
 var track_id := "prueba"
@@ -83,6 +104,7 @@ var res_auto := true # la resolución del mundo 3D se ajusta sola según los cua
 var script_ms := 0.0
 var cockpit: Node3D
 var audio: Node
+var sfx: Node
 var pl_events: Array = []
 var pl_impact := 0.0
 var audio_on := true
@@ -132,6 +154,14 @@ func _ready() -> void:
 			trees_n = int(a.substr(8))
 	vehicles = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
 	track_maps = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["maps"]
+	menu_mode = not cfg.is_empty()
+	if menu_mode:
+		track_id = str(cfg.get("track", "forest"))
+		weather_name = {"day": "dia", "overcast": "nublado", "rain": "lluvia", "sunset": "atardecer", "dusk": "ocaso"}.get(str(cfg.get("sky", "day")), "dia")
+		cars_n = 1 + int(cfg.get("ai", 0))
+		trees_n = 3000
+		cam_index = int(profile.setting("camera")) if profile != null else 1
+		manual_gearbox = profile != null and str(profile.setting("gearbox")) == "manual"
 	_make_track()
 	_setup_viewport()
 	_build_world()
@@ -140,8 +170,20 @@ func _ready() -> void:
 	add_child(layer)
 	controls = Controls.new()
 	layer.add_child(controls)
+	if menu_mode:
+		race_hud = RaceHud.new()
+		layer.add_child(race_hud)
+		race_hud.resume_pressed.connect(_toggle_pause)
+		race_hud.restart_pressed.connect(_restart)
+		race_hud.quit_pressed.connect(_quit)
+		race_hud.camera_pressed.connect(_next_camera)
+		race_hud.tests_pressed.connect(_show_tests)
+		controls.pause_pressed.connect(_toggle_pause)
 	hud = DebugPanel.new()
+	hud.process_mode = Node.PROCESS_MODE_ALWAYS
 	layer.add_child(hud)
+	if menu_mode:
+		_show_tests(false) # el panel de pruebas queda escondido; se abre desde la pausa
 	hud.option_changed.connect(_on_option)
 	hud.bench_pressed.connect(_bench_start)
 	hud.copy_pressed.connect(_copy_report)
@@ -156,11 +198,23 @@ func _ready() -> void:
 	weather.apply(weather_name, true)
 	audio = CarAudio.new()
 	add_child(audio)
+	sfx = UiSfx.new()
+	add_child(sfx)
 	if audiorec_path != "":
 		audiorec = AudioEffectRecord.new()
 		AudioServer.add_bus_effect(0, audiorec)
 		audiorec.set_recording_active(true)
 	audio.rain(weather_name == "lluvia")
+	if menu_mode:
+		# opciones del jugador
+		lens.level = int(profile.setting("lens"))
+		lens_auto = true
+		var rs := float(profile.setting("res"))
+		if rs > 0.0:
+			res_auto = false
+			res_scale = rs
+			_on_resize()
+		AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(profile.setting("volume")) / 80.0, 0.001)))
 	_rebuild_trees()
 	_rebuild_cars()
 	if autobench:
@@ -443,6 +497,42 @@ func _add_tree_layer(mm: MultiMesh, center: Vector3, r_begin: float, r_end: floa
 	inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF # las sombras son solo de los autos
 	trees_node.add_child(inst)
 
+## Datos de cada auto de la parrilla: params (Dictionary de VehicleParams), paint, rim, name, visual_type, ai (opciones)
+func _car_setups() -> Array:
+	var out: Array = []
+	if not menu_mode:
+		var d: Dictionary = vehicles["t1plus"].duplicate()
+		if nitro_test:
+			d["nitroCap"] = 8.0
+			d["nitroBoost"] = 0.35
+		d["camberF"] = -1.0
+		d["camberR"] = -0.5
+		d["toeF"] = 0.0
+		d["toeR"] = 0.1
+		d["pressF"] = 30.0
+		d["pressR"] = 30.0
+		var paints := [Color(0.10, 0.31, 0.88), Color(0.85, 0.15, 0.15), Color(0.95, 0.75, 0.1), Color(0.15, 0.7, 0.35), Color(0.9, 0.9, 0.92), Color(0.6, 0.2, 0.8), Color(0.95, 0.45, 0.1), Color(0.1, 0.75, 0.8)]
+		for i in cars_n:
+			out.append({"params": d, "paint": paints[i % paints.size()], "rim": Color(1.0, 0.42, 0.03), "name": "Rival %d" % i, "visual_type": "t1plus", "ai": {"skill": 0.92 + 0.02 * float(i % 4), "lane": (float(i % 3) - 1.0) * 1.6, "aggr": 0.3 + 0.1 * float(i % 5)}})
+		return out
+	var assists := {"abs": bool(profile.setting("abs")), "tc": float(profile.setting("tc")), "stab": float(profile.setting("stab"))}
+	var pid := str(cfg["car"])
+	var pst: Dictionary = cfg["state"]
+	var pp: Dictionary = pst.get("paint", {"body": "#1a4fe0", "rim": "#ff6a08"})
+	out.append({"params": CarBuild.build_params(vehicles[pid], pst, assists), "paint": Color(str(pp["body"])), "rim": Color(str(pp.get("rim", "#2a2d33"))), "name": str(profile.d["name"]), "finish": str(pp.get("finish", "gloss")), "visual_type": str(vehicles[pid].get("visualType", pid)), "ai": {}})
+	var n_ai := int(cfg.get("ai", 0))
+	if n_ai > 0:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = int(cfg.get("seed", 7)) * 7919 + 13
+		var picks := AiCars.pick(vehicles, n_ai, int(cfg.get("maxPI", 999)), str(cfg.get("aiCar", "")), (track as RouteTrack).mode, rng)
+		for i in picks.size():
+			var pk: Dictionary = picks[i]
+			var st: Dictionary = pk["state"]
+			out.append({"params": CarBuild.build_params(vehicles[pk["id"]], st, AiCars.ASSISTS), "paint": Color(str(st["paint"]["body"])), "rim": Color(str(st["paint"]["rim"])),
+				"name": AiCars.NAMES[(i + int(cfg.get("seed", 7))) % AiCars.NAMES.size()], "visual_type": str(vehicles[pk["id"]].get("visualType", pk["id"])),
+				"ai": {"skill": minf(1.08, float(cfg.get("skill", 0.9)) * (0.96 + rng.randf() * 0.06)), "lane": (float(i % 3) - 1.0) * 1.6, "aggr": rng.randf()}})
+	return out
+
 func _rebuild_cars() -> void:
 	_finish_physics()
 	if fx != null:
@@ -450,27 +540,31 @@ func _rebuild_cars() -> void:
 	for c in cars:
 		c.visual.queue_free()
 	cars.clear()
-	var d: Dictionary = vehicles["t1plus"].duplicate()
-	if nitro_test:
-		d["nitroCap"] = 8.0
-		d["nitroBoost"] = 0.35
-	d["camberF"] = -1.0
-	d["camberR"] = -0.5
-	d["toeF"] = 0.0
-	d["toeR"] = 0.1
-	d["pressF"] = 30.0
-	d["pressR"] = 30.0
-	var paints := [Color(0.10, 0.31, 0.88), Color(0.85, 0.15, 0.15), Color(0.95, 0.75, 0.1), Color(0.15, 0.7, 0.35), Color(0.9, 0.9, 0.92), Color(0.6, 0.2, 0.8), Color(0.95, 0.45, 0.1), Color(0.1, 0.75, 0.8)]
+	cockpit = null
+	var setups := _car_setups()
+	cars_n = setups.size()
+	rival_info.clear()
+	var s0 := 0
+	if menu_mode and cfg.get("seg") is Array:
+		s0 = int(floor(float(cfg["seg"][0]) * float(track.n)))
 	for i in cars_n:
+		var su: Dictionary = setups[i]
+		var d: Dictionary = su["params"]
+		var paint: Color = su["paint"]
 		var lo := (i > 0) or not hi_model
 		var route := track is RouteTrack
-		var car := Car.new(track.make_view() if route else track, VehicleParams.from_dict(d), i == 0, lo, paints[i % paints.size()], Color(1.0, 0.42, 0.03))
+		var car := Car.new(track.make_view() if route else track, VehicleParams.from_dict(d), i == 0, lo, paint, su["rim"], str(su.get("finish", "gloss")))
+		rival_info.append({"name": su["name"], "color": paint})
 		if i > 0:
 			if route:
-				car.driver = AIDriver.new(track.make_view(), car.phys, {"skill": 0.92 + 0.02 * float(i % 4), "lane": (float(i % 3) - 1.0) * 1.6, "aggr": 0.3 + 0.1 * float(i % 5)})
+				car.driver = AIDriver.new(track.make_view(), car.phys, su["ai"])
 			else:
 				car.driver = RingDriver.new(track, 20.0 + float((i * 7) % 9), (float((i * 5) % 7) - 3.0) * 0.9)
-		var sp: Array = track.start_pose(i)
+		# parrilla: en las carreras el jugador sale último; en contrarreloj, adelante
+		var slot := i
+		if menu_mode and cars_n > 1 and str(cfg.get("type")) == "race":
+			slot = cars_n - 1 if i == 0 else i - 1
+		var sp: Array = track.start_pose(slot, s0) if route else track.start_pose(slot)
 		car.place(sp[0], sp[1], sp[2])
 		car.restart_history(sim_t)
 		world.add_child(car.visual)
@@ -479,7 +573,7 @@ func _rebuild_cars() -> void:
 		# los vidrios son oscuros: la tripulación y el habitáculo solo se dibujan con las cámaras interiores del jugador
 		if i == 0:
 			var Vp: VehicleParams = car.phys.V
-			cockpit = Cockpit.new(str(d.get("visualType", "t1plus")), paints[0], Color(1.0, 0.42, 0.03))
+			cockpit = Cockpit.new(str(su["visual_type"]), paint, su["rim"])
 			cockpit.position = Vector3(0, -Vp.comHeight + Vp.rideOffset, 0)
 			car.visual.add_child(cockpit)
 			cockpit.set_engine(Vp.maxRpm, Vp.shiftUpRpm, Vp.nitroCap)
@@ -508,6 +602,43 @@ func _rebuild_cars() -> void:
 		controls.manual = manual_gearbox
 		controls.has_nitro = cars[0].phys.V.nitroCap > 0.0
 	cam_ready = false
+	_start_session()
+
+## Cuenta regresiva + vueltas + meta (solo con el menú; la escena de pruebas anda libre)
+func _start_session() -> void:
+	session = null
+	if not menu_mode or not (track is RouteTrack):
+		return
+	var t := str(cfg.get("type", "race"))
+	session = Session.new(track, cfg, cars.size())
+	for i in cars.size():
+		session.names[i] = rival_info[i]["name"]
+	session.init_cars(cars)
+	if OS.get_cmdline_user_args().has("--finishtest"):
+		session.race_len = 120.0 # prueba: meta a los 120 m
+	session.beep.connect(_on_beep)
+	session.go.connect(_on_go)
+	session.player_finished.connect(_on_player_finished)
+	for c in cars:
+		if c.driver is AIDriver:
+			c.driver.enabled = false
+	if race_hud != null:
+		race_hud.setup(session, cfg, rival_info)
+
+func _on_beep(k: int) -> void:
+	race_hud.big(str(k))
+	sfx.play("beep")
+
+func _on_go() -> void:
+	race_hud.big("¡YA!")
+	sfx.play("go")
+	for c in cars:
+		if c.driver is AIDriver:
+			c.driver.enabled = true
+
+func _on_player_finished(_v: float) -> void:
+	done_t = 0.0
+	race_hud.big("META" if str(cfg.get("type")) != "race" else "%d°" % session.position_of(0, cars.size()))
 
 ## Prueba automática: recorre varias cargas (cada una 6 s, descartando el primer segundo y medio) y muestra la tabla.
 ## [autos, árboles, pilotos, sombras, hilos, resolución]
@@ -725,6 +856,76 @@ func _change_track(id: String) -> void:
 	_rebuild_trees()
 	_rebuild_cars()
 
+## Sesión: cuenta regresiva, vueltas, posiciones y fin. Después de la meta el auto frena solo y a los 2,5 s sale el resultado.
+func _tick_session(dt: float) -> void:
+	session.update(dt, cars)
+	if session.state == "run" and str(cfg.get("type")) == "race":
+		# goma elástica suave: nadie se escapa demasiado
+		for i in range(1, cars.size()):
+			var d = cars[i].driver
+			if d is AIDriver:
+				var gap: float = session.prog[i] - session.prog[0]
+				d.boost = 0.93 if gap > 140.0 else (1.05 if gap < -160.0 else 1.0)
+	race_hud.update_hud(dt, cars.size())
+	if _dbg_finish and Engine.get_frames_drawn() % 30 == 0:
+		print("SES ", session.state, " t=", snappedf(session.time, 0.1), " prog=", int(session.prog[0]), "/", int(session.race_len), " v=", int(absf(cars[0].snap.vLong) * 3.6), " dt=", snappedf(dt, 0.001))
+	if session.state == "done":
+		done_t += dt
+		if done_t > 2.5 and not _result_sent:
+			_result_sent = true
+			finished.emit(_make_result())
+
+var _result_sent := false
+var _dbg_finish := OS.get_cmdline_user_args().has("--finishtest")
+
+func _make_result() -> Dictionary:
+	var n := cars.size()
+	var pl = cars[0]
+	var t := str(cfg.get("type", "race"))
+	var r := {"type": t, "time": session.finish_time[0], "max_kmh": session.max_kmh, "odo": session.odo,
+		"value": 0.0, "pos": session.position_of(0, n), "n": n, "track": track_id, "laps": session.laps, "standings": []}
+	match t:
+		"race":
+			r["value"] = float(r["pos"])
+		"trap":
+			r["value"] = roundf(session.trap_kmh)
+		_:
+			r["value"] = session.finish_time[0]
+	for id in session.standings(n):
+		r["standings"].append({"name": session.names[id], "time": session.finish_time[id] if session.finished[id] else -1.0, "player": id == 0, "color": rival_info[id]["color"].to_html(false)})
+	return r
+
+func _toggle_pause() -> void:
+	if not menu_mode or session == null:
+		return
+	paused = not paused
+	get_tree().paused = paused
+	race_hud.set_paused(paused)
+	controls.visible = not paused
+	controls.set_process_input(not paused)
+	controls.set_process_unhandled_input(not paused)
+	if not paused:
+		_show_tests(false)
+
+func _show_tests(on := true) -> void:
+	hud.visible = on
+	hud.set_process_input(on)
+	if on:
+		hud.open = true
+		# el panel ocupa la pantalla: el menú de pausa se esconde hasta cerrarlo
+		race_hud.pause_box.visible = false
+
+func _restart() -> void:
+	get_tree().paused = false
+	var c := cfg
+	var a := get_parent()
+	a.call_deferred("start_race", c)
+	queue_free()
+
+func _quit() -> void:
+	get_tree().paused = false
+	exit_requested.emit(str(cfg.get("back", "home")))
+
 func _next_camera() -> void:
 	if cam_rig == null:
 		return
@@ -758,6 +959,10 @@ func _save_cabin_cfg() -> void:
 
 func _on_option(key: String, value) -> void:
 	match key:
+		"panel_closed":
+			if menu_mode:
+				_show_tests(false)
+				race_hud.pause_box.visible = paused
 		"cam_rear":
 			cockpit.rear_dist = float(value)
 			_save_cabin_cfg()
@@ -865,6 +1070,15 @@ func _step_physics(dt: float) -> void:
 	pl.in_steer = controls.steer
 	pl.in_handbrake = controls.handbrake
 	pl.in_nitro = controls.nitro
+	if session != null and session.state == "countdown":
+		pl.in_throttle = 0.0 # en la largada el auto está frenado hasta el "¡YA!"
+		pl.in_brake = 1.0
+		pl.in_handbrake = true
+		pl.in_nitro = false
+	elif session != null and session.state == "done":
+		pl.in_throttle = 0.0
+		pl.in_brake = maxf(controls.brake, 0.4)
+		pl.in_nitro = false
 	if controls.shift != 0:
 		pl.in_shift = controls.shift
 	phys_frames += 1
@@ -935,6 +1149,13 @@ func _frame(dt: float) -> void:
 		_bench_tick(dt)
 	if cars.is_empty():
 		return
+	if session != null:
+		_tick_session(dt)
+		if OS.get_cmdline_user_args().has("--pausetest") and Engine.get_frames_drawn() == 100:
+			_toggle_pause()
+			await get_tree().create_timer(1.0, true, false, true).timeout
+			get_viewport().get_texture().get_image().save_png(shot_path)
+			get_tree().quit()
 	for c in cars:
 		c.snap.sample(render_t)
 		c.update_visual(dt)
