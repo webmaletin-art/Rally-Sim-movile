@@ -14,6 +14,9 @@ const Controls := preload("res://game/ui/controls.gd")
 const Effects := preload("res://game/fx/effects.gd")
 const Weather := preload("res://game/fx/weather.gd")
 const Lens := preload("res://game/fx/lens.gd")
+const Cockpit := preload("res://game/car/cockpit.gd")
+const CarAudio := preload("res://game/audio/car_audio.gd")
+const CameraRig := preload("res://game/car/camera_rig.gd")
 const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
 
 var track: CircuitTrack
@@ -69,6 +72,17 @@ var step_n := 0
 var fx_on := true
 var res_auto := true # la resolución del mundo 3D se ajusta sola según los cuadros por segundo
 var script_ms := 0.0
+var cockpit: Node3D
+var audio: Node
+var pl_events: Array = []
+var pl_impact := 0.0
+var audio_on := true
+var audiorec_path := ""
+var audiorec: AudioEffectRecord
+var cam_rig: RefCounted
+var was_inside := false
+var was_onboard := false
+var cam_index := 1
 var lens_auto := true # el filtro se apaga solo si el teléfono no llega
 var lens: Node # filtro de cámara (Lente Rally)
 
@@ -78,6 +92,8 @@ func _ready() -> void:
 			shot_path = a.substr(7)
 		elif a.begins_with("--frames="):
 			shot_frames = int(a.substr(9))
+		elif a.begins_with("--audiorec="):
+			audiorec_path = a.substr(11)
 		elif a == "--autobench":
 			autobench = true
 		elif a.begins_with("--steer="):
@@ -96,6 +112,7 @@ func _ready() -> void:
 			bench = true
 		elif a.begins_with("--cam="):
 			cam_mode = a.substr(6)
+			cam_index = {"onboard": 0, "cabin": 0, "chase": 1, "near": 2, "far": 3, "aerial": 4, "rear": 6, "hood": 7, "bumper": 8}.get(cam_mode, 1)
 		elif a.begins_with("--cars="):
 			cars_n = int(a.substr(7))
 		elif a.begins_with("--trees="):
@@ -116,6 +133,7 @@ func _ready() -> void:
 	hud.option_changed.connect(_on_option)
 	hud.bench_pressed.connect(_bench_start)
 	hud.copy_pressed.connect(_copy_report)
+	controls.camera_pressed.connect(_next_camera)
 	fx = Effects.new()
 	world.add_child(fx)
 	fx.setup(track)
@@ -124,6 +142,13 @@ func _ready() -> void:
 	world.add_child(weather)
 	weather.setup(env, sun, cam, track, fx, road_mat, ground_mat)
 	weather.apply(weather_name, true)
+	audio = CarAudio.new()
+	add_child(audio)
+	if audiorec_path != "":
+		audiorec = AudioEffectRecord.new()
+		AudioServer.add_bus_effect(0, audiorec)
+		audiorec.set_recording_active(true)
+	audio.rain(weather_name == "lluvia")
 	_rebuild_trees()
 	_rebuild_cars()
 	if autobench:
@@ -328,10 +353,21 @@ func _rebuild_cars() -> void:
 		world.add_child(car.visual)
 		if no_body:
 			car.visual.body.get_child(0).visible = false
-		# los rivales llevan vidrios oscuros: su tripulación no se dibuja (solo en cinemáticas, cuando haga falta)
-		if pilots_on and i == 0:
-			Pilot.create(car.visual.body, 0.37, 0.49, -0.31, lo)
-			Pilot.create(car.visual.body, -0.37, 0.49, -0.31, lo)
+		# los vidrios son oscuros: la tripulación y el habitáculo solo se dibujan con las cámaras interiores del jugador
+		if i == 0:
+			var Vp: VehicleParams = car.phys.V
+			cockpit = Cockpit.new(str(d.get("visualType", "t1plus")), paints[0], Color(1.0, 0.42, 0.03))
+			cockpit.position = Vector3(0, -Vp.comHeight + Vp.rideOffset, 0)
+			car.visual.add_child(cockpit)
+			cockpit.set_engine(Vp.maxRpm, Vp.shiftUpRpm, Vp.nitroCap)
+			cockpit.set_inside(false, false)
+			cam_rig = CameraRig.new(cam, track)
+			cam_rig.visual = car.visual
+			cam_rig.cockpit = cockpit
+			cam_rig.ground_off = -Vp.comHeight + Vp.rideOffset
+			cam_rig.mount = car.visual.compute_mounts(float(cockpit.C["cowlZ"]), float(cockpit.C["eyeY"]))
+			cam_rig.set_preset(cam_index)
+			was_inside = false
 		cars.append(car)
 		if i <= 3 and fx != null:
 			fx.prepare(i)
@@ -344,12 +380,12 @@ func _rebuild_cars() -> void:
 ## Prueba automática: recorre varias cargas (cada una 6 s, descartando el primer segundo y medio) y muestra la tabla.
 ## [autos, árboles, pilotos, sombras, hilos, resolución]
 ## El 7º dato son cosas que se APAGAN para medir cuánto cuestan: e = efectos, c = cielo, n = niebla, h = controles/HUD, m = mundo 3D,
-## f = filtro de cámara, b = sombritas de los autos.
+## f = filtro de cámara, a = sonido.
 const BENCH_CFGS := [
 	[1, 0, 0, 0, 1, 1.0, ""], [1, 0, 0, 0, 1, 0.5, ""], [1, 3000, 1, 0, 1, 0.5, ""], [4, 3000, 1, 0, 1, 0.5, ""],
 	[8, 3000, 1, 0, 1, 0.5, ""], [8, 8000, 1, 0, 1, 0.5, ""], [8, 3000, 0, 0, 1, 0.5, ""], [8, 3000, 1, 0, 0, 0.5, ""], [4, 3000, 1, 1, 1, 0.5, ""],
 	[1, 3000, 0, 0, 1, 0.5, ""], [1, 3000, 0, 0, 1, 0.5, "e"], [1, 3000, 0, 0, 1, 0.5, "c"], [1, 3000, 0, 0, 1, 0.5, "n"],
-	[1, 3000, 0, 0, 1, 0.5, "f"], [1, 3000, 0, 0, 1, 0.5, "h"], [1, 3000, 0, 0, 1, 0.5, "m"], [1, 3000, 0, 0, 1, 0.5, "ecnf"]]
+	[1, 3000, 0, 0, 1, 0.5, "f"], [1, 3000, 0, 0, 1, 0.5, "h"], [1, 3000, 0, 0, 1, 0.5, "m"], [1, 3000, 0, 0, 1, 0.5, "a"], [1, 3000, 0, 0, 1, 0.5, "ecnfa"]]
 
 func _bench_start() -> void:
 	DisplayServer.screen_set_keep_on(true) # que no se apague la pantalla durante la prueba
@@ -405,6 +441,8 @@ func _apply_diag(flags: String) -> void:
 	controls.visible = not flags.contains("h")
 	world.render_target_update_mode = SubViewport.UPDATE_DISABLED if flags.contains("m") else SubViewport.UPDATE_ALWAYS
 	lens.enabled = not flags.contains("f")
+	audio_on = not flags.contains("a")
+	audio.set_active(audio_on)
 
 func _bench_tick(dt: float) -> void:
 	bench_t += dt
@@ -540,6 +578,12 @@ func _update_fx(dt: float) -> void:
 		elif i <= 3 and d < 60.0 and cam.is_position_in_frustum(pos):
 			fx.emit_from(i, c.snap, dt, 0.325, 0.5)
 
+func _next_camera() -> void:
+	if cam_rig == null:
+		return
+	cam_rig.next()
+	hud.show_toast("🎥 " + cam_rig.cam_name())
+
 func _on_option(key: String, value) -> void:
 	match key:
 		"cars":
@@ -581,6 +625,7 @@ func _on_option(key: String, value) -> void:
 			_rebuild_cars()
 		"weather":
 			weather.apply(str(value))
+			audio.rain(str(value) == "lluvia")
 		"recal":
 			controls.recalibrate_gyro()
 			hud.show_toast("Acelerómetro calibrado: sostené el teléfono como para jugar")
@@ -605,6 +650,15 @@ func _finish_physics() -> void:
 
 func _step_physics(dt: float) -> void:
 	_finish_physics()
+	# eventos de la física (cambios, limitador, aterrizajes, golpes): se toman ahora, con los hilos parados
+	for i in cars.size():
+		var sn = cars[i].snap
+		if i == 0:
+			pl_events = sn.take_events()
+			pl_impact = maxf(pl_impact, sn.take_impact())
+		else:
+			sn.pending_events.clear()
+			sn.pending_impact = 0.0
 	var h := 1.0 / 120.0
 	smooth_dt = lerpf(smooth_dt, minf(dt, 0.1), 0.02)
 	acc = minf(acc + dt, 0.05)
@@ -696,17 +750,21 @@ func _frame(dt: float) -> void:
 		c.update_visual(dt)
 	_update_fx(dt)
 	var p = cars[0].snap
-	# cámara de seguimiento
-	var target_yaw: float = p.yaw
-	if not cam_ready:
-		cam_yaw = target_yaw
-		cam_ready = true
-	cam_yaw = lerp_angle(cam_yaw, target_yaw, 1.0 - exp(-dt * 9.0))
-	var fwd := Vector3(sin(cam_yaw), 0, cos(cam_yaw))
+	# cámara (las de seguimiento, capó, paragolpes, libre y las dos interiores)
 	var pos := Vector3(p.px, p.py, p.pz)
-	var want := pos - fwd * 7.5 + Vector3.UP * 2.7
-	cam.position = want if cam.position.distance_to(want) > 30.0 else cam.position.lerp(want, 1.0 - exp(-dt * 14.0))
-	cam.look_at(pos + fwd * 3.0 + Vector3.UP * 0.9)
+	var fwd := Vector3(sin(p.yaw), 0, cos(p.yaw))
+	cam_rig.aspect = float(world.size.x) / float(maxi(1, world.size.y))
+	cam_rig.update(dt, p, false)
+	var inside: bool = cam_rig.is_inside() and cockpit != null
+	var onboard: bool = cam_rig.mode() == "onboard"
+	if inside != was_inside or onboard != was_onboard:
+		was_inside = inside
+		was_onboard = onboard
+		cars[0].visual.body.visible = not inside
+		cockpit.set_inside(inside, not onboard)
+	if inside:
+		cockpit.update_crew(dt, p, controls.handbrake, cam_rig.time, 0.0)
+		cockpit.update_cabin(dt, p, controls.handbrake, cam_rig.time)
 	if cam_mode == "side":
 		var right := Vector3(cos(p.yaw), 0, -sin(p.yaw))
 		cam.position = pos + right * 5.0 + Vector3.UP * 0.6 + fwd * 1.0
@@ -714,9 +772,6 @@ func _frame(dt: float) -> void:
 	elif cam_mode == "front":
 		cam.position = pos + fwd * 6.0 + Vector3.UP * 1.6 + Vector3(cos(p.yaw), 0, -sin(p.yaw)) * 2.5
 		cam.look_at(pos + Vector3.UP * 0.5)
-	elif cam_mode == "cabin":
-		cam.position = pos + Vector3.UP * 2.3 - fwd * 2.2 + Vector3(cos(p.yaw), 0, -sin(p.yaw)) * 1.2
-		cam.look_at(pos + Vector3.UP * 0.1 + fwd * 0.2)
 	elif cam_mode == "top":
 		cam.position = pos + Vector3.UP * 9.0 - fwd * 0.5
 		cam.look_at(pos)
@@ -725,6 +780,19 @@ func _frame(dt: float) -> void:
 	controls.gear_text = "R" if p.gear < 0 else ("N" if p.gear == 0 else str(p.gear))
 	controls.rpm_frac = p.rpm / cars[0].phys.V.maxRpm
 	lens.update(dt, controls.speed_kmh, 1.0 if controls.nitro else 0.0)
+	if audio_on:
+		audio.update(p, cars[0].phys.V, dt, pl_events, pl_impact)
+		pl_events = []
+		pl_impact = 0.0
+		# el rival más cercano (a menos de 55 m) también suena
+		var nd := -1.0
+		var nrpm := 0.0
+		for i in range(1, cars.size()):
+			var d2 := Vector2(cars[i].snap.px - p.px, cars[i].snap.pz - p.pz).length()
+			if d2 < 55.0 and (nd < 0.0 or d2 < nd):
+				nd = d2
+				nrpm = cars[i].snap.rpm
+		audio.rival(nd, nrpm, cars[0].phys.V.firingOrder)
 	stat_timer += dt
 	frame_count += 1
 	if stat_timer >= 0.5:
@@ -745,6 +813,9 @@ func _frame(dt: float) -> void:
 			fps_sum += fps
 			fps_n += 1
 	if shot_frames > 0 and Engine.get_frames_drawn() >= shot_frames:
+		if audiorec != null:
+			audiorec.set_recording_active(false)
+			audiorec.get_recording().save_to_wav(audiorec_path)
 		print("VEL ", int(controls.speed_kmh), " km/h · marcha ", controls.gear_text, " · ", fx.debug_info())
 		if shot_path != "":
 			get_viewport().get_texture().get_image().save_png(shot_path)

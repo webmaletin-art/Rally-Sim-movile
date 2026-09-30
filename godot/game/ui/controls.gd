@@ -85,6 +85,10 @@ func rect_of(id: String) -> Rect2:
 			r = Rect2(vs.x - 100.0 * u - 64.0 * u, vs.y - 22.0 * u - 64.0 * u, 64.0 * u, 64.0 * u)
 		"nitro":
 			r = Rect2(vs.x - 100.0 * u - 64.0 * u, vs.y - 100.0 * u - 64.0 * u, 64.0 * u, 64.0 * u)
+		"cam":
+			r = Rect2(vs.x - 10.0 * u - 40.0 * u, 10.0 * u, 40.0 * u, 40.0 * u)
+		"pause":
+			r = Rect2(vs.x - 18.0 * u - 80.0 * u, 10.0 * u, 40.0 * u, 40.0 * u)
 	var L: Dictionary = layout.get(id, {})
 	if not L.is_empty():
 		var s: float = float(L.get("s", 1.0))
@@ -117,6 +121,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_touch_move(ev2.index, ev2.position)
 
 func _hit(pos: Vector2) -> String:
+	for id in ["cam", "pause"]:
+		if rect_of(id).grow(4.0 * _u()).has_point(pos):
+			return id
 	for id in ["pedal", "handbrake", "nitro", "gears"]:
 		if id in _active_items() and rect_of(id).grow(6.0 * _u()).has_point(pos):
 			return id
@@ -140,6 +147,10 @@ func _touch_down(idx: int, pos: Vector2) -> void:
 		return
 	_touch[idx] = {"kind": id, "y0": pos.y, "moved": false}
 	match id:
+		"cam":
+			camera_pressed.emit()
+		"pause":
+			pause_pressed.emit()
 		"wheel":
 			var c := rect_of("wheel").get_center()
 			wheel_touch_angle = atan2(pos.y - c.y, pos.x - c.x)
@@ -313,6 +324,8 @@ func _draw() -> void:
 	_draw_pedal(rect_of("pedal"), font, u)
 	if manual:
 		_draw_gears(rect_of("gears"), font, u)
+	_draw_round_button(rect_of("cam"), "CAM", false, Color(1.0, 0.8, 0.4), Color(0.2, 0.16, 0.08), Color(1.0, 0.82, 0.54), font, u * 0.5)
+	_draw_round_button(rect_of("pause"), "II", false, Color(0.7, 0.75, 0.85), Color(0.12, 0.14, 0.18), Color(0.8, 0.85, 0.95), font, u * 0.6)
 	_draw_round_button(rect_of("handbrake"), "H", handbrake, Color(1.0, 0.24, 0.19), Color(0.35, 0.12, 0.12), Color(1.0, 0.47, 0.43), font, u)
 	if has_nitro:
 		_draw_round_button(rect_of("nitro"), "N₂O", nitro, Color(0.3, 0.65, 1.0), Color(0.07, 0.19, 0.35), Color(0.31, 0.7, 1.0), font, u, nitro_frac)

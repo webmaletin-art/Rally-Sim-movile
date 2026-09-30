@@ -11,6 +11,7 @@ var V: VehicleParams
 var body: Node3D
 var wheels: Array = [] # {steer, spin, front, angle}
 var lo := false
+var shell: Node3D
 var blob: MeshInstance3D # sombrita suave en el piso (no hace falta una sombra de verdad)
 static var _blob_mat: StandardMaterial3D
 
@@ -23,7 +24,7 @@ func setup(p_params: VehicleParams, p_lo: bool, paint: Color, rim: Color) -> voi
 	body.position.y = -V.comHeight + V.rideOffset
 	var suffix := "_lo" if lo else ""
 	var body_scene: PackedScene = load("res://game/models/volt_body%s.glb" % suffix)
-	var shell: Node3D = body_scene.instantiate()
+	shell = body_scene.instantiate()
 	body.add_child(shell)
 	for mi in _mesh_instances(shell):
 		var mesh: Mesh = mi.mesh
@@ -33,10 +34,10 @@ func setup(p_params: VehicleParams, p_lo: bool, paint: Color, rim: Color) -> voi
 			var m := StandardMaterial3D.new()
 			m.vertex_color_use_as_albedo = true
 			if nm == "glass":
-				m.albedo_color = Color(0.45, 0.55, 0.68, 0.72)
-				m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-				m.metallic = 0.4
-				m.roughness = 0.12
+				# vidrio polarizado: desde afuera no se ve la tripulación (ni se dibuja); además no hace falta transparencia
+				m.albedo_color = Color(0.035, 0.045, 0.06)
+				m.metallic = 0.6
+				m.roughness = 0.1
 				m.cull_mode = BaseMaterial3D.CULL_DISABLED
 			else:
 				m.albedo_color = paint
@@ -104,6 +105,39 @@ func _make_blob() -> void:
 	blob.top_level = true
 	blob.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(blob)
+
+## Puntos de las cámaras de capó y paragolpes, medidos sobre la carrocería real (rayos sobre sus triángulos), en el marco del auto
+func compute_mounts(cowl_z: float, eye_y: float) -> Dictionary:
+	var ground := -V.comHeight + V.rideOffset
+	var tris := PackedVector3Array()
+	var mn := Vector3(1e9, 1e9, 1e9)
+	var mx := Vector3(-1e9, -1e9, -1e9)
+	for mi in _mesh_instances(shell):
+		var xf := Transform3D.IDENTITY
+		var n: Node = mi
+		while n != null and n != self:
+			if n is Node3D:
+				xf = (n as Node3D).transform * xf
+			n = n.get_parent()
+		for v in (mi.mesh as Mesh).get_faces():
+			var w := xf * v
+			tris.append(w)
+			mn = mn.min(w)
+			mx = mx.max(w)
+	var hy := NAN
+	for dz in [0.3, 0.5, 0.7, 0.15]:
+		var z := minf(cowl_z + dz, mx.z - 0.2)
+		var best := -1e9
+		for k in range(0, tris.size(), 3):
+			var hit = Geometry3D.ray_intersects_triangle(Vector3(0, mx.y + 1.0, z), Vector3.DOWN, tris[k], tris[k + 1], tris[k + 2])
+			if hit != null:
+				best = maxf(best, (hit as Vector3).y)
+		if best > -1e8:
+			hy = best
+			break
+	if is_nan(hy):
+		hy = ground + eye_y - 0.35
+	return {"hood": {"y": maxf(hy + 0.36, ground + eye_y - 0.25), "z": cowl_z + 0.02, "ly": -0.22}, "bumper": {"y": ground + 0.46, "z": mx.z + 0.06, "ly": -0.1}}
 
 func _mesh_instances(root: Node) -> Array:
 	var out := []
