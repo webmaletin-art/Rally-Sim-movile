@@ -54,6 +54,10 @@ var look_yaw := 0.0
 var rig_ok := false
 var rear_dist := 1.08 # cámara de atrás de las butacas: metros detrás de los ojos del piloto
 var ob_dist := 0.17 # cámara del casco: metros hacia atrás de la cabeza
+var rear_fov := 92.0 # ángulo horizontal de las cámaras interiores (menos = más zoom)
+var ob_fov := 96.0
+var disp_off := 0.13 # cuánto se corre la pantalla del tablero hacia el costado (hacia la derecha del piloto)
+var dome: Node3D
 var read_w := 0.0 # cuánto está leyendo la hoja el copiloto (0 mira al frente … 1 mira la hoja)
 var _body_col := Color(0.10, 0.31, 0.88)
 var _acc := Color(1.0, 0.42, 0.03)
@@ -318,17 +322,33 @@ func _b_floor_and_walls() -> void:
 	# panel trasero (detrás de las butacas): sube hasta la altura de la ventanilla
 	_box(Vector3(2.0 * hw, 1.0 - floor_y, 0.04), Vector3(0, (1.0 + floor_y) / 2.0, z0), "door")
 
+## curva cuadrática entre a y b con control c (n tramos)
+func _bez(a: Vector2, c: Vector2, b: Vector2, n := 5) -> Array:
+	var out := []
+	for i in range(1, n + 1):
+		var t := float(i) / float(n)
+		out.append(a.lerp(c, t).lerp(c.lerp(b, t), t))
+	return out
+
 func _b_dash() -> void:
-	# tablero macizo: cara al piloto, tapa con puntadas, cortafuegos y piso; debajo queda el hueco de las piernas
-	var prof := PackedVector2Array([
-		Vector2(dz0, eY - 0.80), Vector2(dz0, eY - 0.45), Vector2(dz0 + 0.02, eY - 0.34), Vector2(dz0 + 0.16, eY - 0.30),
-		Vector2(cz - 0.05, cowl_y + 0.01), Vector2(fw, cowl_y + 0.01), Vector2(fw, floor_y), Vector2(fw - 0.10, floor_y), Vector2(fw - 0.30, eY - 0.80)])
-	_add_mesh(_extrude(prof, -hw, hw), Transform3D.IDENTITY, "dash")
-	# cúpula del instrumental sobre el volante: la pantalla mira al piloto
-	var bin_prof := PackedVector2Array([Vector2(dz0 + 0.02, eY - 0.32), Vector2(dz0 + 0.02, eY - 0.20), Vector2(dz0 + 0.08, eY - 0.03), Vector2(dz0 + 0.22, eY - 0.02), Vector2(dz0 + 0.26, eY - 0.30)])
-	_add_mesh(_extrude(bin_prof, xD - 0.24, xD + 0.24, 4.0), Transform3D.IDENTITY, "trim")
-	var face_c := Vector3(xD, eY - 0.12, dz0 + 0.05 - 0.004)
-	var face_n := Vector3(0, 0.30, -0.95).normalized()
+	# tablero macizo con la cara y la tapa redondeadas, cortafuegos y piso; debajo queda el hueco de las piernas
+	var pts: Array = [Vector2(dz0, eY - 0.80), Vector2(dz0, eY - 0.52)]
+	pts.append_array(_bez(Vector2(dz0, eY - 0.52), Vector2(dz0 - 0.005, eY - 0.34), Vector2(dz0 + 0.07, eY - 0.315), 5))
+	pts.append_array(_bez(Vector2(dz0 + 0.07, eY - 0.315), Vector2(dz0 + 0.20, eY - 0.29), Vector2(cz - 0.14, cowl_y - 0.02), 5))
+	pts.append_array(_bez(Vector2(cz - 0.14, cowl_y - 0.02), Vector2(cz - 0.06, cowl_y + 0.035), Vector2(fw, cowl_y + 0.012), 4))
+	pts.append_array([Vector2(fw, floor_y), Vector2(fw - 0.10, floor_y), Vector2(fw - 0.30, eY - 0.80)])
+	_add_mesh(_extrude(PackedVector2Array(pts), -hw, hw), Transform3D.IDENTITY, "dash")
+	# cúpula del instrumental con la pantalla: se puede correr hacia el costado (barra en PRUEBAS)
+	dome = Node3D.new()
+	dome.position.x = -disp_off
+	interior.add_child(dome)
+	# cara trasera inclinada (la pantalla mira al piloto), tapa redondeada
+	var bp: Array = [Vector2(dz0 + 0.02, eY - 0.32), Vector2(dz0 + 0.075, eY - 0.06)]
+	bp.append_array(_bez(Vector2(dz0 + 0.075, eY - 0.06), Vector2(dz0 + 0.09, eY - 0.02), Vector2(dz0 + 0.16, eY - 0.02), 5))
+	bp.append_array(_bez(Vector2(dz0 + 0.16, eY - 0.02), Vector2(dz0 + 0.26, eY - 0.02), Vector2(dz0 + 0.28, eY - 0.30), 5))
+	_mesh_node(_extrude(PackedVector2Array(bp), xD - 0.21, xD + 0.21, 4.0), _mats["trim"], Vector3.ZERO, Basis.IDENTITY, dome)
+	var face_c := Vector3(xD, eY - 0.14, dz0 + 0.062 - 0.006)
+	var face_n := Vector3(0, 0.19, -0.98).normalized()
 	_build_display(face_c, face_n)
 	# panel central de llaves (inclinado hacia el piloto) y salidas de aire
 	var pc := Vector3(-0.02, eY - 0.42, dz0 - 0.005)
@@ -353,7 +373,7 @@ func _b_console() -> void:
 	_add_mesh(_extrude(prof, -0.15, 0.15, 3.0), Transform3D.IDENTITY, "carbon")
 	# palanca secuencial (adelante) y freno de mano (atrás): están a la derecha del piloto, sobre la consola
 	gear_lever = Node3D.new()
-	gear_lever.position = Vector3(0.02, 0.62, eZ + 0.30)
+	gear_lever.position = Vector3(0.02, 0.62, eZ + 0.35)
 	interior.add_child(gear_lever)
 	var cm := CylinderMesh.new()
 	cm.top_radius = 0.011
@@ -374,7 +394,7 @@ func _b_console() -> void:
 	boot.radial_segments = 10
 	_mesh_node(boot, _m("trim", Color.WHITE), Vector3(0, 0.03, 0), Basis.IDENTITY, gear_lever)
 	hb_lever = Node3D.new()
-	hb_lever.position = Vector3(0.02, 0.62, eZ + 0.02)
+	hb_lever.position = Vector3(0.02, 0.62, eZ + 0.17)
 	interior.add_child(hb_lever)
 	var hb := CylinderMesh.new()
 	hb.top_radius = 0.013
@@ -392,25 +412,84 @@ func _b_console() -> void:
 	_cyl(0.045, 0.045, 0.30, Vector3(0.0, 0.62 + 0.15, eZ - 0.45), "red", Basis.IDENTITY, 12)
 	_cyl(0.02, 0.02, 0.05, Vector3(0.0, 0.62 + 0.325, eZ - 0.45), "metal", Basis.IDENTITY, 8)
 
+## contorno redondeado (x, y) de un rectángulo w×h con las esquinas de arriba muy redondas
+func _round_rect(w: float, h: float, rt: float, rb: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var hw2 := w / 2.0
+	for i in range(0, 9): # esquina inferior derecha
+		var a := -PI / 2.0 + PI / 2.0 * float(i) / 8.0
+		pts.append(Vector2(hw2 - rb + cos(a) * rb, rb + sin(a) * rb))
+	for i in range(0, 9): # esquina superior derecha
+		var a := PI / 2.0 * float(i) / 8.0
+		pts.append(Vector2(hw2 - rt + cos(a) * rt, h - rt + sin(a) * rt))
+	for i in range(0, 9): # esquina superior izquierda
+		var a := PI / 2.0 + PI / 2.0 * float(i) / 8.0
+		pts.append(Vector2(-hw2 + rt + cos(a) * rt, h - rt + sin(a) * rt))
+	for i in range(0, 9): # esquina inferior izquierda
+		var a := PI + PI / 2.0 * float(i) / 8.0
+		pts.append(Vector2(-hw2 + rb + cos(a) * rb, rb + sin(a) * rb))
+	return pts
+
+## contorno (x, y) extruido en z entre z0 y z1
+func _extrude_z(profile: PackedVector2Array, z0: float, z1: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	st.set_smooth_group(-1)
+	var tri := Geometry2D.triangulate_polygon(profile)
+	for face in [0, 1]:
+		var z := z0 if face == 0 else z1
+		for k in range(0, tri.size(), 3):
+			var ids := [tri[k], tri[k + 1], tri[k + 2]]
+			if face == 1:
+				ids = [tri[k], tri[k + 2], tri[k + 1]]
+			for id in ids:
+				st.set_uv(profile[id] * 3.0)
+				st.add_vertex(Vector3(profile[id].x, profile[id].y, z))
+	var n := profile.size()
+	for i in n:
+		var p0 := profile[i]
+		var p1 := profile[(i + 1) % n]
+		for v in [Vector3(p0.x, p0.y, z0), Vector3(p1.x, p1.y, z0), Vector3(p1.x, p1.y, z1), Vector3(p0.x, p0.y, z0), Vector3(p1.x, p1.y, z1), Vector3(p0.x, p0.y, z1)]:
+			st.set_smooth_group(0) # el borde redondeado se ve suave
+			st.set_uv(Vector2(v.x, v.y) * 3.0)
+			st.add_vertex(v)
+	st.generate_normals()
+	return st.commit()
+
+func _capsule(r: float, h: float, pos: Vector3, mat_key: String, rot := Basis.IDENTITY) -> void:
+	var cm := CapsuleMesh.new()
+	cm.radius = r
+	cm.height = h
+	cm.radial_segments = 10
+	cm.rings = 4
+	_add_mesh(cm, Transform3D(rot, pos), mat_key)
+
 func _b_seats() -> void:
+	var lean := Basis(Vector3.RIGHT, -0.20)
 	for sd in [1.0, -1.0]:
 		var sx: float = sd * xD
-		# base y respaldo (inclinado hacia atrás)
-		_box(Vector3(0.44, 0.08, 0.44), Vector3(sx, 0.34, eZ - 0.12), "seat")
-		_box(Vector3(0.42, 0.52, 0.07), Vector3(sx, 0.66, eZ - 0.47), "seat", Basis(Vector3.RIGHT, -0.20))
-		_box(Vector3(0.09, 0.02, 0.38), Vector3(sx, 0.385, eZ - 0.12), "seat_acc")
-		_box(Vector3(0.09, 0.44, 0.01), Vector3(sx, 0.66, eZ - 0.435), "seat_acc", Basis(Vector3.RIGHT, -0.20))
-		# laterales (torso y muslos) y apoyacabezas con orejas
+		# cáscara del respaldo con la parte de arriba redondeada (inclinada hacia atrás)
+		var shell := _extrude_z(_round_rect(0.40, 0.56, 0.16, 0.03), -0.030, 0.030)
+		_add_mesh(shell, Transform3D(lean, Vector3(sx, 0.40, eZ - 0.47)), "seat")
+		var pad := _extrude_z(_round_rect(0.30, 0.44, 0.12, 0.02), 0.030, 0.045)
+		_add_mesh(pad, Transform3D(lean, Vector3(sx, 0.44, eZ - 0.47)), "seat_acc")
+		# laterales acolchados (cilindros redondeados) del torso y de los muslos
 		for side in [-1.0, 1.0]:
-			_box(Vector3(0.06, 0.32, 0.16), Vector3(sx + side * 0.225, 0.62, eZ - 0.40), "seat", Basis(Vector3.RIGHT, -0.20))
-			_box(Vector3(0.05, 0.09, 0.30), Vector3(sx + side * 0.225, 0.40, eZ - 0.12), "seat")
-			_box(Vector3(0.04, 0.11, 0.12), Vector3(sx + side * 0.125, 0.99, eZ - 0.50), "seat", Basis(Vector3.UP, -side * 0.35))
-		_box(Vector3(0.20, 0.11, 0.06), Vector3(sx, 0.98, eZ - 0.56), "seat", Basis(Vector3.RIGHT, -0.10))
-		_box(Vector3(0.16, 0.02, 0.005), Vector3(sx, 0.99, eZ - 0.595), "seat_acc", Basis(Vector3.RIGHT, -0.10))
-		# cinturones de 4 puntos: tiras que salen del respaldo y se juntan en la hebilla
+			_capsule(0.032, 0.36, Vector3(sx + side * 0.205, 0.60, eZ - 0.42), "seat", lean)
+			_capsule(0.028, 0.34, Vector3(sx + side * 0.205, 0.385, eZ - 0.12), "seat", Basis(Vector3.RIGHT, PI / 2.0))
+		# base: perfil con el borde delantero levantado
+		var base_prof := PackedVector2Array([Vector2(eZ - 0.36, 0.31), Vector2(eZ + 0.08, 0.31), Vector2(eZ + 0.11, 0.35), Vector2(eZ + 0.09, 0.385), Vector2(eZ - 0.05, 0.365), Vector2(eZ - 0.36, 0.375)])
+		_add_mesh(_extrude(base_prof, sx - 0.19, sx + 0.19, 3.0), Transform3D.IDENTITY, "seat")
+		_add_mesh(_extrude(PackedVector2Array([Vector2(eZ - 0.30, 0.372), Vector2(eZ + 0.06, 0.362), Vector2(eZ + 0.065, 0.375), Vector2(eZ - 0.30, 0.386)]), sx - 0.05, sx + 0.05, 3.0), Transform3D.IDENTITY, "seat_acc")
+		# apoyacabezas redondo con dos orejas
+		_capsule(0.042, 0.20, Vector3(sx, 0.99, eZ - 0.56), "seat", Basis(Vector3.FORWARD, PI / 2.0) * Basis(Vector3.RIGHT, -0.10))
 		for side in [-1.0, 1.0]:
-			_box(Vector3(0.05, 0.012, 0.36), Vector3(sx + side * 0.16, 0.415, eZ - 0.15), "seat_acc")
-		_box(Vector3(0.07, 0.03, 0.05), Vector3(sx, 0.42, eZ + 0.06), "metal")
+			_capsule(0.030, 0.12, Vector3(sx + side * 0.115, 0.985, eZ - 0.51), "seat", lean * Basis(Vector3.UP, -side * 0.3))
+		_box(Vector3(0.14, 0.018, 0.004), Vector3(sx, 0.995, eZ - 0.598), "seat_acc", Basis(Vector3.RIGHT, -0.10))
+		# cinturones: tiras a los costados y hebilla
+		for side in [-1.0, 1.0]:
+			_box(Vector3(0.045, 0.010, 0.30), Vector3(sx + side * 0.13, 0.392, eZ - 0.14), "seat_acc")
+		_box(Vector3(0.06, 0.025, 0.045), Vector3(sx, 0.395, eZ + 0.03), "metal")
 
 func _b_cage() -> void:
 	var r := 0.024
@@ -626,15 +705,15 @@ func _b_wheel() -> void:
 		kn.radial_segments = 10
 		_mesh_node(kn, _mats["metal"], Vector3(sx * 0.118, 0.0, 0.020), Basis(Vector3.RIGHT, PI / 2.0), rim)
 
-## Aro de fondo plano (tipo GT): tubo que recorre un círculo con la parte de abajo cortada; la marca naranja de las 12 va pintada
+## Aro circular y grueso: tubo que recorre un círculo; la marca naranja de las 12 va pintada
 func _rim_mesh() -> ArrayMesh:
-	var n := 72
-	var seg := 10
+	var n := 96
+	var seg := 14
 	var verts := PackedVector3Array()
 	var cols := PackedColorArray()
 	var idx := PackedInt32Array()
 	var nrms := PackedVector3Array()
-	var flat := -0.138
+	var flat := -1e9 # aro completamente circular
 	var path: Array = []
 	for i in n:
 		var th := TAU * float(i) / float(n)
@@ -648,7 +727,7 @@ func _rim_mesh() -> ArrayMesh:
 		var tan2 := (q - pr).normalized()
 		var out2 := Vector2(tan2.y, -tan2.x) # hacia afuera del aro
 		var th := atan2(p.y, p.x)
-		var grip := 0.021 + 0.004 * (absf(cos(th)) if p.y > flat + 0.005 else 0.0) # más grueso en las manos (3 y 9)
+		var grip := 0.024 + 0.003 * absf(cos(th)) # grueso, un poco más en las manos (3 y 9)
 		var mark := 1.0 if (absf(wrapf(th - PI / 2.0, -PI, PI)) < 0.11 and p.y > 0.0) else 0.0
 		for j in seg:
 			var a := TAU * float(j) / float(seg)
@@ -657,7 +736,7 @@ func _rim_mesh() -> ArrayMesh:
 			var v := Vector3(p.x + out2.x * off_out, p.y + out2.y * off_out, off_z)
 			verts.append(v)
 			nrms.append(Vector3(out2.x * cos(a), out2.y * cos(a), sin(a)).normalized())
-			cols.append(Color(1.0, 0.42, 0.04) if mark > 0.5 else (Color(0.05, 0.05, 0.055) if absf(cos(th)) < 0.55 or p.y <= flat + 0.005 else Color(0.03, 0.03, 0.035)))
+			cols.append(Color(1.0, 0.42, 0.04) if mark > 0.5 else (Color(0.05, 0.05, 0.055) if absf(cos(th)) < 0.55 else Color(0.03, 0.03, 0.035)))
 	for i in n:
 		var i2 := (i + 1) % n
 		for j in seg:
@@ -736,7 +815,7 @@ func _build_display(pos: Vector3, normal: Vector3) -> void:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.albedo_texture = disp_vp.get_texture()
-	_mesh_node(qm, m, pos, Basis.looking_at(normal, Vector3.UP, true))
+	_mesh_node(qm, m, pos, Basis.looking_at(normal, Vector3.UP, true), dome)
 
 ## Pantalla del tablero (se dibuja en un SubViewport chiquito, 10 veces por segundo)
 class DisplayPanel extends Control:
@@ -952,7 +1031,12 @@ func camera_local(mode: String, p: CarSnapshot, time: float, rough: float) -> Di
 		var b := OS.get_environment("CAB_LOOK").split_floats(",")
 		pos = Vector3(a[0], a[1], a[2])
 		look = Vector3(b[0], b[1], b[2])
-	return {"pos": pos, "look": look, "roll": roll, "hfov": 96.0 if mode == "onboard" else 104.0}
+	return {"pos": pos, "look": look, "roll": roll, "hfov": ob_fov if mode == "onboard" else rear_fov}
+
+func set_disp_off(v: float) -> void:
+	disp_off = v
+	if dome != null:
+		dome.position.x = -v
 
 func set_inside(v: bool, driver_head_visible: bool) -> void:
 	interior.visible = v

@@ -586,18 +586,28 @@ func _next_camera() -> void:
 	hud.show_toast("🎥 " + cam_rig.cam_name())
 
 func _load_cabin_cfg() -> void:
+	if cockpit == null:
+		return
 	var cf := ConfigFile.new()
-	if cf.load("user://cabina.cfg") == OK and cockpit != null:
+	if cf.load("user://cabina.cfg") == OK:
 		cockpit.rear_dist = float(cf.get_value("cam", "rear", cockpit.rear_dist))
 		cockpit.ob_dist = float(cf.get_value("cam", "ob", cockpit.ob_dist))
-	if cockpit != null:
-		hud.sliders["cam_rear"]["val"] = cockpit.rear_dist
-		hud.sliders["cam_ob"]["val"] = cockpit.ob_dist
+		cockpit.rear_fov = float(cf.get_value("cam", "rear_fov", cockpit.rear_fov))
+		cockpit.ob_fov = float(cf.get_value("cam", "ob_fov", cockpit.ob_fov))
+		cockpit.set_disp_off(float(cf.get_value("cam", "disp", cockpit.disp_off)))
+	hud.sliders["cam_rear"]["val"] = cockpit.rear_dist
+	hud.sliders["cam_rear_fov"]["val"] = cockpit.rear_fov
+	hud.sliders["cam_ob"]["val"] = cockpit.ob_dist
+	hud.sliders["cam_ob_fov"]["val"] = cockpit.ob_fov
+	hud.sliders["disp_x"]["val"] = cockpit.disp_off
 
 func _save_cabin_cfg() -> void:
 	var cf := ConfigFile.new()
 	cf.set_value("cam", "rear", cockpit.rear_dist)
 	cf.set_value("cam", "ob", cockpit.ob_dist)
+	cf.set_value("cam", "rear_fov", cockpit.rear_fov)
+	cf.set_value("cam", "ob_fov", cockpit.ob_fov)
+	cf.set_value("cam", "disp", cockpit.disp_off)
 	cf.save("user://cabina.cfg")
 
 func _on_option(key: String, value) -> void:
@@ -607,6 +617,15 @@ func _on_option(key: String, value) -> void:
 			_save_cabin_cfg()
 		"cam_ob":
 			cockpit.ob_dist = float(value)
+			_save_cabin_cfg()
+		"cam_rear_fov":
+			cockpit.rear_fov = float(value)
+			_save_cabin_cfg()
+		"cam_ob_fov":
+			cockpit.ob_fov = float(value)
+			_save_cabin_cfg()
+		"disp_x":
+			cockpit.set_disp_off(float(value))
 			_save_cabin_cfg()
 		"cars":
 			cars_n = int(value)
@@ -783,6 +802,7 @@ func _frame(dt: float) -> void:
 		was_inside = inside
 		was_onboard = onboard
 		cars[0].visual.body.visible = not inside
+		controls.show_speed = not inside
 		cockpit.set_inside(inside, not onboard)
 	if inside:
 		cockpit.update_crew(dt, p, controls.handbrake, cam_rig.time, 0.0)

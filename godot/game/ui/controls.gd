@@ -20,6 +20,7 @@ var gyro_on := false
 var gyro_invert := false
 var gyro_sens := 50.0 # 0..100 → cuánto hay que inclinar
 var use_mph := false
+var show_speed := true # el panel de velocidad de arriba se oculta con las cámaras interiores (ya está en el tablero)
 var layout := {} # id → {x, y, s}: posición (fracción de pantalla) y tamaño relativo, para el editor de controles
 
 # ── salidas ──
@@ -314,7 +315,8 @@ func _draw() -> void:
 	var u := _u()
 	var vs := _vs()
 	var font := ThemeDB.fallback_font
-	_draw_speed_panel(font, u, vs)
+	if show_speed:
+		_draw_speed_panel(font, u, vs)
 	if steer_mode == "wheel" and not gyro_on:
 		_draw_wheel(rect_of("wheel"))
 	elif steer_mode == "slider" and not gyro_on:
