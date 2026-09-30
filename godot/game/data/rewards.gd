@@ -22,6 +22,26 @@ static func events_of(tier_id: String) -> Array:
 			out.append(e)
 	return out
 
+static var _maps: Dictionary
+
+## ¿Se puede jugar este evento con lo que ya está portado? (carrera, contrarreloj y radar sobre una ruta)
+static func playable(ev: Dictionary) -> bool:
+	if _maps.is_empty():
+		_maps = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["maps"]
+	var mp: Dictionary = _maps.get(str(ev["map"]), {})
+	return str(mp.get("kind", "")) == "route" and str(ev["type"]) in ["race", "timetrial", "trap"]
+
+## Estrellas que pide una copa: mientras falten tipos de evento por portar, se pide como mucho el 70% de lo que se puede ganar antes
+static func stars_needed(tier: Dictionary) -> int:
+	var avail := 0
+	for t in CarBuild.catalog()["tiers"]:
+		if t["id"] == tier["id"]:
+			break
+		for e in events_of(str(t["id"])):
+			if playable(e):
+				avail += 3
+	return mini(int(tier["stars"]), int(floor(float(avail) * 0.7)))
+
 static func lower_is_better(type: String) -> bool:
 	return type == "timetrial" or type == "parking"
 
@@ -53,9 +73,12 @@ static func reward_for(ev: Dictionary, medal: int, tier: Dictionary) -> Dictiona
 	var mult: float = [0.2, 0.55, 0.75, 1.0][medal]
 	return {"cr": int(round(base * mult / 50.0)) * 50, "xp": int(round((250.0 + float(tier["base"]) * 0.12) * (0.4 + float(medal) * 0.3) * (1.5 if ev.get("final", false) else 1.0)))}
 
-## ¿Está abierto el evento? Devuelve "" si sí, o el motivo
+## ¿Está abierto el evento? Devuelve "" si sí, o el motivo. Los eventos que todavía no se pueden jugar no traban a los siguientes.
 static func event_locked(profile: RefCounted, ev: Dictionary) -> String:
-	var lst := events_of(str(ev["tier"]))
+	var lst: Array = []
+	for e in events_of(str(ev["tier"])):
+		if playable(e):
+			lst.append(e)
 	var i := lst.find(ev)
 	if i <= 0:
 		return ""
@@ -71,7 +94,7 @@ static func event_locked(profile: RefCounted, ev: Dictionary) -> String:
 static func tier_open(profile: RefCounted, tier: Dictionary) -> bool:
 	if tier.has("car") and not profile.owns(str(tier["car"])):
 		return false
-	return profile.stars() >= int(tier["stars"])
+	return profile.stars() >= stars_needed(tier)
 
 ## Aplica un resultado al perfil y devuelve lo que muestra la pantalla de resultados
 static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictionary:

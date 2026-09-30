@@ -7,6 +7,7 @@ const MenuScript := preload("res://game/ui/menu.gd")
 const Rewards := preload("res://game/data/rewards.gd")
 const RACE_SCENE := preload("res://game/race.tscn")
 
+var autorace_used := false
 var profile: RefCounted
 var menu: Node
 var race: Node

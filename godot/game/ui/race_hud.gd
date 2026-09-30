@@ -26,15 +26,13 @@ var bar: ColorRect
 var bar_fill: ColorRect
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	# bloque de arriba al centro (con las cámaras interiores queda poco tapado)
 	top = Kit.panel(10, Color(0.04, 0.05, 0.08, 0.72))
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	top.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	top.position = Vector2(0, 8)
+	top.position = Vector2(14, 10)
 	add_child(top)
 	var row := Kit.hbox(18)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -49,20 +47,18 @@ func _ready() -> void:
 	lap_l = Kit.label("", 18, Kit.MUTED)
 	col.add_child(lap_l)
 	sub_l = Kit.label("", 18, Kit.MUTED)
-	sub_l.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	big_l = Kit.label("", 120, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	big_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	big_l.add_theme_constant_override("outline_size", 14)
-	big_l.set_anchors_preset(Control.PRESET_FULL_RECT)
+	big_l.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	big_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	big_l.position.y = -40
 	add_child(big_l)
 	toast_l = Kit.label("", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	toast_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	toast_l.add_theme_constant_override("outline_size", 8)
-	toast_l.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	toast_l.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	toast_l.position = Vector2(0, 92)
+	toast_l.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	toast_l.offset_top = 150
 	add_child(toast_l)
 	_build_pause()
 
@@ -121,15 +117,15 @@ func update_hud(dt: float, n_cars: int) -> void:
 
 func _build_pause() -> void:
 	pause_box = Control.new()
-	pause_box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pause_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	pause_box.visible = false
 	add_child(pause_box)
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.62)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	pause_box.add_child(dim)
 	var cc := CenterContainer.new()
-	cc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	pause_box.add_child(cc)
 	var p := Kit.panel(22)
 	cc.add_child(p)

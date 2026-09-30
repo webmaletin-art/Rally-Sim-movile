@@ -34,6 +34,7 @@ var screen_arg = null
 var career: RefCounted
 var garage: RefCounted
 var frames := 0
+var autorace := "" # prueba: arranca directo este evento (p. ej. d2)
 var shot_path := ""
 var shot_frames := 0
 var stack: Array = [] # pantallas anteriores (para "atrás")
@@ -45,8 +46,14 @@ func _ready() -> void:
 			shot_path = a.substr(7)
 		elif a.begins_with("--frames="):
 			shot_frames = int(a.substr(9))
+		elif a.begins_with("--mshot="):
+			shot_path = a.substr(8)
+		elif a.begins_with("--mframes="):
+			shot_frames = int(a.substr(10))
 		elif a.begins_with("--screen="):
 			start_screen = a.substr(9)
+		elif a.begins_with("--autorace="):
+			autorace = a.substr(11)
 	if (profile.d["owned"] as Dictionary).is_empty():
 		_first_time()
 	sfx = UiSfx.new()
@@ -60,6 +67,12 @@ func _ready() -> void:
 	_build_ui()
 	# el premio del día, una sola vez por día
 	var daily: Dictionary = profile.daily_check()
+	if autorace != "" and not app.autorace_used:
+		app.autorace_used = true
+		var ev: Dictionary = Rewards.event_by_id(autorace)
+		var tier: Dictionary = Rewards.tier_by_id(str(ev["tier"]))
+		career._start_event(ev, tier)
+		return
 	var parts := start_screen.split(":")
 	go(parts[0], parts[1] if parts.size() > 1 else null)
 	if not daily.is_empty():
@@ -159,6 +172,7 @@ func go(name: String, arg = null, push := true) -> void:
 	panel.set_anchors_preset(Control.PRESET_LEFT_WIDE)
 	var wide := name in ["career", "events", "event", "workshop", "tune", "garage", "dealer", "results", "goals", "options", "quick", "paint"]
 	panel.anchor_right = 0.52 if wide else 0.40
+	showroom.view_shift = 0.75 if wide else 0.5
 	panel.offset_left = 14
 	panel.offset_top = 14
 	panel.offset_bottom = -14
@@ -407,6 +421,15 @@ func _results() -> void:
 		body.add_child(Kit.label(names[med], 34, [Kit.MUTED, Color(0.85, 0.55, 0.3), Color(0.8, 0.85, 0.92), Kit.GOLD][med]))
 	if bool(r.get("record", false)):
 		body.add_child(Kit.label("🏅 ¡NUEVO RÉCORD!", 24, Kit.GREEN))
+	var row := Kit.hbox(10)
+	body.add_child(row)
+	var again := Kit.button("↺ REPETIR", func(): app.start_race(cfg), true, 22)
+	again.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(again)
+	var to := "career" if not cfg.get("event", {}).is_empty() else "home"
+	var cont := Kit.button("CONTINUAR", func(): stack.clear(); go(to, null, false), false, 22)
+	cont.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(cont)
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 24)
@@ -426,13 +449,4 @@ func _results() -> void:
 			i += 1
 			var line := "%d.  %s   %s" % [i, s["name"], Kit.fmt_time(float(s["time"])) if float(s["time"]) >= 0.0 else "—"]
 			body.add_child(Kit.label(line, 20, Kit.ACCENT if s["player"] else Kit.TEXT))
-	var row := Kit.hbox(10)
-	body.add_child(row)
-	var again := Kit.button("↺ REPETIR", func(): app.start_race(cfg), true, 22)
-	again.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(again)
-	var to := "career" if not cfg.get("event", {}).is_empty() else "home"
-	var cont := Kit.button("CONTINUAR", func(): stack.clear(); go(to, null, false), false, 22)
-	cont.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(cont)
 	sfx.play("finish")

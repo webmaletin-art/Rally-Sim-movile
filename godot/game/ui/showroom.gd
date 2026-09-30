@@ -24,7 +24,7 @@ var next_set := -1
 var blend_t := 0.0
 var pose_t := 0.0
 var rng := RandomNumberGenerator.new()
-var view_shift := 0.22 # cuánto se corre la escena hacia la derecha (el menú ocupa la izquierda)
+var view_shift := 0.5 # cuánto se corre la escena hacia la derecha (el menú ocupa la izquierda)
 var car_len := 4.6
 var clip: MeshInstance3D
 var ready_ok := false
@@ -267,7 +267,7 @@ func _process(dt: float) -> void:
 	t += dt
 	# cámara: va y viene despacio alrededor del frente-izquierdo del auto
 	cam_ang = 0.62 + 0.30 * sin(t * 0.12)
-	var dist := car_len * 1.62 + 1.0
+	var dist := car_len * 1.85 + 1.5
 	var target := Vector3(1.55, 0.95, car_len * 0.2)
 	var cp := target + Vector3(sin(cam_ang) * dist, 0.65 + 0.12 * sin(t * 0.17), cos(cam_ang) * dist)
 	cam.position = cp

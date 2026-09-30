@@ -22,8 +22,7 @@ func map_name(id: String) -> String:
 
 ## ¿Se puede jugar este evento en la versión Godot? (hoy: los que corren sobre una ruta)
 func playable(ev: Dictionary) -> bool:
-	var mp: Dictionary = _maps().get(str(ev["map"]), {})
-	return str(mp.get("kind", "")) == "route" and str(ev["type"]) in ["race", "timetrial", "trap"]
+	return Rewards.playable(ev)
 
 func build(name: String, arg) -> void:
 	match name:
@@ -89,7 +88,7 @@ func _tiers() -> void:
 			if t.has("car") and not m.profile.owns(str(t["car"])):
 				right = "🔒 necesitás el %s" % CarBuild.catalog()["cars"][t["car"]]["model"]
 			else:
-				right = "🔒 %d ⭐" % int(t["stars"])
+				right = "🔒 %d ⭐" % Rewards.stars_needed(t)
 		var tt: Dictionary = t
 		m.body.add_child(_row_button(str(t["icon"]), str(t["name"]), sub, right, func(): _open_tier(tt), Kit.hexc(t["color"]), true))
 
@@ -99,7 +98,7 @@ func _open_tier(t: Dictionary) -> void:
 		if t.has("car") and not m.profile.owns(str(t["car"])):
 			m.toast("Necesitás el %s %s" % [CarBuild.catalog()["cars"][t["car"]]["brand"], CarBuild.catalog()["cars"][t["car"]]["model"]])
 		else:
-			m.toast("Necesitás %d ⭐ para abrir esta copa (tenés %d)" % [int(t["stars"]), m.profile.stars()])
+			m.toast("Necesitás %d ⭐ para abrir esta copa (tenés %d)" % [Rewards.stars_needed(t), m.profile.stars()])
 		return
 	m.go("events", t["id"])
 
@@ -123,10 +122,10 @@ func _events(tier_id: String) -> void:
 		var rw := Rewards.reward_for(e, 3, tier)
 		var sub := "%s · %s" % [map_name(str(e["map"])), SKY_N.get(str(e.get("sky", "day")), "")]
 		var right := "%s\n%s" % [_medals(medal), Kit.fmt_cr(float(rw["cr"]))]
-		if lk != "":
-			right = "🔒"
-		elif not can:
+		if not can:
 			right = "🚧 pronto"
+		elif lk != "":
+			right = "🔒"
 		var head := "%d" % i
 		var ev: Dictionary = e
 		var b := _row_button(head, "%s %s%s" % [ti["icon"], e["name"], "  · FINAL" if e.get("final", false) else ""], sub, right, func(): _open_event(ev, lk), Kit.hexc(tier["color"]), lk == "" or true)

@@ -614,6 +614,8 @@ func _start_session() -> void:
 	for i in cars.size():
 		session.names[i] = rival_info[i]["name"]
 	session.init_cars(cars)
+	if OS.get_cmdline_user_args().has("--finishtest"):
+		session.race_len = 120.0 # prueba: meta a los 120 m
 	session.beep.connect(_on_beep)
 	session.go.connect(_on_go)
 	session.player_finished.connect(_on_player_finished)
@@ -865,6 +867,8 @@ func _tick_session(dt: float) -> void:
 				var gap: float = session.prog[i] - session.prog[0]
 				d.boost = 0.93 if gap > 140.0 else (1.05 if gap < -160.0 else 1.0)
 	race_hud.update_hud(dt, cars.size())
+	if _dbg_finish and Engine.get_frames_drawn() % 30 == 0:
+		print("SES ", session.state, " t=", snappedf(session.time, 0.1), " prog=", int(session.prog[0]), "/", int(session.race_len), " v=", int(absf(cars[0].snap.vLong) * 3.6), " dt=", snappedf(dt, 0.001))
 	if session.state == "done":
 		done_t += dt
 		if done_t > 2.5 and not _result_sent:
@@ -872,6 +876,7 @@ func _tick_session(dt: float) -> void:
 			finished.emit(_make_result())
 
 var _result_sent := false
+var _dbg_finish := OS.get_cmdline_user_args().has("--finishtest")
 
 func _make_result() -> Dictionary:
 	var n := cars.size()
@@ -1146,6 +1151,11 @@ func _frame(dt: float) -> void:
 		return
 	if session != null:
 		_tick_session(dt)
+		if OS.get_cmdline_user_args().has("--pausetest") and Engine.get_frames_drawn() == 100:
+			_toggle_pause()
+			await get_tree().create_timer(1.0, true, false, true).timeout
+			get_viewport().get_texture().get_image().save_png(shot_path)
+			get_tree().quit()
 	for c in cars:
 		c.snap.sample(render_t)
 		c.update_visual(dt)
