@@ -239,12 +239,13 @@ func _rebuild_cars() -> void:
 			car.driver = RingDriver.new(track, 20.0 + float((i * 7) % 9), (float((i * 5) % 7) - 3.0) * 0.9)
 		var sp: Array = track.start_pose(i)
 		car.place(sp[0], sp[1], sp[2])
+		car.restart_history(sim_t)
 		world.add_child(car.visual)
 		if no_body:
 			car.visual.body.get_child(0).visible = false
 		if pilots_on:
-			Pilot.create(car.visual.body, 0.37, 0.49, -0.31, lo)
-			Pilot.create(car.visual.body, -0.37, 0.49, -0.31, lo)
+			Pilot.create(car.visual.body, 0.37, 0.49, -0.31, lo, 0.0 if i == 0 else 55.0)
+			Pilot.create(car.visual.body, -0.37, 0.49, -0.31, lo, 0.0 if i == 0 else 55.0)
 		cars.append(car)
 	cam_ready = false
 
@@ -435,6 +436,10 @@ func _on_option(key: String, value) -> void:
 ##  · enseguida se lanza la física del cuadro que viene (una tarea por auto) y el hilo principal sigue con el dibujado.
 ## El dibujado y la cámara usan solo la foto. Costo: un cuadro (16 ms) más de retardo al girar el volante.
 var phys_task := -1
+var sim_t := 0.0 # hora de la simulación (múltiplo de 1/120 s)
+var batch_t0 := 0.0
+var render_t := 0.0
+var smooth_dt := 0.016
 var phys_wait_us := 0
 
 func _finish_physics() -> void:
@@ -443,15 +448,18 @@ func _finish_physics() -> void:
 		WorkerThreadPool.wait_for_group_task_completion(phys_task)
 		phys_wait_us += Time.get_ticks_usec() - t0
 		phys_task = -1
-		for c in cars:
-			c.capture()
 
 func _step_physics(dt: float) -> void:
 	_finish_physics()
 	var h := 1.0 / 120.0
+	smooth_dt = lerpf(smooth_dt, minf(dt, 0.1), 0.02)
 	acc = minf(acc + dt, 0.05)
 	step_n = int(acc / h)
 	acc -= float(step_n) * h
+	batch_t0 = sim_t
+	sim_t += float(step_n) * h
+	# hora que se dibuja: atrasada lo justo para que los estados que rodean esa hora ya estén calculados
+	render_t = sim_t + acc - (smooth_dt * 1.3 + h)
 	if step_n <= 0 or cars.is_empty():
 		return
 	var pl: Car = cars[0]
@@ -467,13 +475,11 @@ func _step_physics(dt: float) -> void:
 		for i in cars.size():
 			_step_car(i)
 		phys_us += Time.get_ticks_usec() - t0
-		for c in cars:
-			c.capture()
 
 func _step_car(i: int) -> void:
 	var c: Car = cars[i]
 	for k in step_n:
-		c.step(1.0 / 120.0)
+		c.step_and_record(1.0 / 120.0, batch_t0 + float(k + 1) / 120.0)
 
 func _process(dt: float) -> void:
 	_step_physics(dt)
@@ -482,6 +488,7 @@ func _process(dt: float) -> void:
 	if cars.is_empty():
 		return
 	for c in cars:
+		c.snap.sample(render_t)
 		c.update_visual(dt)
 	var p = cars[0].snap
 	# cámara de seguimiento
@@ -489,11 +496,11 @@ func _process(dt: float) -> void:
 	if not cam_ready:
 		cam_yaw = target_yaw
 		cam_ready = true
-	cam_yaw = lerp_angle(cam_yaw, target_yaw, 1.0 - exp(-dt * 4.0))
+	cam_yaw = lerp_angle(cam_yaw, target_yaw, 1.0 - exp(-dt * 9.0))
 	var fwd := Vector3(sin(cam_yaw), 0, cos(cam_yaw))
 	var pos := Vector3(p.px, p.py, p.pz)
 	var want := pos - fwd * 7.5 + Vector3.UP * 2.7
-	cam.position = want if cam.position.distance_to(want) > 30.0 else cam.position.lerp(want, 1.0 - exp(-dt * 9.0))
+	cam.position = want if cam.position.distance_to(want) > 30.0 else cam.position.lerp(want, 1.0 - exp(-dt * 14.0))
 	cam.look_at(pos + fwd * 3.0 + Vector3.UP * 0.9)
 	if cam_mode == "side":
 		var right := Vector3(cos(p.yaw), 0, -sin(p.yaw))

@@ -23,11 +23,11 @@ func _init(track: TrackBase, params: VehicleParams, player: bool, lo: bool, pain
 	is_player = player
 	visual = CarVisual.new()
 	visual.setup(params, lo, paint, rim)
-	snap.capture(phys)
+	snap.reset_to(0.0, phys)
 
 func place(x: float, z: float, yaw: float) -> void:
 	phys.reset(x, z, yaw)
-	snap.capture(phys)
+	snap.reset_to(0.0, phys)
 
 func step(dt: float) -> void:
 	if driver != null:
@@ -36,9 +36,14 @@ func step(dt: float) -> void:
 	else:
 		phys.step(dt, in_throttle, in_brake, in_steer, in_handbrake)
 
-## Copia el estado de la física a la foto (hay que llamarlo con la física quieta)
-func capture() -> void:
-	snap.capture(phys)
+## Reinicia el historial del dibujado en la hora t (al colocar el auto)
+func restart_history(t: float) -> void:
+	snap.reset_to(t, phys)
+
+## Un paso de física; deja el estado en el historial con su hora
+func step_and_record(dt: float, t: float) -> void:
+	step(dt)
+	snap.push(t, phys)
 
 func update_visual(dt: float) -> void:
 	visual.sync_from(snap, dt)

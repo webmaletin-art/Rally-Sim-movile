@@ -6,7 +6,7 @@ extends RefCounted
 static var _lo_scene: PackedScene
 static var _full_mat: Material
 
-static func create(parent: Node3D, x: float, hip_y: float, hip_z: float, lo: bool) -> Node3D:
+static func create(parent: Node3D, x: float, hip_y: float, hip_z: float, lo: bool, max_dist := 0.0) -> Node3D:
 	if _lo_scene == null:
 		_lo_scene = load("res://game/models/pilot_lo.glb")
 		var full: Node = (load("res://game/models/pilot.glb") as PackedScene).instantiate()
@@ -23,6 +23,8 @@ static func create(parent: Node3D, x: float, hip_y: float, hip_z: float, lo: boo
 	for mi in _meshes(scene):
 		mi.set_surface_override_material(0, _full_mat)
 		mi.extra_cull_margin = 2.0
+		if max_dist > 0.0:
+			mi.visibility_range_end = max_dist # los pilotos de los rivales lejanos no se dibujan
 	if skel == null:
 		return root
 	var head := _bone(skel, "Head")
