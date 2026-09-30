@@ -14,6 +14,8 @@ const Controls := preload("res://game/ui/controls.gd")
 const Effects := preload("res://game/fx/effects.gd")
 const Weather := preload("res://game/fx/weather.gd")
 const Lens := preload("res://game/fx/lens.gd")
+const Cockpit := preload("res://game/car/cockpit.gd")
+const CameraRig := preload("res://game/car/camera_rig.gd")
 const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
 
 var track: CircuitTrack
@@ -69,6 +71,11 @@ var step_n := 0
 var fx_on := true
 var res_auto := true # la resolución del mundo 3D se ajusta sola según los cuadros por segundo
 var script_ms := 0.0
+var cockpit: Node3D
+var cam_rig: RefCounted
+var was_inside := false
+var was_onboard := false
+var cam_index := 1
 var lens_auto := true # el filtro se apaga solo si el teléfono no llega
 var lens: Node # filtro de cámara (Lente Rally)
 
@@ -96,6 +103,7 @@ func _ready() -> void:
 			bench = true
 		elif a.begins_with("--cam="):
 			cam_mode = a.substr(6)
+			cam_index = {"onboard": 0, "cabin": 0, "chase": 1, "near": 2, "far": 3, "aerial": 4, "rear": 6, "hood": 7, "bumper": 8}.get(cam_mode, 1)
 		elif a.begins_with("--cars="):
 			cars_n = int(a.substr(7))
 		elif a.begins_with("--trees="):
@@ -116,6 +124,7 @@ func _ready() -> void:
 	hud.option_changed.connect(_on_option)
 	hud.bench_pressed.connect(_bench_start)
 	hud.copy_pressed.connect(_copy_report)
+	controls.camera_pressed.connect(_next_camera)
 	fx = Effects.new()
 	world.add_child(fx)
 	fx.setup(track)
@@ -328,10 +337,21 @@ func _rebuild_cars() -> void:
 		world.add_child(car.visual)
 		if no_body:
 			car.visual.body.get_child(0).visible = false
-		# los rivales llevan vidrios oscuros: su tripulación no se dibuja (solo en cinemáticas, cuando haga falta)
-		if pilots_on and i == 0:
-			Pilot.create(car.visual.body, 0.37, 0.49, -0.31, lo)
-			Pilot.create(car.visual.body, -0.37, 0.49, -0.31, lo)
+		# los vidrios son oscuros: la tripulación y el habitáculo solo se dibujan con las cámaras interiores del jugador
+		if i == 0:
+			var Vp: VehicleParams = car.phys.V
+			cockpit = Cockpit.new(str(d.get("visualType", "t1plus")), paints[0], Color(1.0, 0.42, 0.03))
+			cockpit.position = Vector3(0, -Vp.comHeight + Vp.rideOffset, 0)
+			car.visual.add_child(cockpit)
+			cockpit.set_engine(Vp.maxRpm, Vp.shiftUpRpm, Vp.nitroCap)
+			cockpit.set_inside(false, false)
+			cam_rig = CameraRig.new(cam, track)
+			cam_rig.visual = car.visual
+			cam_rig.cockpit = cockpit
+			cam_rig.ground_off = -Vp.comHeight + Vp.rideOffset
+			cam_rig.mount = car.visual.compute_mounts(float(cockpit.C["cowlZ"]), float(cockpit.C["eyeY"]))
+			cam_rig.set_preset(cam_index)
+			was_inside = false
 		cars.append(car)
 		if i <= 3 and fx != null:
 			fx.prepare(i)
@@ -540,6 +560,12 @@ func _update_fx(dt: float) -> void:
 		elif i <= 3 and d < 60.0 and cam.is_position_in_frustum(pos):
 			fx.emit_from(i, c.snap, dt, 0.325, 0.5)
 
+func _next_camera() -> void:
+	if cam_rig == null:
+		return
+	cam_rig.next()
+	hud.show_toast("🎥 " + cam_rig.cam_name())
+
 func _on_option(key: String, value) -> void:
 	match key:
 		"cars":
@@ -696,17 +722,21 @@ func _frame(dt: float) -> void:
 		c.update_visual(dt)
 	_update_fx(dt)
 	var p = cars[0].snap
-	# cámara de seguimiento
-	var target_yaw: float = p.yaw
-	if not cam_ready:
-		cam_yaw = target_yaw
-		cam_ready = true
-	cam_yaw = lerp_angle(cam_yaw, target_yaw, 1.0 - exp(-dt * 9.0))
-	var fwd := Vector3(sin(cam_yaw), 0, cos(cam_yaw))
+	# cámara (las de seguimiento, capó, paragolpes, libre y las dos interiores)
 	var pos := Vector3(p.px, p.py, p.pz)
-	var want := pos - fwd * 7.5 + Vector3.UP * 2.7
-	cam.position = want if cam.position.distance_to(want) > 30.0 else cam.position.lerp(want, 1.0 - exp(-dt * 14.0))
-	cam.look_at(pos + fwd * 3.0 + Vector3.UP * 0.9)
+	var fwd := Vector3(sin(p.yaw), 0, cos(p.yaw))
+	cam_rig.aspect = float(world.size.x) / float(maxi(1, world.size.y))
+	cam_rig.update(dt, p, false)
+	var inside: bool = cam_rig.is_inside() and cockpit != null
+	var onboard: bool = cam_rig.mode() == "onboard"
+	if inside != was_inside or onboard != was_onboard:
+		was_inside = inside
+		was_onboard = onboard
+		cars[0].visual.body.visible = not inside
+		cockpit.set_inside(inside, not onboard)
+	if inside:
+		cockpit.update_crew(dt, p, controls.handbrake, cam_rig.time, 0.0)
+		cockpit.update_cabin(dt, p, controls.handbrake, cam_rig.time)
 	if cam_mode == "side":
 		var right := Vector3(cos(p.yaw), 0, -sin(p.yaw))
 		cam.position = pos + right * 5.0 + Vector3.UP * 0.6 + fwd * 1.0
@@ -714,9 +744,6 @@ func _frame(dt: float) -> void:
 	elif cam_mode == "front":
 		cam.position = pos + fwd * 6.0 + Vector3.UP * 1.6 + Vector3(cos(p.yaw), 0, -sin(p.yaw)) * 2.5
 		cam.look_at(pos + Vector3.UP * 0.5)
-	elif cam_mode == "cabin":
-		cam.position = pos + Vector3.UP * 2.3 - fwd * 2.2 + Vector3(cos(p.yaw), 0, -sin(p.yaw)) * 1.2
-		cam.look_at(pos + Vector3.UP * 0.1 + fwd * 0.2)
 	elif cam_mode == "top":
 		cam.position = pos + Vector3.UP * 9.0 - fwd * 0.5
 		cam.look_at(pos)

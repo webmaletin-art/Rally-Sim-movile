@@ -5,7 +5,7 @@ extends RefCounted
 ## "salta" cuando un cuadro avanza 2 pasos y el siguiente 3. Los hilos solo escriben (push) y el principal solo lee, nunca a la vez.
 
 const RING := 24
-const STRIDE := 51 # 19 del estado + 32 de datos por rueda para humo/marcas
+const STRIDE := 67 # 19 del estado + 32 de datos por rueda (humo/marcas) + 16 datos para cabina y sonido
 
 var data := PackedFloat64Array()
 var count := 0
@@ -25,6 +25,26 @@ var wheel_s := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
 var wheel_omega := PackedFloat64Array([0.0, 0.0, 0.0, 0.0])
 ## por rueda (8 valores): contacto, superficie, velocidad longitudinal, kappa, alfa, x, z del contacto, altura del piso (último paso)
 var wheel_fx := PackedFloat64Array()
+# datos para la cabina, la cámara y el sonido (interpolados los continuos; los demás, del último paso)
+var vx := 0.0
+var vy := 0.0
+var vz := 0.0
+var yawRate := 0.0
+var aLong := 0.0
+var aLat := 0.0
+var load := 0.0
+var throttle := 0.0
+var brake := 0.0
+var hbIn := false
+var clutchLocked := false
+var shiftT := 1.0
+var limiter := false
+var nitro := 0.0
+var nitroOn := false
+var trackHint := 0.0
+## eventos que ocurrieron desde la última vez que se pidieron: ["shift_up", "shift_down", "limiter", ["land", v]…]
+var pending_events: Array = []
+var pending_impact := 0.0
 
 func _init() -> void:
 	data.resize(RING * STRIDE)
@@ -63,7 +83,46 @@ func push(t: float, p) -> void:
 		data[q + 5] = w.wx
 		data[q + 6] = w.wz
 		data[q + 7] = w.gy
+	var e := o + 51
+	data[e] = p.vx
+	data[e + 1] = p.vy
+	data[e + 2] = p.vz
+	data[e + 3] = p.yawRate
+	data[e + 4] = p.aLong
+	data[e + 5] = p.aLat
+	data[e + 6] = p.load
+	data[e + 7] = p.throttle
+	data[e + 8] = p.brake
+	data[e + 9] = 1.0 if p.hbIn else 0.0
+	data[e + 10] = 1.0 if p.clutchLocked else 0.0
+	data[e + 11] = p.shiftT
+	data[e + 12] = 1.0 if p.limiter else 0.0
+	data[e + 13] = p.nitro
+	data[e + 14] = 1.0 if p.nitroOn else 0.0
+	# eventos del paso (la física los borra en cada paso) y golpes de las ruedas
+	for ev in p.events:
+		match ev["type"]:
+			"shift":
+				pending_events.append("shift_up" if ev["up"] else "shift_down")
+			"limiter":
+				pending_events.append("limiter")
+			"land":
+				pending_events.append(["land", ev["v"]])
+	for i in 4:
+		pending_impact = maxf(pending_impact, p.wheels[i].impact)
+		p.wheels[i].impact = 0.0
 	count += 1
+
+## Entrega (y borra) los eventos acumulados. Solo se llama con la física detenida (entre tareas).
+func take_events() -> Array:
+	var out := pending_events
+	pending_events = []
+	return out
+
+func take_impact() -> float:
+	var v := pending_impact
+	pending_impact = 0.0
+	return v
 
 func sample(t: float) -> void:
 	var n := mini(count, RING)
@@ -101,6 +160,21 @@ func sample(t: float) -> void:
 	var on := newest * STRIDE
 	for j in 32:
 		wheel_fx[j] = data[on + 19 + j] # datos de las ruedas: los del último paso
+	vx = lerpf(data[o0 + 51], data[o1 + 51], a)
+	vy = lerpf(data[o0 + 52], data[o1 + 52], a)
+	vz = lerpf(data[o0 + 53], data[o1 + 53], a)
+	yawRate = lerpf(data[o0 + 54], data[o1 + 54], a)
+	aLong = lerpf(data[o0 + 55], data[o1 + 55], a)
+	aLat = lerpf(data[o0 + 56], data[o1 + 56], a)
+	load = lerpf(data[o0 + 57], data[o1 + 57], a)
+	throttle = lerpf(data[o0 + 58], data[o1 + 58], a)
+	brake = lerpf(data[o0 + 59], data[o1 + 59], a)
+	hbIn = data[o1 + 60] > 0.5
+	clutchLocked = data[o1 + 61] > 0.5
+	shiftT = data[o1 + 62]
+	limiter = data[o1 + 63] > 0.5
+	nitro = data[o1 + 64]
+	nitroOn = data[o1 + 65] > 0.5
 	for i in 4:
 		wheel_s[i] = lerpf(data[o0 + 11 + i], data[o1 + 11 + i], a)
 		wheel_omega[i] = lerpf(data[o0 + 15 + i], data[o1 + 15 + i], a)
