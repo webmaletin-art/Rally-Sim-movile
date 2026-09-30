@@ -19,17 +19,17 @@ Cuando esté en la Play Store, los modelos de autos nuevos pueden ir en `content
 |---|---|---|
 | Física (`js/main.js` → Physics) | `godot/game/physics/vehicle_physics.gd`, traducción línea por línea | ✅ verificada (1e-13) |
 | Datos de autos (`VEHICLES`) | `godot/game/data/vehicles.json` (se genera de `main.js`) | ✅ |
-| Mejoras y ajustes (`js/carbuild.js`, `js/data.js`) | `godot/game/data/` + `car_build.gd` | ⏳ |
+| Mejoras y ajustes (`js/carbuild.js`, `js/data.js`) | `godot/game/data/` (`catalog.json`, `car_build.gd` idéntico al JS a 1e-16, `profile.gd`, `rewards.gd`, `ai_cars.gd`) | ✅ |
 | Modelos GLB (autos, ruedas, piloto) | Godot los abre directo | ✅ Volt · ⏳ Genesis, pick-up, camión (hay que rehacerlos: eran procedurales) |
-| Pistas (`Track`, `OffroadTrack`, `TrenchTrack`) | `godot/game/track/` | ⏳ (hoy solo un circuito de prueba) |
-| IA (`js/ai.js`) | `godot/game/ai/` | ⏳ (hoy una IA simple; falta el perfil de velocidad) |
+| Pistas (`Track`, `OffroadTrack`, `TrenchTrack`) | `godot/game/track/` | ✅ rutas (bosque, lago, cantera, montaña, bajada) · ⏳ drift, estacionamiento, valle abierto, trinchera |
+| IA (`js/ai.js`) | `godot/game/ai/ai_driver.gd` | ✅ idéntica a la del HTML (vuelta por vuelta) · ⏳ mejorar en la montaña larga |
 | Pilotos (`js/pilot.js`, `js/cockpit.js`) | `godot/game/car/rig_pilot.gd` (IK), `crew_motion.gd` (fuerzas G, manos, pies), `cockpit.gd` | ✅ Solo se dibujan con las cámaras interiores (los vidrios son polarizados). Falta: espejos con reflejo, lluvia en el parabrisas, hoja de notas con texto |
 | Cámaras (4 de seguimiento, libre, capó, paragolpes, casco, atrás de los pilotos) | `godot/game/car/camera_rig.gd` | ✅ (la cámara libre con el dedo falta) |
 | Sonido (Web Audio: motor, turbo, flutter, caja, gomas, viento, lluvia) | `godot/game/audio/car_synth.gd` (mismos filtros y osciladores, verificado contra las fórmulas de Web Audio) + `car_audio.gd` | ✅ Sin música ni efectos de menú todavía |
 | Voces del copiloto e historia (`audio/`) | Directo (.ogg / .wav) | ⏳ |
-| Menús, garaje, HUD, editor de controles (`js/ui.js`…) | Escenas de Godot (Control) | ⏳ (es lo más largo) |
-| Modos: carrera, drift, rush, estacionamiento, mundo, duelos, historia | `godot/game/modes/` | ⏳ |
-| Guardado (`localStorage`) | `user://save.json` (con botón para importar el progreso de la versión HTML) | ⏳ |
+| Menús, garaje, HUD (`js/ui.js`…) | `godot/game/ui/menu*.gd` (inicio, carrera, rápida, garaje, concesionaria, taller, ajuste, pintura, logros, opciones, resultados) + `race_hud.gd` + sala 3D `showroom.gd` con piloto y copiloto posando | ✅ primera versión · ⏳ editor de controles |
+| Modos: carrera, drift, rush, estacionamiento, mundo, duelos, historia | `godot/game/session.gd` | ✅ carrera y contrarreloj y radar sobre rutas · ⏳ drift, rush, estacionamiento, mundo, duelos · historia bloqueada (decisión del dueño) |
+| Guardado (`localStorage`) | `user://profile.json` (`profile.gd`) | ✅ · ⏳ importar el progreso de la versión HTML |
 
 ## Decisiones del dueño (Godot)
 - **Modo historia**: queda **bloqueado** ("próximamente"), sin portar la historia actual: se va a rehacer. Sí se usan sus mapas/carreras.

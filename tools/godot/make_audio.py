@@ -183,6 +183,38 @@ th = np.sin(2 * np.pi * ph) * env
 th[: int(0.12 * FS) + 1] += burst(0.12, 180, 0.7, 0.6, kind="lp")
 save("thump", th, peak=0.9)
 
+# ── sonidos de interfaz (sfxPlay del HTML): oscilador con caída exponencial hasta 0,0005 ──
+def sfx(name, f0, dur, kind, vol, f_end=None, steps=None):
+    n = int((dur + 0.05) * FS)
+    t = np.arange(n) / FS
+    if steps:
+        f = np.full(n, steps[0][1], dtype=float)
+        for ts, fv in steps:
+            f[t >= ts] = fv
+    elif f_end:
+        f = f0 * (f_end / f0) ** np.minimum(t / dur, 1)
+    else:
+        f = np.full(n, f0, dtype=float)
+    ph = np.cumsum(f) / FS
+    if kind == "sine":
+        w = np.sin(2 * np.pi * ph)
+    elif kind == "triangle":
+        w = 2 * np.abs(2 * (ph % 1.0) - 1) - 1
+    else:
+        w = np.where((ph % 1.0) < 0.5, 1.0, -1.0)
+    env = np.where(t < dur, vol * (0.0005 / vol) ** (t / dur), 0.0)
+    save("sfx_" + name, w * env, peak=0.9)
+    consts["sfx_" + name]["vol"] = vol
+
+
+sfx("click", 880, 0.04, "triangle", 0.12)
+sfx("buy", 660, 0.18, "sine", 0.2, f_end=1320)
+sfx("error", 160, 0.2, "square", 0.12)
+sfx("beep", 660, 0.16, "sine", 0.35)
+sfx("go", 1320, 0.5, "sine", 0.35)
+sfx("coin", 1500, 0.12, "sine", 0.2, f_end=3000)
+sfx("finish", 523, 0.6, "triangle", 0.3, steps=[(0, 523), (0.15, 659), (0.3, 784)])
+
 with open(os.path.join(OUT, "consts.json"), "w") as f:
     json.dump(consts, f, indent=1)
 print("listo:", ", ".join(sorted(k for k in consts if isinstance(consts[k], dict))))

@@ -134,6 +134,8 @@ func _input(event: InputEvent) -> void:
 					open = not open
 					_last_size = Vector2.ZERO
 					result_text = ""
+					if not open:
+						option_changed.emit("panel_closed", 1)
 				elif h.begins_with("opt:"):
 					_cycle(h.substr(4))
 				elif h == "bench":

@@ -20,11 +20,11 @@ var in_handbrake := false
 var in_nitro := false
 var in_shift := 0 # cambio pedido (se consume en el primer paso)
 
-func _init(track: TrackBase, params: VehicleParams, player: bool, lo: bool, paint: Color, rim: Color) -> void:
+func _init(track: TrackBase, params: VehicleParams, player: bool, lo: bool, paint: Color, rim: Color, finish := "gloss") -> void:
 	phys = VehiclePhysics.new(track, params)
 	is_player = player
 	visual = CarVisual.new()
-	visual.setup(params, lo, paint, rim)
+	visual.setup(params, lo, paint, rim, finish)
 	snap.reset_to(0.0, phys)
 
 func place(x: float, z: float, yaw: float) -> void:
