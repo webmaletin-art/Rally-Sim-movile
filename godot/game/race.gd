@@ -203,6 +203,10 @@ func _ready() -> void:
 	add_child(audio)
 	sfx = UiSfx.new()
 	add_child(sfx)
+	if menu_mode:
+		sfx.volume = float(profile.setting("volume")) / 100.0
+		race_hud.setup_options(profile, sfx)
+		race_hud.options_changed.connect(_apply_live_settings)
 	if audiorec_path != "":
 		audiorec = AudioEffectRecord.new()
 		AudioServer.add_bus_effect(0, audiorec)
@@ -227,6 +231,7 @@ func _ready() -> void:
 			_on_resize()
 		AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(profile.setting("volume")) / 80.0, 0.001)))
 		_apply_quality_settings()
+		_apply_controls_settings()
 	_rebuild_trees()
 	_rebuild_cars()
 	if autobench:
@@ -527,7 +532,7 @@ func _car_setups() -> Array:
 		for i in cars_n:
 			out.append({"params": d, "paint": paints[i % paints.size()], "rim": Color(1.0, 0.42, 0.03), "name": "Rival %d" % i, "visual_type": "t1plus", "ai": {"skill": 0.92 + 0.02 * float(i % 4), "lane": (float(i % 3) - 1.0) * 1.6, "aggr": 0.3 + 0.1 * float(i % 5)}})
 		return out
-	var assists := {"abs": bool(profile.setting("abs")), "tc": float(profile.setting("tc")), "stab": float(profile.setting("stab"))}
+	var assists := {"abs": (profile.setting("abs") == true), "tc": float(profile.setting("tc")), "stab": float(profile.setting("stab"))}
 	var pid := str(cfg["car"])
 	var pst: Dictionary = cfg["state"]
 	var pp: Dictionary = pst.get("paint", {"body": "#1a4fe0", "rim": "#ff6a08"})
@@ -915,12 +920,13 @@ func _apply_quality_settings() -> void:
 	var t = profile.setting("trees")
 	trees_n = int(tree_q.get(q, 3000)) if str(t) == "auto" else int(t)
 	var sh = profile.setting("shadowsQ")
-	sun.shadow_enabled = (q == "high") if str(sh) == "auto" else bool(sh)
+	sun.shadow_enabled = (q == "high") if str(sh) == "auto" else sh == true
 	_ar_cap = float(cap.get(q, 0.8))
-	res_scale = minf(res_scale, _ar_cap)
-	if q == "low":
-		res_scale = 0.4
-	_on_resize()
+	if res_auto:
+		res_scale = minf(res_scale, _ar_cap)
+		if q == "low":
+			res_scale = 0.4
+		_on_resize()
 	var tx := str(profile.setting("textures"))
 	world.anisotropic_filtering_level = {"low": Viewport.ANISOTROPY_DISABLED, "mid": Viewport.ANISOTROPY_4X, "high": Viewport.ANISOTROPY_16X}.get(tx, Viewport.ANISOTROPY_4X)
 	audio.mix["eng"] = float(profile.setting("volEngine")) / 100.0
@@ -928,6 +934,67 @@ func _apply_quality_settings() -> void:
 	audio.mix["wind"] = float(profile.setting("volWind")) / 100.0
 	audio.mix["turbo"] = float(profile.setting("volTurbo")) / 100.0
 	audio.mix["gear"] = float(profile.setting("volGear")) / 100.0
+
+## Un cambio de Opciones hecho durante la carrera: se aplica en el momento
+func _apply_live_settings(key: String) -> void:
+	match key:
+		"fx":
+			lens.level = int(profile.setting("lens2"))
+			lens.fx = _fx_setting()
+			lens_auto = false
+		"quality", "trees", "shadowsQ", "textures":
+			var old := trees_n
+			_apply_quality_settings()
+			if trees_n != old:
+				_rebuild_trees()
+		"res":
+			var rs := float(profile.setting("res"))
+			res_auto = rs <= 0.0
+			if not res_auto:
+				res_scale = rs
+			_on_resize()
+		"abs", "tc", "stab":
+			_apply_assists()
+		"gearbox", "steerMode", "gyro", "gyroSens", "units":
+			_apply_controls_settings()
+		"volume", "volEngine", "volSurf", "volWind", "volTurbo", "volGear":
+			AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(profile.setting("volume")) / 80.0, 0.001)))
+			audio.mix["eng"] = float(profile.setting("volEngine")) / 100.0
+			audio.mix["surf"] = float(profile.setting("volSurf")) / 100.0
+			audio.mix["wind"] = float(profile.setting("volWind")) / 100.0
+			audio.mix["turbo"] = float(profile.setting("volTurbo")) / 100.0
+			audio.mix["gear"] = float(profile.setting("volGear")) / 100.0
+			sfx.volume = float(profile.setting("volume")) / 100.0
+		"camera":
+			cam_index = int(profile.setting("camera"))
+			if cam_rig != null:
+				cam_rig.set_preset(cam_index)
+				race_hud.toast("🎥 " + cam_rig.cam_name())
+
+## ABS, control de tracción y estabilidad del auto del jugador (la simulación está quieta: se está en pausa)
+func _apply_assists() -> void:
+	if cars.is_empty():
+		return
+	_finish_physics()
+	var V: VehicleParams = cars[0].phys.V
+	var tc := float(profile.setting("tc"))
+	V.abs = (profile.setting("abs") == true)
+	V.tractionControl = tc > 0.0
+	V.tcSlip = float(vehicles[str(cfg["car"])]["tcSlip"]) * (1.6 - tc / 100.0)
+	V.stabilityAssist = float(profile.setting("stab")) / 100.0
+
+func _apply_controls_settings() -> void:
+	manual_gearbox = str(profile.setting("gearbox")) == "manual"
+	if not cars.is_empty():
+		_finish_physics()
+		cars[0].phys.manual = manual_gearbox
+	controls.manual = manual_gearbox
+	controls.steer_mode = "wheel" if str(profile.setting("steerMode")) == "wheel" else "slider"
+	controls.gyro_on = (profile.setting("gyro") == true)
+	controls.gyro_sens = float(profile.setting("gyroSens"))
+	controls.use_mph = str(profile.setting("units")) == "mph"
+	if controls.gyro_on:
+		controls.recalibrate_gyro()
 
 func _fx_setting() -> Array:
 	var a = profile.setting("fx")
@@ -1200,6 +1267,11 @@ func _frame(dt: float) -> void:
 		_tick_session(dt)
 		if OS.get_cmdline_user_args().has("--pausetest") and Engine.get_frames_drawn() == 100:
 			_toggle_pause()
+			if OS.get_cmdline_user_args().has("--optstest"):
+				race_hud.open_options()
+				race_hud._opts_go("options", "graficos")
+				profile.set_setting("fx", [9, 3, 0])
+				_apply_live_settings("fx")
 			await get_tree().create_timer(1.0, true, false, true).timeout
 			get_viewport().get_texture().get_image().save_png(shot_path)
 			get_tree().quit()
