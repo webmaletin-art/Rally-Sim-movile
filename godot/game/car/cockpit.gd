@@ -348,6 +348,10 @@ func _build() -> void:
 		ws_ty = maxf(float(C["wsTopY"]), cowl_y + 0.2)
 		ws_hb = float(C["wsHwB"])
 		ws_ht = float(C["wsHwT"])
+		if not open_cab:
+			# techo y parabrisas con el mismo encuadre que los autos viejos (se ve bien en todos): solo el capó es el real del GLB.
+			# El interior no se ve desde afuera, así que puede ser más alto que el techo de la carrocería.
+			rY = maxf(rY, eY + 0.37)
 	# materiales
 	_m("dash", Color(0.62, 0.62, 0.66), 0.95, 0.0, _grain_tex(20, 14, true), Vector3(1, 1, 1))
 	_m("trim", Color(0.11, 0.115, 0.125), 0.75)
@@ -567,34 +571,46 @@ func _b_seats() -> void:
 			_box(Vector3(0.045, 0.010, 0.30), Vector3(sx + side * 0.13, 0.392, eZ - 0.14), "seat_acc")
 		_box(Vector3(0.06, 0.025, 0.045), Vector3(sx, 0.395, eZ + 0.03), "metal")
 
+## Parante A de cada lado (s = ±1): pie (delante del tablero) y punta (borde de arriba del parabrisas). La jaula, el vidrio del
+## parabrisas y el marco de la ventanilla comparten esta misma recta, así no queda un parante doble.
+func _pillar(s: float) -> Array:
+	var ytop := rY - 0.07 if cage_on else rY - 0.03
+	var top := Vector3(s * hw * 0.9, ytop, eZ + 0.46)
+	var foot := Vector3(s * (hw - 0.07), 0.60 + seat_dy, cz - 0.30)
+	return [foot, top]
+
 func _b_cage() -> void:
 	var r := 0.024
 	var ih := hw - 0.07
 	var top := rY - 0.07
 	var zm := maxf(eZ - 0.80, back_z + 0.08) # arco principal detrás de las butacas
-	var za := eZ + 0.40 # arco delantero (parantes del parabrisas)
+	var za := eZ + 0.46 # arco delantero (parantes del parabrisas)
 	var zb := cz - 0.30 # pie del arco delantero
 	for s in [1.0, -1.0]:
 		var x: float = s * ih
+		var pl: Array = _pillar(s)
+		var pf: Vector3 = pl[0]
+		var pt: Vector3 = pl[1]
 		_bar(Vector3(x, floor_y, zm), Vector3(x, top, zm), r, "cage")
-		_bar(Vector3(x, top, zm), Vector3(x * 0.95, top, za), r, "cage") # larguero de techo
-		_bar(Vector3(x, 0.60 + seat_dy, zb), Vector3(x * 0.95, top, za), r, "cage") # diagonal del parante
+		_bar(Vector3(x, top, zm), pt, r, "cage") # larguero de techo
+		_bar(pf, pt, r, "cage") # parante del parabrisas (el mismo que el borde del vidrio)
 		_bar(Vector3(x, 0.78 + seat_dy, zb), Vector3(x, 0.66 + seat_dy, zm), r, "cage") # barras de puerta
 		_bar(Vector3(x, 0.52 + seat_dy, zb), Vector3(x, 0.40 + seat_dy, zm), r, "cage")
 		_bar(Vector3(x, 0.78 + seat_dy, zb), Vector3(x, 0.40 + seat_dy, zm), r * 0.85, "cage") # cruz
 		# acolchado naranja donde pega la cabeza
-		var dpar := (Vector3(x * 0.95, top, za) - Vector3(x, 0.60, zb)).normalized()
-		_bar(Vector3(x * 0.95, top, za) - dpar * 0.40, Vector3(x * 0.95, top, za), r * 1.7, "pad")
-		_bar(Vector3(x, top, za - 0.55), Vector3(x * 0.99, top, za - 0.10), r * 1.7, "pad")
+		var dpar := (pt - pf).normalized()
+		_bar(pt - dpar * 0.40, pt, r * 1.7, "pad")
+		_bar(Vector3(x, top, za - 0.55), Vector3(pt.x, top, za - 0.10), r * 1.7, "pad")
 		_bar(Vector3(x, top - 0.02, zm + 0.5), Vector3(x, top, zm + 0.05), r * 1.7, "pad")
 	_bar(Vector3(-ih, top, zm), Vector3(ih, top, zm), r, "cage")
-	_bar(Vector3(-ih * 0.95, top, za), Vector3(ih * 0.95, top, za), r, "cage")
+	_bar(Vector3(-hw * 0.9, top, za), Vector3(hw * 0.9, top, za), r, "cage")
 	_bar(Vector3(-ih, top, (za + zm) / 2.0), Vector3(ih, top, (za + zm) / 2.0), r, "cage")
 	_bar(Vector3(-ih, 0.62 + seat_dy, zm), Vector3(ih, 0.62 + seat_dy, zm), r, "cage")
 	# nudos esféricos en las uniones (sin estos las barras se ven cortadas en cuadrado) y refuerzos
 	for sd in [1.0, -1.0]:
 		var xx: float = sd * ih
-		for jp in [Vector3(xx, top, zm), Vector3(xx * 0.95, top, za), Vector3(xx, 0.60 + seat_dy, zb), Vector3(xx, 0.78 + seat_dy, zb), Vector3(xx, 0.66 + seat_dy, zm), Vector3(xx, 0.62 + seat_dy, zm)]:
+		var ptop: Vector3 = (_pillar(sd) as Array)[1]
+		for jp in [Vector3(xx, top, zm), ptop, Vector3(xx, 0.60 + seat_dy, zb), Vector3(xx, 0.78 + seat_dy, zb), Vector3(xx, 0.66 + seat_dy, zm), Vector3(xx, 0.62 + seat_dy, zm)]:
 			var sm := SphereMesh.new()
 			sm.radius = r * 1.25
 			sm.height = r * 2.5
@@ -629,8 +645,7 @@ func _b_doors_roof() -> void:
 		# el triángulo delantero de la ventana (entre el parante del parabrisas y el borde de la puerta) también lleva red
 		var tri := _quad_mesh(Vector3(x, bt + 0.03, eZ + 0.42), Vector3(x, bt + 0.03, z_front), Vector3(x, rY - 0.12, eZ + 0.46), Vector3(x, rY - 0.12, eZ + 0.46))
 		_mesh_node(tri, nm, Vector3.ZERO)
-		_bar(Vector3(x, bt + 0.03, eZ + 0.42), Vector3(x, bt + 0.03, z_front), 0.012, "trim") # marco del triángulo
-		_bar(Vector3(x, bt + 0.03, z_front), Vector3(x, rY - 0.12, eZ + 0.46), 0.012, "trim")
+		_bar(Vector3(x, bt + 0.03, eZ + 0.42), Vector3(x, bt + 0.03, z_front), 0.012, "trim") # marco del triángulo (el parante lo hace la jaula)
 	# techo: revestimiento oscuro con escotilla de emergencia y luz de mapa
 	var roof_len := eZ + 0.5 - back_z
 	_plane(2.0 * hw, roof_len, Vector3(0, rY + 0.01, (eZ + 0.5 + back_z) / 2.0), "roof", Basis(Vector3.RIGHT, PI))
@@ -647,13 +662,14 @@ func _b_glass_hood() -> void:
 	var wBR := Vector3(-hw * 0.97, cowl_y, cz - 0.02)
 	var wTL := Vector3(hw * 0.9, rY - 0.03, eZ + 0.46)
 	var wTR := Vector3(-hw * 0.9, rY - 0.03, eZ + 0.46)
-	if own: # el parabrisas sigue al del GLB: base sobre el capó real, borde de arriba y ancho medidos
-		var wb := minf(ws_hb, hw * 0.97)
-		var wt := minf(ws_ht, hw * 0.9)
-		wBL = Vector3(wb, cowl_y, cz - 0.02)
-		wBR = Vector3(-wb, cowl_y, cz - 0.02)
-		wTL = Vector3(wt, ws_ty - 0.02, ws_tz)
-		wTR = Vector3(-wt, ws_ty - 0.02, ws_tz)
+	if cage_on: # el borde del vidrio va por el parante de la jaula
+		var pl: Array = _pillar(1.0)
+		var pr: Array = _pillar(-1.0)
+		var tt := clampf((cowl_y - (pl[0] as Vector3).y) / ((pl[1] as Vector3).y - (pl[0] as Vector3).y), 0.0, 1.0)
+		wBL = (pl[0] as Vector3).lerp(pl[1], tt)
+		wBR = (pr[0] as Vector3).lerp(pr[1], tt)
+		wTL = pl[1]
+		wTR = pr[1]
 	_mesh_node(_quad_mesh(wBL, wBR, wTL, wTR), _mats["glass"], Vector3.ZERO)
 	# borde negro del parabrisas (serigrafía) y tira del parasol con el nombre
 	var frit := StandardMaterial3D.new()
@@ -673,9 +689,10 @@ func _b_glass_hood() -> void:
 	if nrm.z > 0.0:
 		nrm = -nrm
 	_label("DREAM  RACING  TEAM", strip_c + Vector3(0, 0, -0.01), _face(strip_c, eye), 0.026, Color(1, 1, 1, 0.95))
-	# parantes A finos
-	_box_between(wBL + Vector3(0.03, 0, 0), wTL + Vector3(0.03, 0, 0), 0.06, 0.08, "trim")
-	_box_between(wBR + Vector3(-0.03, 0, 0), wTR + Vector3(-0.03, 0, 0), 0.06, 0.08, "trim")
+	# parantes A finos (con jaula los hace la barra del arco, en el mismo lugar)
+	if not cage_on:
+		_box_between(wBL + Vector3(0.03, 0, 0), wTL + Vector3(0.03, 0, 0), 0.06, 0.08, "trim")
+		_box_between(wBR + Vector3(-0.03, 0, 0), wTR + Vector3(-0.03, 0, 0), 0.06, 0.08, "trim")
 	_wu = (wBR - wBL).normalized() * -1.0
 	_wv = (wBL.lerp(wBR, 0.5) - wTL.lerp(wTR, 0.5)).normalized() * -1.0
 	if not own:

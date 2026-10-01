@@ -4,6 +4,7 @@
 set -e
 cd "$(dirname "$0")/../.."
 mkdir -p godot/game/models godot/game/data
-for f in volt_body volt_body_lo volt_wheel volt_wheel_lo genesis_body genesis_body_lo genesis_rim genesis_rim_lo pilot pilot_lo; do cp models/$f.glb godot/game/models/; done
+for f in volt_body volt_body_lo volt_wheel volt_wheel_lo genesis_body genesis_body_lo genesis_rim genesis_rim_lo; do cp models/$f.glb godot/game/models/; done
+python3 tools/cars/slim_pilot.py   # pilotos livianos (70 % de los triángulos, texturas de 768)
 node tools/godot/js_reference.mjs > /dev/null
 echo "assets sincronizados"

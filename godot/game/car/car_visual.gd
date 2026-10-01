@@ -171,6 +171,8 @@ func _own_paint(pattern: int, paint: Color, accent: Color, finish: String, accen
 		sm.set_shader_parameter("sp0", Vector4(pl[0][0], pl[0][1], pl[1][0], pl[1][1]))
 		sm.set_shader_parameter("sp1", Vector4(pl[2][0], pl[2][1], pl[3][0], pl[3][1]))
 		sm.set_shader_parameter("cab_hw", cab)
+		if inside:
+			sm.set_shader_parameter("clip", Vector2(float(ws[0][0]) + 0.03, cab * 1.05))
 	return sm
 
 static func _glass_material() -> StandardMaterial3D:
@@ -207,6 +209,7 @@ uniform vec4 rg = vec4(0.0); // luneta: borde superior y base
 uniform vec2 rg_w = vec2(0.4, 0.5);
 uniform vec4 sp0 = vec4(0.0); // ventanillas laterales: polígono (z, y) de 4 puntos
 uniform vec4 sp1 = vec4(0.0);
+uniform vec2 clip = vec2(-1000.0, 0.0); // vista interior: no se dibuja la carrocería dentro de la cabina (z menor que clip.x y |x| menor que clip.y)
 uniform float cab_hw = 0.6;
 varying vec3 lp;
 varying vec3 ln;
@@ -257,6 +260,9 @@ float band(float v, float a, float b) {
 	return smoothstep(a - w, a + w, v) * (1.0 - smoothstep(b - w, b + w, v));
 }
 void fragment() {
+	if (lp.z < clip.x && abs(lp.x) < clip.y) {
+		discard;
+	}
 	vec3 c = paint;
 	float side = smoothstep(0.35, 0.55, abs(ln.x));
 	float top = smoothstep(0.25, 0.5, ln.y);
@@ -289,8 +295,8 @@ void fragment() {
 	}
 	// el modelo trae la pintura original (azul) en los colores de vértice: se usa solo cuánto brilla cada parte
 	float k = clamp(dot(COLOR.rgb, vec3(0.2126, 0.7152, 0.0722)) * vk, 0.0, 1.0);
-	// las carrocerías propias son una cáscara abierta: por el lado de adentro (calados, rejillas) se ve oscuro
-	vec3 base = c * k * (FRONT_FACING ? 1.0 : 0.16);
+	// pedazos de la piel con la cara al revés se ven desde afuera: se pintan casi igual que el resto
+	vec3 base = c * k * (FRONT_FACING ? 1.0 : 0.9);
 	float gm = 0.0;
 	if (glass_on > 0.5) {
 		gm = max(max(glass_strip(lp, ln, ws, ws_w), glass_strip(lp, ln, rg, rg_w)), glass_side(lp, ln));

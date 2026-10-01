@@ -5,7 +5,7 @@ import numpy as np, trimesh
 def load(path):
     sc = trimesh.load(path, force='scene')
     m = trimesh.util.concatenate([g for g in sc.geometry.values()])
-    m.merge_vertices()
+    m.merge_vertices(digits_vertex=5)   # suelda las costuras de UV/normales: la malla original es cerrada (sin esto parece de ~2000 piezas)
     m.update_faces(m.nondegenerate_faces())
     return m
 

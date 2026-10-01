@@ -72,7 +72,9 @@ func center_xz() -> Vector2:
 	return (min_xz + max_xz) * 0.5
 
 ## Otra vista de la misma pista (comparte los datos, tiene su propia búsqueda)
-func make_view() -> Object:
+## register = false para vistas temporales de otros hilos (el terreno): no se anotan en la lista compartida (agregarla desde varios hilos
+## a la vez corrompía la memoria y cerraba el juego) ni reciben los cambios de agarre.
+func make_view(register := true) -> Object:
 	var v = (get_script() as GDScript).new()
 	v.route_id = route_id
 	v.mode = mode
@@ -96,7 +98,8 @@ func make_view() -> Object:
 	v.wall_l = wall_l
 	v.wall_r = wall_r
 	_copy_view(v)
-	views.append(v)
+	if register:
+		views.append(v)
 	return v
 
 ## Las pistas derivadas copian acá sus datos extra a la vista nueva
@@ -537,7 +540,7 @@ func terrain_dims(cell_min := 14.0) -> Dictionary:
 
 ## Una fila de la grilla (para repartir en hilos): devuelve posiciones y colores
 func terrain_row(iz: int, r: int) -> Array:
-	var view = make_view()
+	var view = make_view(false)
 	view.trust = true
 	var span := maxf(max_xz.x - min_xz.x, max_xz.y - min_xz.y)
 	var z := min_xz.y + span * float(iz) / float(r)
