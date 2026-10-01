@@ -961,6 +961,14 @@ func _build_town_and_fields(ci: int, a: int, b: int) -> void:
 				var dirv := (pp - p0)
 				var side_v := Vector3(-dirv.z, 0, dirv.x).normalized() * float(off)
 				_cable(wire, p0 + side_v + Vector3(0, 7.55, 0), pp + side_v + Vector3(0, 7.55, 0))
+	# caminos de tierra que salen al campo, con su tranquera cerrada
+	for i in range(a, b):
+		if _biome_w(i, 1) < 0.8 or int(track.towna[i]) > 0 or (int(track.g0) + i) % 150 != 0:
+			continue
+		var side := 1.0 if ((int(track.g0) + i) / 150) % 2 == 0 else -1.0
+		if side > 0.0 and float(track.w_lay[i]) > 0.05:
+			continue
+		_gate_road(vc, i, side)
 	var sun: Array = []
 	var corn_mb := MB.new()
 	var wheat: Array = []
@@ -1029,6 +1037,40 @@ func _cable(mb: RefCounted, p0: Vector3, p1: Vector3) -> void:
 		var d := Vector3(0, 0.02, 0)
 		mb.quad(prev - d, q - d, q + d, prev + d, Color(0.12, 0.12, 0.12))
 		prev = q
+
+## Camino de tierra al campo con tranquera de madera (cerrada) en el alambrado
+func _gate_road(mb: RefCounted, i: int, side: float) -> void:
+	var tg: Vector3 = track.tangents[i]
+	var gp := _rail_pos(i, side, 0.4)
+	var yaw := atan2(tg.x, tg.z)
+	var bs := Basis(Vector3.UP, yaw)
+	# huella de tierra hacia el campo (sigue el terreno)
+	var c := Color(0.5, 0.4, 0.29)
+	var prev_l := Vector3.ZERO
+	var prev_r := Vector3.ZERO
+	for k in 9:
+		var e := 2.0 + float(k) * 5.0
+		var sp: Array = _side_point(i, 0.0, side, e)
+		if not sp[1]:
+			break
+		var q: Vector3 = sp[0]
+		var lft := q - tg * 1.8 + Vector3(0, 0.04, 0)
+		var rgt := q + tg * 1.8 + Vector3(0, 0.04, 0)
+		if k > 0:
+			if side > 0.0:
+				mb.quad(prev_l, lft, rgt, prev_r, c)
+			else:
+				mb.quad(prev_r, rgt, lft, prev_l, c)
+		prev_l = lft
+		prev_r = rgt
+	# tranquera: dos postes gruesos y cinco tablas con la diagonal
+	var wood := Color(0.48, 0.35, 0.22)
+	for sz: float in [-2.0, 2.0]:
+		mb.box(Transform3D(bs, gp + tg * sz + Vector3(0, 0.75, 0)), Vector3(0.18, 1.5, 0.18), wood.darkened(0.2))
+	for k in 5:
+		mb.box(Transform3D(bs, gp + Vector3(0, 0.3 + float(k) * 0.24, 0)), Vector3(0.06, 0.09, 3.9), wood)
+	var diag := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, 0.27)
+	mb.box(Transform3D(diag, gp + Vector3(0, 0.78, 0)), Vector3(0.06, 0.09, 4.0), wood)
 
 ## Calle lateral cerrada (vallas a rayas) en los pueblos
 func _side_street(mb: RefCounted, i: int, side: float, rng: RandomNumberGenerator) -> void:

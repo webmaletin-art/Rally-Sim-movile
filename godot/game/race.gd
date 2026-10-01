@@ -767,7 +767,8 @@ func _car_setups() -> Array:
 	var pid := str(cfg["car"])
 	var pst: Dictionary = cfg["state"]
 	var pp: Dictionary = pst.get("paint", {"body": "#1a4fe0", "rim": "#ff6a08"})
-	out.append({"params": CarBuild.build_params(vehicles[pid], pst, assists), "paint": Color(str(pp["body"])), "rim": Color(str(pp.get("rim", "#2a2d33"))), "name": str(profile.d["name"]), "finish": str(pp.get("finish", "gloss")), "visual_type": str(vehicles[pid].get("visualType", pid)), "ai": {}})
+	out.append({"params": CarBuild.build_params(vehicles[pid], pst, assists), "paint": Color(str(pp["body"])), "rim": Color(str(pp.get("rim", "#2a2d33"))), "name": str(profile.d["name"]), "finish": str(pp.get("finish", "gloss")), "visual_type": str(vehicles[pid].get("visualType", pid)), "ai": {},
+		"livery": int(pp.get("livery", 0)), "accent": Color(str(pp.get("accent", "#ff6a08"))), "tire": Color(str(pp.get("tire", "#141516")))})
 	var n_ai := int(cfg.get("ai", 0))
 	if n_ai > 0:
 		var rng := RandomNumberGenerator.new()
@@ -806,6 +807,14 @@ func _rebuild_cars() -> void:
 		var car_view = (player_view() if (adv_mode and i == 0) else track.make_view()) if route else track
 		var car := Car.new(car_view, VehicleParams.from_dict(d), i == 0, lo, paint, su["rim"], str(su.get("finish", "gloss")))
 		rival_info.append({"name": su["name"], "color": paint})
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--livery=") and i == 0:
+				su["livery"] = int(a.substr(9)) # prueba: rotulado del auto del jugador
+				su["accent"] = Color(1.0, 0.5, 0.1)
+		if int(su.get("livery", 0)) > 0:
+			car.visual.set_livery(int(su["livery"]), paint, su.get("accent", Color(1.0, 0.5, 0.1)), str(su.get("finish", "gloss")))
+		if su.has("tire"):
+			car.visual.set_tire_color(su["tire"])
 		if i > 0:
 			if route:
 				car.driver = AIDriver.new(track.make_view(), car.phys, su["ai"])

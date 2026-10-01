@@ -5,7 +5,7 @@ extends RefCounted
 const AdvRoute := preload("res://game/adventure/adv_route.gd")
 
 const CAR := "genesis" # el DR Bisonte XR (se queda en el garaje al terminar la aventura)
-const PAINT := {"body": "#0c0d10", "accent": "#d4a017", "rim": "#16181c", "finish": "metal"}
+const PAINT := {"body": "#0c0d10", "accent": "#d4a017", "rim": "#16181c", "finish": "metal", "livery": 3}
 const POINTS_PER_STAGE := 5
 const MAX_LEVEL := 5
 

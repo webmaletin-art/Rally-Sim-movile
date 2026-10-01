@@ -2,6 +2,7 @@ extends RefCounted
 ## Garaje, concesionaria, taller (piezas y neumáticos), ajuste fino y pintura.
 
 const Kit := preload("res://game/ui/ui_kit.gd")
+const CarVisualS := preload("res://game/car/car_visual.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 
 var m # menu.gd
@@ -378,7 +379,7 @@ func _paint() -> void:
 	var paint: Dictionary = st["paint"]
 	var row := Kit.hbox(6)
 	m.body.add_child(row)
-	for t in [["body", "Carrocería"], ["accent", "Detalles"], ["rim", "Llantas"]]:
+	for t in [["body", "Carrocería"], ["accent", "Detalles"], ["rim", "Llantas"], ["tire", "Gomas"]]:
 		var key: String = t[0]
 		var b := Kit.button(t[1], func() -> void:
 			paint_target = key
@@ -391,7 +392,11 @@ func _paint() -> void:
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
 	m.body.add_child(grid)
-	for hx in _cat()["paints"]:
+	var swatches: Array = _cat()["paints"]
+	if paint_target == "tire":
+		# gomas: negro de fábrica, grafito, gris, marrón de tierra, blanco, o de color
+		swatches = ["#141516", "#2b2d31", "#55585e", "#5a3f2a", "#e8e6e1", "#c1121f", "#ffc300", "#1a4fe0", "#12a454", "#ff6a08"]
+	for hx in swatches:
 		var h: String = hx
 		var sw := Button.new()
 		sw.custom_minimum_size = Vector2(62, 62)
@@ -409,6 +414,22 @@ func _paint() -> void:
 			m.refresh_car()
 			m.go("paint", null, false))
 		grid.add_child(sw)
+	m.body.add_child(Kit.label("ROTULADO (usa el color de Detalles)", 16, Kit.MUTED))
+	var lg := GridContainer.new()
+	lg.columns = 3
+	lg.add_theme_constant_override("h_separation", 6)
+	lg.add_theme_constant_override("v_separation", 6)
+	m.body.add_child(lg)
+	for li in CarVisualS.LIVERIES.size():
+		var lid := li
+		var lb := Kit.button(str(CarVisualS.LIVERIES[li]), func() -> void:
+			paint["livery"] = lid
+			m.profile.save()
+			m.sfx.play("click")
+			m.refresh_car()
+			m.go("paint", null, false), int(paint.get("livery", 0)) == li, 16, Vector2(0, 46))
+		lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lg.add_child(lb)
 	m.body.add_child(Kit.label("ACABADO", 16, Kit.MUTED))
 	var frow := Kit.hbox(6)
 	m.body.add_child(frow)

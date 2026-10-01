@@ -219,8 +219,16 @@ func update(ph: VehiclePhysics, h: float) -> Vector3:
 			if ov < spd + 0.5:
 				block_v = minf(block_v, ov)
 				if kap < 1.0 / 250.0: # pasar solo en recta: en curva se espera atrás
-					var side := -1.0 if l > 0.0 else 1.0
+					# l > 0: el otro está a la izquierda (+x local) → pasar por la derecha (carril +)
+					var side := 1.0 if l > 0.0 else -1.0
 					lane_t = clampf(lat + side * 2.6, -lane_max, lane_max)
+		elif f > -5.5 and f <= 0.0 + 4.5 and absf(l) < 3.2:
+			# auto al lado: le deja lugar (se abre hacia su lado libre) y nunca le cierra la puerta
+			var away := 1.0 if l > 0.0 else -1.0
+			lane_t = clampf(lat + away * 1.4, -lane_max, lane_max)
+			var lat_v := -(p.vx * lx + p.vz * lz) * away # velocidad acercándose al otro
+			if lat_v < -0.3:
+				vt = minf(vt, spd - 0.5)
 	if block_v < INF:
 		vt = minf(vt, block_v + 1.5 + aggr * 2.5)
 	# dirección: pure pursuit
