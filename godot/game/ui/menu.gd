@@ -178,9 +178,7 @@ func toast(t: String) -> void:
 
 ## Pasa al filtro del menú lo elegido en Opciones → Efectos (se ve en la sala mientras se prueba)
 func apply_fx() -> void:
-	var a = profile.setting("fx")
-	lens.level = int(profile.setting("lens2"))
-	lens.fx = [int(a[0]), int(a[1]), int(a[2])] if a is Array and a.size() >= 3 else [0, 0, 0]
+	lens.apply_settings(profile)
 
 func _process(dt: float) -> void:
 	lens.update(dt, 0.0)

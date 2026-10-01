@@ -15,6 +15,9 @@ var reset_cb: Callable # botón de borrar progreso (solo en el menú)
 var fx_slot := 0
 var fx_rows: Array = []
 var fx_slot_btns: Array = []
+var fx_toggle: Button
+var fx_slider: HSlider
+var fx_val: Label
 
 func _title(t: String) -> void:
 	if set_title.is_valid():
@@ -161,21 +164,11 @@ func fx_page(body: VBoxContainer, col_box: VBoxContainer) -> void:
 	_title("EFECTOS")
 	fx_rows.clear()
 	fx_slot_btns.clear()
-	# fijo arriba (no se desplaza con la lista): el lente y los tres lugares para efectos
+	# fijo arriba (no se desplaza con la lista): los tres lugares y, del lugar elegido, el interruptor y la intensidad (se ve en vivo)
 	var fixed := Kit.vbox(8)
 	col_box.add_child(fixed)
 	col_box.move_child(fixed, 1)
-	var lens_vals := [0, 1, 2]
-	var lens_names := ["Apagado", "Suave", "Fuerte"]
-	var lb := Kit.button("Lente Rally:  %s" % lens_names[int(profile.setting("lens2"))], Callable(), false, 20, Vector2(0, 50))
-	lb.pressed.connect(func() -> void:
-		var i := (int(profile.setting("lens2")) + 1) % 3
-		profile.set_setting("lens2", i)
-		lb.text = "Lente Rally:  %s" % lens_names[i]
-		sfx.play("click")
-		changed.emit("fx"))
-	fixed.add_child(lb)
-	var h2 := Kit.label("EFECTOS 2.0 — tocá un lugar y elegí el efecto (hasta 3 a la vez)", 15, Kit.MUTED)
+	var h2 := Kit.label("Tocá un lugar (hasta 3 efectos a la vez), elegí el efecto abajo y regulá la intensidad: se ve en el momento.", 14, Kit.MUTED)
 	h2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	h2.custom_minimum_size.x = 300
 	fixed.add_child(h2)
@@ -191,12 +184,61 @@ func fx_page(body: VBoxContainer, col_box: VBoxContainer) -> void:
 		sb.clip_text = true
 		srow.add_child(sb)
 		fx_slot_btns.append(sb)
+	var strip := Kit.panel(8, Kit.PANEL2)
+	fixed.add_child(strip)
+	var srow2 := Kit.hbox(10)
+	strip.add_child(srow2)
+	fx_toggle = Kit.button("", func() -> void:
+		var on := _arr("fxOn", true)
+		on[fx_slot] = not (on[fx_slot] == true)
+		profile.set_setting("fxOn", on)
+		sfx.play("click")
+		changed.emit("fx")
+		_fx_refresh(), false, 17, Vector2(128, 46))
+	srow2.add_child(fx_toggle)
+	fx_slider = HSlider.new()
+	fx_slider.min_value = 0
+	fx_slider.max_value = 150
+	fx_slider.step = 5
+	fx_slider.custom_minimum_size = Vector2(0, 34)
+	fx_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fx_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	fx_slider.value_changed.connect(func(v: float) -> void:
+		var am := _arr("fxAmt", 1.0)
+		am[fx_slot] = v / 100.0
+		profile.set_setting("fxAmt", am)
+		changed.emit("fx")
+		_fx_refresh_strip())
+	srow2.add_child(fx_slider)
+	fx_val = Kit.label("", 18, Kit.GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
+	fx_val.custom_minimum_size.x = 62
+	srow2.add_child(fx_val)
+	# arriba de la lista: lente y combo
+	var lens_names := ["Apagado", "Suave", "Fuerte"]
+	var lb := Kit.button("Lente Rally:  %s" % lens_names[int(profile.setting("lens2"))], Callable(), false, 20, Vector2(0, 50))
+	lb.pressed.connect(func() -> void:
+		if Kit.scroll_moved:
+			Kit.scroll_moved = false
+			return
+		var i := (int(profile.setting("lens2")) + 1) % 3
+		profile.set_setting("lens2", i)
+		lb.text = "Lente Rally:  %s" % lens_names[i]
+		sfx.play("click")
+		changed.emit("fx"))
+	body.add_child(lb)
 	var combo := Kit.button("🎬 Combo realista (oclusión + tonos de cine + grano)", func() -> void:
 		profile.set_setting("fx", [23, 25, 28])
+		profile.set_setting("fxOn", [true, true, true])
+		profile.set_setting("fxAmt", [1.0, 1.0, 1.0])
 		sfx.play("buy")
 		changed.emit("fx")
 		_fx_refresh(), true, 17, Vector2(0, 48))
-	fixed.add_child(combo)
+	body.add_child(combo)
+	body.add_child(Kit.button("✕ Quitar todos los efectos", func() -> void:
+		profile.set_setting("fx", [0, 0, 0])
+		sfx.play("click")
+		changed.emit("fx")
+		_fx_refresh(), false, 17, Vector2(0, 46)))
 	for k in Lens.FX_NAMES.size():
 		var id := k
 		var cost := "●".repeat(int(Lens.FX_COST[k])) if k > 0 else ""
@@ -223,6 +265,9 @@ func fx_page(body: VBoxContainer, col_box: VBoxContainer) -> void:
 				return
 			var a: Array = _fx_get()
 			a[fx_slot] = id
+			var on2 := _arr("fxOn", true)
+			on2[fx_slot] = true # al elegir un efecto el lugar queda activo
+			profile.set_setting("fxOn", on2)
 			profile.set_setting("fx", a)
 			sfx.play("click")
 			changed.emit("fx")
@@ -239,6 +284,25 @@ func _fx_get() -> Array:
 	var a = profile.setting("fx")
 	return [int(a[0]), int(a[1]), int(a[2])] if a is Array and a.size() >= 3 else [0, 0, 0]
 
+func _arr(key: String, def) -> Array:
+	var a = profile.setting(key)
+	var out: Array = []
+	for i in 3:
+		out.append(a[i] if a is Array and a.size() > i else def)
+	return out
+
+func _fx_refresh_strip() -> void:
+	var ids := _fx_get()
+	var has: bool = int(ids[fx_slot]) > 0
+	var on: bool = _arr("fxOn", true)[fx_slot] == true
+	var amt := float(_arr("fxAmt", 1.0)[fx_slot])
+	fx_toggle.text = "● ACTIVO" if on else "○ APAGADO"
+	fx_toggle.disabled = not has
+	fx_toggle.add_theme_stylebox_override("normal", Kit.box(Kit.GREEN.darkened(0.45) if (on and has) else Kit.PANEL2, 12, Kit.LINE, 1, 14))
+	fx_slider.editable = has
+	fx_slider.set_value_no_signal(amt * 100.0)
+	fx_val.text = "%d%%" % int(round(amt * 100.0)) if has else "—"
+
 func _fx_refresh() -> void:
 	var a := _fx_get()
 	for i in fx_slot_btns.size():
@@ -246,6 +310,7 @@ func _fx_refresh() -> void:
 		b.text = "%d · %s" % [i + 1, Lens.FX_NAMES[a[i]] if a[i] > 0 else "—"]
 		b.add_theme_stylebox_override("normal", Kit.box(Kit.ACCENT if i == fx_slot else Kit.PANEL2, 12, Kit.LINE, 1, 14))
 		b.add_theme_color_override("font_color", Color(0.05, 0.06, 0.08) if i == fx_slot else Kit.TEXT)
+	_fx_refresh_strip()
 	for r in fx_rows:
 		var marks: Array = []
 		for i in 3:
