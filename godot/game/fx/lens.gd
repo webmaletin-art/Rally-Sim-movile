@@ -25,6 +25,9 @@ uniform vec3 tint_light = vec3(1.04, 1.0, 0.94);
 uniform int fx0 = 0;
 uniform int fx1 = 0;
 uniform int fx2 = 0;
+uniform float amt0 = 1.0; // intensidad de cada lugar (0 = nada, 1 = completo, hasta 1,5)
+uniform float amt1 = 1.0;
+uniform float amt2 = 1.0;
 
 float lum(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 float lum_at(sampler2D tex, vec2 uv) { return lum(texture(tex, uv).rgb); }
@@ -230,9 +233,9 @@ void fragment() {
 	vec2 uv0 = UV + shake;
 	vec2 uv = uv0;
 	vec2 res = 1.0 / TEXTURE_PIXEL_SIZE;
-	uv = warp(fx0, uv, t, res);
-	uv = warp(fx1, uv, t, res);
-	uv = warp(fx2, uv, t, res);
+	uv = mix(uv, warp(fx0, uv, t, res), amt0);
+	uv = mix(uv, warp(fx1, uv, t, res), amt1);
+	uv = mix(uv, warp(fx2, uv, t, res), amt2);
 	vec2 d = uv - vec2(0.5);
 	float r2 = dot(d, d);
 	vec3 col;
@@ -256,9 +259,9 @@ void fragment() {
 	col *= 1.0 - vig * smoothstep(0.10, 0.62, r2 * 2.2);
 	col += (hash(FRAGCOORD.xy + vec2(t * 61.0, t * 37.0)) - 0.5) * grain;
 	col = clamp(col, 0.0, 1.0);
-	if (fx0 > 0) col = fx_apply(TEXTURE, fx0, col, uv, uv0, t, res, TEXTURE_PIXEL_SIZE);
-	if (fx1 > 0) col = fx_apply(TEXTURE, fx1, col, uv, uv0, t, res, TEXTURE_PIXEL_SIZE);
-	if (fx2 > 0) col = fx_apply(TEXTURE, fx2, col, uv, uv0, t, res, TEXTURE_PIXEL_SIZE);
+	if (fx0 > 0) col = mix(col, fx_apply(TEXTURE, fx0, col, uv, uv0, t, res, TEXTURE_PIXEL_SIZE), amt0);
+	if (fx1 > 0) col = mix(col, fx_apply(TEXTURE, fx1, col, uv, uv0, t, res, TEXTURE_PIXEL_SIZE), amt1);
+	if (fx2 > 0) col = mix(col, fx_apply(TEXTURE, fx2, col, uv, uv0, t, res, TEXTURE_PIXEL_SIZE), amt2);
 	COLOR = vec4(clamp(col, 0.0, 1.0), 1.0);
 }
 """
@@ -275,6 +278,21 @@ var fx: Array = [0, 0, 0]:
 	set(v):
 		fx = v
 		_refresh()
+var fx_amt: Array = [1.0, 1.0, 1.0] # intensidad de cada lugar
+var fx_on: Array = [true, true, true] # interruptor de cada lugar
+
+## Lee del perfil el lente y los tres lugares de efectos (efecto, interruptor e intensidad) y los aplica en el momento
+func apply_settings(profile: RefCounted) -> void:
+	level = int(profile.setting("lens2"))
+	var a = profile.setting("fx")
+	var am = profile.setting("fxAmt")
+	var on = profile.setting("fxOn")
+	var ids := [0, 0, 0]
+	for i in 3:
+		fx_amt[i] = float(am[i]) if am is Array and am.size() > i else 1.0
+		fx_on[i] = (on[i] == true) if on is Array and on.size() > i else true
+		ids[i] = int(a[i]) if a is Array and a.size() > i else 0
+	fx = ids
 
 var level := 0:
 	set(v):
@@ -299,14 +317,16 @@ func attach(item: CanvasItem) -> void:
 func _refresh() -> void:
 	if target == null:
 		return
-	var any_fx: bool = int(fx[0]) > 0 or int(fx[1]) > 0 or int(fx[2]) > 0
+	var any_fx: bool = false
+	for i in 3:
+		any_fx = any_fx or (int(fx[i]) > 0 and fx_on[i] == true)
 	if not enabled or (level <= 0 and not any_fx):
 		target.material = null
 		return
 	target.material = mat
-	mat.set_shader_parameter("fx0", int(fx[0]))
-	mat.set_shader_parameter("fx1", int(fx[1]))
-	mat.set_shader_parameter("fx2", int(fx[2]))
+	for i in 3:
+		mat.set_shader_parameter("fx%d" % i, int(fx[i]) if fx_on[i] == true else 0)
+		mat.set_shader_parameter("amt%d" % i, float(fx_amt[i]))
 	if level <= 0:
 		# solo efectos 2.0: el acabado del lente queda neutro
 		mat.set_shader_parameter("grain", 0.0)

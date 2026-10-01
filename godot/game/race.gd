@@ -223,8 +223,7 @@ func _ready() -> void:
 		lens.fx = fa
 	if menu_mode:
 		# opciones del jugador
-		lens.level = int(profile.setting("lens2"))
-		lens.fx = _fx_setting()
+		lens.apply_settings(profile)
 		lens_auto = true
 		var rs := float(profile.setting("res"))
 		if rs > 0.0:
@@ -953,8 +952,7 @@ func _apply_quality_settings() -> void:
 func _apply_live_settings(key: String) -> void:
 	match key:
 		"fx":
-			lens.level = int(profile.setting("lens2"))
-			lens.fx = _fx_setting()
+			lens.apply_settings(profile)
 			lens_auto = false
 		"quality", "trees", "shadowsQ", "textures":
 			var old := trees_n
