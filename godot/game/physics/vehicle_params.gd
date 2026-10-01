@@ -12,6 +12,7 @@ var wheelBase := 2.9
 var trackF := 1.8
 var trackR := 1.8
 var wheelRadius := 0.4
+var visualType := ""
 var rimRadius := 0.23
 var tireWidth := 0.3
 var wheelInertia := 8.0

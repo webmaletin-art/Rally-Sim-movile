@@ -768,7 +768,7 @@ func _car_setups() -> Array:
 	var pst: Dictionary = cfg["state"]
 	var pp: Dictionary = pst.get("paint", {"body": "#1a4fe0", "rim": "#ff6a08"})
 	out.append({"params": CarBuild.build_params(vehicles[pid], pst, assists), "paint": Color(str(pp["body"])), "rim": Color(str(pp.get("rim", "#2a2d33"))), "name": str(profile.d["name"]), "finish": str(pp.get("finish", "gloss")), "visual_type": str(vehicles[pid].get("visualType", pid)), "ai": {},
-		"livery": int(pp.get("livery", 0)), "accent": Color(str(pp.get("accent", "#ff6a08"))), "tire": Color(str(pp.get("tire", "#141516")))})
+		"livery": int(pp.get("livery", 0)), "accent": Color(str(pp.get("accent", "#ff6a08"))), "tire": Color(str(pp.get("tire", "#141516"))), "parts": pp})
 	var n_ai := int(cfg.get("ai", 0))
 	if n_ai > 0:
 		var rng := RandomNumberGenerator.new()
@@ -815,6 +815,8 @@ func _rebuild_cars() -> void:
 			car.visual.set_livery(int(su["livery"]), paint, su.get("accent", Color(1.0, 0.5, 0.1)), str(su.get("finish", "gloss")))
 		if su.has("tire"):
 			car.visual.set_tire_color(su["tire"])
+		if su.has("parts"):
+			car.visual.set_parts(su["parts"])
 		if i > 0:
 			if route:
 				car.driver = AIDriver.new(track.make_view(), car.phys, su["ai"])
@@ -1803,7 +1805,7 @@ func _frame(dt: float) -> void:
 	if inside != was_inside or onboard != was_onboard:
 		was_inside = inside
 		was_onboard = onboard
-		cars[0].visual.body.visible = not inside
+		cars[0].visual.set_inside(inside)
 		controls.show_speed = not inside
 		cockpit.set_inside(inside, not onboard)
 	if inside:

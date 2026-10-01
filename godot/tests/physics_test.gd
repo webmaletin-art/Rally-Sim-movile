@@ -17,6 +17,8 @@ func _init() -> void:
 	var t_total := 0
 	var steps_total := 0
 	for id in vehicles.keys():
+		if not expected.has(id):
+			continue # los autos nuevos no tienen referencia de la versión HTML (los prueba cars_test.gd)
 		var d: Dictionary = vehicles[id]
 		d["camberF"] = -1.0
 		d["camberR"] = -0.5
@@ -59,5 +61,5 @@ func _init() -> void:
 		if not ok:
 			fail = true
 		print("%s  %s  peor diferencia relativa %s (%s, muestra %d) · primera >1e-9: %s en muestra %d" % ["OK  " if ok else "FALLA", id, String.num_scientific(worst), worst_name, worst_at, first_name, first_at])
-	print("Godot: %d pasos por auto, %.0f ms por auto" % [steps_total / vehicles.size(), t_total / 1000.0 / vehicles.size()])
+	print("Godot: %d pasos por auto, %.0f ms por auto" % [steps_total / expected.size(), t_total / 1000.0 / expected.size()])
 	quit(1 if fail else 0)

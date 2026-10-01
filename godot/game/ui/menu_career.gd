@@ -4,6 +4,7 @@ extends RefCounted
 const Kit := preload("res://game/ui/ui_kit.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const Rewards := preload("res://game/data/rewards.gd")
+const Release := preload("res://game/data/release.gd")
 
 const SKY_N := {"day": "☀ Día", "sunset": "🌇 Atardecer", "overcast": "☁ Nublado", "dusk": "🌆 Anochecer", "rain": "🌧 Lluvia"}
 const MEDAL_N := ["Sin medalla", "Bronce", "Plata", "Oro"]
@@ -18,10 +19,10 @@ func _maps() -> Dictionary:
 	return maps
 
 ## Vista previa de una pista: dos tomas del recorrido que se alternan con un fundido (como una cámara que pasa por la pista)
-func preview(map_id: String) -> Control:
+func preview(map_id: String, h := 172.0) -> Control:
 	var base := map_id.replace("Rev", "")
 	var holder := Control.new()
-	holder.custom_minimum_size = Vector2(0, 172)
+	holder.custom_minimum_size = Vector2(0, h)
 	holder.clip_contents = true
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var texs: Array = []
@@ -57,7 +58,7 @@ func preview(map_id: String) -> Control:
 	return holder
 
 func map_name(id: String) -> String:
-	return str(_maps().get(id, {}).get("name", id))
+	return tr(str(_maps().get(id, {}).get("name", id)))
 
 ## ¿Se puede jugar este evento en la versión Godot? (hoy: los que corren sobre una ruta)
 func playable(ev: Dictionary) -> bool:
@@ -76,62 +77,37 @@ func _medals(n: int) -> String:
 func _medal_color(n: int) -> Color:
 	return [Kit.MUTED, Color(0.85, 0.55, 0.3), Color(0.8, 0.85, 0.92), Kit.GOLD][n]
 
-func _row_button(head: String, title: String, sub: String, right: String, cb: Callable, col: Color, enabled := true, accent := false) -> Button:
-	var b := Kit.button("", Callable(), accent, 20, Vector2(0, 76))
-	b.disabled = not enabled
-	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var row := Kit.hbox(12)
-	row.set_anchors_preset(Control.PRESET_FULL_RECT)
-	row.offset_left = 14
-	row.offset_right = -14
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(row)
-	var hl := Kit.label(head, 34, col if enabled else Kit.MUTED)
-	hl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(hl)
-	var v := Kit.vbox(0)
-	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(v)
-	v.add_child(Kit.label(title, 22, Kit.TEXT if enabled else Kit.MUTED))
-	var sl := Kit.label(sub, 15, Kit.MUTED)
-	sl.clip_text = true
-	sl.custom_minimum_size.x = 100
-	v.add_child(sl)
-	var rl := Kit.label(right, 18, Kit.GOLD if enabled else Kit.MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
-	rl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	row.add_child(rl)
-	b.pressed.connect(func() -> void:
-		if Kit.scroll_moved:
-			Kit.scroll_moved = false
-			return
-		m.sfx.play("click")
-		cb.call())
-	return b
-
 # ───────────────────────── copas ─────────────────────────
 func _tiers() -> void:
 	m.set_title("CARRERA")
-	var cur_pi := _player_pi()
+	var stars_l := Kit.label("⭐ %d estrellas ganadas · cada medalla suma 1 a 3 estrellas y abre copas nuevas" % m.profile.stars(), 15, Kit.MUTED)
+	m.body.add_child(stars_l)
 	for t in CarBuild.catalog()["tiers"]:
+		var tid := str(t["id"])
+		var allowed := Release.tier_allowed(m.profile, tid)
 		var open := Rewards.tier_open(m.profile, t)
-		var evs := Rewards.events_of(str(t["id"]))
+		var evs := Rewards.events_of(tid)
 		var done := 0
 		for e in evs:
 			if int(m.profile.event_result(str(e["id"])).get("medal", 0)) > 0:
 				done += 1
-		var sub := str(t["sub"])
 		var right := "%d/%d" % [done, evs.size()]
-		if not open:
+		if not allowed:
+			right = "🔒 Próximamente"
+		elif not open:
 			if t.has("car") and not m.profile.owns(str(t["car"])):
-				right = "🔒 necesitás el %s" % CarBuild.catalog()["cars"][t["car"]]["model"]
+				right = "🔒 %s" % CarBuild.catalog()["cars"][t["car"]]["model"]
 			else:
 				right = "🔒 %d ⭐" % Rewards.stars_needed(t)
 		var tt: Dictionary = t
-		m.body.add_child(_row_button(str(t["icon"]), str(t["name"]), sub, right, func(): _open_tier(tt), Kit.hexc(t["color"]), true))
+		var b := Kit.card_button(str(t["name"]), str(t["sub"]), right, func(): _open_tier(tt), false, true, 62, 21, str(t["icon"]))
+		m.body.add_child(b)
 
 func _open_tier(t: Dictionary) -> void:
+	if not Release.tier_allowed(m.profile, str(t["id"])):
+		m.sfx.play("error")
+		m.toast("Esta copa llega en una próxima actualización")
+		return
 	if not Rewards.tier_open(m.profile, t):
 		m.sfx.play("error")
 		if t.has("car") and not m.profile.owns(str(t["car"])):
@@ -145,30 +121,39 @@ func _player_pi() -> int:
 	var id: String = m.profile.current_id()
 	return int(CarBuild.perf_of(CarBuild.build_params(m.vehicles[id], m.profile.car()))["pi"])
 
-# ───────────────────────── eventos de una copa ─────────────────────────
+# ───────────────────────── eventos de una copa (grilla con páginas) ─────────────────────────
+var ev_page := 0
+const EV_PER_PAGE := 8
+
 func _events(tier_id: String) -> void:
 	var tier := Rewards.tier_by_id(tier_id)
 	m.set_title(str(tier["name"]).to_upper())
 	var lst := Rewards.events_of(tier_id)
-	var i := 0
-	for e in lst:
-		i += 1
+	var pages := maxi(1, int(ceil(float(lst.size()) / float(EV_PER_PAGE))))
+	ev_page = clampi(ev_page, 0, pages - 1)
+	var g := Kit.grid(2, 8, 8)
+	m.body.add_child(g)
+	for i in range(ev_page * EV_PER_PAGE, mini(lst.size(), (ev_page + 1) * EV_PER_PAGE)):
+		var e: Dictionary = lst[i]
 		var lk := Rewards.event_locked(m.profile, e)
 		var res: Dictionary = m.profile.event_result(str(e["id"]))
 		var medal := int(res.get("medal", 0))
 		var can := playable(e)
 		var ti: Dictionary = CarBuild.catalog()["types"][e["type"]]
 		var rw := Rewards.reward_for(e, 3, tier)
-		var sub := "%s · %s" % [map_name(str(e["map"])), SKY_N.get(str(e.get("sky", "day")), "")]
+		var sub := "%s · %s" % [map_name(str(e["map"])), tr(SKY_N.get(str(e.get("sky", "day")), ""))]
 		var right := "%s\n%s" % [_medals(medal), Kit.fmt_cr(float(rw["cr"]))]
 		if not can:
 			right = "🚧 pronto"
 		elif lk != "":
 			right = "🔒"
-		var head := "%d" % i
 		var ev: Dictionary = e
-		var b := _row_button(head, "%s %s%s" % [ti["icon"], e["name"], "  · FINAL" if e.get("final", false) else ""], sub, right, func(): _open_event(ev, lk), Kit.hexc(tier["color"]), lk == "" or true)
-		m.body.add_child(b)
+		var b := Kit.card_button("%s %s%s" % [ti["icon"], e["name"], " · FINAL" if e.get("final", false) else ""], sub, right, func(): _open_event(ev, lk), false, true, 66, 18, "%d" % (i + 1))
+		g.add_child(b)
+	if pages > 1:
+		m.body.add_child(Kit.pager(ev_page, pages, func(pg: int) -> void:
+			ev_page = pg
+			m.go("events", tier_id, false)))
 
 func _open_event(ev: Dictionary, lk: String) -> void:
 	if lk != "":
@@ -190,52 +175,51 @@ func _event(id: String) -> void:
 	var tier := Rewards.tier_by_id(str(ev["tier"]))
 	var ti: Dictionary = CarBuild.catalog()["types"][ev["type"]]
 	m.set_title(str(ev["name"]))
-	var dl := Kit.label(str(ev["desc"]), 18, Kit.MUTED)
-	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dl.custom_minimum_size.x = 380
-	m.body.add_child(preview(str(ev["map"])))
-	m.body.add_child(dl)
+	var top := Kit.hbox(10)
+	m.body.add_child(top)
+	var pv := preview(str(ev["map"]), 128.0)
+	pv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(pv)
+	var side := Kit.vbox(2)
+	side.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(side)
 	var res: Dictionary = m.profile.event_result(id)
-	var g := GridContainer.new()
-	g.columns = 2
-	g.add_theme_constant_override("h_separation", 26)
-	m.body.add_child(g)
-	var len_s := "%d vuelta%s" % [int(ev.get("laps", 1)), "s" if int(ev.get("laps", 1)) > 1 else ""] if not ev.has("seg") else "Tramo de ruta"
-	var rows := [["Tipo", "%s %s" % [ti["icon"], ti["n"]]], ["Pista", map_name(str(ev["map"]))], ["Formato", len_s], ["Rivales", str(ev.get("ai", "—"))],
-		["Clima", SKY_N.get(str(ev.get("sky", "day")), "-")], ["Récord", _fmt_target(ev, float(res["best"])) if res.has("best") and res["best"] != null else "—"],
-		["Medalla", MEDAL_N[int(res.get("medal", 0))]]]
+	var len_s := tr("%d vuelta(s)") % int(ev.get("laps", 1)) if not ev.has("seg") else tr("Tramo de ruta")
+	var rows := [["Tipo", "%s %s" % [ti["icon"], ti["n"]]], ["Formato", len_s], ["Rivales", str(ev.get("ai", "—"))],
+		["Clima", tr(SKY_N.get(str(ev.get("sky", "day")), "-"))], ["Récord", _fmt_target(ev, float(res["best"])) if res.has("best") and res["best"] != null else "—"],
+		["Medalla", tr(MEDAL_N[int(res.get("medal", 0))])]]
 	for r in rows:
-		g.add_child(Kit.label(r[0], 18, Kit.MUTED))
-		g.add_child(Kit.label(r[1], 18, Kit.TEXT))
-	# objetivos de medalla
+		var rr := Kit.hbox(6)
+		var kl := Kit.label(r[0], 15, Kit.MUTED)
+		kl.custom_minimum_size.x = 78
+		rr.add_child(kl)
+		rr.add_child(Kit.label(r[1], 15, Kit.TEXT))
+		side.add_child(rr)
+	m.body.add_child(Kit.wrap(str(ev["desc"]), 15, Kit.MUTED, 380))
 	var targets: Dictionary = CarBuild.catalog()["targets"]
 	if ev["type"] == "race":
-		m.body.add_child(Kit.label("🥇 1° puesto · 🥈 2° · 🥉 3°", 18, Kit.TEXT))
+		m.body.add_child(Kit.label("🥇 1° puesto · 🥈 2° · 🥉 3°", 17, Kit.TEXT))
 	elif targets.has(id):
 		var t: Array = targets[id]
-		m.body.add_child(Kit.label("🥇 %s   🥈 %s   🥉 %s" % [_fmt_target(ev, t[0]), _fmt_target(ev, t[1]), _fmt_target(ev, t[2])], 18, Kit.TEXT))
+		m.body.add_child(Kit.label("🥇 %s   🥈 %s   🥉 %s" % [_fmt_target(ev, t[0]), _fmt_target(ev, t[1]), _fmt_target(ev, t[2])], 17, Kit.TEXT))
 	var rws: Array = []
 	for md in [3, 2, 1]:
 		rws.append(Kit.fmt_cr(float(Rewards.reward_for(ev, md, tier)["cr"])))
-	m.body.add_child(Kit.label("Premios: oro %s · plata %s · bronce %s" % rws, 16, Kit.GOLD))
-	# bloqueos
+	m.body.add_child(Kit.label(tr("Premios: oro %s · plata %s · bronce %s") % rws, 15, Kit.GOLD))
 	var block := ""
 	var pid: String = m.profile.current_id()
 	if not playable(ev):
-		block = "🚧 Este tipo de evento (%s) llega en una próxima versión del juego nuevo." % ti["n"]
+		block = tr("🚧 Este tipo de evento (%s) llega en una próxima versión del juego nuevo.") % ti["n"]
 	elif tier.has("car") and pid != str(tier["car"]):
-		block = "Esta copa se corre solo con el %s. Elegilo en el garaje." % CarBuild.catalog()["cars"][tier["car"]]["model"]
+		block = tr("Esta copa se corre solo con el %s. Elegilo en el garaje.") % CarBuild.catalog()["cars"][tier["car"]]["model"]
 	else:
 		var pi := _player_pi()
 		if not tier.has("car") and pi > int(tier["maxPI"]):
-			block = "Tu auto es clase %s (PI %d). Esta copa admite hasta clase %s (PI %d). Bajá piezas en el taller o usá otro auto." % [
+			block = tr("Tu auto es clase %s (PI %d). Esta copa admite hasta clase %s (PI %d). Bajá piezas en el taller o usá otro auto.") % [
 				CarBuild.class_of(pi)["c"], pi, CarBuild.class_of(int(tier["maxPI"]))["c"], int(tier["maxPI"])]
 	if block != "":
-		var bl := Kit.label(block, 18, Kit.RED)
-		bl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		bl.custom_minimum_size.x = 380
-		m.body.add_child(bl)
-	var go_b := Kit.button("¡CORRER!", func(): _start_event(ev, tier), true, 28, Vector2(0, 66))
+		m.body.add_child(Kit.wrap(block, 15, Kit.RED, 380))
+	var go_b := Kit.button("¡CORRER!", func(): _start_event(ev, tier), true, 26, Vector2(0, 58))
 	go_b.disabled = block != ""
 	m.body.add_child(go_b)
 
@@ -257,34 +241,29 @@ func _quick() -> void:
 			route_maps.append(k)
 	var pv_box := VBoxContainer.new()
 	m.body.add_child(pv_box)
-	pv_box.add_child(preview(str(quick["map"])))
-	var opts := [
+	pv_box.add_child(preview(str(quick["map"]), 128.0))
+	var g := Kit.grid(2, 8, 8)
+	m.body.add_child(g)
+	var refresh_pv := func() -> void:
+		for c in pv_box.get_children():
+			c.queue_free()
+		pv_box.add_child(preview(str(quick["map"]), 128.0))
+	var defs := [
 		["Pista", "map", route_maps, func(v): return map_name(str(v))],
-		["Modo", "mode", ["race", "timetrial"], func(v): return "Carrera" if v == "race" else "Contrarreloj"],
+		["Modo", "mode", ["race", "timetrial"], func(v): return tr("Carrera") if v == "race" else tr("Contrarreloj")],
 		["Vueltas", "laps", [1, 2, 3, 5], func(v): return str(v)],
 		["Rivales", "ai", [0, 1, 3, 5, 7], func(v): return str(v)],
-		["Clima", "sky", ["day", "overcast", "sunset", "dusk", "rain"], func(v): return SKY_N[v]],
-		["Nivel de los rivales", "skill", [0.85, 1.0, 1.08], func(v): return {0.85: "Fácil", 1.0: "Normal", 1.08: "Difícil"}[v]],
+		["Clima", "sky", ["day", "overcast", "sunset", "dusk", "rain"], func(v): return tr(SKY_N[v])],
+		["Nivel de los rivales", "skill", [0.85, 1.0, 1.08], func(v): return {0.85: tr("Fácil"), 1.0: tr("Normal"), 1.08: tr("Difícil")}[v]],
 	]
-	for o in opts:
+	for o in defs:
 		var key: String = o[1]
-		var vals: Array = o[2]
-		var fmt: Callable = o[3]
-		var b := Kit.button("%s:  %s" % [o[0], fmt.call(quick[key])], Callable(), false, 20, Vector2(0, 52))
-		b.pressed.connect(func() -> void:
-			if Kit.scroll_moved:
-				Kit.scroll_moved = false
-				return
-			var i := vals.find(quick[key])
-			quick[key] = vals[(i + 1) % vals.size()]
-			m.sfx.play("click")
-			b.text = "%s:  %s" % [o[0], fmt.call(quick[key])]
+		var sel := Kit.selector(tr(str(o[0])), o[2], quick[key], o[3], func(v) -> void:
+			quick[key] = v
 			if key == "map":
-				for c in pv_box.get_children():
-					c.queue_free()
-				pv_box.add_child(preview(str(quick["map"]))))
-		m.body.add_child(b)
-	m.body.add_child(Kit.button("¡CORRER!", func(): _start_quick(), true, 28, Vector2(0, 66)))
+				refresh_pv.call(), m.sfx, 60.0)
+		g.add_child(sel)
+	m.body.add_child(Kit.button("¡CORRER!", func(): _start_quick(), true, 26, Vector2(0, 58)))
 
 func _start_quick() -> void:
 	var pid: String = m.profile.current_id()

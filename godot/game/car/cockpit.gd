@@ -14,6 +14,7 @@ const RigPilot := preload("res://game/car/rig_pilot.gd")
 const CrewMotion := preload("res://game/car/crew_motion.gd")
 const CarSnapshot := preload("res://game/car/car_snapshot.gd")
 const Gaze := preload("res://game/car/gaze.gd")
+const CabinCfg := preload("res://game/car/cabin_cfg.gd")
 
 const CABIN := {
 	"pickup": {"eyeY": 1.40, "eyeZ": 0.30, "cowlZ": 1.22, "halfW": 0.80, "roofY": 1.70},
@@ -68,6 +69,18 @@ var read_w := 0.0 # cuánto está leyendo la hoja el copiloto (0 mira al frente 
 var _body_col := Color(0.10, 0.31, 0.88)
 var _acc := Color(1.0, 0.42, 0.03)
 # medidas de la cabina (se calculan en _build)
+var cage_on := true # jaula antivuelco con almohadillas y redes en las ventanillas (autos de carrera)
+var own := false # auto con carrocería propia: habitáculo medido sobre el GLB (CabinCfg) y capó real a la vista
+var open_cab := false # sin techo ni vidrios (buggy)
+var seat_dy := 0.0 # cuánto se corren las butacas, la consola y las barras de puerta respecto del habitáculo de referencia
+var hip_y := 0.5
+var back_z := -1.5
+var belt_y := 0.97
+var ws_tz := 0.0
+var ws_ty := 0.0
+var ws_hb := 0.8
+var ws_ht := 0.8
+var _yoff := 0.0 # corrimiento vertical de lo que se agrega por lotes (butacas, consola)
 var hw := 0.9
 var eY := 1.19
 var eZ := -0.2
@@ -78,7 +91,10 @@ var fw := 0.83
 var cowl_y := 0.9
 
 func _init(p_type: String, p_paint := Color(0.10, 0.31, 0.88), p_accent := Color(1.0, 0.42, 0.03)) -> void:
-	C = (CABIN.get(p_type, CABIN["t1plus"]) as Dictionary).duplicate()
+	own = CabinCfg.has(p_type)
+	C = CabinCfg.build(p_type) if own else (CABIN.get(p_type, CABIN["t1plus"]) as Dictionary).duplicate()
+	if own:
+		xD = float(C["xD"])
 	_body_col = p_paint
 	_acc = p_accent
 	interior = Node3D.new()
@@ -197,6 +213,7 @@ func _add_mesh(mesh: Mesh, xf: Transform3D, mat_key: String) -> void:
 		var st := SurfaceTool.new()
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
 		_batch[mat_key] = st
+	xf.origin.y += _yoff
 	(_batch[mat_key] as SurfaceTool).append_from(mesh, 0, xf)
 
 func _box(size: Vector3, pos: Vector3, mat_key: String, rot := Basis.IDENTITY) -> void:
@@ -310,12 +327,27 @@ func _build() -> void:
 	eY = C["eyeY"]
 	eZ = C["eyeZ"]
 	cz = C["cowlZ"]
-	rY = float(C["roofY"]) + 0.12 # techo 12 cm más alto que el real (más inmersivo: se ve el horizonte)
-	floor_y = eY - 1.05
+	rY = float(C["roofY"]) + (0.02 if own else 0.12) # techo 12 cm más alto que el real (más inmersivo: se ve el horizonte)
+	floor_y = float(C["floorY"]) if own else eY - 1.05
 	eye = Vector3(xD, eY, eZ)
 	dz0 = eZ + 0.52 # cara del tablero que mira al piloto (el volante queda adelante de ella, sin atravesarla)
 	fw = cz + 0.05 # cortafuegos
 	cowl_y = eY - 0.30
+	back_z = eZ - 1.50
+	belt_y = 0.97
+	hip_y = eY - 0.70
+	if own:
+		open_cab = bool(C["open"])
+		cage_on = bool(C["cage"])
+		cowl_y = maxf(float(C["cowlY"]), eY - 0.30)
+		back_z = float(C["backZ"])
+		belt_y = float(C["belt"])
+		hip_y = float(C["hipY"])
+		seat_dy = hip_y - 0.49
+		ws_tz = float(C["wsTopZ"])
+		ws_ty = maxf(float(C["wsTopY"]), cowl_y + 0.2)
+		ws_hb = float(C["wsHwB"])
+		ws_ht = float(C["wsHwT"])
 	# materiales
 	_m("dash", Color(0.62, 0.62, 0.66), 0.95, 0.0, _grain_tex(20, 14, true), Vector3(1, 1, 1))
 	_m("trim", Color(0.11, 0.115, 0.125), 0.75)
@@ -339,22 +371,29 @@ func _build() -> void:
 	mir.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_b_floor_and_walls()
 	_b_dash()
+	_yoff = seat_dy
 	_b_console()
 	_b_seats()
-	_b_cage()
-	_b_doors_roof()
-	_b_glass_hood()
+	_yoff = 0.0
+	if cage_on:
+		_b_cage()
+	if not open_cab:
+		_b_doors_roof()
+		_b_glass_hood()
+	else:
+		_b_wipers_only()
 	_b_wheel()
 	_b_pedals()
 	_finish_batches()
 
 func _b_floor_and_walls() -> void:
-	var z0 := eZ - 1.50
+	var z0 := back_z
 	_plane(2.0 * hw, fw - z0, Vector3(0, floor_y, (fw + z0) / 2.0), "floor")
 	# túnel de transmisión a lo largo y cortafuegos
 	_box(Vector3(2.0 * hw, cowl_y - floor_y + 0.02, 0.03), Vector3(0, (cowl_y + floor_y) / 2.0, fw), "trim")
 	# panel trasero (detrás de las butacas): sube hasta la altura de la ventanilla
-	_box(Vector3(2.0 * hw, 1.0 - floor_y, 0.04), Vector3(0, (1.0 + floor_y) / 2.0, z0), "door")
+	if not open_cab:
+		_box(Vector3(2.0 * hw, belt_y + 0.03 - floor_y, 0.04), Vector3(0, (belt_y + 0.03 + floor_y) / 2.0, z0), "door")
 
 ## curva cuadrática entre a y b con control c (n tramos)
 func _bez(a: Vector2, c: Vector2, b: Vector2, n := 5) -> Array:
@@ -405,11 +444,12 @@ func _b_dash() -> void:
 	_label("DREAM", Vector3(-0.66, eY - 0.29, dz0 + 0.095), Basis(Vector3.UP, PI) * Basis(Vector3.RIGHT, -0.5), 0.028, Color(0.9, 0.9, 0.92, 0.9))
 
 func _b_console() -> void:
-	var prof := PackedVector2Array([Vector2(eZ - 0.62, floor_y), Vector2(eZ - 0.62, 0.50), Vector2(eZ - 0.40, 0.60), Vector2(dz0 + 0.02, 0.62), Vector2(dz0 + 0.20, 0.54), Vector2(dz0 + 0.30, floor_y)])
+	var fl := floor_y - seat_dy # (el lote se corre seat_dy: el pie de la consola queda en el piso)
+	var prof := PackedVector2Array([Vector2(eZ - 0.62, fl), Vector2(eZ - 0.62, 0.50), Vector2(eZ - 0.40, 0.60), Vector2(dz0 + 0.02, 0.62), Vector2(dz0 + 0.20, 0.54), Vector2(dz0 + 0.30, fl)])
 	_add_mesh(_extrude(prof, -0.15, 0.15, 3.0), Transform3D.IDENTITY, "carbon")
 	# palanca secuencial (adelante) y freno de mano (atrás): están a la derecha del piloto, sobre la consola
 	gear_lever = Node3D.new()
-	gear_lever.position = Vector3(0.02, 0.62, eZ + 0.35)
+	gear_lever.position = Vector3(0.02, 0.62 + seat_dy, eZ + 0.35)
 	interior.add_child(gear_lever)
 	var cm := CylinderMesh.new()
 	cm.top_radius = 0.011
@@ -430,7 +470,7 @@ func _b_console() -> void:
 	boot.radial_segments = 10
 	_mesh_node(boot, _m("trim", Color.WHITE), Vector3(0, 0.03, 0), Basis.IDENTITY, gear_lever)
 	hb_lever = Node3D.new()
-	hb_lever.position = Vector3(0.02, 0.62, eZ + 0.17)
+	hb_lever.position = Vector3(0.02, 0.62 + seat_dy, eZ + 0.17)
 	interior.add_child(hb_lever)
 	var hb := CylinderMesh.new()
 	hb.top_radius = 0.013
@@ -531,17 +571,17 @@ func _b_cage() -> void:
 	var r := 0.024
 	var ih := hw - 0.07
 	var top := rY - 0.07
-	var zm := eZ - 0.80 # arco principal detrás de las butacas
+	var zm := maxf(eZ - 0.80, back_z + 0.08) # arco principal detrás de las butacas
 	var za := eZ + 0.40 # arco delantero (parantes del parabrisas)
 	var zb := cz - 0.30 # pie del arco delantero
 	for s in [1.0, -1.0]:
 		var x: float = s * ih
 		_bar(Vector3(x, floor_y, zm), Vector3(x, top, zm), r, "cage")
 		_bar(Vector3(x, top, zm), Vector3(x * 0.95, top, za), r, "cage") # larguero de techo
-		_bar(Vector3(x, 0.60, zb), Vector3(x * 0.95, top, za), r, "cage") # diagonal del parante
-		_bar(Vector3(x, 0.78, zb), Vector3(x, 0.66, zm), r, "cage") # barras de puerta
-		_bar(Vector3(x, 0.52, zb), Vector3(x, 0.40, zm), r, "cage")
-		_bar(Vector3(x, 0.78, zb), Vector3(x, 0.40, zm), r * 0.85, "cage") # cruz
+		_bar(Vector3(x, 0.60 + seat_dy, zb), Vector3(x * 0.95, top, za), r, "cage") # diagonal del parante
+		_bar(Vector3(x, 0.78 + seat_dy, zb), Vector3(x, 0.66 + seat_dy, zm), r, "cage") # barras de puerta
+		_bar(Vector3(x, 0.52 + seat_dy, zb), Vector3(x, 0.40 + seat_dy, zm), r, "cage")
+		_bar(Vector3(x, 0.78 + seat_dy, zb), Vector3(x, 0.40 + seat_dy, zm), r * 0.85, "cage") # cruz
 		# acolchado naranja donde pega la cabeza
 		var dpar := (Vector3(x * 0.95, top, za) - Vector3(x, 0.60, zb)).normalized()
 		_bar(Vector3(x * 0.95, top, za) - dpar * 0.40, Vector3(x * 0.95, top, za), r * 1.7, "pad")
@@ -550,11 +590,11 @@ func _b_cage() -> void:
 	_bar(Vector3(-ih, top, zm), Vector3(ih, top, zm), r, "cage")
 	_bar(Vector3(-ih * 0.95, top, za), Vector3(ih * 0.95, top, za), r, "cage")
 	_bar(Vector3(-ih, top, (za + zm) / 2.0), Vector3(ih, top, (za + zm) / 2.0), r, "cage")
-	_bar(Vector3(-ih, 0.62, zm), Vector3(ih, 0.62, zm), r, "cage")
+	_bar(Vector3(-ih, 0.62 + seat_dy, zm), Vector3(ih, 0.62 + seat_dy, zm), r, "cage")
 	# nudos esféricos en las uniones (sin estos las barras se ven cortadas en cuadrado) y refuerzos
 	for sd in [1.0, -1.0]:
 		var xx: float = sd * ih
-		for jp in [Vector3(xx, top, zm), Vector3(xx * 0.95, top, za), Vector3(xx, 0.60, zb), Vector3(xx, 0.78, zb), Vector3(xx, 0.66, zm), Vector3(xx, 0.62, zm)]:
+		for jp in [Vector3(xx, top, zm), Vector3(xx * 0.95, top, za), Vector3(xx, 0.60 + seat_dy, zb), Vector3(xx, 0.78 + seat_dy, zb), Vector3(xx, 0.66 + seat_dy, zm), Vector3(xx, 0.62 + seat_dy, zm)]:
 			var sm := SphereMesh.new()
 			sm.radius = r * 1.25
 			sm.height = r * 2.5
@@ -565,42 +605,55 @@ func _b_cage() -> void:
 		_bar(Vector3(xx, top - 0.30, zm), Vector3(xx, top, zm + 0.30), r * 0.8, "cage")
 
 func _b_doors_roof() -> void:
-	var z_back := eZ - 1.50
+	var z_back := back_z
 	var z_front := cz - 0.12
 	for sd in [1.0, -1.0]:
 		var x: float = sd * (hw - 0.015)
 		var dl := z_front - z_back
 		var zc := (z_front + z_back) / 2.0
-		_box(Vector3(0.03, 0.97 - floor_y, dl), Vector3(x, (0.97 + floor_y) / 2.0, zc), "door")
-		_box(Vector3(0.07, 0.04, dl), Vector3(x - sd * 0.02, 0.98, zc), "trim") # borde de la ventanilla
-		_box(Vector3(0.09, 0.07, 0.55), Vector3(x - sd * 0.04, 0.72, eZ - 0.05), "trim") # apoyabrazos
-		_box(Vector3(0.03, 0.16, 0.06), Vector3(x - sd * 0.03, 0.88, eZ + 0.18), "red") # tira para cerrar la puerta
-		_box(Vector3(0.04, 0.14, 0.34), Vector3(x - sd * 0.03, 0.50, eZ + 0.10), "trim") # bolsillo
-		_cyl(0.07, 0.07, 0.03, Vector3(x - sd * 0.03, 0.42, eZ + 0.55), "trim", Basis(Vector3.FORWARD, PI / 2.0), 14) # parlante
+		var bt := belt_y
+		_box(Vector3(0.03, bt - floor_y, dl), Vector3(x, (bt + floor_y) / 2.0, zc), "door")
+		_box(Vector3(0.07, 0.04, dl), Vector3(x - sd * 0.02, bt + 0.01, zc), "trim") # borde de la ventanilla
+		_box(Vector3(0.09, 0.07, 0.55), Vector3(x - sd * 0.04, bt - 0.25, eZ - 0.05), "trim") # apoyabrazos
+		_box(Vector3(0.03, 0.16, 0.06), Vector3(x - sd * 0.03, bt - 0.09, eZ + 0.18), "red") # tira para cerrar la puerta
+		_box(Vector3(0.04, 0.14, 0.34), Vector3(x - sd * 0.03, maxf(floor_y + 0.12, bt - 0.47), eZ + 0.10), "trim") # bolsillo
+		_cyl(0.07, 0.07, 0.03, Vector3(x - sd * 0.03, maxf(floor_y + 0.1, bt - 0.55), eZ + 0.55), "trim", Basis(Vector3.FORWARD, PI / 2.0), 14) # parlante
 		# red de la ventanilla
+		if not cage_on:
+			continue
 		var nm := _m("net", Color(1, 1, 1, 1), 1.0, 0.0, _net_tex(), Vector3(26, 14, 1))
 		nm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		nm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		var q := _quad_mesh(Vector3(x, 1.0, eZ - 0.55), Vector3(x, 1.0, eZ + 0.42), Vector3(x, rY - 0.12, eZ - 0.55), Vector3(x, rY - 0.12, eZ + 0.42))
+		var q := _quad_mesh(Vector3(x, bt + 0.03, eZ - 0.55), Vector3(x, bt + 0.03, eZ + 0.42), Vector3(x, rY - 0.12, eZ - 0.55), Vector3(x, rY - 0.12, eZ + 0.42))
 		_mesh_node(q, nm, Vector3.ZERO)
 		# el triángulo delantero de la ventana (entre el parante del parabrisas y el borde de la puerta) también lleva red
-		var tri := _quad_mesh(Vector3(x, 1.0, eZ + 0.42), Vector3(x, 1.0, z_front), Vector3(x, rY - 0.12, eZ + 0.46), Vector3(x, rY - 0.12, eZ + 0.46))
+		var tri := _quad_mesh(Vector3(x, bt + 0.03, eZ + 0.42), Vector3(x, bt + 0.03, z_front), Vector3(x, rY - 0.12, eZ + 0.46), Vector3(x, rY - 0.12, eZ + 0.46))
 		_mesh_node(tri, nm, Vector3.ZERO)
-		_bar(Vector3(x, 1.0, eZ + 0.42), Vector3(x, 1.0, z_front), 0.012, "trim") # marco del triángulo
-		_bar(Vector3(x, 1.0, z_front), Vector3(x, rY - 0.12, eZ + 0.46), 0.012, "trim")
+		_bar(Vector3(x, bt + 0.03, eZ + 0.42), Vector3(x, bt + 0.03, z_front), 0.012, "trim") # marco del triángulo
+		_bar(Vector3(x, bt + 0.03, z_front), Vector3(x, rY - 0.12, eZ + 0.46), 0.012, "trim")
 	# techo: revestimiento oscuro con escotilla de emergencia y luz de mapa
-	var roof_len := eZ + 0.5 - (eZ - 1.50)
-	_plane(2.0 * hw, roof_len, Vector3(0, rY + 0.01, (eZ + 0.5 + eZ - 1.50) / 2.0), "roof", Basis(Vector3.RIGHT, PI))
+	var roof_len := eZ + 0.5 - back_z
+	_plane(2.0 * hw, roof_len, Vector3(0, rY + 0.01, (eZ + 0.5 + back_z) / 2.0), "roof", Basis(Vector3.RIGHT, PI))
 	_box(Vector3(0.50, 0.012, 0.42), Vector3(0.0, rY - 0.003, eZ - 0.30), "trim")
 	_box(Vector3(0.10, 0.02, 0.06), Vector3(0.0, rY - 0.015, eZ + 0.10), "metal")
 	# travesaño del parabrisas
 	_box(Vector3(2.0 * hw, 0.07, 0.10), Vector3(0, rY - 0.03, eZ + 0.45), "trim")
+
+func _b_wipers_only() -> void:
+	pass
 
 func _b_glass_hood() -> void:
 	var wBL := Vector3(hw * 0.97, cowl_y, cz - 0.02)
 	var wBR := Vector3(-hw * 0.97, cowl_y, cz - 0.02)
 	var wTL := Vector3(hw * 0.9, rY - 0.03, eZ + 0.46)
 	var wTR := Vector3(-hw * 0.9, rY - 0.03, eZ + 0.46)
+	if own: # el parabrisas sigue al del GLB: base sobre el capó real, borde de arriba y ancho medidos
+		var wb := minf(ws_hb, hw * 0.97)
+		var wt := minf(ws_ht, hw * 0.9)
+		wBL = Vector3(wb, cowl_y, cz - 0.02)
+		wBR = Vector3(-wb, cowl_y, cz - 0.02)
+		wTL = Vector3(wt, ws_ty - 0.02, ws_tz)
+		wTR = Vector3(-wt, ws_ty - 0.02, ws_tz)
 	_mesh_node(_quad_mesh(wBL, wBR, wTL, wTR), _mats["glass"], Vector3.ZERO)
 	# borde negro del parabrisas (serigrafía) y tira del parasol con el nombre
 	var frit := StandardMaterial3D.new()
@@ -625,39 +678,40 @@ func _b_glass_hood() -> void:
 	_box_between(wBR + Vector3(-0.03, 0, 0), wTR + Vector3(-0.03, 0, 0), 0.06, 0.08, "trim")
 	_wu = (wBR - wBL).normalized() * -1.0
 	_wv = (wBL.lerp(wBR, 0.5) - wTL.lerp(wTR, 0.5)).normalized() * -1.0
-	# capó visto desde adentro: ancho y largo, casi plano (apenas abombado), con las dos franjas
-	var hood_mat := StandardMaterial3D.new()
-	hood_mat.albedo_texture = _hood_tex()
-	hood_mat.metallic = 0.45
-	hood_mat.roughness = 0.3
-	var hL := 1.9
-	var hood_pos := Vector3(0, cowl_y - 0.035, cz + hL / 2.0 - 0.04)
-	_mesh_node(_hood_mesh(2.0 * hw * 1.22, hL, hw), hood_mat, hood_pos)
-	# detalles del capó: toma de aire central, cuatro pasadores y bisagras (desde adentro se ve un capó de verdad)
-	var scoop := BoxMesh.new()
-	scoop.size = Vector3(0.30, 0.05, 0.36)
-	var sc_u := 0.34
-	var sc_y := -0.11 * sc_u * sc_u - 0.02 * sc_u
-	_mesh_node(scoop, hood_mat, hood_pos + Vector3(0, sc_y + 0.025, (sc_u - 0.5) * hL), Basis(Vector3.RIGHT, 0.1))
-	var inlet := _m("inlet", Color(0.01, 0.01, 0.012), 0.9)
-	var iq := QuadMesh.new()
-	iq.size = Vector2(0.26, 0.035)
-	_mesh_node(iq, inlet, hood_pos + Vector3(0, sc_y + 0.02, (sc_u - 0.5) * hL + 0.182), Basis(Vector3.UP, PI))
-	for px2 in [0.56, -0.56]:
-		for pu in [0.2, 0.62]:
-			var py2: float = -0.025 * (px2 * px2) / (hw * hw) - 0.11 * pu * pu - 0.02 * pu
-			var pin := CylinderMesh.new()
-			pin.top_radius = 0.016
-			pin.bottom_radius = 0.016
-			pin.height = 0.025
-			pin.radial_segments = 10
-			_mesh_node(pin, _mats["metal"], hood_pos + Vector3(px2, py2 + 0.012, (pu - 0.5) * hL))
-			var loop := TorusMesh.new()
-			loop.inner_radius = 0.012
-			loop.outer_radius = 0.017
-			loop.rings = 10
-			loop.ring_segments = 6
-			_mesh_node(loop, _mats["metal"], hood_pos + Vector3(px2, py2 + 0.03, (pu - 0.5) * hL), Basis(Vector3.RIGHT, PI / 2.0))
+	if not own:
+		# capó visto desde adentro: ancho y largo, casi plano (apenas abombado), con las dos franjas
+		var hood_mat := StandardMaterial3D.new()
+		hood_mat.albedo_texture = _hood_tex()
+		hood_mat.metallic = 0.45
+		hood_mat.roughness = 0.3
+		var hL := 1.9
+		var hood_pos := Vector3(0, cowl_y - 0.035, cz + hL / 2.0 - 0.04)
+		_mesh_node(_hood_mesh(2.0 * hw * 1.22, hL, hw), hood_mat, hood_pos)
+		# detalles del capó: toma de aire central, cuatro pasadores y bisagras (desde adentro se ve un capó de verdad)
+		var scoop := BoxMesh.new()
+		scoop.size = Vector3(0.30, 0.05, 0.36)
+		var sc_u := 0.34
+		var sc_y := -0.11 * sc_u * sc_u - 0.02 * sc_u
+		_mesh_node(scoop, hood_mat, hood_pos + Vector3(0, sc_y + 0.025, (sc_u - 0.5) * hL), Basis(Vector3.RIGHT, 0.1))
+		var inlet := _m("inlet", Color(0.01, 0.01, 0.012), 0.9)
+		var iq := QuadMesh.new()
+		iq.size = Vector2(0.26, 0.035)
+		_mesh_node(iq, inlet, hood_pos + Vector3(0, sc_y + 0.02, (sc_u - 0.5) * hL + 0.182), Basis(Vector3.UP, PI))
+		for px2 in [0.56, -0.56]:
+			for pu in [0.2, 0.62]:
+				var py2: float = -0.025 * (px2 * px2) / (hw * hw) - 0.11 * pu * pu - 0.02 * pu
+				var pin := CylinderMesh.new()
+				pin.top_radius = 0.016
+				pin.bottom_radius = 0.016
+				pin.height = 0.025
+				pin.radial_segments = 10
+				_mesh_node(pin, _mats["metal"], hood_pos + Vector3(px2, py2 + 0.012, (pu - 0.5) * hL))
+				var loop := TorusMesh.new()
+				loop.inner_radius = 0.012
+				loop.outer_radius = 0.017
+				loop.rings = 10
+				loop.ring_segments = 6
+				_mesh_node(loop, _mats["metal"], hood_pos + Vector3(px2, py2 + 0.03, (pu - 0.5) * hL), Basis(Vector3.RIGHT, PI / 2.0))
 	# limpiaparabrisas (estacionados sobre la base del parabrisas; se mueven con la lluvia)
 	for px in [0.30, -0.34]:
 		var piv := Vector3(px, cowl_y + 0.012, cz + 0.02)
@@ -677,8 +731,8 @@ func _b_glass_hood() -> void:
 	qm.size = Vector2(0.20, 0.055)
 	_mesh_node(qm, _mats["mirror"], mpos, _face(mpos, aim))
 	_cyl(0.007, 0.007, maxf(0.04, rY - my - 0.02), Vector3(0.02, (rY + my) / 2.0, eZ + 0.45), "trim", Basis.IDENTITY, 6)
-	# espejos laterales
-	for sd in [1.0, -1.0]:
+	# espejos laterales (los autos con carrocería propia ya traen los suyos)
+	for sd in ([] if own else [1.0, -1.0]):
 		var sp := Vector3(sd * (hw + 0.21), eY - 0.1, cz - 0.02)
 		var hp := sp + (eye - sp).normalized() * -0.04
 		var cap := CapsuleMesh.new()
@@ -1212,7 +1266,7 @@ func update_crew(dt: float, p: CarSnapshot, in_handbrake: bool, time: float, rou
 	var g_pit: float = gaze_p.pitch_out() * gk
 	# el piloto mira el mundo: la cabeza compensa un poco la inclinación del cuerpo (mantiene el horizonte)
 	var brake_nod := clampf(-p.aLong * 0.004, -0.02, 0.05)
-	rig[0].pose({"hips": Vector3(xD + b.x * 0.4 + jx * jit * 0.3, eY - 0.70 + b.y * 0.3 + jy * jit * 0.5 + 0.003 * sin(time * 1.6), eZ - 0.11 + b.z * 0.3), "head": Vector3(xD + h.x, eY - 0.07 + h.y + brake_nod, eZ - 0.09 + h.z),
+	rig[0].pose({"hips": Vector3(xD + b.x * 0.4 + jx * jit * 0.3, hip_y + b.y * 0.3 + jy * jit * 0.5 + 0.003 * sin(time * 1.6), eZ - 0.11 + b.z * 0.3), "head": Vector3(xD + h.x, eY - 0.07 + h.y + brake_nod, eZ - 0.09 + h.z),
 		"roll": h.x * 1.2 - b.x * 0.5, "look": look + g_yaw, "look_y": -0.1 - brake_nod * 4.0 + g_pit, "hands": hands, "grip": 1.2 + 0.45 * maxf(sw, hw2),
 		"feet": [{"side": "Left", "pos": Vector3(xD + 0.13, fy + 0.13, eZ + 0.60)}, {"side": "Right", "pos": m0.right_foot(xD, fy, eZ)}]})
 	# pedales
@@ -1237,7 +1291,7 @@ func update_crew(dt: float, p: CarSnapshot, in_handbrake: bool, time: float, rou
 	co_h[1]["pole"] = Vector3(0.5, -0.6, -0.3)
 	var ck := CrewMotion.co_look(c1.t_look)
 	var look_c: float = -0.05 + (ck + float(gaze_c.yaw_out())) * (1.0 - read_w) * 0.8
-	rig[1].pose({"hips": Vector3(-xD + cb.x * 0.4, eY - 0.70 + cb.y * 0.3 + jy * jit * 0.4, eZ - 0.13 + cb.z * 0.3), "head": Vector3(-xD + ch.x * 0.9, eY - 0.09 + ch.y - 0.045 * read_w, eZ - 0.07 + ch.z + 0.05 * read_w),
+	rig[1].pose({"hips": Vector3(-xD + cb.x * 0.4, hip_y + cb.y * 0.3 + jy * jit * 0.4, eZ - 0.13 + cb.z * 0.3), "head": Vector3(-xD + ch.x * 0.9, eY - 0.09 + ch.y - 0.045 * read_w, eZ - 0.07 + ch.z + 0.05 * read_w),
 		"roll": ch.x * 1.1, "look": look_c, "look_y": -0.10 - 0.95 * read_w + float(gaze_c.pitch_out()) * (1.0 - read_w), "grip": 0.8, "hands": co_h,
 		"feet": [{"side": "Left", "pos": Vector3(-xD + 0.13, fy + 0.12, eZ + 0.55)}, {"side": "Right", "pos": Vector3(-xD - 0.13, fy + 0.12, eZ + 0.55)}]})
 
@@ -1325,7 +1379,7 @@ func camera_local(mode: String, p: CarSnapshot, time: float, rough: float) -> Di
 		roll = -H.x * 0.9
 	else:
 		# atrás de las butacas, más lejos: se ven los respaldos, las cabezas y el tablero
-		pos = Vector3(0.02 + nx * vib * 0.5, eY + minf(0.14, (float(C["roofY"]) - eY) * 0.55) + ny * vib * 0.5, eZ - rear_dist)
+		pos = Vector3(0.02 + nx * vib * 0.5, eY + minf(0.14, (float(C["roofY"]) - eY) * 0.55) + ny * vib * 0.5, maxf(eZ - rear_dist, back_z + 0.14))
 		look = Vector3(0.06, eY - 0.32, eZ + 2.4)
 	if OS.has_environment("CAB_POS"): # depuración: cámara libre dentro de la cabina  CAB_POS=x,y,z CAB_LOOK=x,y,z
 		var a := OS.get_environment("CAB_POS").split_floats(",")
