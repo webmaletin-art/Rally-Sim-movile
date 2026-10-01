@@ -6,6 +6,8 @@ extends Node3D
 
 const CircuitTrack := preload("res://game/track/circuit_track.gd")
 const RouteTrack := preload("res://game/track/route_track.gd")
+const DriftTrack := preload("res://game/track/drift_track.gd")
+const DriftSession := preload("res://game/drift_session.gd")
 const AIDriver := preload("res://game/ai/ai_driver.gd")
 const Car := preload("res://game/car/car.gd")
 const VehicleParams := preload("res://game/physics/vehicle_params.gd")
@@ -46,7 +48,7 @@ var is_loaded := false
 var cfg: Dictionary = {}
 var profile: RefCounted
 var menu_mode := false
-var session: Session
+var session # Session (carreras) o DriftSession
 var race_hud: Control
 var paused := false
 var done_t := 0.0
@@ -405,6 +407,9 @@ func _make_track() -> void:
 			track.outside_surf = 1.0
 		return
 	var m: Dictionary = track_maps[track_id]
+	if str(m.get("kind", "")) == "drift":
+		track = DriftTrack.new()
+		return
 	track = RouteTrack.new(str(m["route"]), str(m["mode"]), m.get("reverse", false) == true, 1.0 if menu_mode else 0.0)
 
 ## Suelo, camino, banquina y terreno de la pista (el terreno se calcula en hilos y aparece cuando está listo)
@@ -429,6 +434,11 @@ func _build_track_nodes() -> void:
 			adv_world_alt.cross = track.make_view()
 			adv_world_alt.setup(adv_alt, adv_world.quality)
 			track_root.add_child(adv_world_alt)
+		return
+	if track is DriftTrack:
+		track_root.add_child(track.build_world())
+		road_mat = track.road_mat
+		ground_mat = track.ground_mat
 		return
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
@@ -585,7 +595,7 @@ func _rebuild_trees() -> void:
 		trees_node.queue_free()
 	trees_node = Node3D.new()
 	world.add_child(trees_node)
-	if trees_n <= 0 or adv_mode:
+	if trees_n <= 0 or adv_mode or track is DriftTrack:
 		return
 	var trunk := CylinderMesh.new()
 	trunk.top_radius = 0.13
@@ -835,6 +845,9 @@ func _rebuild_cars() -> void:
 		if adv_mode:
 			sp = Adventure.start_pose(track, i, cfg)
 		car.place(sp[0], sp[1], sp[2])
+		if OS.has_environment("DR_POS") and i == 0: # prueba: DR_POS=x,z,yaw (grados)
+			var dp := OS.get_environment("DR_POS").split_floats(",")
+			car.place(dp[0], dp[1], deg_to_rad(dp[2]))
 		car.restart_history(sim_t)
 		world.add_child(car.visual)
 		if no_body:
@@ -856,6 +869,8 @@ func _rebuild_cars() -> void:
 			cam_rig.set_preset(cam_index)
 			was_inside = false
 			_load_cabin_cfg()
+		if track is DriftTrack:
+			car.solid = true
 		if wall_on and route:
 			car.wall = wall_dist()
 			if i == 0:
@@ -887,6 +902,18 @@ func _start_session() -> void:
 		adv = Adventure.new()
 		add_child(adv)
 		adv.setup(self)
+		return
+	if menu_mode and track is DriftTrack:
+		session = DriftSession.new(track, cfg, cars.size())
+		session.names[0] = rival_info[0]["name"]
+		(track as DriftTrack).cones.reset()
+		if OS.get_cmdline_user_args().has("--finishtest"):
+			session.limit = 6.0 # prueba: termina a los 6 s
+		session.beep.connect(_on_beep)
+		session.go.connect(_on_go)
+		session.player_finished.connect(_on_player_finished)
+		if race_hud != null:
+			race_hud.setup(session, cfg, rival_info)
 		return
 	if not menu_mode or not (track is RouteTrack):
 		return
@@ -1140,6 +1167,12 @@ func _change_track(id: String) -> void:
 ## Sesión: cuenta regresiva, vueltas, posiciones y fin. Después de la meta el auto frena solo y a los 2,5 s sale el resultado.
 func _tick_session(dt: float) -> void:
 	session.update(dt, cars)
+	if track is DriftTrack:
+		var cf = (track as DriftTrack).cones
+		cf.update(dt, cars)
+		if cf.new_hits > 0:
+			session.on_cones(cf.new_hits)
+			cf.new_hits = 0
 	if session.state == "run" and str(cfg.get("type")) == "race":
 		# goma elástica suave: nadie se escapa demasiado
 		for i in range(1, cars.size()):
@@ -1170,6 +1203,8 @@ func _make_result() -> Dictionary:
 			r["value"] = float(r["pos"])
 		"trap":
 			r["value"] = roundf(session.trap_kmh)
+		"drift":
+			r["value"] = roundf(session.total)
 		_:
 			r["value"] = session.finish_time[0]
 	for id in session.standings(n):
@@ -1578,6 +1613,8 @@ func _step_physics(dt: float) -> void:
 		if c.wall_hit > 0.0:
 			if c.is_player:
 				pl_impact = maxf(pl_impact, c.wall_hit * 0.55)
+				if session != null and track is DriftTrack:
+					session.on_wall(c.wall_hit)
 				if adv != null:
 					adv.on_hit(c.wall_hit, "wall")
 			c.wall_hit = 0.0

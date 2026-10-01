@@ -28,6 +28,7 @@ func _init() -> void:
 	check("premio final oro", Rewards.reward_for(d7, 3, debut), {"cr": 5600, "xp": 1306})
 	check("d1 jugable", Rewards.playable(d1), true)
 	check("d3 (estacionar) no jugable", Rewards.playable(Rewards.event_by_id("d3")), false)
-	check("estrellas copa nacional", Rewards.stars_needed(Rewards.tier_by_id("nacional")), 8)
+	check("d5 (drift en la plaza) jugable", Rewards.playable(Rewards.event_by_id("d5")), true)
+	check("estrellas copa nacional (5 eventos jugables en la copa debut)", Rewards.stars_needed(Rewards.tier_by_id("nacional")), 10)
 	print("FALLAS: ", fails)
 	quit(1 if fails > 0 else 0)

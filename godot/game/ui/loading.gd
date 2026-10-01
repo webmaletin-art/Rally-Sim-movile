@@ -150,7 +150,7 @@ func _info_text() -> String:
 		lines.append("%.1f km hasta la próxima estación" % (AdvRoute.get_route().stage_length(int(cfg.get("stage", 0))) / 1000.0))
 		lines.append("Modo aventura · simulación total con un poco de ayuda")
 		return "\n".join(lines)
-	var typ: String = {"race": "Carrera", "timetrial": "Contrarreloj", "trap": "Radar", "free": "Prueba libre"}.get(str(cfg.get("type", "race")), "Carrera")
+	var typ: String = {"race": "Carrera", "timetrial": "Contrarreloj", "trap": "Radar", "drift": "Drift", "free": "Prueba libre"}.get(str(cfg.get("type", "race")), "Carrera")
 	var l := "%s" % typ
 	if int(cfg.get("laps", 1)) > 1 and not (cfg.get("seg") is Array):
 		l += " · %d vueltas" % int(cfg["laps"])

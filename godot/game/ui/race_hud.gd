@@ -21,6 +21,7 @@ var pos_l: Label
 var lap_l: Label
 var time_l: Label
 var sub_l: Label
+var drift_l: Label # puntos del derrape en curso (grande, arriba al centro)
 var big_l: Label
 var toast_l: Label
 var tick := 0.0
@@ -71,6 +72,13 @@ func _ready() -> void:
 	big_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	big_l.position.y = -40
 	add_child(big_l)
+	drift_l = Kit.label("", 54, Color(0.55, 0.85, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
+	drift_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	drift_l.add_theme_constant_override("outline_size", 10)
+	drift_l.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	drift_l.offset_top = 56
+	drift_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(drift_l)
 	toast_l = Kit.label("", 26, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	toast_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
 	toast_l.add_theme_constant_override("outline_size", 8)
@@ -121,6 +129,26 @@ class MiniMap extends Control:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		queue_redraw()
 
+	## Pistas sin recorrido (plaza de drift): se dibujan las calles como polilíneas y un recuadro
+	var lines: Array = []
+	func setup_lines(polys: Array, bounds: Rect2, colors_in: Array) -> void:
+		colors = colors_in
+		lines.clear()
+		var sz := bounds.size
+		var m := 8.0
+		scale_k = minf((box.x - 2 * m) / maxf(sz.x, 1.0), (box.y - 2 * m) / maxf(sz.y, 1.0))
+		minv = Vector2(bounds.position.x, -bounds.end.y) - (box - sz * scale_k) * 0.5 / scale_k
+		for pl in polys:
+			var q := PackedVector2Array()
+			for p in (pl as PackedVector2Array):
+				q.append((Vector2(p.x, -p.y) - minv) * scale_k)
+			lines.append(q)
+		pts = PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
+		custom_minimum_size = box
+		size = box
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		queue_redraw()
+
 	func set_cars(list: Array) -> void:
 		cars = list
 		queue_redraw()
@@ -135,11 +163,17 @@ class MiniMap extends Control:
 		draw_rect(Rect2(Vector2.ZERO, box), Color(1, 1, 1, 0.18), false, 1.5)
 		var loop := pts.duplicate()
 		loop.append(pts[0])
-		draw_polyline(loop, Color(1, 1, 1, 0.28), 5.0, true)
-		draw_polyline(loop, Color(0.55, 0.6, 0.68, 0.9), 2.5, true)
+		if not lines.is_empty():
+			for q in lines:
+				draw_polyline(q, Color(1, 1, 1, 0.28), 5.0, true)
+				draw_polyline(q, Color(0.55, 0.6, 0.68, 0.9), 2.5, true)
+		else:
+			draw_polyline(loop, Color(1, 1, 1, 0.28), 5.0, true)
+			draw_polyline(loop, Color(0.55, 0.6, 0.68, 0.9), 2.5, true)
 		if seg_a >= 0 and seg_b > seg_a:
 			draw_polyline(pts.slice(seg_a, mini(seg_b + 1, pts.size())), Color(1.0, 0.55, 0.15), 3.5, true)
-		draw_circle(pts[maxi(seg_a, 0)], 4.0, Color(0.3, 0.9, 0.5))
+		if lines.is_empty():
+			draw_circle(pts[maxi(seg_a, 0)], 4.0, Color(0.3, 0.9, 0.5))
 		for i in range(cars.size() - 1, -1, -1):
 			var c: Array = cars[i]
 			var pos := _to_map(float(c[0]), float(c[1]))
@@ -159,7 +193,11 @@ func setup(s: RefCounted, c: Dictionary, r: Array) -> void:
 	var cols: Array = []
 	for x in r:
 		cols.append(x["color"])
-	minimap.setup_track(s.track, c.get("seg"), cols)
+	if t == "drift":
+		var polys: Array = (s.track.map_lines as Array)
+		minimap.setup_lines(polys, s.track.map_bounds, cols)
+	else:
+		minimap.setup_track(s.track, c.get("seg"), cols)
 
 func big(t: String, color := Color.WHITE) -> void:
 	big_l.text = t
@@ -193,8 +231,17 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 	var t := str(cfg.get("type", "race"))
 	if t == "race":
 		pos_l.text = "%d/%d" % [s.position_of(0, n_cars), n_cars]
-	if t == "free":
+	if t == "drift":
+		time_l.text = Kit.fmt_time(s.remaining()) if s.state != "countdown" else Kit.fmt_time(s.limit)
+		pos_l.visible = true
+		pos_l.text = "x%d" % s.mult
+		lap_l.text = tr("TOTAL %s") % _pts(s.total)
+		drift_l.text = ("%s  ·  %d°" % [_pts(s.cur), int(s.angle_deg)]) if (s.cur > 0.0 and s.state == "run") else ""
+		drift_l.add_theme_color_override("font_color", [Color(0.55, 0.85, 1.0), Color(0.55, 0.85, 1.0), Color(1.0, 0.9, 0.4), Color(1.0, 0.7, 0.25), Color(1.0, 0.5, 0.2), Color(1.0, 0.35, 0.3)][clampi(s.mult, 0, 5)])
+	elif t == "free":
 		lap_l.text = "PRUEBA LIBRE · salí desde la pausa"
+	elif t == "drift":
+		pass
 	elif s.laps > 1:
 		lap_l.text = "VUELTA %d/%d" % [s.lap_of_player(), s.laps]
 	else:
@@ -216,6 +263,18 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 		toast_l.modulate.a = clampf(toast_t / 0.5, 0.0, 1.0)
 		if toast_t <= 0.0:
 			toast_l.text = ""
+
+static func _pts(v: float) -> String:
+	var n := int(roundf(v))
+	var txt := str(n)
+	var out := ""
+	var cnt := 0
+	for i in range(txt.length() - 1, -1, -1):
+		out = txt[i] + out
+		cnt += 1
+		if cnt % 3 == 0 and i > 0:
+			out = "." + out
+	return out + " pts"
 
 func _build_pause() -> void:
 	pause_box = Control.new()

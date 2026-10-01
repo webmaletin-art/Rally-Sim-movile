@@ -185,6 +185,8 @@ func _event(id: String) -> void:
 	top.add_child(side)
 	var res: Dictionary = m.profile.event_result(id)
 	var len_s := tr("%d vuelta(s)") % int(ev.get("laps", 1)) if not ev.has("seg") else tr("Tramo de ruta")
+	if str(ev["type"]) == "drift":
+		len_s = tr("%d segundos") % int(ev.get("time", 60))
 	var rows := [["Tipo", "%s %s" % [ti["icon"], ti["n"]]], ["Formato", len_s], ["Rivales", str(ev.get("ai", "—"))],
 		["Clima", tr(SKY_N.get(str(ev.get("sky", "day")), "-"))], ["Récord", _fmt_target(ev, float(res["best"])) if res.has("best") and res["best"] != null else "—"],
 		["Medalla", tr(MEDAL_N[int(res.get("medal", 0))])]]
@@ -239,6 +241,7 @@ func _quick() -> void:
 	for k in _maps():
 		if str(_maps()[k].get("kind", "")) == "route" and not _maps()[k].get("hidden", false) and not _maps()[k].get("trench", false):
 			route_maps.append(k)
+	route_maps.append("drift") # la plaza de drift
 	var pv_box := VBoxContainer.new()
 	m.body.add_child(pv_box)
 	pv_box.add_child(preview(str(quick["map"]), 128.0))
@@ -269,6 +272,9 @@ func _start_quick() -> void:
 	var pid: String = m.profile.current_id()
 	var pi := _player_pi()
 	var q := quick
-	var cfg := {"type": q["mode"], "track": q["map"], "laps": int(q["laps"]), "ai": int(q["ai"]) if q["mode"] == "race" else 0, "sky": q["sky"], "maxPI": maxi(560, pi + 20),
+	var is_drift := str(q["map"]) == "drift"
+	var cfg := {"type": "drift" if is_drift else q["mode"], "track": q["map"], "laps": int(q["laps"]), "ai": int(q["ai"]) if (q["mode"] == "race" and not is_drift) else 0, "sky": q["sky"], "maxPI": maxi(560, pi + 20),
 		"skill": 0.9 * float(q["skill"]), "quick": true, "seed": 7, "car": pid, "state": m.profile.car(), "back": "quick"}
+	if is_drift:
+		cfg["time"] = 90
 	m.launch(cfg)
