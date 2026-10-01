@@ -37,6 +37,7 @@ var career: RefCounted
 var garage: RefCounted
 var frames := 0
 var showcar := "" # prueba: muestra este auto en la sala
+var autotest := "" # prueba: arranca directo una prueba libre de este auto
 var autorace := "" # prueba: arranca directo este evento (p. ej. d2)
 var shot_path := ""
 var shot_frames := 0
@@ -63,6 +64,8 @@ func _ready() -> void:
 			start_screen = a.substr(9)
 		elif a.begins_with("--showcar="):
 			showcar = a.substr(10)
+		elif a.begins_with("--autotest="):
+			autotest = a.substr(11)
 		elif a.begins_with("--autorace="):
 			autorace = a.substr(11)
 	if (profile.d["owned"] as Dictionary).is_empty():
@@ -91,14 +94,21 @@ func _ready() -> void:
 		refresh_car(showcar, profile.new_car_state(showcar))
 	# el premio del día, una sola vez por día
 	var daily: Dictionary = profile.daily_check()
+	if autotest != "" and not app.autorace_used:
+		app.autorace_used = true
+		launch({"type": "free", "track": "lake", "ai": 0, "sky": "day", "car": autotest, "state": profile.new_car_state(autotest), "testCar": true, "back": "dealer", "seed": 7}, false)
+		return
 	if autorace != "" and not app.autorace_used:
 		app.autorace_used = true
 		var ev: Dictionary = Rewards.event_by_id(autorace)
 		var tier: Dictionary = Rewards.tier_by_id(str(ev["tier"]))
-		career._start_event(ev, tier)
+		career._start_event(ev, tier, false)
 		return
 	var parts := start_screen.split(":")
-	go(parts[0], parts[1] if parts.size() > 1 else null)
+	var arg0 = parts[1] if parts.size() > 1 else null
+	if parts[0] == "level":
+		arg0 = {"type": "race", "track": "lake", "ai": 3, "car": profile.current_id(), "state": profile.car()} # solo para probar la pantalla
+	go(parts[0], arg0)
 	if not daily.is_empty():
 		toast("🎁 Premio diario: +%s (racha %d)" % [Kit.fmt_cr(float(daily["amount"])), int(daily["streak"])])
 		sfx.play("coin")
@@ -203,7 +213,7 @@ func go(name: String, arg = null, push := true) -> void:
 		panel.queue_free()
 	panel = Kit.panel(14)
 	panel.set_anchors_preset(Control.PRESET_LEFT_WIDE)
-	var wide := name in ["career", "events", "event", "workshop", "tune", "garage", "dealer", "results", "goals", "options", "quick", "paint", "fx"]
+	var wide := name in ["career", "events", "event", "workshop", "tune", "garage", "dealer", "results", "goals", "options", "quick", "paint", "fx", "level"]
 	panel.anchor_right = 0.52 if wide else 0.40
 	showroom.view_shift = 0.75 if wide else 0.5
 	panel.offset_left = 14
@@ -235,11 +245,64 @@ func go(name: String, arg = null, push := true) -> void:
 		"home": _home()
 		"options": opts.options_page(body, arg)
 		"fx": opts.fx_page(body, col_box)
+		"level": _level_screen(arg)
 		"goals": _goals()
 		"results": _results()
 		"career", "events", "event", "quick": career.build(name, arg)
 		"garage", "dealer", "workshop", "tune", "paint": garage.build(name, arg)
 		_: _home()
+
+## Antes de largar una carrera se elige el nivel de simulación (arcade / intermedio / simulador total / personalizado)
+func launch(cfg: Dictionary, ask := true) -> void:
+	if ask:
+		go("level", cfg)
+	else:
+		cfg["sim"] = str(profile.setting("simLevel"))
+		app.start_race(cfg)
+
+const SIM_LEVELS := [["arcade", "ARCADE", "ABS, tracción y estabilidad altas y ayuda de trazada fuerte: el auto perdona casi todo."],
+	["mid", "INTERMEDIO", "Ayudas medias y ayuda de trazada suave: un manejo equilibrado."],
+	["pro", "SIMULADOR TOTAL", "Sin ayudas: sin ABS, sin control de tracción, sin estabilidad ni ayuda de trazada. Manejás vos."],
+	["custom", "PERSONALIZADO", "Elegís cada ayuda a gusto."]]
+
+func _level_screen(cfg) -> void:
+	title_l.text = "NIVEL DE SIMULACIÓN"
+	var cur := str(profile.setting("simLevel"))
+	var play := Kit.button("▶ JUGAR", func() -> void:
+		sfx.play("click")
+		var c: Dictionary = cfg
+		c["sim"] = str(profile.setting("simLevel"))
+		app.start_race(c), true, 28, Vector2(0, 64))
+	body.add_child(play)
+	for lv in SIM_LEVELS:
+		var id: String = lv[0]
+		var b := Kit.button("", Callable(), cur == id, 20, Vector2(0, 76))
+		var v := Kit.vbox(0)
+		v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		v.offset_left = 14
+		v.offset_right = -14
+		v.alignment = BoxContainer.ALIGNMENT_CENTER
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var dark := Color(0.05, 0.06, 0.08)
+		v.add_child(Kit.label(str(lv[1]) + ("  ✔" if cur == id else ""), 22, dark if cur == id else Kit.TEXT))
+		var dl := Kit.label(str(lv[2]), 14, dark if cur == id else Kit.MUTED)
+		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		dl.custom_minimum_size.x = 340
+		v.add_child(dl)
+		b.add_child(v)
+		b.pressed.connect(func() -> void:
+			if Kit.scroll_moved:
+				Kit.scroll_moved = false
+				return
+			profile.set_setting("simLevel", id)
+			sfx.play("click")
+			go("level", cfg, false))
+		body.add_child(b)
+	if cur == "custom":
+		body.add_child(Kit.label("AYUDAS", 16, Kit.MUTED))
+		var title_keep := title_l.text
+		opts.options_page(body, "fisica")
+		title_l.text = title_keep
 
 func back() -> void:
 	sfx.play("click")

@@ -43,7 +43,7 @@ func _cat_button(text: String, sub: String, cb: Callable) -> Button:
 ## [categoría, clave, título, valores, etiquetas]
 const OPTION_CATS := [["graficos", "🖥 Gráficos", "calidad general, resolución, árboles, sombras"], ["texturas", "🧱 Texturas", "calidad automática o fija"],
 	["fisica", "⚙ Física y ayudas", "ABS, tracción, estabilidad"], ["sonido", "🔊 Sonido", "volúmenes y voz del copiloto"],
-	["manejo", "🎮 Manejo", "caja, dirección, inclinación"], ["camara", "🎥 Cámara", "cámara al empezar"], ["efectos", "✨ Efectos", "Lente Rally y efectos 2.0 (hasta 3 a la vez)"]]
+	["manejo", "🎮 Manejo", "caja, dirección, inclinación, acelerómetro"], ["controles", "🕹 Controles en pantalla", "tamaño del volante y del pedal"], ["camara", "🎥 Cámara", "cámara al empezar"], ["efectos", "✨ Efectos", "Lente Rally y efectos 2.0 (hasta 3 a la vez)"]]
 const OPTION_LIST := [
 	["graficos", "quality", "Calidad general", ["auto", "low", "mid", "high"], ["Automática", "Baja", "Media", "Alta"]],
 	["graficos", "res", "Resolución del 3D", [0, 0.35, 0.5, 0.7, 1.0], ["Automática", "35%", "50%", "70%", "100%"]],
@@ -53,6 +53,7 @@ const OPTION_LIST := [
 	["fisica", "abs", "ABS", [false, true], ["No", "Sí"]],
 	["fisica", "tc", "Control de tracción", [0, 25, 50, 75, 100], ["Apagado", "25%", "50%", "75%", "100%"]],
 	["fisica", "stab", "Estabilidad", [0, 30, 60, 100], ["Apagada", "Baja", "Media", "Alta"]],
+	["fisica", "lineAssist", "Ayuda de trazada (el auto te ayuda a doblar)", [0, 25, 50, 75, 100], ["Sin ayuda", "Suave", "Media", "Fuerte", "Máxima"]],
 	["sonido", "volume", "Volumen general", [0, 30, 60, 80, 100], ["Silencio", "Bajo", "Medio", "Alto", "Máximo"]],
 	["sonido", "volEngine", "Motor", [0, 50, 75, 100, 130], ["Silencio", "Bajo", "Medio", "Normal", "Fuerte"]],
 	["sonido", "volSurf", "Gomas y tierra", [0, 15, 30, 50, 80], ["Silencio", "Muy bajo", "Normal", "Fuerte", "Muy fuerte"]],
@@ -62,10 +63,12 @@ const OPTION_LIST := [
 	["sonido", "copilot", "Voz del copiloto (campeonato)", [false, true], ["No", "Sí"]],
 	["manejo", "gearbox", "Caja de cambios", ["auto", "manual"], ["Automática", "Manual"]],
 	["manejo", "steerMode", "Dirección", ["wheel", "slider"], ["Volante", "Barra"]],
-	["manejo", "gyro", "Volante con inclinación", [false, true], ["No", "Sí"]],
-	["manejo", "gyroSens", "Sensibilidad de la inclinación", [25, 50, 75, 100], ["Baja", "Media", "Alta", "Muy alta"]],
 	["manejo", "units", "Unidades", ["kmh", "mph"], ["km/h", "mph"]],
 	["manejo", "vibrate", "Vibración", [false, true], ["No", "Sí"]],
+	["manejo", "gyro", "Volante con inclinación", [false, true], ["No", "Sí"]],
+	["manejo", "gyroSens", "Sensibilidad de la inclinación", [25, 50, 75, 100], ["Baja", "Media", "Alta", "Muy alta"]],
+	["controles", "wheelSize", "Tamaño del volante", [70, 85, 100, 120, 140, 160], ["70%", "85%", "100%", "120%", "140%", "160%"]],
+	["controles", "pedalSize", "Tamaño del pedal", [70, 85, 100, 120, 140, 160], ["70%", "85%", "100%", "120%", "140%", "160%"]],
 	["camara", "camera", "Cámara al empezar", [0, 1, 2, 3, 4, 6, 7, 8], ["Casco", "Seguimiento", "Cerca", "Lejos", "Aérea", "Trasera (dos pilotos)", "Capó", "Paragolpes"]],
 ]
 
@@ -109,14 +112,85 @@ func options_page(body: VBoxContainer, cat = null) -> void:
 	if cat == "graficos":
 		_particles_row(body)
 	if cat == "manejo":
-		body.add_child(Kit.button("📐 Calibrar / recalibrar el acelerómetro", func() -> void:
-			sfx.play("click")
-			changed.emit("recal"), false, 19, Vector2(0, 52)))
+		_accel_block(body)
 	if cat == "graficos":
 		var hint := Kit.label("La calidad automática ajusta la resolución sola según lo que aguante el teléfono.", 15, Kit.MUTED)
 		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		hint.custom_minimum_size.x = 380
 		body.add_child(hint)
+
+## Lectura en vivo del acelerómetro (barras de los tres ejes + cuánto gira el volante) y botón de calibrar, sin salir de la pantalla
+class AccelMeter extends Control:
+	var ref_angle := INF
+	var sens_cb: Callable
+	var zero_t := 0.0
+
+	func _ready() -> void:
+		custom_minimum_size = Vector2(0, 150)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func calibrate() -> void:
+		var g := Input.get_accelerometer()
+		ref_angle = rad_to_deg(atan2(g.y, g.x))
+
+	func _process(dt: float) -> void:
+		var g := Input.get_accelerometer()
+		zero_t = zero_t + dt if g.length() < 0.01 else 0.0
+		queue_redraw()
+
+	func _draw() -> void:
+		var g := Input.get_accelerometer()
+		var font := ThemeDB.fallback_font
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.07, 0.1, 0.9), true)
+		var names := ["X", "Y", "Z"]
+		var vals := [g.x, g.y, g.z]
+		var colors := [Color(1, 0.4, 0.4), Color(0.4, 1, 0.5), Color(0.45, 0.7, 1)]
+		var bw := size.x - 70.0
+		for i in 3:
+			var y := 14.0 + float(i) * 26.0
+			draw_string(font, Vector2(8, y + 12), names[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.8, 0.85, 0.9))
+			var cx := 34.0 + bw * 0.5
+			draw_rect(Rect2(34, y, bw, 16), Color(1, 1, 1, 0.07), true)
+			var f := clampf(float(vals[i]) / 12.0, -1.0, 1.0)
+			draw_rect(Rect2(cx if f >= 0.0 else cx + f * bw * 0.5, y, absf(f) * bw * 0.5, 16), colors[i], true)
+			draw_line(Vector2(cx, y), Vector2(cx, y + 16), Color(1, 1, 1, 0.5), 1.5)
+			draw_string(font, Vector2(size.x - 30, y + 13), "%.1f" % float(vals[i]), HORIZONTAL_ALIGNMENT_RIGHT, 28, 13, Color(0.8, 0.85, 0.9))
+		# volante: el ángulo de la gravedad en el plano de la pantalla respecto de la calibración
+		var y2 := 96.0
+		draw_string(font, Vector2(8, y2 + 14), "Giro", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 0.82, 0.25))
+		var sens := float(sens_cb.call()) if sens_cb.is_valid() else 50.0
+		var full := 55.0 - sens * 0.40
+		var steer := 0.0
+		if Vector2(g.x, g.y).length() >= 3.0:
+			if ref_angle == INF:
+				calibrate()
+			var d := rad_to_deg(atan2(g.y, g.x)) - ref_angle
+			d = wrapf(d, -180.0, 180.0)
+			steer = clampf(d / full, -1.0, 1.0)
+		var cx2 := 34.0 + bw * 0.5
+		draw_rect(Rect2(34, y2, bw, 22), Color(1, 1, 1, 0.07), true)
+		draw_rect(Rect2(cx2 if steer >= 0.0 else cx2 + steer * bw * 0.5, y2, absf(steer) * bw * 0.5, 22), Color(1.0, 0.48, 0.1), true)
+		draw_line(Vector2(cx2, y2), Vector2(cx2, y2 + 22), Color(1, 1, 1, 0.6), 2.0)
+		draw_string(font, Vector2(size.x - 40, y2 + 17), "%d%%" % int(round(steer * 100.0)), HORIZONTAL_ALIGNMENT_RIGHT, 38, 15, Color(1.0, 0.82, 0.25))
+		if zero_t > 1.0:
+			draw_string(font, Vector2(8, size.y - 8), "Sin lectura del acelerómetro (necesita la versión nueva instalada)", HORIZONTAL_ALIGNMENT_LEFT, size.x - 16, 13, Color(1, 0.4, 0.4))
+
+func _accel_block(body: VBoxContainer) -> void:
+	var hl := Kit.label("ACELERÓMETRO: inclinar el teléfono como un volante", 16, Kit.MUTED)
+	hl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hl.custom_minimum_size.x = 340
+	body.add_child(hl)
+	var meter := AccelMeter.new()
+	meter.sens_cb = func() -> float: return float(profile.setting("gyroSens"))
+	body.add_child(meter)
+	body.add_child(Kit.button("📐 CALIBRAR (sostené el teléfono como para jugar)", func() -> void:
+		sfx.play("buy")
+		meter.calibrate()
+		changed.emit("recal"), true, 18, Vector2(0, 54)))
+	var tip := Kit.label("Activá «Volante con inclinación» arriba; la barra de Giro muestra cuánto doblás. «Sensibilidad» cambia cuánto hay que inclinar.", 13, Kit.MUTED)
+	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tip.custom_minimum_size.x = 340
+	body.add_child(tip)
 
 ## Partículas (polvo, humo de las gomas, rocío, piedritas): barra de 0 a 10 (0 = sin partículas) o AUTO
 func _particles_row(body: VBoxContainer) -> void:
@@ -226,8 +300,8 @@ func fx_page(body: VBoxContainer, col_box: VBoxContainer) -> void:
 		sfx.play("click")
 		changed.emit("fx"))
 	body.add_child(lb)
-	var combo := Kit.button("🎬 Combo realista (oclusión + tonos de cine + grano)", func() -> void:
-		profile.set_setting("fx", [23, 25, 28])
+	var combo := Kit.button("🎬 Realista (oclusión + cromática + bodycam)", func() -> void:
+		profile.set_setting("fx", [23, 24, 14])
 		profile.set_setting("fxOn", [true, true, true])
 		profile.set_setting("fxAmt", [1.0, 1.0, 1.0])
 		sfx.play("buy")
