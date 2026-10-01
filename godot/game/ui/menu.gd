@@ -38,6 +38,7 @@ var garage: RefCounted
 var frames := 0
 var showcar := "" # prueba: muestra este auto en la sala
 var autotest := "" # prueba: arranca directo una prueba libre de este auto
+var sky_arg := "" # prueba: fuerza el clima de la carrera (day, overcast, sunset, dusk, rain)
 var autorace := "" # prueba: arranca directo este evento (p. ej. d2)
 var shot_path := ""
 var shot_frames := 0
@@ -66,6 +67,8 @@ func _ready() -> void:
 			showcar = a.substr(10)
 		elif a.begins_with("--autotest="):
 			autotest = a.substr(11)
+		elif a.begins_with("--sky="):
+			sky_arg = a.substr(6)
 		elif a.begins_with("--autorace="):
 			autorace = a.substr(11)
 	if (profile.d["owned"] as Dictionary).is_empty():
@@ -102,6 +105,9 @@ func _ready() -> void:
 		app.autorace_used = true
 		var ev: Dictionary = Rewards.event_by_id(autorace)
 		var tier: Dictionary = Rewards.tier_by_id(str(ev["tier"]))
+		if sky_arg != "":
+			ev = ev.duplicate()
+			ev["sky"] = sky_arg
 		career._start_event(ev, tier, false)
 		return
 	var parts := start_screen.split(":")

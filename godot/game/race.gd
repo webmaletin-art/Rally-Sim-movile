@@ -29,9 +29,13 @@ const UiSfx := preload("res://game/audio/ui_sfx.gd")
 ## La carrera terminó (result: value, medal, position, time, etc.; lo arma _make_result) o se pidió salir al menú
 signal finished(result: Dictionary)
 signal exit_requested(back: String)
+## Carga del mapa por etapas (la pantalla de carga muestra el avance); «loaded» avisa que ya se puede largar
+signal load_progress(frac: float, text: String)
+signal loaded
 
 ## Configuración de la carrera (la arma el menú): car, state, track, weather, ai, laps, seg, type, event, tier…
 ## Vacía = escena de pruebas (la de los argumentos --shot, --bench, etc.)
+var is_loaded := false
 var cfg: Dictionary = {}
 var profile: RefCounted
 var menu_mode := false
@@ -170,11 +174,18 @@ func _ready() -> void:
 		cars_n = 1 + int(cfg.get("ai", 0))
 		trees_n = 3000
 		wall_on = true
-		cam_index = int(profile.setting("camera")) if profile != null else 1
+		if cam_mode == "":
+			cam_index = int(profile.setting("camera")) if profile != null else 1
 		manual_gearbox = profile != null and str(profile.setting("gearbox")) == "manual"
+	load_progress.emit(0.04, "Armando el recorrido…")
+	await get_tree().process_frame
 	_make_track()
+	load_progress.emit(0.16, "Construyendo camino, banquinas y guardarraíl…")
+	await get_tree().process_frame
 	_setup_viewport()
 	_build_world()
+	load_progress.emit(0.34, "Preparando los controles…")
+	await get_tree().process_frame
 	var layer := CanvasLayer.new()
 	layer.layer = 5
 	add_child(layer)
@@ -198,6 +209,8 @@ func _ready() -> void:
 	hud.bench_pressed.connect(_bench_start)
 	hud.copy_pressed.connect(_copy_report)
 	controls.camera_pressed.connect(_next_camera)
+	load_progress.emit(0.44, "Clima y efectos…")
+	await get_tree().process_frame
 	fx = Effects.new()
 	world.add_child(fx)
 	fx.setup(track)
@@ -238,8 +251,22 @@ func _ready() -> void:
 		while fa.size() < 3:
 			fa.append(0)
 		lens.fx = fa
+	load_progress.emit(0.56, "Plantando el bosque…")
+	await get_tree().process_frame
 	_rebuild_trees()
+	load_progress.emit(0.70, "Armando los autos y los rivales…")
+	await get_tree().process_frame
 	_rebuild_cars()
+	load_progress.emit(0.80, "Armando el terreno…")
+	await get_tree().process_frame
+	# el terreno se calcula en hilos: se espera a que termine (sin congelar la pantalla) y se agrega
+	while terrain_task != -1 and not WorkerThreadPool.is_group_task_completed(terrain_task):
+		await get_tree().process_frame
+	_check_terrain()
+	load_progress.emit(0.92, "Compilando efectos…")
+	# unos cuadros con todo ya dibujado (tapados por la pantalla de carga): ahí se compilan los shaders y no hay tirones al largar
+	for i in 6:
+		await get_tree().process_frame
 	if OS.get_cmdline_user_args().has("--hidecars"):
 		for c in cars:
 			c.visual.visible = false
@@ -250,6 +277,13 @@ func _ready() -> void:
 			race_hud.visible = false
 	if autobench:
 		_bench_start()
+	is_loaded = true
+	load_progress.emit(1.0, "Listo")
+	loaded_emit_deferred()
+
+func loaded_emit_deferred() -> void:
+	await get_tree().process_frame
+	loaded.emit()
 
 ## En celulares de gama media dibujar a la resolución nativa (2400x1080) es lo que más pesa: el mundo 3D se dibuja en un
 ## SubViewport a una fracción de la pantalla y se estira; el HUD se dibuja aparte, a resolución completa.
@@ -704,6 +738,7 @@ func _rebuild_cars() -> void:
 			cockpit.position = Vector3(0, -Vp.comHeight + Vp.rideOffset, 0)
 			car.visual.add_child(cockpit)
 			cockpit.set_engine(Vp.maxRpm, Vp.shiftUpRpm, Vp.nitroCap)
+			cockpit.raining = weather_name == "lluvia"
 			cockpit.set_inside(false, false)
 			cam_rig = CameraRig.new(cam, track)
 			cam_rig.visual = car.visual
@@ -1296,6 +1331,8 @@ func _on_option(key: String, value) -> void:
 		"weather":
 			weather.apply(str(value))
 			audio.rain(str(value) == "lluvia")
+			if cockpit != null:
+				cockpit.raining = str(value) == "lluvia"
 		"recal":
 			controls.recalibrate_gyro()
 			hud.show_toast("Acelerómetro calibrado: sostené el teléfono como para jugar")
@@ -1485,6 +1522,8 @@ func _step_car(i: int) -> void:
 		c.step_and_record(1.0 / 120.0, batch_t0 + float(k + 1) / 120.0)
 
 func _process(dt: float) -> void:
+	if not is_loaded:
+		return
 	var t0 := Time.get_ticks_usec()
 	_frame(dt)
 	script_ms = lerpf(script_ms, float(Time.get_ticks_usec() - t0) / 1000.0, 0.1)
