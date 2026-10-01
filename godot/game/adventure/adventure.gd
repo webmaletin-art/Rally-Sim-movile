@@ -145,11 +145,11 @@ func setup(race) -> void:
 	if OS.get_cmdline_user_args().has("--advdmg"):
 		st["damage"] = {"motor": 0.5, "dir": 0.4, "susp": 0.3} # prueba: auto golpeado
 		_dmg_dirty = true
-	view = track.make_view()
+	view = r.player_view()
 	s_start = float(track.cum[track.i_start])
 	s_end = float(track.cum[track.i_end])
-	for c in r.cars:
-		views.append(track.make_view())
+	for k in r.cars.size():
+		views.append(r.player_view() if k == 0 else track.make_view())
 		prog.append(0.0)
 	rival_ids.clear()
 	for i in range(1, r.cars.size()):
@@ -168,10 +168,12 @@ func setup(race) -> void:
 	r.controls.get_parent().add_child(hud)
 	r.controls.get_parent().move_child(hud, r.controls.get_index())
 	hud.choice.connect(_on_choice)
+	if OS.get_cmdline_user_args().has("--nohud"):
+		hud.visible = false
 	var cols: Array = []
 	for ri in r.rival_info:
 		cols.append(ri["color"])
-	hud.setup_map(track, cols)
+	hud.setup_map(track, cols, r.adv_alt)
 	if r.race_hud != null:
 		r.race_hud.minimap.visible = false
 		r.race_hud.top.visible = false
@@ -271,7 +273,8 @@ func _enter(s: String) -> void:
 			pl.driver = null
 			if r.auto_player:
 				# prueba: el auto del jugador lo maneja la IA
-				var ap := AIDriver.new(track.make_view(), pl.phys, {"skill": 0.95, "lane": 1.6})
+				var ap_track = r.adv_alt if (r.adv_alt != null and OS.get_cmdline_user_args().has("--advalt")) else track
+				var ap := AIDriver.new(ap_track.make_view(), pl.phys, {"skill": 0.95, "lane": 0.0})
 				var allp: Array = []
 				for c in r.cars:
 					allp.append(c.phys)
@@ -482,13 +485,16 @@ func tick(dt: float) -> void:
 	_update_hud(dt)
 	_update_tunnel_light(dt)
 
+## Avance de cada auto en metros del camino principal. Se mide lo que le falta hasta la estación (así, si el jugador toma
+## el ramal de una bifurcación, su avance se compara bien con el del rival que va por el principal).
 func _update_prog() -> void:
 	for i in r.cars.size():
 		var p = r.cars[i].snap
 		var v = views[i]
 		v.nearest(p.px, p.pz)
 		var s := float(v.cum[v.r_idx]) + float(v.r_t) * (float(v.cum[mini(v.r_idx + 1, v.n - 1)]) - float(v.cum[v.r_idx]))
-		prog[i] = s
+		var rem: float = float(v.cum[v.i_end]) - s
+		prog[i] = s_end - rem
 	var sp0 := sqrt(r.cars[0].snap.vx * r.cars[0].snap.vx + r.cars[0].snap.vz * r.cars[0].snap.vz)
 	if state == "race":
 		vmax = maxf(vmax, sp0 * 3.6)
@@ -611,6 +617,14 @@ func _check_end() -> void:
 			_enter("arrive")
 		elif prog[0] >= s_end - 30.0:
 			_enter("lost")
+
+## Posición del jugador para el mundo del ramal (en metros de esa variante)
+func alt_s() -> float:
+	var v = views[0]
+	var p = r.cars[0].snap
+	if int(v.variant) >= 0:
+		return float(v.cum[v.r_idx])
+	return prog[0]
 
 func _best_rival_prog() -> float:
 	var m := -1e9
@@ -750,7 +764,21 @@ func _shot(s: Dictionary) -> void:
 		r.cam_rig.set_preset(1) # que el habitáculo no se esconda (cámara de afuera)
 
 ## Devuelve true si la cámara la maneja la aventura este cuadro
+var _dbg_top := 0.0
 func camera(dt: float) -> bool:
+	if _dbg_top == 0.0:
+		_dbg_top = -1.0
+		for a in OS.get_cmdline_user_args():
+			if a.begins_with("--advtop="):
+				_dbg_top = float(a.substr(9)) # prueba: cámara desde arriba a esa altura
+	if _dbg_top > 0.0:
+		var sp = r.cars[0].snap
+		r.cam.position = Vector3(sp.px, sp.py + _dbg_top, sp.pz) + Vector3(sin(sp.yaw), 0, cos(sp.yaw)) * (_dbg_top * 0.6)
+		r.cam.look_at(Vector3(sp.px, sp.py, sp.pz) + Vector3(sin(sp.yaw), 0, cos(sp.yaw)) * (_dbg_top * 0.61), Vector3(sin(sp.yaw), 0, cos(sp.yaw)))
+		r.cam.fov = 70.0
+		r.cam.far = 3000.0
+		r.env.fog_enabled = false
+		return true
 	if shot.is_empty() or str(shot.get("kind", "")) == "rig":
 		return false
 	shot_t += dt

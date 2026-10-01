@@ -40,16 +40,26 @@ var i_start := 0 # surtidores de la estación de largada
 var i_end := 0 # surtidores de la estación de llegada
 var stage_len := 0.0
 
-func _init(p_stage := -1) -> void:
+var variant := -1 # −1 camino principal · k = toma el ramal de la bifurcación k
+var forks: Array = [] # bifurcaciones de la etapa {fork, split, join, m} (índices del camino principal)
+var split := -1 # en una variante con ramal: dónde se separa y dónde se une (índices de esta variante)
+var join := -1
+var other # vista de la otra variante (para pasar de un camino al otro en la bifurcación)
+var allow_switch := false # solo la vista del auto del jugador (y su cámara) cambian de camino
+var zone := Vector2i(-1, -1) # muestras donde se revisa si el auto está en el otro camino
+var mside_raw := PackedByteArray()
+
+func _init(p_stage := -1, p_variant := -1) -> void:
 	if p_stage < 0:
 		return
 	stage = p_stage
+	variant = p_variant
 	open = true
 	center_line = true
 	mode = "asphalt"
 	half_width = 4.0
 	shoulder = 1.4
-	route_id = "adv%d" % p_stage
+	route_id = "adv%d_%d" % [p_stage, p_variant]
 	_build_stage()
 
 func _copy_view(v: Object) -> void:
@@ -79,51 +89,83 @@ func _copy_view(v: Object) -> void:
 	v.i_end = i_end
 	v.stage_len = stage_len
 	v.center_line = center_line
+	v.variant = variant
+	v.forks = forks
+	v.split = split
+	v.join = join
+	v.zone = zone
+
+const SWAP_FIELDS := ["samples", "tangents", "laterals", "cum", "cy", "length", "n", "hwa", "laya", "shl", "surfa", "biomea", "flaga", "cropa",
+	"towna", "msidea", "bw", "w_bridge", "w_tunnel", "w_under", "w_lay", "under_top", "clear_l", "clear_r", "curv", "events", "i_end", "variant",
+	"split", "join", "zone", "surf_mu", "wall_l", "wall_r", "prof_cache", "hint", "min_xz", "max_xz", "route_id"]
+
+## Vista que puede cambiar de camino en las bifurcaciones (la del jugador): o es la vista de la otra variante
+func link_other(o) -> void:
+	other = o
+	allow_switch = true
+
+## Búsqueda del tramo más cercano; en la zona de una bifurcación también mira el otro camino y, si el auto está más
+## cerca de ese, la vista pasa a ser la de ese camino (todos los datos cambian juntos).
+func nearest(x: float, z: float) -> void:
+	super.nearest(x, z)
+	if not allow_switch or other == null or r_idx < zone.x or r_idx > zone.y:
+		return
+	other.nearest(x, z)
+	var mine := absf(r_lat) - float(hwa[r_idx])
+	var theirs: float = absf(float(other.r_lat)) - float(other.hwa[other.r_idx])
+	if theirs < mine - 0.3:
+		# solo si el auto ya está dentro de los límites del otro camino (si no, el cambio lo empujaría contra un muro)
+		var oi: int = other.r_idx
+		var ol: float = float(other.r_lat)
+		if ol <= float(other.wall_r[oi]) and ol >= -float(other.wall_l[oi]):
+			_swap()
+
+func _swap() -> void:
+	for f in SWAP_FIELDS:
+		var a = get(f)
+		set(f, other.get(f))
+		other.set(f, a)
+	for f in ["r_dist", "r_idx", "r_t", "r_y", "r_lat"]:
+		set(f, other.get(f))
+	hint = r_idx
 
 func _build_stage() -> void:
 	var R = AdvRoute.get_route()
-	var rg: Vector2i = R.stage_range(stage)
-	g0 = maxi(0, rg.x - 100) # 250 m antes de la estación de largada
-	var g1 := mini(R.count - 1, rg.y + 110) # y 275 m después de la de llegada
-	n = g1 - g0 + 1
-	i_start = rg.x - g0
-	i_end = rg.y - g0
-	stage_len = float(rg.y - rg.x) * AdvRoute.DS
-	origin = Vector3(R.x[rg.x], R.y[rg.x], R.z[rg.x])
+	var D: Dictionary = R.variant_data(stage, variant)
+	g0 = int(D["g0"])
+	n = int(D["n"])
+	i_start = int(D["i_start"])
+	i_end = int(D["i_end"])
+	forks = D["forks"]
+	split = int(D.get("split", -1))
+	join = int(D.get("join", -1))
+	if variant >= 0:
+		zone = Vector2i(split - 24, join + 24)
+	else:
+		for fk in forks:
+			if int(fk["fork"]) == 0 or zone.x < 0:
+				zone = Vector2i(int(fk["split"]) - 24, int(fk["join"]) + 24)
+	stage_len = R.stage_length(stage)
+	origin = D["origin"]
 	samples.resize(n)
-	hwa.resize(n)
-	laya.resize(n)
+	hwa = D["hw"]
+	laya = D["lay"]
+	surfa = D["surf"]
+	biomea = D["biome"]
+	flaga = D["flags"]
+	cropa = D["crop"]
+	towna = D["town"]
+	curv = D["k"]
+	mside_raw = D["mside"]
 	shl.resize(n)
-	surfa.resize(n)
-	biomea.resize(n)
-	flaga.resize(n)
-	cropa.resize(n)
-	towna.resize(n)
-	curv.resize(n)
 	surf_mu.resize(n)
+	var X: PackedFloat64Array = D["x"]
+	var Y: PackedFloat64Array = D["y"]
+	var Z: PackedFloat64Array = D["z"]
 	for i in n:
-		var g := g0 + i
-		samples[i] = Vector3(R.x[g] - origin.x, R.y[g] - origin.y, R.z[g] - origin.z)
-		hwa[i] = R.hw[g]
-		laya[i] = R.lay[g]
-		surfa[i] = R.surf[g]
-		biomea[i] = R.biome[g]
-		flaga[i] = R.flags[g]
-		cropa[i] = R.crop[g]
-		towna[i] = R.town[g]
-		curv[i] = R.k[g]
-		surf_mu[i] = float(GRIP_SURF.get(int(R.surf[g]), 0.6))
-	# eventos de la etapa (con índices locales)
-	for e in R.events:
-		var li: int = int(e["i"]) - g0
-		if li >= 0 and li < n:
-			var c: Dictionary = (e as Dictionary).duplicate()
-			c["i"] = li
-			if c.has("i1"):
-				c["i1"] = int(c["i1"]) - g0
-			if c.has("i0"):
-				c["i0"] = int(c["i0"]) - g0
-			events.append(c)
+		samples[i] = Vector3(X[i] - origin.x, Y[i] - origin.y, Z[i] - origin.z)
+		surf_mu[i] = float(GRIP_SURF.get(int(surfa[i]), 0.35))
+	events = D["events"]
 	# pesos suavizados de cada ambiente y de las obras especiales (±40 m)
 	bw.clear()
 	for b in NB:
@@ -139,7 +181,7 @@ func _build_stage() -> void:
 	var ms := PackedFloat32Array()
 	ms.resize(n)
 	for i in n:
-		ms[i] = 1.0 if int(R.mside[g0 + i]) == 1 else -1.0
+		ms[i] = 1.0 if int(mside_raw[i]) == 1 else -1.0
 	msidea = _smooth(ms, 20)
 	for i in n:
 		var s := 0.0
@@ -179,7 +221,7 @@ func _build_stage() -> void:
 		for b in NB:
 			wb += float(bw[b][i]) * float(WALL_B[b])
 		var sp := maxf(w_bridge[i], maxf(w_tunnel[i], w_under[i]))
-		wb = lerpf(wb, 0.25, sp)
+		wb = lerpf(wb, 0.25 if w_tunnel[i] < 0.5 else 0.6, sp)
 		var base: float = hwa[i] + shl[i] + wb - 1.0
 		wall_l[i] = base
 		wall_r[i] = base + laya[i]
@@ -447,3 +489,41 @@ func idx_at(s: float) -> int:
 ## ¿La muestra está dentro de un túnel?
 func in_tunnel(i: int) -> bool:
 	return (int(flaga[clampi(i, 0, n - 1)]) & AdvRoute.F_TUNNEL) != 0
+
+## Bifurcación: el terreno de cada camino no puede tapar al otro. Recorta lo que se dibuja de cada lado usando las muestras
+## del otro camino que ya se separaron (las que siguen pegadas al camino propio no cuentan).
+func cross_clear(o) -> void:
+	if zone.x < 0:
+		return
+	var a := maxi(0, zone.x)
+	var b := mini(n - 1, zone.y)
+	var oa := maxi(0, int(o.zone.x))
+	var ob := mini(int(o.n) - 1, int(o.zone.y))
+	for i in range(a, b + 1):
+		var p := samples[i]
+		var l := laterals[i]
+		var cl: float = clear_l[i]
+		var cr: float = clear_r[i]
+		for j in range(oa, ob + 1, 2):
+			var q: Vector3 = o.samples[j]
+			var dx := q.x - p.x
+			var dz := q.z - p.z
+			var D := sqrt(dx * dx + dz * dz)
+			if D > 2.0 * STRIP_MAX + 20.0:
+				continue
+			var near: float = float(hwa[i]) + float(o.hwa[j]) + 3.0
+			# la muestra del otro camino todavía está sobre este camino (cerca de donde se separan)
+			var along := absf(dx * tangents[i].x + dz * tangents[i].z)
+			var c := (dx * l.x + dz * l.z) / maxf(D, 0.01)
+			var lat_o := absf(dx * l.x + dz * l.z)
+			if lat_o < near and along < 30.0:
+				continue
+			if absf(c) < 0.25:
+				continue
+			var reach := maxf(float(hwa[i]) + float(shl[i]) + 0.5, D / (2.0 * absf(c)))
+			if c > 0.0:
+				cr = minf(cr, reach)
+			else:
+				cl = minf(cl, reach)
+		clear_l[i] = cl
+		clear_r[i] = cr

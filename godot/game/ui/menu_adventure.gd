@@ -27,6 +27,8 @@ func _text(t: String, size := 18, col := Kit.TEXT) -> void:
 func _main() -> void:
 	m.set_title("AVENTURA")
 	var st := AdvData.state(m.profile)
+	m.refresh_car(AdvData.CAR, AdvData.car_state(st)) # el DR Bisonte negro de la aventura en la sala
+	m.adv_car_shown = true
 	var stage: int = mini(int(st["stage"]), AdvRoute.STAGES.size() - 1)
 	var done: bool = st["done"] == true
 	m.body.add_child(Kit.label("La Ruta de los Sueños", 30, Kit.GOLD))
@@ -39,6 +41,7 @@ func _main() -> void:
 		_text("🏆 ¡Completaste la aventura! El DR Bisonte XR está en tu garaje. Podés volver a correr cualquier etapa.", 18, Kit.GREEN)
 	elif st["started"] == true:
 		var S: Dictionary = AdvRoute.STAGES[stage]
+		_stage_image(stage)
 		_text("Etapa %d de %d: %s — %s" % [stage + 1, AdvRoute.STAGES.size(), S["name"], S["sub"]], 19)
 		_text("Rival: %s%s" % [S["rival"]["name"], ("  👑" if S["rival"].get("boss", false) else "")], 17, Kit.MUTED)
 	else:
@@ -75,6 +78,19 @@ func _start_info() -> void:
 	_text("La aventura se maneja como un simulador: el auto tiene peso, las gomas se deslizan y cada superficie agarra distinto. Para que sea disfrutable de punta a punta tiene ABS y un poco de control de tracción y de estabilidad (se pueden cambiar en Opciones → Física).")
 	_text("Manejás el DR Bisonte XR negro del equipo Dream Racing. Primero vas a ver una presentación, después la explicación de cómo se juega y el mapa, y largás desde la Estación Aurora.", 18, Kit.MUTED)
 	m.body.add_child(m.menu_button("▶ EMPEZAR", "presentación y primera etapa", func(): _play(0, true), true))
+
+## Foto de la etapa (la misma de la pantalla de carga)
+func _stage_image(si: int) -> void:
+	var path := "res://game/ui/tracks/adv%d.jpg" % si
+	if not ResourceLoader.exists(path):
+		return
+	var tr := TextureRect.new()
+	tr.texture = load(path)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	tr.custom_minimum_size = Vector2(0, 150)
+	tr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	m.body.add_child(tr)
 
 func _play(stage: int, intro: bool) -> void:
 	var c := {"type": "adventure", "stage": stage, "back": "adventure"}

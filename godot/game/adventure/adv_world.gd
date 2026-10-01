@@ -32,16 +32,22 @@ var road_mat: StandardMaterial3D # el del asfalto (el clima lo moja)
 var terrain_mat: StandardMaterial3D
 var water_mat: StandardMaterial3D
 var tunnel_lamps: Array = []
+var branch := false # mundo del ramal de una bifurcación (solo arma ese tramo)
+var cross # vista del otro camino de la bifurcación (para que las casas no lo pisen)
+var lim := Vector2i(0, 1 << 30) # muestras que arma este mundo
 
 func setup(p_track, p_quality := 1.0) -> void:
 	track = p_track
 	view = track.make_view()
 	quality = p_quality
 	nchunks = int(ceil(float(track.n - 1) / float(CH)))
+	if branch:
+		lim = Vector2i(int(track.split), int(track.join))
 	_make_materials()
 	_make_meshes()
 	_plan_buildings()
-	_build_horizon()
+	if not branch:
+		_build_horizon()
 
 # ───────────────────────── materiales y texturas ─────────────────────────
 func _tex_road(kind: String) -> ImageTexture:
@@ -269,6 +275,9 @@ var _task_node: Node3D
 func update(s: float, _budget_ms := 3.5) -> void:
 	var c0 := _chunk_at(s - BEHIND)
 	var c1 := _chunk_at(s + AHEAD * quality_reach())
+	if branch:
+		c0 = maxi(c0, lim.x / CH)
+		c1 = mini(c1, lim.y / CH)
 	for ci in chunks.keys():
 		var k: int = ci
 		if k < c0 - 1 or k > c1 + 2:
@@ -347,6 +356,13 @@ func _run_step(ci: int, st: int) -> void:
 func _run_step2(ci: int, st: int) -> void:
 	var a := ci * CH
 	var b := mini(track.n - 1, (ci + 1) * CH)
+	if branch:
+		# el ramal: el camino desde que se separa; el terreno y lo demás un poco después (al principio se pisa con el principal)
+		var m := 0 if st == 0 else 10
+		a = maxi(a, lim.x + m)
+		b = mini(b, lim.y - m)
+		if b <= a:
+			return
 	match st:
 		0: _build_road(a, b)
 		1: _build_terrain(a, b)
@@ -878,14 +894,22 @@ func _plan_buildings() -> void:
 			# que ninguna esquina caiga sobre el camino (en las esquinas a 90°)
 			var ok := true
 			var xf := Transform3D(basis, front)
-			for corner: Vector3 in [Vector3(-w * 0.5, 0, 0), Vector3(w * 0.5, 0, 0), Vector3(-w * 0.5, 0, -d), Vector3(w * 0.5, 0, -d)]:
+			if branch and (ic < lim.x + 8 or ic > lim.y - 8):
+				ok = false
+			for corner: Vector3 in [Vector3(-w * 0.5, 0, 0), Vector3(w * 0.5, 0, 0), Vector3(-w * 0.5, 0, -d), Vector3(w * 0.5, 0, -d), Vector3(0, 0, -d * 0.5)]:
+				if not ok:
+					break
 				var cp := xf * (corner as Vector3)
 				view.hint = ic
 				view.nearest(cp.x, cp.z)
-				var lim: float = float(view.hwa[view.r_idx]) + float(view.shl[view.r_idx]) + 2.8 + (float(view.laya[view.r_idx]) if view.r_lat > 0.0 else 0.0)
-				if absf(view.r_lat) < lim:
+				var lm: float = float(view.hwa[view.r_idx]) + float(view.shl[view.r_idx]) + 2.8 + (float(view.laya[view.r_idx]) if view.r_lat > 0.0 else 0.0)
+				if absf(view.r_lat) < lm:
 					ok = false
-					break
+				# tampoco sobre el otro camino de la bifurcación
+				if cross != null and ic > int(cross.zone.x) - 40 and ic < int(cross.zone.y) + 40:
+					cross.nearest(cp.x, cp.z)
+					if absf(float(cross.r_lat)) < float(cross.hwa[cross.r_idx]) + 3.5:
+						ok = false
 			if ok:
 				plan_buildings[ic / CH].append({"xf": xf, "w": w, "d": d, "floors": floors, "style": style, "color": pal[rng.randi() % pal.size()], "roof": roof, "seed": rng.randi()})
 			s += w + rng.randf_range(0.3, 2.5)
@@ -1101,7 +1125,7 @@ func _build_structures(ci: int, a: int, b: int) -> void:
 
 ## Perfil del túnel (lateral, altura): paredes rectas y bóveda
 func _tunnel_profile(i: int) -> Array:
-	var W: float = float(track.hwa[i]) + float(track.shl[i]) + 0.3
+	var W: float = float(track.hwa[i]) + float(track.shl[i]) + 0.6
 	var pts: Array = [Vector2(-W, -0.1), Vector2(-W, 4.3)]
 	for k in range(1, 8):
 		var ang := PI - PI * float(k) / 8.0

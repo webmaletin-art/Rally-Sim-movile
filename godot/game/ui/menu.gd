@@ -216,7 +216,11 @@ func _process(dt: float) -> void:
 		get_tree().quit()
 
 ## Abre una pantalla. Cada una arma su contenido dentro del panel de la izquierda.
+var adv_car_shown := false
 func go(name: String, arg = null, push := true) -> void:
+	if adv_car_shown and not name.begins_with("adv"):
+		adv_car_shown = false
+		refresh_car()
 	if screen != "" and push and (name != screen or arg != screen_arg):
 		stack.append([screen, screen_arg])
 	screen = name

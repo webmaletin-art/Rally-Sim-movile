@@ -132,6 +132,15 @@ var lens: Node # filtro de cámara (Lente Rally)
 var adv_mode := false # modo aventura (etapa de la Ruta de los Sueños)
 var adv_world: Node3D # mundo por tramos de la aventura
 var adv: Node # controlador de la aventura (etapa, rival, estaciones, cinemáticas)
+var adv_alt # pista del ramal de la bifurcación (o null)
+var adv_world_alt: Node3D
+
+## Vista de la pista del jugador: en la aventura puede pasar al ramal de una bifurcación
+func player_view():
+	var v = track.make_view()
+	if adv_alt != null:
+		v.link_other(adv_alt.make_view())
+	return v
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -377,6 +386,12 @@ func _make_track() -> void:
 	if adv_mode:
 		track = AdvTrack.new(int(cfg.get("stage", 0)))
 		track_id = "adv"
+		adv_alt = null
+		if not track.forks.is_empty():
+			# la etapa tiene una bifurcación: el ramal es otra variante de la pista (mismo principio y mismo final)
+			adv_alt = AdvTrack.new(int(cfg.get("stage", 0)), int(track.forks[0]["fork"]))
+			track.cross_clear(adv_alt)
+			adv_alt.cross_clear(track)
 		return
 	if track_id == "prueba" or not track_maps.has(track_id):
 		track_id = "prueba"
@@ -396,11 +411,19 @@ func _build_track_nodes() -> void:
 	terrain_task = -1
 	if adv_mode:
 		adv_world = AdvWorld.new()
+		if adv_alt != null:
+			adv_world.cross = adv_alt.make_view()
 		var q := str(profile.setting("quality")) if profile != null else "mid"
 		adv_world.setup(track, {"low": 0.6, "high": 1.3}.get(q, 1.0))
 		track_root.add_child(adv_world)
 		road_mat = adv_world.road_mat
 		ground_mat = adv_world.terrain_mat
+		if adv_alt != null:
+			adv_world_alt = AdvWorld.new()
+			adv_world_alt.branch = true
+			adv_world_alt.cross = track.make_view()
+			adv_world_alt.setup(adv_alt, adv_world.quality)
+			track_root.add_child(adv_world_alt)
 		return
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
@@ -567,6 +590,15 @@ func _rebuild_trees() -> void:
 	trunk.rings = 1
 	trunk.cap_top = false
 	var crown := _crown_mesh(4)
+	# árboles nuevos (los de la aventura): pinos con polleras desparejas y árboles de hojas con varias copas
+	var AdvProps := preload("res://game/adventure/adv_props.gd")
+	var tree_mat := StandardMaterial3D.new()
+	tree_mat.vertex_color_use_as_albedo = true
+	tree_mat.roughness = 1.0
+	var pine_mesh: ArrayMesh = AdvProps.pine(17).commit(tree_mat)
+	var pine_b: ArrayMesh = AdvProps.pine(41).commit(tree_mat)
+	var broad_mesh: ArrayMesh = AdvProps.broadleaf(5).commit(tree_mat)
+	var pine_lo: ArrayMesh = AdvProps.pine(17, false, true).commit(tree_mat)
 	var low := CylinderMesh.new()
 	low.top_radius = 0.0
 	low.bottom_radius = 1.8
@@ -661,13 +693,25 @@ func _rebuild_trees() -> void:
 			for e in list:
 				ysum += float(e[3])
 			center.y = ysum / float(list.size())
-		# cerca: tronco y copa
-		var mm_t := _multimesh(trunk, list, center, 1.2, 1.0, 1)
-		var mm_c := _multimesh(crown, list, center, 4.4, 1.0, 1)
-		_add_tree_layer(mm_t, center, 0.0, 190.0)
-		_add_tree_layer(mm_c, center, 0.0, 190.0)
-		# media: un cono por árbol
-		_add_tree_layer(_multimesh(low, list, center, 3.2, 1.0, 1), center, 170.0, 520.0)
+		# cerca: pinos de dos formas y algunos árboles de hojas (con tronco incluido)
+		var la: Array = []
+		var lb: Array = []
+		var lc: Array = []
+		for k in list.size():
+			var e: Array = list[k]
+			var hsh := fposmod(float(e[0]) * 0.731 + float(e[1]) * 0.377, 1.0)
+			if hsh < 0.18:
+				lc.append(e)
+			elif hsh < 0.6:
+				la.append(e)
+			else:
+				lb.append(e)
+		for pair in [[pine_mesh, la], [pine_b, lb], [broad_mesh, lc]]:
+			var L: Array = pair[1]
+			if not L.is_empty():
+				_add_tree_layer(_multimesh(pair[0], L, center, -0.15, 0.85, 1), center, 0.0, 200.0)
+		# media: el mismo pino simplificado
+		_add_tree_layer(_multimesh(pine_lo, list, center, -0.15, 0.85, 1), center, 180.0, 520.0)
 		# lejos: uno de cada cuatro, más grande
 		if list.size() >= 4:
 			_add_tree_layer(_multimesh(low, list, center, 3.2, 1.7, 4), center, 500.0, 950.0)
@@ -683,7 +727,8 @@ func _multimesh(mesh: Mesh, list: Array, center: Vector3, y_off: float, size_k: 
 	for j in n:
 		var e: Array = list[j * step]
 		var sc: float = float(e[2]) * size_k
-		mm.set_instance_transform(j, Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3(float(e[0]) - center.x, y_off * sc + float(e[3]) - center.y, float(e[1]) - center.z)))
+		var yaw := fposmod(float(e[0]) * 1.37 + float(e[1]) * 0.71, TAU) # cada árbol girado distinto
+		mm.set_instance_transform(j, Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(sc, sc, sc)), Vector3(float(e[0]) - center.x, y_off * sc + float(e[3]) - center.y, float(e[1]) - center.z)))
 		var tv := 0.82 + 0.36 * fposmod(float(e[0]) * 0.137 + float(e[1]) * 0.291, 1.0) # cada árbol con su tono de verde
 		mm.set_instance_color(j, Color(tv, tv * (0.95 + 0.1 * fposmod(float(e[1]) * 0.53, 1.0)), tv * 0.95))
 	return mm
@@ -758,7 +803,8 @@ func _rebuild_cars() -> void:
 		var paint: Color = su["paint"]
 		var lo := (i > 0) or not hi_model
 		var route := track is RouteTrack
-		var car := Car.new(track.make_view() if route else track, VehicleParams.from_dict(d), i == 0, lo, paint, su["rim"], str(su.get("finish", "gloss")))
+		var car_view = (player_view() if (adv_mode and i == 0) else track.make_view()) if route else track
+		var car := Car.new(car_view, VehicleParams.from_dict(d), i == 0, lo, paint, su["rim"], str(su.get("finish", "gloss")))
 		rival_info.append({"name": su["name"], "color": paint})
 		if i > 0:
 			if route:
@@ -786,7 +832,7 @@ func _rebuild_cars() -> void:
 			cockpit.set_engine(Vp.maxRpm, Vp.shiftUpRpm, Vp.nitroCap)
 			cockpit.raining = weather_name == "lluvia"
 			cockpit.set_inside(false, false)
-			cam_rig = CameraRig.new(cam, track)
+			cam_rig = CameraRig.new(cam, player_view() if adv_mode else track)
 			cam_rig.visual = car.visual
 			cam_rig.cockpit = cockpit
 			cam_rig.ground_off = -Vp.comHeight + Vp.rideOffset
@@ -1317,7 +1363,7 @@ func _next_camera() -> void:
 		return
 	if adv != null:
 		if adv.state == "race":
-			race_hud.toast("🎥 " + adv.next_camera())
+			adv.hud.toast("🎥 " + adv.next_camera())
 		return
 	cam_rig.next()
 	if menu_mode and race_hud != null:
@@ -1704,6 +1750,8 @@ func _frame(dt: float) -> void:
 		adv.camera(dt)
 	if adv_world != null:
 		adv_world.update(float(adv.prog[0]) if adv != null else float(cfg.get("s_load", 0.0)))
+		if adv_world_alt != null:
+			adv_world_alt.update(float(adv.alt_s()) if adv != null else float(cfg.get("s_load", 0.0)))
 		adv_world.follow(cam.global_position, env.fog_light_color)
 	var inside: bool = cam_rig.is_inside() and cockpit != null
 	var onboard: bool = cam_rig.mode() == "onboard"

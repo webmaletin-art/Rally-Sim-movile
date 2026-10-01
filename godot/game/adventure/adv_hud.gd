@@ -183,7 +183,8 @@ class StageMap extends Control:
 	var minv := Vector2.ZERO
 	var k := 1.0
 	var box := Vector2(200, 130)
-	func setup_track(track, colors_in: Array) -> void:
+	var alt_pts := PackedVector2Array()
+	func setup_track(track, colors_in: Array, alt = null) -> void:
 		colors = colors_in
 		var lo := Vector2(1e9, 1e9)
 		var hi := Vector2(-1e9, -1e9)
@@ -200,6 +201,11 @@ class StageMap extends Control:
 		pts.clear()
 		for q in raw:
 			pts.append((q - minv) * k)
+		alt_pts.clear()
+		if alt != null:
+			for i in range(int(alt.split), mini(int(alt.n), int(alt.join) + 1), 3):
+				var pa: Vector3 = alt.samples[i]
+				alt_pts.append(to_map(pa.x, pa.z))
 		marks.clear()
 		for e in track.events:
 			var t := str(e["t"])
@@ -229,6 +235,10 @@ class StageMap extends Control:
 		draw_rect(Rect2(Vector2.ZERO, box), Color(1, 1, 1, 0.18), false, 1.5)
 		draw_polyline(pts, Color(1, 1, 1, 0.28), 5.0, true)
 		draw_polyline(pts, Color(0.62, 0.66, 0.74, 0.95), 2.5, true)
+		if alt_pts.size() > 1:
+			# el ramal de la bifurcación (punteado)
+			for q in range(0, alt_pts.size() - 1, 2):
+				draw_line(alt_pts[q], alt_pts[q + 1], Color(1.0, 0.85, 0.35, 0.95), 2.0, true)
 		for m in marks:
 			draw_circle(m[0], float(m[2]) + 1.5, Color(0, 0, 0, 0.7))
 			draw_circle(m[0], float(m[2]), m[1])
@@ -242,12 +252,12 @@ class StageMap extends Control:
 				draw_circle(pos, 5.0, Color.WHITE)
 				draw_circle(pos, 3.8, colors[i] if i < colors.size() else Color.RED)
 
-func setup_map(track, colors_in: Array) -> void:
+func setup_map(track, colors_in: Array, alt = null) -> void:
 	minimap = StageMap.new()
 	add_child(minimap)
 	move_child(minimap, 3)
 	minimap.position = Vector2(14, 150)
-	minimap.setup_track(track, colors_in)
+	minimap.setup_track(track, colors_in, alt)
 
 # ───────────────────────── durante la etapa ─────────────────────────
 func set_info(stage_txt: String, t: float, left_m: float) -> void:
@@ -430,42 +440,52 @@ func _route_km() -> float:
 	var R = AdvRoute.get_route()
 	return float(int(R.stations[R.stations.size() - 1]) - int(R.stations[0])) * AdvRoute.DS / 1000.0
 
-## Mapa de toda la ruta con las estaciones (la etapa actual en naranja)
+## Mapa de toda la ruta con las estaciones (la etapa actual en naranja). Se gira para que la ruta quede acostada y
+## aproveche el ancho; cada etapa con el color de su paisaje.
 class RouteMap extends Control:
 	var cur := 0
 	var done := 0
+	const BIOME_COL := [Color(0.85, 0.85, 0.8), Color(0.85, 0.78, 0.35), Color(0.35, 0.7, 0.4), Color(0.65, 0.6, 0.55), Color(0.85, 0.45, 0.3), Color(0.92, 0.95, 1.0), Color(0.8, 0.88, 0.98)]
 	func _draw() -> void:
 		var R = AdvRoute.get_route()
-		var lo := Vector2(1e9, 1e9)
-		var hi := Vector2(-1e9, -1e9)
 		var i0: int = R.stations[0]
 		var i1: int = R.stations[R.stations.size() - 1]
-		for i in range(i0, i1, 40):
-			var q := Vector2(R.x[i], -R.z[i])
+		var ang := atan2(-(R.z[i1] - R.z[i0]), R.x[i1] - R.x[i0])
+		var ca := cos(-ang)
+		var sa := sin(-ang)
+		var rot := func(i: int) -> Vector2:
+			var q := Vector2(R.x[i] - R.x[i0], -(R.z[i] - R.z[i0]))
+			return Vector2(q.x * ca - q.y * sa, q.x * sa + q.y * ca)
+		var lo := Vector2(1e9, 1e9)
+		var hi := Vector2(-1e9, -1e9)
+		for i in range(i0, i1, 20):
+			var q: Vector2 = rot.call(i)
 			lo = lo.min(q)
 			hi = hi.max(q)
 		var sz := hi - lo
-		var k := minf((size.x - 30.0) / maxf(sz.x, 1.0), (size.y - 30.0) / maxf(sz.y, 1.0))
+		var k := minf((size.x - 40.0) / maxf(sz.x, 1.0), (size.y - 40.0) / maxf(sz.y, 1.0))
 		var off := (size - sz * k) * 0.5
-		var to_map := func(i: int) -> Vector2: return (Vector2(R.x[i], -R.z[i]) - lo) * k + off
+		var to_map := func(i: int) -> Vector2: return ((rot.call(i) as Vector2) - lo) * k + off
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.05, 0.08, 0.12, 0.85), true)
-		var cols := [Color(0.62, 0.7, 0.55), Color(0.8, 0.75, 0.4), Color(0.4, 0.6, 0.4), Color(0.6, 0.55, 0.5), Color(0.75, 0.45, 0.3), Color(0.9, 0.93, 0.97)]
 		for si in R.stations.size() - 1:
-			var pts := PackedVector2Array()
 			var a: int = R.stations[si]
 			var b: int = R.stations[si + 1]
-			for i in range(a, b + 1, 30):
+			var pts := PackedVector2Array()
+			for i in range(a, b + 1, 12):
 				pts.append(to_map.call(i))
 			pts.append(to_map.call(b))
-			var c := Color(0.25, 0.85, 0.5) if si < done else (Kit.ACCENT if si == cur else Color(0.6, 0.65, 0.72))
-			draw_polyline(pts, Color(0, 0, 0, 0.5), 6.0, true)
-			draw_polyline(pts, c, 3.0, true)
+			draw_polyline(pts, Color(0, 0, 0, 0.55), 9.0, true)
+			var bc: Color = BIOME_COL[int(R.biome[(a + b) / 2])]
+			draw_polyline(pts, bc.darkened(0.35) if si > done else bc, 5.0, true)
+			if si == cur:
+				draw_polyline(pts, Kit.ACCENT, 2.5, true)
+			elif si < done:
+				draw_polyline(pts, Color(0.25, 0.85, 0.5), 2.0, true)
 		for si in R.stations.size():
 			var p: Vector2 = to_map.call(int(R.stations[si]))
-			draw_circle(p, 6.0, Color(0, 0, 0, 0.7))
-			draw_circle(p, 4.5, Color(0.25, 0.85, 0.5) if si <= done else Color.WHITE)
-			if si < R.stations.size() - 1 and (si % 2 == 0 or si == cur):
-				draw_string(ThemeDB.fallback_font, p + Vector2(7, -6), str(si + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.8))
+			draw_circle(p, 7.5, Color(0, 0, 0, 0.75))
+			draw_circle(p, 5.5, Color(0.25, 0.85, 0.5) if si <= done else Color.WHITE)
+			draw_string(ThemeDB.fallback_font, p + Vector2(-4, -11 if si % 2 == 0 else 22), "⛽" if si == 0 else str(si), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, 0.85))
 
 ## Antes de salir de la estación: la etapa que viene y el rival
 func show_brief(stage: int, rival: Dictionary, retry: bool) -> void:
