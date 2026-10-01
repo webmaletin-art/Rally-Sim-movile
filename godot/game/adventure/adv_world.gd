@@ -911,7 +911,8 @@ func _plan_buildings() -> void:
 					if absf(float(cross.r_lat)) < float(cross.hwa[cross.r_idx]) + 3.5:
 						ok = false
 			if ok:
-				plan_buildings[ic / CH].append({"xf": xf, "w": w, "d": d, "floors": floors, "style": style, "color": pal[rng.randi() % pal.size()], "roof": roof, "seed": rng.randi()})
+				plan_buildings[ic / CH].append({"xf": xf, "w": w, "d": d, "floors": floors, "style": style, "color": pal[rng.randi() % pal.size()], "roof": roof, "seed": rng.randi(),
+					"fence": town == 1 and style == 0 and rng.randf() < 0.65})
 			s += w + rng.randf_range(0.3, 2.5)
 			if tg == Vector3.ZERO:
 				break
@@ -931,6 +932,8 @@ func _build_town_and_fields(ci: int, a: int, b: int) -> void:
 		var r2 := RandomNumberGenerator.new()
 		r2.seed = int(d["seed"])
 		Props.building(atl, d["xf"], float(d["w"]), float(d["d"]), int(d["floors"]), int(d["style"]), d["color"], int(d["roof"]), r2)
+		if d.get("fence", false) == true:
+			_front_fence(vc, d["xf"], float(d["w"]), r2)
 	# faroles y autos estacionados en la ciudad
 	for i in range(a, b, 8):
 		if _biome_w(i, 0) < 0.6 or int(track.towna[i]) == 0:
@@ -1027,6 +1030,24 @@ func _build_town_and_fields(ci: int, a: int, b: int) -> void:
 			L2.append([w, rng.randf_range(0.8, 1.3), rng.randf() * PI])
 		_add_mm(meshes["wheat"], L2, mid, 0.0, 120.0)
 
+## Reja al frente de la casa: murito, barrotes y un portón (cerrado) en el medio
+func _front_fence(mb: RefCounted, xf: Transform3D, w: float, rng: RandomNumberGenerator) -> void:
+	var z := 0.9 # adelante de la fachada (hacia la vereda)
+	var wall := Color(0.82, 0.8, 0.76) if rng.randf() < 0.5 else Color(0.62, 0.36, 0.28)
+	var iron := Color(0.12, 0.12, 0.13) if rng.randf() < 0.7 else Color(0.18, 0.32, 0.22)
+	mb.box(xf * Transform3D(Basis(), Vector3(0, 0.3, z)), Vector3(w, 0.6, 0.22), wall)
+	var gate := rng.randf_range(-w * 0.25, w * 0.25)
+	var x := -w * 0.5 + 0.1
+	while x < w * 0.5 - 0.05:
+		if absf(x - gate) > 0.9:
+			mb.box(xf * Transform3D(Basis(), Vector3(x, 1.0, z)), Vector3(0.03, 0.8, 0.03), iron)
+		x += 0.16
+	mb.box(xf * Transform3D(Basis(), Vector3(0, 1.38, z)), Vector3(w, 0.05, 0.05), iron)
+	# portón de chapa en el hueco
+	mb.box(xf * Transform3D(Basis(), Vector3(gate, 0.75, z)), Vector3(1.75, 1.45, 0.05), iron.lightened(0.15))
+	for sx: float in [-0.95, 0.95]:
+		mb.box(xf * Transform3D(Basis(), Vector3(gate + sx, 0.85, z)), Vector3(0.2, 1.7, 0.2), wall.darkened(0.1))
+
 ## Cable entre dos postes, con su panza
 func _cable(mb: RefCounted, p0: Vector3, p1: Vector3) -> void:
 	var n := 6
@@ -1091,6 +1112,12 @@ func _side_street(mb: RefCounted, i: int, side: float, rng: RandomNumberGenerato
 		mb.quad(Vector3(a0.x, y, a0.z), Vector3(b0.x, y, b0.z), Vector3(b1.x, y, b1.z), Vector3(a1.x, y, a1.z), c)
 	else:
 		mb.quad(Vector3(a1.x, y, a1.z), Vector3(b1.x, y, b1.z), Vector3(b0.x, y, b0.z), Vector3(a0.x, y, a0.z), c)
+	# autos estacionados en la calle lateral (detrás de la valla)
+	for k in 2:
+		if rng.randf() < 0.75:
+			var cpos := p + L * side * (edge + 9.0 + float(k) * 7.5) + tg * (2.6 if k == 0 else -2.6)
+			var pal := [Color(0.75, 0.1, 0.1), Color(0.9, 0.9, 0.88), Color(0.15, 0.25, 0.5), Color(0.3, 0.3, 0.32), Color(0.85, 0.65, 0.15)]
+			Props.parked_car(mb, Transform3D(Basis(Vector3.UP, atan2(L.x, L.z) + (0.0 if side > 0.0 else PI)), Vector3(cpos.x, y, cpos.z)), pal[rng.randi() % pal.size()])
 	# valla a rayas blancas y rojas en la boca de la calle
 	var bp := p + L * side * (edge + 2.6)
 	var yaw := atan2(tg.x, tg.z)

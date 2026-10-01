@@ -632,7 +632,12 @@ func _check_end() -> void:
 			result = {"time": time, "margin": prog[0] - _best_rival_prog(), "vmax": vmax}
 			_enter("arrive")
 		elif prog[0] >= s_end - 30.0:
-			_enter("lost")
+			# llegada pareja: gana el que va adelante en este momento
+			if prog[0] > _best_rival_prog():
+				result = {"time": time, "margin": prog[0] - _best_rival_prog(), "vmax": vmax}
+				_enter("arrive")
+			else:
+				_enter("lost")
 
 ## Posición del jugador para el mundo del ramal (en metros de esa variante)
 func alt_s() -> float:
