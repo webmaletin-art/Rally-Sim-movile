@@ -33,6 +33,7 @@ var ai_bus := -1
 var lp_engine: AudioEffectLowPassFilter
 var active := true
 var vehicle_id := "t1plus"
+var pops_ok := false # lo calcula update(): hay petardeo/flutter solo en 1ª–2ª o bajando de marcha
 var mix := {"eng": 1.0, "surf": 0.3, "wind": 0.3, "turbo": 1.0, "gear": 1.0}
 var volume := 80.0
 var boost := 0.0
@@ -182,13 +183,14 @@ func rain(on: bool) -> void:
 func _r() -> float:
 	return rng.randf()
 
+## Petardeos suaves del escape: solo en marchas bajas (1ª y 2ª) o al reducir de marcha, nunca a velocidad de ruta
 func pops(_n: int) -> void:
-	return # sin petardeos del escape (sonaban como golpes de lata al llegar al corte de vueltas)
-	@warning_ignore("unreachable_code")
+	if not pops_ok:
+		return
 	for i in _n:
 		var d := 0.03 + _r() * 0.35
 		var f := 700.0 + _r() * 700.0
-		var a: float = SND["pops"] * (0.5 + _r() * 0.5)
+		var a: float = SND["pops"] * (0.35 + _r() * 0.35)
 		get_tree().create_timer(d).timeout.connect(_shoot.bind("pop", a, f / 1000.0))
 
 ## flutter (surge del compresor): al soltar el acelerador con el turbo cargado, el aire rebota → "tu-tu-tu-tu" que se apaga
@@ -271,6 +273,9 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 	var L := float(V.turboLvl)
 	var mt: float = mix["turbo"]
 	var thr := p.throttle
+	# el flutter y los petardeos del escape solo suenan en 1ª y 2ª (arranque) o en los cambios hacia abajo; a 4ª/5ª ni se oyen
+	var low_gear := p.gear >= 1 and p.gear <= 2 and sp < 28.0
+	pops_ok = low_gear
 	var bt := 0.0
 	if thr > 0.35:
 		bt = clampf((rpm - V.idleRpm * 1.5) / ((V.maxRpm - V.idleRpm) * 0.45), 0.0, 1.0) * minf(1.0, thr * 1.3) * (0.6 + 0.4 * load)
@@ -285,7 +290,7 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 	# se recuerda cuánto turbo había con el pie a fondo: al soltar (en rampa) la carga ya cayó, pero el flutter suena igual
 	if thr > 0.5:
 		arm_b = maxf(b, arm_b * 0.98)
-	if thr < 0.25 and arm_b > 0.25 and time - fl_t > 0.35:
+	if thr < 0.25 and arm_b > 0.25 and time - fl_t > 0.9 and low_gear:
 		flutter(arm_b, T, L, mt)
 		fl_t = time
 		boost *= 0.3
@@ -293,19 +298,19 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 	elif thr < 0.25:
 		arm_b = 0.0
 	for e in events:
-		if e is String and e == "shift_up" and b > 0.45 and time - fl_t > 0.35:
+		if e is String and e == "shift_up" and b > 0.45 and time - fl_t > 0.9 and low_gear:
 			flutter(b * 0.55, T, L, mt)
 			fl_t = time
 			boost *= 0.6
-	if prev_thr > 0.6 and thr < 0.15 and rpm > 4200.0 and sp > 3.0:
-		pops(2 + int(_r() * 4.0))
+	if prev_thr > 0.6 and thr < 0.15 and rpm > 4200.0 and sp > 3.0 and low_gear:
+		pops(2 + int(_r() * 3.0))
 	prev_thr = thr
 	for e in events:
 		if e is String:
-			if e == "shift_up" and sp > 3.0:
-				pops(1)
-			elif e == "limiter" and sp > 3.0:
-				pops(2)
+			if e == "shift_down" and sp > 3.0 and sp < 45.0:
+				pops_ok = true # al bajar de marcha el escape crepita (suave y corto)
+				pops(2 + int(_r() * 2.0))
+				pops_ok = low_gear
 		elif e is Array and e[0] == "land":
 			thump(float(e[1]) / 4.0)
 	if impact > 1.4:

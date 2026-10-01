@@ -14,7 +14,7 @@ const CarBuild := preload("res://game/data/car_build.gd")
 const AIDriver := preload("res://game/ai/ai_driver.gd")
 const Profile := preload("res://game/data/profile.gd")
 
-const CAMS := [1, 0, 7] # tercera persona, piloto, capó
+const CAMS := [1, 0, 6, 7] # tercera persona, piloto (casco), interior atrás (se ve el piloto y el copiloto) y capó
 
 var r # race.gd
 var track

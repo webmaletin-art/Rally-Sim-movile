@@ -18,7 +18,10 @@ var manual := false
 var has_nitro := false
 var gyro_on := false
 var gyro_invert := false
-var gyro_sens := 50.0 # 0..100 → cuánto hay que inclinar
+var gyro_sens := 50.0 # 0..130 → cuánto hay que inclinar
+var gyro_dead := 1.5 # zona muerta (grados): inclinaciones menores no giran
+var gyro_curve := 1.0 # 1 = lineal · >1 = progresiva (poco giro al principio, más al final: más precisión al ir recto)
+var gyro_smooth := 15.0 # reacción del filtro (1/s): más alto = más rápido
 var use_mph := false
 var show_speed := true # el panel de velocidad de arriba se oculta con las cámaras interiores (ya está en el tablero)
 var wheel_scale := 1.0 # tamaño del volante/barra (opción «Tamaño del volante»)
@@ -53,6 +56,7 @@ var _flash_up := 0.0
 var _flash_dn := 0.0
 var _gyro_calib := INF
 var _gyro_raw := 0.0
+var _gyro_dt := 0.016
 var _gyro_steer := 0.0
 
 const ITEMS := ["wheel", "slider", "pedal", "gears", "handbrake", "nitro"]
@@ -240,7 +244,16 @@ func _request_shift(d: int) -> void:
 
 # ───────────────────────── acelerómetro ─────────────────────────
 func gyro_tilt_for_full() -> float:
-	return 55.0 - gyro_sens * 0.40 # grados de giro para el máximo (igual que la versión HTML)
+	return maxf(9.0, 55.0 - gyro_sens * 0.40) # grados de giro para el máximo (igual que la versión HTML; la sensibilidad extrema llega a ~9°)
+
+## Curva del volante por inclinación: zona muerta, hasta el giro máximo y respuesta lineal o progresiva
+func gyro_map(angle_deg: float) -> float:
+	var full := gyro_tilt_for_full()
+	var a := absf(angle_deg)
+	if a <= gyro_dead:
+		return 0.0
+	var x := clampf((a - gyro_dead) / maxf(1.0, full - gyro_dead), 0.0, 1.0)
+	return signf(angle_deg) * pow(x, gyro_curve)
 
 func recalibrate_gyro() -> void:
 	_gyro_calib = INF
@@ -264,8 +277,8 @@ func _feed_gyro() -> void:
 		delta -= 360.0
 	if delta < -180.0:
 		delta += 360.0
-	_gyro_raw += (delta - _gyro_raw) * 0.22
-	_gyro_steer = clampf((-1.0 if gyro_invert else 1.0) * _gyro_raw / gyro_tilt_for_full(), -1.0, 1.0)
+	_gyro_raw += (delta - _gyro_raw) * (1.0 - exp(-_gyro_dt * gyro_smooth))
+	_gyro_steer = clampf((-1.0 if gyro_invert else 1.0) * gyro_map(_gyro_raw), -1.0, 1.0)
 
 # ───────────────────────── actualización por cuadro ─────────────────────────
 func update_inputs(dt: float) -> void:
@@ -275,6 +288,7 @@ func update_inputs(dt: float) -> void:
 	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
 		kb_steer += 1.0
 	if gyro_on:
+		_gyro_dt = clampf(dt, 0.001, 0.1)
 		_feed_gyro()
 	var wheel_contact := _taken("wheel")
 	var slider_contact := _taken("slider")

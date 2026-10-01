@@ -91,7 +91,14 @@ func _init(p_type: String, p_paint := Color(0.10, 0.31, 0.88), p_accent := Color
 	for i in 2:
 		rig.append(RigPilot.new(crew, 1.76, true))
 	rig_ok = rig[0].ok and rig[1].ok
-	mo = [CrewMotion.new(34.0, 8.0, 90.0, 5.0, 1.35), CrewMotion.new(36.0, 8.0, 92.0, 5.0, 1.3)]
+	# piloto: arnés firme pero con la cabeza suelta · copiloto: más suelto, se mueve bastante (como en los videos de rally)
+	mo = [CrewMotion.new(32.0, 7.0, 82.0, 4.4, 1.85), CrewMotion.new(26.0, 6.2, 70.0, 3.9, 2.35)]
+	mo[0].lim_t = 0.20
+	mo[0].lim_r = 0.15
+	mo[1].lim_t = 0.25
+	mo[1].lim_r = 0.19
+	mo[0].side_sign = -1
+	mo[1].side_sign = 1
 	_build_notes()
 
 # ───────────────────────── materiales y texturas ─────────────────────────

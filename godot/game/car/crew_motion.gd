@@ -24,6 +24,11 @@ var body := Vector3.ZERO # desplazamiento del torso
 var head := Vector3.ZERO # desplazamiento de la cabeza
 var cam := Vector3.ZERO # lo que se mueve la cámara del casco (menos: no marea)
 var kick := 0.0
+var lim_t := 0.17 # cuánto se puede mover el torso (m) y la cabeza respecto del torso (m)
+var lim_r := 0.11
+var bump := 0.0 # sacudón reciente por baches y golpes (0..1): hace rebotar al cuerpo
+var brace_door := 0.0 # copiloto: mano al marco de la puerta en una curva fuerte
+var brace_mid := 0.0 # copiloto: mano a la jaula del centro
 
 # miembros
 var hbW := 0.0
@@ -31,6 +36,7 @@ var onBrake := 0.0
 var press := 0.0
 var aLs := 0.0
 var braceT := 0.0
+var side_sign := 1 # hacia qué lado empuja una curva con aLat > 0 (+1: hacia la puerta de este asiento)
 var brace := 0.0
 
 # volante
@@ -101,28 +107,30 @@ func step_forces(dt: float, p) -> void:
 			rv.x += -dT * f * 0.045
 			rv.z += -dL * f * 0.045
 			kick = minf(1.0, kick + dv / 10.0)
-		if absf(aY) > 14.0:
+		if absf(aY) > 7.0:
 			var dy := clampf(aY * dt, -8.0, 8.0)
-			tv.y += -dy * 0.02
-			rv.y += -dy * 0.035
+			tv.y += -dy * 0.028
+			rv.y += -dy * 0.05
+			bump = minf(1.0, bump + absf(dy) * 0.12)
 		mY = clampf(aY, -15.0, 15.0)
 	prev = [vL, vT, vY]
 	# al acelerar los cuerpos van para atrás, al frenar bastante para adelante (el arnés los frena), en curva se van al costado
 	var tgt := Vector3(
-		clampf(-mT * 0.015 * gain, -0.14, 0.14),
-		clampf(-mY * 0.0025, -0.035, 0.035) + clampf(-absf(mT) * 0.0025, -0.03, 0.0),
-		clampf(-mL * (0.018 if mL < 0.0 else 0.013) * gain, -0.13, 0.15))
+		clampf(-mT * 0.015 * gain, -lim_t * 0.85, lim_t * 0.85),
+		clampf(-mY * 0.0032, -0.05, 0.05) + clampf(-absf(mT) * 0.0028, -0.04, 0.0),
+		clampf(-mL * (0.018 if mL < 0.0 else 0.013) * gain, -lim_t * 0.8, lim_t * 0.9))
 	var n := maxi(1, int(ceil(dt / 0.005)))
 	var h := dt / float(n)
 	for i in n:
 		for ax in 3:
 			var at := kT * (tgt[ax] - t[ax]) - cT * tv[ax]
 			tv[ax] += at * h
-			t[ax] = clampf(t[ax] + tv[ax] * h, -0.17, 0.17)
+			t[ax] = clampf(t[ax] + tv[ax] * h, -lim_t, lim_t)
 			var ar := -kH * r[ax] - cH * rv[ax] - at * 1.3
 			rv[ax] += ar * h
-			r[ax] = clampf(r[ax] + rv[ax] * h, -0.11, 0.11)
+			r[ax] = clampf(r[ax] + rv[ax] * h, -lim_r, lim_r)
 	kick = maxf(0.0, kick - dt * 2.0)
+	bump = maxf(0.0, bump - dt * 2.5)
 	body = t * 0.8
 	head = t + r
 	cam = t * 0.6 + r * 0.25
@@ -145,6 +153,12 @@ func step_limbs(dt: float, p) -> void:
 		braceT = maxf(0.0, braceT - dt)
 	var bt := 1.0 if braceT > 0.0 else 0.0
 	brace += (bt - brace) * (1.0 - exp(-dt * (10.0 if bt > 0.0 else 3.5)))
+	# curva fuerte (más de ~0,8 g): el copiloto se agarra del marco de la puerta si lo empuja hacia afuera, o de la jaula si lo empuja hacia adentro
+	var lat: float = p.aLat
+	var door_t := 1.0 if (absf(lat) > 7.5 and vl > 8.0 and lat * float(side_sign) > 0.0) else 0.0
+	var mid_t := 1.0 if (absf(lat) > 7.5 and vl > 8.0 and lat * float(side_sign) < 0.0) else 0.0
+	brace_door += (door_t - brace_door) * (1.0 - exp(-dt * (9.0 if door_t > 0.0 else 2.2)))
+	brace_mid += (mid_t - brace_mid) * (1.0 - exp(-dt * (9.0 if mid_t > 0.0 else 2.2)))
 
 ## cambios de marcha: arranca el gesto de la mano
 func step_gear(dt: float, gear: int) -> void:
@@ -201,6 +215,19 @@ func co_hands(x: float, by: float, bz: float, xD: float, C: Dictionary) -> Array
 		rr["wrist"] = (rr["wrist"] as Vector3).lerp(Vector3(-xD - 0.08, C["eyeY"] - 0.35, C["eyeZ"] + 0.46), w)
 		rr["fdir"] = (rr["fdir"] as Vector3).lerp(Vector3(0.05, -0.45, 1).normalized(), w).normalized()
 		rr["back"] = (rr["back"] as Vector3).lerp(Vector3(-0.15, 1, -0.3).normalized(), w).normalized()
+	# curva fuerte: derecha al marco de la puerta, izquierda a la jaula del centro (se agarra para no irse de costado)
+	var wd := brace_door
+	if wd > 0.01:
+		var rd: Dictionary = hs[1]
+		rd["wrist"] = (rd["wrist"] as Vector3).lerp(Vector3(-xD - 0.28, C["eyeY"] - 0.30, C["eyeZ"] + 0.10), wd)
+		rd["fdir"] = (rd["fdir"] as Vector3).lerp(Vector3(-0.3, -0.35, 0.9).normalized(), wd).normalized()
+		rd["back"] = (rd["back"] as Vector3).lerp(Vector3(0.2, 1, -0.2).normalized(), wd).normalized()
+	var wm := brace_mid
+	if wm > 0.01:
+		var lm: Dictionary = hs[0]
+		lm["wrist"] = (lm["wrist"] as Vector3).lerp(Vector3(-xD + 0.30, C["eyeY"] - 0.36, C["eyeZ"] + 0.12), wm)
+		lm["fdir"] = (lm["fdir"] as Vector3).lerp(Vector3(0.3, -0.3, 0.9).normalized(), wm).normalized()
+		lm["back"] = (lm["back"] as Vector3).lerp(Vector3(-0.2, 1, -0.2).normalized(), wm).normalized()
 	return hs
 
 func right_foot(xD: float, fy: float, eZ: float) -> Vector3:

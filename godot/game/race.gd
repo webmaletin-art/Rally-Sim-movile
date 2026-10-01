@@ -1219,7 +1219,7 @@ func _apply_live_settings(key: String) -> void:
 		"recal":
 			controls.recalibrate_gyro()
 			race_hud.toast("Acelerómetro calibrado: sostené el teléfono como para jugar")
-		"gearbox", "steerMode", "gyro", "gyroSens", "units", "wheelSize", "pedalSize":
+		"gearbox", "steerMode", "gyro", "gyroSens", "gyroDead", "gyroCurve", "gyroSmooth", "units", "wheelSize", "pedalSize":
 			_apply_controls_settings()
 		"volume", "volEngine", "volSurf", "volWind", "volTurbo", "volGear":
 			AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(profile.setting("volume")) / 80.0, 0.001)))
@@ -1256,11 +1256,47 @@ func _apply_controls_settings() -> void:
 	controls.steer_mode = "wheel" if str(profile.setting("steerMode")) == "wheel" else "slider"
 	controls.gyro_on = (profile.setting("gyro") == true)
 	controls.gyro_sens = float(profile.setting("gyroSens"))
+	controls.gyro_dead = float(profile.setting("gyroDead"))
+	controls.gyro_curve = float(profile.setting("gyroCurve"))
+	controls.gyro_smooth = float(profile.setting("gyroSmooth"))
 	controls.use_mph = str(profile.setting("units")) == "mph"
 	controls.wheel_scale = float(profile.setting("wheelSize")) / 100.0
 	controls.pedal_scale = float(profile.setting("pedalSize")) / 100.0
 	if controls.gyro_on:
 		controls.recalibrate_gyro()
+
+## Vibración del teléfono como un volante con fuerza de retorno: aprieta con la carga lateral y el patinaje, zumba con los pozos y
+## la tierra suelta y da un golpe seco con los impactos. Apagada por defecto (opción «Vibración tipo volante»).
+var _hap_t := 0.0
+func _haptics(dt: float, p, impact: float) -> void:
+	var lv := int(profile.setting("haptics"))
+	if lv <= 0:
+		return
+	_hap_t -= dt
+	var k: float = [0.0, 0.5, 0.85, 1.2][clampi(lv, 0, 3)]
+	if impact > 2.2:
+		Input.vibrate_handheld(110, clampf(0.45 + impact * 0.08, 0.5, 1.0))
+		_hap_t = 0.15
+		return
+	if _hap_t > 0.0:
+		return
+	var sp := sqrt(p.vx * p.vx + p.vz * p.vz)
+	if sp < 2.0:
+		return
+	var load := clampf(absf(p.aLat) / 14.0, 0.0, 1.0) # carga lateral: el volante «pesa» en las curvas
+	var rough := 0.0
+	var slip := 0.0
+	for i in 4:
+		var o := i * 8
+		if p.wheel_fx[o] < 0.5:
+			continue
+		if int(p.wheel_fx[o + 1]) != 0:
+			rough += 0.12 # tierra, pasto, nieve: zumbido
+		slip = maxf(slip, maxf(absf(p.wheel_fx[o + 3]), absf(p.wheel_fx[o + 4])))
+	var amp: float = (load * 0.55 + clampf(rough, 0.0, 0.4) * clampf(sp / 25.0, 0.0, 1.0) + clampf(slip - 0.15, 0.0, 0.6) * 0.5) * k
+	if amp > 0.07:
+		Input.vibrate_handheld(55, clampf(amp, 0.0, 1.0))
+		_hap_t = 0.065
 
 ## Nivel de partículas 0–10 (polvo, humo de gomas, rocío, piedritas). En automático es el que el juego aprendió que aguanta el teléfono.
 func _particle_level() -> int:
@@ -1788,6 +1824,8 @@ func _frame(dt: float) -> void:
 	controls.gear_text = "R" if p.gear < 0 else ("N" if p.gear == 0 else str(p.gear))
 	controls.rpm_frac = p.rpm / cars[0].phys.V.maxRpm
 	lens.update(dt, controls.speed_kmh, 1.0 if controls.nitro else 0.0)
+	if menu_mode and not paused:
+		_haptics(dt, p, pl_impact)
 	if audio_on and not paused:
 		audio.update(p, cars[0].phys.V, dt, pl_events, pl_impact)
 		pl_events = []

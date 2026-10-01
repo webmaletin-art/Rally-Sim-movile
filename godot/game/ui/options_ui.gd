@@ -64,9 +64,12 @@ const OPTION_LIST := [
 	["manejo", "gearbox", "Caja de cambios", ["auto", "manual"], ["Automática", "Manual"]],
 	["manejo", "steerMode", "Dirección", ["wheel", "slider"], ["Volante", "Barra"]],
 	["manejo", "units", "Unidades", ["kmh", "mph"], ["km/h", "mph"]],
-	["manejo", "vibrate", "Vibración", [false, true], ["No", "Sí"]],
+	["manejo", "haptics", "Vibración tipo volante (peso y baches)", [0, 1, 2, 3], ["Apagada", "Suave", "Media", "Fuerte"]],
 	["manejo", "gyro", "Volante con inclinación", [false, true], ["No", "Sí"]],
-	["manejo", "gyroSens", "Sensibilidad de la inclinación", [25, 50, 75, 100], ["Baja", "Media", "Alta", "Muy alta"]],
+	["manejo", "gyroSens", "Sensibilidad de la inclinación", [25, 40, 55, 70, 85, 100, 115, 130], ["Muy baja", "Baja", "Media baja", "Media", "Media alta", "Alta", "Muy alta", "Extrema"]],
+	["manejo", "gyroDead", "Zona muerta (ir recto sin temblar)", [0, 1.5, 3, 5], ["Ninguna", "Chica", "Media", "Grande"]],
+	["manejo", "gyroCurve", "Respuesta de la inclinación", [1.0, 1.35, 1.7], ["Lineal", "Progresiva", "Muy progresiva"]],
+	["manejo", "gyroSmooth", "Suavizado de la inclinación", [30.0, 15.0, 8.0, 5.0], ["Directo", "Normal", "Suave", "Muy suave"]],
 	["controles", "wheelSize", "Tamaño del volante", [70, 85, 100, 120, 140, 160], ["70%", "85%", "100%", "120%", "140%", "160%"]],
 	["controles", "pedalSize", "Tamaño del pedal", [70, 85, 100, 120, 140, 160], ["70%", "85%", "100%", "120%", "140%", "160%"]],
 	["camara", "camera", "Cámara al empezar", [0, 1, 2, 3, 4, 6, 7, 8], ["Casco", "Seguimiento", "Cerca", "Lejos", "Aérea", "Trasera (dos pilotos)", "Capó", "Paragolpes"]],
@@ -187,7 +190,7 @@ func _accel_block(body: VBoxContainer) -> void:
 		sfx.play("buy")
 		meter.calibrate()
 		changed.emit("recal"), true, 18, Vector2(0, 54)))
-	var tip := Kit.label("Activá «Volante con inclinación» arriba; la barra de Giro muestra cuánto doblás. «Sensibilidad» cambia cuánto hay que inclinar.", 13, Kit.MUTED)
+	var tip := Kit.label("Activá «Volante con inclinación» arriba; la barra de Giro muestra cuánto doblás. «Sensibilidad» cambia cuánto hay que inclinar, «Zona muerta» evita que tiemble al ir recto y «Respuesta progresiva» da más precisión en las rectas.", 13, Kit.MUTED)
 	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tip.custom_minimum_size.x = 340
 	body.add_child(tip)
