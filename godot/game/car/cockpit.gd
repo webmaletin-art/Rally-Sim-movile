@@ -40,6 +40,9 @@ var pedal_thr: Node3D
 var pedal_brk: Node3D
 var notes: Node3D
 var wipers: Array = []
+var drops_mat: ShaderMaterial # gotas de lluvia sobre el parabrisas (las barre el limpiaparabrisas)
+var drops_mesh: MeshInstance3D
+var rain_wet := 0.0
 var disp_vp: SubViewport
 var disp_ctl: DisplayPanel
 var _disp_t := 0.0
@@ -655,6 +658,7 @@ func _b_glass_hood() -> void:
 		bm.size = Vector3(0.016, 0.55, 0.010)
 		var blade := _mesh_node(bm, _mats["trim"], piv)
 		wipers.append({"piv": piv, "blade": blade, "len": 0.55})
+	_build_drops(wBL, wBR, wTL, wTR)
 	# espejo interior
 	var my := minf(rY - 0.16, eY + 0.16)
 	var mpos := Vector3(0.02, my, eZ + 0.44)
@@ -681,6 +685,82 @@ func _b_glass_hood() -> void:
 		q2.size = Vector2(0.21, 0.12)
 		_mesh_node(q2, _mats["mirror"], sp, _face(sp, eye))
 		_box(Vector3(0.16, 0.03, 0.05), Vector3(sd * (hw + 0.09), eY - 0.17, cz - 0.03), "paint")
+
+const DROPS_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_mix, depth_draw_never, cull_disabled;
+uniform float wet = 0.0;
+uniform float tm = 0.0;
+uniform vec2 gsize = vec2(1.6, 0.6);
+uniform vec2 piv_a = vec2(0.5, 0.0);
+uniform vec2 piv_b = vec2(1.1, 0.0);
+uniform vec2 wu2 = vec2(1.0, 0.0);
+uniform vec2 wv2 = vec2(0.0, 1.0);
+uniform float phase = 0.0;
+uniform float wipe_on = 0.0;
+uniform float blade_len = 0.58;
+uniform float sweep = 1.65;
+
+float h21(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
+// segundos desde que la escobilla pasó por este punto (99 = nunca la barre)
+float since_wipe(vec2 pm, vec2 piv) {
+	vec2 d = pm - piv;
+	vec2 l = vec2(dot(d, wu2), dot(d, wv2));
+	float a = atan(l.y, l.x);
+	float r = length(l);
+	if (a < 0.0 || a > sweep || r > blade_len) return 99.0;
+	float p1 = acos(clamp(1.0 - 2.0 * a / sweep, -1.0, 1.0)) / 6.2831853;
+	float p2 = 1.0 - p1;
+	return min(fract(phase - p1), fract(phase - p2)) * 1.4;
+}
+
+void fragment() {
+	vec2 pm = UV * gsize;
+	float age = 99.0;
+	if (wipe_on > 0.5) age = min(since_wipe(pm, piv_a), since_wipe(pm, piv_b));
+	// después de pasar la escobilla el vidrio queda limpio y las gotas vuelven de a poco
+	float v = smoothstep(0.15, 1.6, age) * wet;
+	float cell_s = 0.026;
+	vec2 g = pm / cell_s;
+	vec2 id = floor(g);
+	vec2 f = fract(g);
+	float h = h21(id);
+	vec2 c = vec2(0.25 + 0.5 * h21(id + 7.3), 0.25 + 0.5 * h21(id + 3.1));
+	float rad = 0.12 + 0.20 * h21(id + 1.7);
+	float dist = length(f - c);
+	float on = step(h, v * 0.85); // más gotas cuanto más mojado
+	float drop = smoothstep(rad, rad * 0.55, dist) * on;
+	float hi = smoothstep(rad * 0.8, 0.0, length(f - c + vec2(0.05, -0.05) * rad * 3.0)) * on;
+	// llovizna fina (niebla de gotas chicas) que le saca nitidez a la vista
+	float mist = 0.10 * v * (0.6 + 0.4 * h21(floor(pm * 140.0)));
+	vec3 col = mix(vec3(0.46, 0.53, 0.60), vec3(0.85, 0.92, 1.0), hi);
+	ALBEDO = col;
+	ALPHA = clamp(drop * 0.50 + mist, 0.0, 0.85);
+}
+"""
+
+func _build_drops(wBL: Vector3, wBR: Vector3, wTL: Vector3, wTR: Vector3) -> void:
+	var ex := (wBR - wBL).normalized()
+	var ey := (wTL - wBL).normalized()
+	var nrm := ex.cross(ey).normalized()
+	if nrm.dot(eye - wBL) < 0.0:
+		nrm = -nrm
+	var sh := Shader.new()
+	sh.code = DROPS_SHADER
+	drops_mat = ShaderMaterial.new()
+	drops_mat.shader = sh
+	drops_mat.render_priority = 2
+	var piv_a: Vector3 = wipers[0]["piv"]
+	var piv_b: Vector3 = wipers[1]["piv"]
+	drops_mat.set_shader_parameter("gsize", Vector2((wBR - wBL).length(), (wTL - wBL).length()))
+	drops_mat.set_shader_parameter("piv_a", Vector2((piv_a - wBL).dot(ex), (piv_a - wBL).dot(ey)))
+	drops_mat.set_shader_parameter("piv_b", Vector2((piv_b - wBL).dot(ex), (piv_b - wBL).dot(ey)))
+	drops_mat.set_shader_parameter("wu2", Vector2(_wu.dot(ex), _wu.dot(ey)))
+	drops_mat.set_shader_parameter("wv2", Vector2(_wv.dot(ex), _wv.dot(ey)))
+	var off := nrm * 0.004
+	drops_mesh = _mesh_node(_quad_mesh(wBL + off, wBR + off, wTL + off, wTR + off), drops_mat, Vector3.ZERO)
+	drops_mesh.visible = false
 
 func _hood_tex() -> ImageTexture:
 	var N := 256
@@ -1173,6 +1253,14 @@ func update_cabin(dt: float, p: CarSnapshot, in_handbrake: bool, time: float) ->
 		var d := end - piv
 		(w["blade"] as Node3D).position = piv + d * 0.5
 		(w["blade"] as Node3D).basis = _align_y(d)
+	# lluvia sobre el parabrisas: se moja de a poco; con el limpiaparabrisas andando se despeja al pasar la escobilla
+	if drops_mat != null:
+		rain_wet = move_toward(rain_wet, 1.0 if raining else 0.0, dt * (0.18 if raining else 0.5))
+		drops_mesh.visible = rain_wet > 0.01
+		if drops_mesh.visible:
+			drops_mat.set_shader_parameter("wet", rain_wet)
+			drops_mat.set_shader_parameter("phase", ph)
+			drops_mat.set_shader_parameter("wipe_on", 1.0 if raining else 0.0)
 	# tacómetro de atrás del volante: aguja y luces de cambio
 	if cluster_needle != null:
 		var fr := clampf(p.rpm / _max_rpm, 0.0, 1.0)

@@ -170,10 +170,8 @@ func toast(t: String, kind := "") -> void:
 	toast_t = 2.2
 
 func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
-	# el minimapa va arriba a la derecha, a la izquierda de los botones de pausa y cámara
-	var vs := get_viewport_rect().size
-	var u := vs.y / 393.0
-	minimap.position = Vector2(vs.x - 140.0 * u - minimap.box.x, 10.0 * u)
+	# el minimapa va arriba a la izquierda, debajo del cronómetro (no tapa el espejo ni los botones)
+	minimap.position = Vector2(14.0, 100.0)
 	tick += dt
 	if tick > 0.05:
 		tick = 0.0
