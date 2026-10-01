@@ -60,3 +60,12 @@ Cuando esté en la Play Store, los modelos de autos nuevos pueden ir en `content
   en hilos; si no alcanza, la física se puede pasar a C++ (GDExtension) sin cambiar nada más.
 - El paquete se baja de GitHub Releases: el repositorio tiene que ser **público** (o usar otro hosting).
 - Play Store: la app descarga contenido del juego (recursos y scripts). Está permitido mientras no se salte las políticas de la tienda.
+
+
+## Estado tras la r24 (Dream Racing)
+- Pistas «solo camino»: guardarraíl (chapa en asfalto, valla de madera en tierra) con colisión, franja de árboles detrás, pasto con textura y matas, subidas y bajadas suaves, sin línea amarilla (solo el modo aventura la usará).
+- Carrera: choques entre autos, ayuda de trazada, minimapa, niveles de simulación (arcade / intermedio / simulador total / personalizado).
+- Menús: vistas previas de las pistas (`godot/game/ui/tracks/*.jpg`, se generan con `--viewat=… --hidecars --nohud --fx=0,0,0`), pruebas de autos en la concesionaria, opciones por categorías también en la pausa.
+- Interior: tacómetro con luces de cambio detrás del volante, miradas con vida (`car/gaze.gd`), capó con toma de aire y pasadores, espejos con reflejo, red en el triángulo de la ventana.
+- Sala 3D: la tripulación camina alrededor del auto (pasos con cinemática inversa) y hace gestos.
+- El acelerómetro necesita la APK nueva: los sensores vienen desactivados por defecto en Godot 4.4 y se activan en `project.godot` (`input_devices/sensors`).

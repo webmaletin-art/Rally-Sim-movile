@@ -17,6 +17,45 @@ func _maps() -> Dictionary:
 		maps = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["maps"]
 	return maps
 
+## Vista previa de una pista: dos tomas del recorrido que se alternan con un fundido (como una cámara que pasa por la pista)
+func preview(map_id: String) -> Control:
+	var base := map_id.replace("Rev", "")
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(0, 172)
+	holder.clip_contents = true
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var texs: Array = []
+	for k in 2:
+		var path := "res://game/ui/tracks/%s_%d.jpg" % [base, k]
+		if ResourceLoader.exists(path):
+			texs.append(load(path))
+	if texs.is_empty():
+		return holder
+	var rects: Array = []
+	for t in texs:
+		var tr := TextureRect.new()
+		tr.texture = t
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(tr)
+		rects.append(tr)
+	if rects.size() > 1:
+		(rects[1] as Control).modulate.a = 0.0
+		var tw := holder.create_tween().set_loops()
+		tw.tween_interval(2.4)
+		tw.tween_property(rects[1], "modulate:a", 1.0, 0.9)
+		tw.tween_interval(2.4)
+		tw.tween_property(rects[1], "modulate:a", 0.0, 0.9)
+	# nombre sobre la imagen
+	var lbl := Kit.label(map_name(map_id), 22, Color.WHITE)
+	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	lbl.add_theme_constant_override("outline_size", 8)
+	lbl.position = Vector2(12, 8)
+	holder.add_child(lbl)
+	return holder
+
 func map_name(id: String) -> String:
 	return str(_maps().get(id, {}).get("name", id))
 
@@ -154,6 +193,7 @@ func _event(id: String) -> void:
 	var dl := Kit.label(str(ev["desc"]), 18, Kit.MUTED)
 	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dl.custom_minimum_size.x = 380
+	m.body.add_child(preview(str(ev["map"])))
 	m.body.add_child(dl)
 	var res: Dictionary = m.profile.event_result(id)
 	var g := GridContainer.new()
@@ -215,6 +255,9 @@ func _quick() -> void:
 	for k in _maps():
 		if str(_maps()[k].get("kind", "")) == "route" and not _maps()[k].get("hidden", false) and not _maps()[k].get("trench", false):
 			route_maps.append(k)
+	var pv_box := VBoxContainer.new()
+	m.body.add_child(pv_box)
+	pv_box.add_child(preview(str(quick["map"])))
 	var opts := [
 		["Pista", "map", route_maps, func(v): return map_name(str(v))],
 		["Modo", "mode", ["race", "timetrial"], func(v): return "Carrera" if v == "race" else "Contrarreloj"],
@@ -235,7 +278,11 @@ func _quick() -> void:
 			var i := vals.find(quick[key])
 			quick[key] = vals[(i + 1) % vals.size()]
 			m.sfx.play("click")
-			b.text = "%s:  %s" % [o[0], fmt.call(quick[key])])
+			b.text = "%s:  %s" % [o[0], fmt.call(quick[key])]
+			if key == "map":
+				for c in pv_box.get_children():
+					c.queue_free()
+				pv_box.add_child(preview(str(quick["map"]))))
 		m.body.add_child(b)
 	m.body.add_child(Kit.button("¡CORRER!", func(): _start_quick(), true, 28, Vector2(0, 66)))
 
