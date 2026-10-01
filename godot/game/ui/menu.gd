@@ -36,6 +36,7 @@ var screen_arg = null
 var career: RefCounted
 var garage: RefCounted
 var frames := 0
+var showcar := "" # prueba: muestra este auto en la sala
 var autorace := "" # prueba: arranca directo este evento (p. ej. d2)
 var shot_path := ""
 var shot_frames := 0
@@ -60,6 +61,8 @@ func _ready() -> void:
 			shot_frames = int(a.substr(10))
 		elif a.begins_with("--screen="):
 			start_screen = a.substr(9)
+		elif a.begins_with("--showcar="):
+			showcar = a.substr(10)
 		elif a.begins_with("--autorace="):
 			autorace = a.substr(11)
 	if (profile.d["owned"] as Dictionary).is_empty():
@@ -75,13 +78,17 @@ func _ready() -> void:
 	opts.reset_cb = _confirm_reset
 	opts.changed.connect(func(key: String) -> void:
 		if key == "fx":
-			apply_fx())
+			apply_fx()
+		elif key == "recal":
+			toast("El acelerómetro se calibra solo al empezar la carrera; para recalibrar usá Opciones desde la pausa"))
 	career = Career.new()
 	career.m = self
 	garage = Garage.new()
 	garage.m = self
 	_build_world()
 	_build_ui()
+	if showcar != "":
+		refresh_car(showcar, profile.new_car_state(showcar))
 	# el premio del día, una sola vez por día
 	var daily: Dictionary = profile.daily_check()
 	if autorace != "" and not app.autorace_used:
@@ -275,7 +282,7 @@ func menu_button(text: String, sub: String, cb: Callable, accent := false, enabl
 # ───────────────────────── inicio ─────────────────────────
 func _home() -> void:
 	title_l.text = ""
-	var t := Kit.label("GSKORP RALLY", 44, Kit.ACCENT)
+	var t := Kit.label("DREAM RACING", 44, Kit.ACCENT)
 	body.add_child(t)
 	var car_id: String = profile.current_id()
 	var cm: Dictionary = CarBuild.catalog()["cars"][car_id]

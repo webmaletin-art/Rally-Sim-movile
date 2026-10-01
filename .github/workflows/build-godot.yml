@@ -82,6 +82,7 @@ jobs:
           godot --headless --script res://tests/build_test.gd
           godot --headless --script res://tests/ai_route_test.gd
           godot --headless --script res://tests/rewards_test.gd
+          godot --headless --script res://tests/wall_test.gd
 
       - name: Exportar APK liviano, APK completo y contenido
         working-directory: godot

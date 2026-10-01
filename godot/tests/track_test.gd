@@ -22,10 +22,12 @@ func _init() -> void:
 		for pr in e["probes"]:
 			t.hint = -1
 			var g: Vector2 = t.ground_info(pr[0], pr[1])
-			ymax = maxf(ymax, absf(g.x - float(pr[2])))
+			# el terreno de afuera ya no copia al del HTML (el camino va hundido): solo se compara camino y banquina
 			var js_surf: int = {"asphalt": 0, "dirt": 1, "shoulder": 2, "grass": 3, "outside": 4, "mud": 5}[pr[3]]
 			if int(g.y) != js_surf:
 				surf_bad += 1
+			if js_surf <= 2:
+				ymax = maxf(ymax, absf(g.x - float(pr[2])))
 		var good := dl < 0.003 and smax < 1.5 and ymax < 0.35 and surf_bad <= 2
 		print("%s %-14s largo %.0f m (dif %.2f%%) · muestras: peor %.2f m · alturas: peor %.3f m · superficies distintas %d/%d" % ["OK  " if good else "FALLA", key, t.length, dl * 100.0, smax, ymax, surf_bad, e["probes"].size()])
 		ok = ok and good

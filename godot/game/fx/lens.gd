@@ -163,6 +163,50 @@ vec3 fx_apply(sampler2D src, int id, vec3 c, vec2 uv, vec2 uv0, float tm, vec2 r
 		c *= 1.0 - shadow * 0.42 * l1;
 		c *= 1.0 - shadow * 0.30 * l2;
 		return c * (0.90 + 0.20 * n1);
+	} else if (id == 23) {
+		// oclusión ambiental falsa: lo que es más oscuro que su entorno se oscurece más (rincones, bajos del auto, pliegues)
+		float acc = 0.0;
+		for (int i = 0; i < 8; i++) {
+			float a = float(i) * 0.7854;
+			acc += lum_at(src, uv + vec2(cos(a), sin(a)) * px * 5.0) + lum_at(src, uv + vec2(cos(a), sin(a)) * px * 11.0);
+		}
+		float occ = clamp(acc / 16.0 - l, 0.0, 1.0);
+		return c * (1.0 - clamp(occ * 2.4, 0.0, 0.75));
+	} else if (id == 24) {
+		// aberración cromática: desfase rojo/azul que crece hacia los bordes
+		vec2 dd = uv0 - 0.5;
+		float k = 0.0025 + 0.016 * dot(dd, dd);
+		return vec3(texture(src, uv + dd * k * 2.0).r, c.g, texture(src, uv - dd * k * 2.0).b);
+	} else if (id == 25) {
+		// mapeo de tonos de cine (ACES) + color: sombras frías, luces cálidas, más contraste
+		vec3 x = c * 1.15;
+		x = (x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14);
+		x = mix(x * vec3(0.93, 1.0, 1.08), x * vec3(1.07, 1.0, 0.92), smoothstep(0.2, 0.8, lum(x)));
+		return clamp((x - 0.5) * 1.12 + 0.5, 0.0, 1.0);
+	} else if (id == 26) {
+		// profundidad de campo: enfocado en la franja del camino, desenfocado arriba y abajo
+		float f = smoothstep(0.14, 0.5, abs(uv0.y - 0.5));
+		vec3 bl = vec3(0.0);
+		for (int i = 0; i < 8; i++) {
+			float a = float(i) * 0.7854;
+			bl += texture(src, uv + vec2(cos(a), sin(a)) * px * (1.0 + 4.0 * f)).rgb;
+		}
+		return mix(c, bl / 8.0, f);
+	} else if (id == 27) {
+		// destello de lente + suciedad: las luces fuertes dejan una estela horizontal y un fantasma al otro lado
+		vec3 fl = vec3(0.0);
+		for (int i = 1; i <= 6; i++) {
+			float o = float(i) * 7.0;
+			fl += vec3(smoothstep(0.78, 1.0, lum_at(src, uv + vec2(o * px.x, 0.0))) + smoothstep(0.78, 1.0, lum_at(src, uv - vec2(o * px.x, 0.0)))) / float(i);
+		}
+		vec3 ghost = texture(src, 0.5 + (0.5 - uv) * 0.65).rgb;
+		float gh = smoothstep(0.85, 1.0, lum(ghost));
+		float dirt = smoothstep(0.55, 1.0, hash1(floor(uv * 14.0))) * 0.6 + 0.4;
+		return c + (vec3(0.55, 0.75, 1.0) * fl * 0.25 + vec3(1.0, 0.7, 0.4) * gh * 0.35) * dirt;
+	} else if (id == 28) {
+		// granulado de película
+		float n = hash1(uv * res + fract(tm) * 91.0) - 0.5;
+		return c + n * 0.13 * (0.6 + (1.0 - l) * 0.9);
 	} else if (id == 22) {
 		// historieta: cel saturado + semitono en las sombras + bordes negros
 		float q = (l < 0.26) ? 0.45 : ((l < 0.58) ? 0.78 : 1.08);
@@ -224,8 +268,9 @@ var target: CanvasItem
 ## Nombres de los efectos 2.0 (el índice es el número que usa el shader; 0 = ninguno) y su costo (1 liviano … 5 pesado)
 const FX_NAMES := ["Ninguno", "Negativo", "Blanco y negro", "Sepia", "Rojo carmesí", "Acua (azulado)", "Solarizado", "Bleach bypass (cine)", "Póster",
 	"Semitonos (manga)", "Visión nocturna", "Glitch", "Cel shading (toon)", "Infrarrojo con brillo", "Bodycam (ojo de pez)", "Boceto (contorno negro)",
-	"Pizarra (contorno blanco)", "Graphic Black", "1-Bit tramado", "Sin City (rojo sangre)", "Borderlands (cómic)", "Lienzo de tiza", "XIII (historieta)"]
-const FX_COST := [0, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 4, 3, 5, 5, 5, 5, 5, 5, 5, 5]
+	"Pizarra (contorno blanco)", "Graphic Black", "1-Bit tramado", "Sin City (rojo sangre)", "Borderlands (cómic)", "Lienzo de tiza", "XIII (historieta)",
+	"Oclusión ambiental", "Aberración cromática", "Tonos de cine (HDR)", "Profundidad de campo", "Destello y suciedad de lente", "Granulado de película"]
+const FX_COST := [0, 1, 1, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 4, 3, 5, 5, 5, 5, 5, 5, 5, 5, 3, 1, 1, 4, 4, 1]
 var fx: Array = [0, 0, 0]:
 	set(v):
 		fx = v

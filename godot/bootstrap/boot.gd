@@ -44,7 +44,7 @@ func _build_ui() -> void:
 	box.add_theme_constant_override("separation", 14)
 	add_child(box)
 	_title = Label.new()
-	_title.text = "GSKORP RALLY"
+	_title.text = "DREAM RACING"
 	_title.add_theme_font_size_override("font_size", 44)
 	_title.add_theme_color_override("font_color", Color(1.0, 0.48, 0.1))
 	_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

@@ -114,6 +114,7 @@ var cam_rig: RefCounted
 var was_inside := false
 var was_onboard := false
 var cam_index := 1
+var wall_on := false # pista solo de camino: límite lateral con árboles (se activa en las carreras del menú)
 var fx_arg := "" # prueba: efectos 2.0 por argumento (p. ej. --fx=11,3,0)
 var lens_auto := true # el filtro se apaga solo si el teléfono no llega
 var lens: Node # filtro de cámara (Lente Rally)
@@ -163,6 +164,7 @@ func _ready() -> void:
 		weather_name = {"day": "dia", "overcast": "nublado", "rain": "lluvia", "sunset": "atardecer", "dusk": "ocaso"}.get(str(cfg.get("sky", "day")), "dia")
 		cars_n = 1 + int(cfg.get("ai", 0))
 		trees_n = 3000
+		wall_on = true
 		cam_index = int(profile.setting("camera")) if profile != null else 1
 		manual_gearbox = profile != null and str(profile.setting("gearbox")) == "manual"
 	_make_track()
@@ -373,6 +375,9 @@ func _check_terrain() -> void:
 ## Al acercarte, las capas se cambian solas. Antes se dibujaba todo el campo.
 const CHUNK := 200.0
 
+func wall_dist() -> float:
+	return float(track.half_width + track.shoulder) + 11.0
+
 func _rebuild_trees() -> void:
 	if trees_node != null:
 		trees_node.queue_free()
@@ -437,6 +442,10 @@ func _rebuild_trees() -> void:
 				var sp: Vector3 = track.samples[si]
 				var l: Vector3 = track.laterals[si]
 				var off := rng.randf_range(near_min, near_min + 250.0) * (1.0 if rng.randf() < 0.5 else -1.0)
+				if wall_on:
+					# pista solo de camino: árboles hasta el límite, con una franja densa justo ahí (el "muro de árboles")
+					var wl := wall_dist()
+					off = (rng.randf_range(near_min, wl - 2.0) if rng.randf() < 0.5 else rng.randf_range(wl - 3.0, wl + 9.0)) * (1.0 if rng.randf() < 0.5 else -1.0)
 				px = sp.x + l.x * off
 				pz = sp.z + l.z * off
 				# que no caiga sobre otro tramo de la pista (curvas cerradas y cruces)
@@ -603,6 +612,8 @@ func _rebuild_cars() -> void:
 			cam_rig.set_preset(cam_index)
 			was_inside = false
 			_load_cabin_cfg()
+		if wall_on and route:
+			car.wall = wall_dist()
 		cars.append(car)
 		if auto_player and i == 0 and route:
 			car.driver = AIDriver.new(track.make_view(), car.phys, {"skill": 0.95})
@@ -774,7 +785,7 @@ func _build_report() -> String:
 		v = FileAccess.get_file_as_string("user://content_version.txt").strip_edges()
 	var mem := OS.get_memory_info()
 	var out: Array = []
-	out.append("=== INFORME GSKORP RALLY (Godot) ===")
+	out.append("=== INFORME DREAM RACING (Godot) ===")
 	out.append("Fecha: " + Time.get_datetime_string_from_system())
 	out.append("Juego: versión %s" % v)
 	out.append("Motor: Godot %s · renderizador %s" % [Engine.get_version_info()["string"], str(ProjectSettings.get_setting("rendering/renderer/rendering_method"))])
@@ -921,13 +932,16 @@ func _apply_quality_settings() -> void:
 	trees_n = int(tree_q.get(q, 3000)) if str(t) == "auto" else int(t)
 	var sh = profile.setting("shadowsQ")
 	sun.shadow_enabled = (q == "high") if str(sh) == "auto" else sh == true
-	_ar_cap = float(cap.get(q, 0.8))
+	_ar_cap = float(profile.setting("autoRes")) if q == "auto" else float(cap.get(q, 0.8))
 	if res_auto:
 		res_scale = minf(res_scale, _ar_cap)
 		if q == "low":
 			res_scale = 0.4
 		_on_resize()
 	var tx := str(profile.setting("textures"))
+	if tx == "auto":
+		tx = str(profile.setting("autoTex"))
+	fx.intensity = _particle_level() / 10.0
 	world.anisotropic_filtering_level = {"low": Viewport.ANISOTROPY_DISABLED, "mid": Viewport.ANISOTROPY_4X, "high": Viewport.ANISOTROPY_16X}.get(tx, Viewport.ANISOTROPY_4X)
 	audio.mix["eng"] = float(profile.setting("volEngine")) / 100.0
 	audio.mix["surf"] = float(profile.setting("volSurf")) / 100.0
@@ -953,8 +967,13 @@ func _apply_live_settings(key: String) -> void:
 			if not res_auto:
 				res_scale = rs
 			_on_resize()
+		"particles":
+			fx.intensity = _particle_level() / 10.0
 		"abs", "tc", "stab":
 			_apply_assists()
+		"recal":
+			controls.recalibrate_gyro()
+			race_hud.toast("Acelerómetro calibrado: sostené el teléfono como para jugar")
 		"gearbox", "steerMode", "gyro", "gyroSens", "units":
 			_apply_controls_settings()
 		"volume", "volEngine", "volSurf", "volWind", "volTurbo", "volGear":
@@ -995,6 +1014,46 @@ func _apply_controls_settings() -> void:
 	controls.use_mph = str(profile.setting("units")) == "mph"
 	if controls.gyro_on:
 		controls.recalibrate_gyro()
+
+## Nivel de partículas 0–10 (polvo, humo de gomas, rocío, piedritas). En automático es el que el juego aprendió que aguanta el teléfono.
+func _particle_level() -> int:
+	var v = profile.setting("particles")
+	return int(profile.setting("autoParticles")) if str(v) == "auto" else int(v)
+
+## Calidad automática: si el teléfono no llega, primero baja partículas, después resolución, después texturas, y al final quita las
+## partículas. Lo aprendido se guarda en el perfil (no vuelve a subir solo). Devuelve true si cambió algo.
+func _auto_degrade() -> bool:
+	if not menu_mode or str(profile.setting("quality")) != "auto":
+		return false
+	var steps := [10, 7, 4, 2, 0]
+	var p_auto := str(profile.setting("particles")) == "auto"
+	var p := int(profile.setting("autoParticles"))
+	var pi := steps.find(p)
+	if pi < 0:
+		pi = 0
+	if p_auto and p > 4:
+		_set_auto_particles(int(steps[pi + 1]))
+		return true
+	if res_auto and res_scale > 0.5:
+		return false # que baje primero la resolución (lo hace _auto_res)
+	if p_auto and p > 2:
+		_set_auto_particles(int(steps[pi + 1]))
+		return true
+	var tx := str(profile.setting("autoTex"))
+	if str(profile.setting("textures")) == "auto" and tx != "low":
+		profile.set_setting("autoTex", "mid" if tx == "high" else "low")
+		_apply_quality_settings()
+		return true
+	if p_auto and p > 0:
+		_set_auto_particles(int(steps[pi + 1]))
+		return true
+	return false
+
+func _set_auto_particles(v: int) -> void:
+	profile.set_setting("autoParticles", v)
+	fx.intensity = float(v) / 10.0
+	if race_hud != null:
+		race_hud.toast("Calidad automática: partículas al %d/10" % v)
 
 func _fx_setting() -> Array:
 	var a = profile.setting("fx")
@@ -1236,12 +1295,16 @@ func _auto_res(dt: float) -> void:
 	_ar_n = 0
 	var target := 1.0 / maxf(DisplayServer.screen_get_refresh_rate(), 30.0) if is_finite(DisplayServer.screen_get_refresh_rate()) else 0.0167
 	target = clampf(target, 0.0083, 0.0167)
-	if avg > target * 1.25 and res_scale <= 0.45 and lens.level > 0 and lens_auto:
+	if avg > target * 1.25 and _auto_degrade():
+		_ar_cool = 12.0
+	elif avg > target * 1.25 and res_scale <= 0.45 and lens.level > 0 and lens_auto:
 		lens.level = 0 # ni bajando la resolución llega: el filtro de cámara es lo primero que se apaga
 	elif avg > target * 1.25 and res_scale > 0.36:
 		res_scale = maxf(0.35, res_scale - 0.05)
 		_ar_cap = minf(_ar_cap, res_scale + 0.05) # ahí ya no llegaba: no vuelve a probar arriba enseguida
 		_ar_cool = 20.0
+		if menu_mode and str(profile.setting("quality")) == "auto":
+			profile.set_setting("autoRes", res_scale)
 		_on_resize()
 	elif avg < target * 1.08 and res_scale < _ar_cap and _ar_cool <= 0.0:
 		res_scale = minf(_ar_cap, res_scale + 0.05)

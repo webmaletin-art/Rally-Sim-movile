@@ -91,7 +91,8 @@ func make_view() -> Object:
 func set_grip(g: float) -> void:
 	grip_mul = g
 	for v in views:
-		v.grip_mul = g
+		if is_instance_valid(v): # al cerrar el juego algunas vistas ya fueron liberadas
+			v.grip_mul = g
 
 # ───────────────────────── construcción de la ruta ─────────────────────────
 static func _cr(p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, w: float) -> Vector3:
@@ -281,10 +282,15 @@ func nearest(x: float, z: float) -> void:
 func _terrain_base(x: float, z: float, road_y: float) -> float:
 	return road_y - 0.25 + 0.7 * sin(x * 0.020 + z * 0.018) + 0.35 * sin(x * 0.045 - z * 0.038 + 1.3) + 0.18 * sin(x * 0.11 + z * 0.09 + 2.7)
 
-func _ditch(d: float, se: float) -> float:
+## Terreno fuera de la banquina: el camino va hundido, como en una trinchera suave. Del borde de la banquina sube de forma
+## progresiva (pendiente suave que se acentúa y se aplana) hasta ~0,9 m por encima del camino, y ahí sigue con las ondulaciones del campo.
+func _outside_y(d: float, se: float, x: float, z: float, road_y: float) -> float:
 	var dd := maxf(0.0, d - se)
-	var s := dd * dd / (dd * dd + 9.0)
-	return 0.28 * s * exp(-dd / 15.0)
+	var t := minf(dd / 16.0, 1.0)
+	var s := t * t * (3.0 - 2.0 * t)
+	var u := _terrain_base(x, z, road_y) - (road_y - 0.25) # ondulación del campo (±1,2 m)
+	var hi := road_y + 0.9 + u * 0.7
+	return lerpf(road_y - 0.05, hi, s)
 
 func _micro_bump(x: float, z: float, surf: int) -> float:
 	var a: float = BUMP_AMP[surf]
@@ -309,12 +315,11 @@ func ground_info(x: float, z: float) -> Vector2:
 	if d <= edge:
 		y = r_y + (1.0 - pow(minf(d / edge, 1.0), 2.0)) * 0.03
 	else:
-		var base := _terrain_base(x, z, r_y)
 		if d <= se:
 			var t := (d - edge) / shoulder
-			y = r_y * (1.0 - t) + base * t + 0.10 * sin(t * PI)
+			y = r_y - 0.05 * t # la banquina baja apenas hacia la cuneta
 		else:
-			y = base - _ditch(d, se)
+			y = _outside_y(d, se, x, z, r_y)
 	var surf := _surf_of(d)
 	return Vector2(y + _micro_bump(x, z, surf), float(surf))
 
@@ -324,13 +329,12 @@ func ground_smooth(x: float, z: float) -> float:
 	var d := absf(r_lat)
 	var edge := half_width
 	var se := edge + shoulder
-	var base := _terrain_base(x, z, r_y)
 	if d <= edge:
 		return r_y + (1.0 - pow(minf(d / edge, 1.0), 2.0)) * 0.03
 	if d <= se:
 		var t := (d - edge) / shoulder
-		return r_y * (1.0 - t) + base * t + 0.10 * sin(t * PI)
-	return base - _ditch(d, se)
+		return r_y - 0.05 * t
+	return _outside_y(d, se, x, z, r_y)
 
 # ───────────────────────── largada y progreso ─────────────────────────
 ## Pose de largada en el lugar "slot" de la parrilla (0 = adelante a la derecha): x, z, yaw
@@ -568,7 +572,7 @@ func build_terrain_mesh(rows: Array, r: int) -> ArrayMesh:
 	return out
 
 ## Línea de largada con dos postes y el cartel
-func build_start_gate(gi := 0, text := "GSKORP RALLY", color := Color(1, 1, 1)) -> Node3D:
+func build_start_gate(gi := 0, text := "DREAM RACING", color := Color(1, 1, 1)) -> Node3D:
 	var g := Node3D.new()
 	var p := samples[gi]
 	var l := laterals[gi]

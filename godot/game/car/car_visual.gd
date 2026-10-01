@@ -28,6 +28,15 @@ func setup(p_params: VehicleParams, p_lo: bool, paint: Color, rim: Color, finish
 	var body_scene: PackedScene = load("res://game/models/volt_body%s.glb" % suffix)
 	shell = body_scene.instantiate()
 	body.add_child(shell)
+	# la carrocería del Volt se ajusta a la distancia entre ejes y a la trocha de cada auto (si no, las ruedas quedan corridas del chasis)
+	var wb_ref := 2.9
+	var wf_ref := 0.48
+	var sz := V.wheelBase / wb_ref
+	var sx := V.trackF / 2.02
+	var c_ref := wb_ref * (1.0 - 2.0 * wf_ref) * 0.5 # centro entre ejes del Volt (adelante − atrás)/2
+	var c_car := V.wheelBase * (1.0 - 2.0 * V.weightFront) * 0.5
+	shell.scale = Vector3(sx, sqrt(sx * sz), sz)
+	shell.position.z = c_car - c_ref * sz
 	for mi in _mesh_instances(shell):
 		var mesh: Mesh = mi.mesh
 		for s in mesh.get_surface_count():
