@@ -29,7 +29,7 @@ func _ready() -> void:
 	env.background_color = Color(0.045, 0.06, 0.085)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.55, 0.6, 0.72)
-	env.ambient_light_energy = 1.1
+	env.ambient_light_energy = 0.6
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.045, 0.06, 0.085)
 	env.fog_density = 0.022
@@ -38,13 +38,18 @@ func _ready() -> void:
 	add_child(we)
 	sun = DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-42, -38, 0)
-	sun.light_energy = 1.35
+	sun.light_energy = 1.0
 	sun.light_color = Color(1.0, 0.95, 0.88)
 	sun.shadow_enabled = true
 	sun.shadow_opacity = 0.55
 	sun.shadow_blur = 2.0
 	sun.directional_shadow_max_distance = 22.0
 	add_child(sun)
+	var rim_l := DirectionalLight3D.new() # luz de contorno desde atrás: los autos negros no se pierden en el fondo
+	rim_l.rotation_degrees = Vector3(-25, 200, 0)
+	rim_l.light_energy = 0.55
+	rim_l.light_color = Color(0.85, 0.9, 1.0)
+	add_child(rim_l)
 	var fill := DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-18, 150, 0)
 	fill.light_energy = 0.45
@@ -446,8 +451,8 @@ func _process(dt: float) -> void:
 	t += dt
 	# cámara: va y viene despacio alrededor del frente-izquierdo del auto
 	cam_ang = 0.62 + 0.30 * sin(t * 0.12)
-	var dist := car_len * 1.85 + 1.5
-	var target := Vector3(1.55, 0.95, car_len * 0.2)
+	var dist := car_len * 1.5 + 1.1
+	var target := Vector3(1.35, 0.85, car_len * 0.18)
 	var cp := target + Vector3(sin(cam_ang) * dist, 0.65 + 0.12 * sin(t * 0.17), cos(cam_ang) * dist)
 	cam.position = cp
 	cam.look_at(target)
