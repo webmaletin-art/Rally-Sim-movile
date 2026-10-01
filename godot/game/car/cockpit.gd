@@ -13,6 +13,7 @@ extends Node3D
 const RigPilot := preload("res://game/car/rig_pilot.gd")
 const CrewMotion := preload("res://game/car/crew_motion.gd")
 const CarSnapshot := preload("res://game/car/car_snapshot.gd")
+const Gaze := preload("res://game/car/gaze.gd")
 
 const CABIN := {
 	"pickup": {"eyeY": 1.40, "eyeZ": 0.30, "cowlZ": 1.22, "halfW": 0.80, "roofY": 1.70},
@@ -58,6 +59,8 @@ var rear_fov := 92.0 # ángulo horizontal de las cámaras interiores (menos = m�
 var ob_fov := 96.0
 var disp_off := 0.30 # cuánto se corre la pantalla del tablero desde delante del piloto hacia el centro del tablero (hacia su derecha)
 var dome: Node3D
+var gaze_p: RefCounted
+var gaze_c: RefCounted
 var read_w := 0.0 # cuánto está leyendo la hoja el copiloto (0 mira al frente … 1 mira la hoja)
 var _body_col := Color(0.10, 0.31, 0.88)
 var _acc := Color(1.0, 0.42, 0.03)
@@ -105,19 +108,23 @@ func _m(key: String, col: Color, rough := 0.8, metal := 0.0, tex: Texture2D = nu
 	return m
 
 func _grain_tex(base: int, spread: int, stitch: bool) -> ImageTexture:
-	var img := Image.create(64, 64, false, Image.FORMAT_RGB8)
+	# grano fino (256 px, con mipmaps): de cerca no se ven cuadraditos; las costuras del tablero van cada 16 px
+	var N := 256
+	var img := Image.create(N, N, false, Image.FORMAT_RGB8)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 11
-	for y in 64:
-		for x in 64:
-			var v := float(base + rng.randi() % spread) / 255.0
+	for y in N:
+		for x in N:
+			var low := 0.5 + 0.5 * sin(float(x) * 0.11 + sin(float(y) * 0.07) * 2.0) * sin(float(y) * 0.13 + float(x) * 0.03)
+			var v := (float(base) + float(spread) * (0.45 * low + 0.55 * rng.randf())) / 255.0
 			img.set_pixel(x, y, Color(v, v, v + 0.008))
 	if stitch:
-		for x in range(0, 64, 4):
-			for k in 2:
+		for x in range(0, N, 16):
+			for k in 5:
 				var c := Color(0.30, 0.30, 0.32)
-				img.set_pixel(x + k, 6, c)
-				img.set_pixel(x + k, 9, c)
+				img.set_pixel(clampi(x + k, 0, N - 1), 26, c)
+				img.set_pixel(clampi(x + k, 0, N - 1), 37, c)
+	img.generate_mipmaps()
 	return ImageTexture.create_from_image(img)
 
 func _carbon_tex() -> ImageTexture:
@@ -135,6 +142,23 @@ func _rubber_tex() -> ImageTexture:
 			var d := absf(fposmod(float(x + y), 16.0) - 8.0) + absf(fposmod(float(x - y), 16.0) - 8.0)
 			var v := 0.05 + 0.03 * clampf(1.0 - d / 8.0, 0.0, 1.0)
 			img.set_pixel(x, y, Color(v, v, v + 0.004))
+	return ImageTexture.create_from_image(img)
+
+## Reflejo falso de los espejos: cielo arriba, horizonte, camino oscuro abajo y una franja de pasto (no refleja el juego de verdad)
+func _mirror_tex() -> ImageTexture:
+	var H := 64
+	var img := Image.create(8, H, false, Image.FORMAT_RGB8)
+	for y in H:
+		var t := float(y) / float(H - 1)
+		var c: Color
+		if t < 0.46:
+			c = Color(0.62, 0.78, 0.93).lerp(Color(0.80, 0.88, 0.96), t / 0.46)
+		elif t < 0.56:
+			c = Color(0.22, 0.34, 0.20)
+		else:
+			c = Color(0.20, 0.21, 0.23).lerp(Color(0.09, 0.09, 0.10), (t - 0.56) / 0.44)
+		for x in 8:
+			img.set_pixel(x, y, c * 0.92)
 	return ImageTexture.create_from_image(img)
 
 func _net_tex() -> ImageTexture:
@@ -193,7 +217,7 @@ static func _align_y(dir: Vector3) -> Basis:
 
 func _bar(a: Vector3, b: Vector3, r: float, mat_key: String) -> void:
 	var d := b - a
-	_cyl(r, r, d.length(), a + d * 0.5, mat_key, _align_y(d), 8)
+	_cyl(r, r, d.length(), a + d * 0.5, mat_key, _align_y(d), 12)
 
 func _box_between(a: Vector3, b: Vector3, w: float, t: float, mat_key: String) -> void:
 	var d := b - a
@@ -301,7 +325,7 @@ func _build() -> void:
 	var glass := _m("glass", Color(0.68, 0.76, 0.83, 0.10), 0.04, 0.9)
 	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	glass.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
-	var mir := _m("mirror", Color(0.09, 0.12, 0.16), 0.1)
+	var mir := _m("mirror", Color(1, 1, 1), 0.1, 0.0, _mirror_tex())
 	mir.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_b_floor_and_walls()
 	_b_dash()
@@ -517,6 +541,18 @@ func _b_cage() -> void:
 	_bar(Vector3(-ih * 0.95, top, za), Vector3(ih * 0.95, top, za), r, "cage")
 	_bar(Vector3(-ih, top, (za + zm) / 2.0), Vector3(ih, top, (za + zm) / 2.0), r, "cage")
 	_bar(Vector3(-ih, 0.62, zm), Vector3(ih, 0.62, zm), r, "cage")
+	# nudos esféricos en las uniones (sin estos las barras se ven cortadas en cuadrado) y refuerzos
+	for sd in [1.0, -1.0]:
+		var xx: float = sd * ih
+		for jp in [Vector3(xx, top, zm), Vector3(xx * 0.95, top, za), Vector3(xx, 0.60, zb), Vector3(xx, 0.78, zb), Vector3(xx, 0.66, zm), Vector3(xx, 0.62, zm)]:
+			var sm := SphereMesh.new()
+			sm.radius = r * 1.25
+			sm.height = r * 2.5
+			sm.radial_segments = 10
+			sm.rings = 6
+			_add_mesh(sm, Transform3D(Basis.IDENTITY, jp), "cage")
+		# cartela triangular en el codo del arco principal
+		_bar(Vector3(xx, top - 0.30, zm), Vector3(xx, top, zm + 0.30), r * 0.8, "cage")
 
 func _b_doors_roof() -> void:
 	var z_back := eZ - 1.50
@@ -537,6 +573,11 @@ func _b_doors_roof() -> void:
 		nm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		var q := _quad_mesh(Vector3(x, 1.0, eZ - 0.55), Vector3(x, 1.0, eZ + 0.42), Vector3(x, rY - 0.12, eZ - 0.55), Vector3(x, rY - 0.12, eZ + 0.42))
 		_mesh_node(q, nm, Vector3.ZERO)
+		# el triángulo delantero de la ventana (entre el parante del parabrisas y el borde de la puerta) también lleva red
+		var tri := _quad_mesh(Vector3(x, 1.0, eZ + 0.42), Vector3(x, 1.0, z_front), Vector3(x, rY - 0.12, eZ + 0.46), Vector3(x, rY - 0.12, eZ + 0.46))
+		_mesh_node(tri, nm, Vector3.ZERO)
+		_bar(Vector3(x, 1.0, eZ + 0.42), Vector3(x, 1.0, z_front), 0.012, "trim") # marco del triángulo
+		_bar(Vector3(x, 1.0, z_front), Vector3(x, rY - 0.12, eZ + 0.46), 0.012, "trim")
 	# techo: revestimiento oscuro con escotilla de emergencia y luz de mapa
 	var roof_len := eZ + 0.5 - (eZ - 1.50)
 	_plane(2.0 * hw, roof_len, Vector3(0, rY + 0.01, (eZ + 0.5 + eZ - 1.50) / 2.0), "roof", Basis(Vector3.RIGHT, PI))
@@ -580,7 +621,33 @@ func _b_glass_hood() -> void:
 	hood_mat.metallic = 0.45
 	hood_mat.roughness = 0.3
 	var hL := 1.9
-	_mesh_node(_hood_mesh(2.0 * hw * 1.22, hL, hw), hood_mat, Vector3(0, cowl_y - 0.035, cz + hL / 2.0 - 0.04))
+	var hood_pos := Vector3(0, cowl_y - 0.035, cz + hL / 2.0 - 0.04)
+	_mesh_node(_hood_mesh(2.0 * hw * 1.22, hL, hw), hood_mat, hood_pos)
+	# detalles del capó: toma de aire central, cuatro pasadores y bisagras (desde adentro se ve un capó de verdad)
+	var scoop := BoxMesh.new()
+	scoop.size = Vector3(0.30, 0.05, 0.36)
+	var sc_u := 0.34
+	var sc_y := -0.11 * sc_u * sc_u - 0.02 * sc_u
+	_mesh_node(scoop, hood_mat, hood_pos + Vector3(0, sc_y + 0.025, (sc_u - 0.5) * hL), Basis(Vector3.RIGHT, 0.1))
+	var inlet := _m("inlet", Color(0.01, 0.01, 0.012), 0.9)
+	var iq := QuadMesh.new()
+	iq.size = Vector2(0.26, 0.035)
+	_mesh_node(iq, inlet, hood_pos + Vector3(0, sc_y + 0.02, (sc_u - 0.5) * hL + 0.182), Basis(Vector3.UP, PI))
+	for px2 in [0.56, -0.56]:
+		for pu in [0.2, 0.62]:
+			var py2: float = -0.025 * (px2 * px2) / (hw * hw) - 0.11 * pu * pu - 0.02 * pu
+			var pin := CylinderMesh.new()
+			pin.top_radius = 0.016
+			pin.bottom_radius = 0.016
+			pin.height = 0.025
+			pin.radial_segments = 10
+			_mesh_node(pin, _mats["metal"], hood_pos + Vector3(px2, py2 + 0.012, (pu - 0.5) * hL))
+			var loop := TorusMesh.new()
+			loop.inner_radius = 0.012
+			loop.outer_radius = 0.017
+			loop.rings = 10
+			loop.ring_segments = 6
+			_mesh_node(loop, _mats["metal"], hood_pos + Vector3(px2, py2 + 0.03, (pu - 0.5) * hL), Basis(Vector3.RIGHT, PI / 2.0))
 	# limpiaparabrisas (estacionados sobre la base del parabrisas; se mueven con la lluvia)
 	for px in [0.30, -0.34]:
 		var piv := Vector3(px, cowl_y + 0.012, cz + 0.02)
@@ -603,23 +670,46 @@ func _b_glass_hood() -> void:
 	for sd in [1.0, -1.0]:
 		var sp := Vector3(sd * (hw + 0.21), eY - 0.1, cz - 0.02)
 		var hp := sp + (eye - sp).normalized() * -0.04
-		_box(Vector3(0.24, 0.15, 0.07), hp, "paint", _face(hp, eye))
+		var cap := CapsuleMesh.new()
+		cap.radius = 0.06
+		cap.height = 0.26
+		cap.radial_segments = 14
+		cap.rings = 4
+		var cap_basis := _face(hp, eye) * Basis(Vector3.FORWARD, PI / 2.0) * Basis(Vector3.RIGHT, 0.0)
+		_mesh_node(cap, _mats["paint"], hp, cap_basis * Basis.from_scale(Vector3(1.0, 1.0, 0.55)))
 		var q2 := QuadMesh.new()
 		q2.size = Vector2(0.21, 0.12)
 		_mesh_node(q2, _mats["mirror"], sp, _face(sp, eye))
 		_box(Vector3(0.16, 0.03, 0.05), Vector3(sd * (hw + 0.09), eY - 0.17, cz - 0.03), "paint")
 
 func _hood_tex() -> ImageTexture:
-	var img := Image.create(64, 64, false, Image.FORMAT_RGB8)
+	var N := 256
+	var img := Image.create(N, N, false, Image.FORMAT_RGB8)
 	img.fill(_body_col)
-	for y in 64:
-		for x in range(23, 28):
-			img.set_pixel(x, y, _acc)
-		for x in range(36, 41):
-			img.set_pixel(x, y, _acc)
-	for y in range(6, 28):
-		for x in range(30, 34):
-			img.set_pixel(x, y, _body_col.darkened(0.5))
+	var dark := _body_col.darkened(0.55)
+	# dos franjas de color con borde suave
+	for y in N:
+		for x in N:
+			var fx := float(x) / float(N)
+			var d1 := minf(absf(fx - 0.40), absf(fx - 0.60))
+			if fx > 0.37 and fx < 0.43 or fx > 0.57 and fx < 0.63:
+				var edge := smoothstep(0.0, 0.006, 0.03 - absf(fx - (0.40 if fx < 0.5 else 0.60)))
+				img.set_pixel(x, y, _body_col.lerp(_acc, edge))
+	# líneas de panel (juntas) y rejilla de salida de aire
+	var seam := _body_col.darkened(0.45)
+	for y in N:
+		for k in 2:
+			img.set_pixel(clampi(int(N * 0.06) + k, 0, N - 1), y, seam)
+			img.set_pixel(clampi(int(N * 0.94) + k, 0, N - 1), y, seam)
+	for x in N:
+		for k in 2:
+			img.set_pixel(x, clampi(int(N * 0.62) + k, 0, N - 1), seam)
+	for r in 7: # persianas
+		var yy := int(N * 0.12) + r * 9
+		for x in range(int(N * 0.44), int(N * 0.56)):
+			for k in 4:
+				img.set_pixel(x, yy + k, dark)
+	img.generate_mipmaps()
 	return ImageTexture.create_from_image(img)
 
 func _hood_mesh(w: float, l: float, hwid: float) -> ArrayMesh:
@@ -706,6 +796,98 @@ func _b_wheel() -> void:
 		kn.height = 0.014
 		kn.radial_segments = 10
 		_mesh_node(kn, _mats["metal"], Vector3(sx * 0.118, 0.0, 0.020), Basis(Vector3.RIGHT, PI / 2.0), rim)
+
+	_build_cluster()
+
+## Tablero de instrumentos detrás del volante: tacómetro analógico con aguja y barra de luces de cambio (se encienden con las vueltas)
+var cluster_vp: SubViewport
+var cluster_face: ClusterFace
+var cluster_needle: Node3D
+var cluster_leds: Array = []
+func _build_cluster() -> void:
+	var cl := Node3D.new()
+	cl.position = Vector3(0.0, 0.085, -0.085) # sobre el cubo, un poco más atrás que el aro: se ve a través del volante
+	cl.rotation.x = 0.1
+	wheel_group.add_child(cl)
+	var box := BoxMesh.new()
+	box.size = Vector3(0.19, 0.085, 0.045)
+	_mesh_node(box, _mats["trim"], Vector3.ZERO, Basis.IDENTITY, cl)
+	var hoodm := BoxMesh.new()
+	hoodm.size = Vector3(0.20, 0.012, 0.06) # visera del instrumental
+	_mesh_node(hoodm, _mats["trim"], Vector3(0, 0.046, 0.012), Basis(Vector3.RIGHT, -0.25), cl)
+	cluster_vp = SubViewport.new()
+	cluster_vp.size = Vector2i(384, 160)
+	cluster_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	add_child(cluster_vp)
+	cluster_face = ClusterFace.new()
+	cluster_face.size = Vector2(384, 160)
+	cluster_vp.add_child(cluster_face)
+	var qm := QuadMesh.new()
+	qm.size = Vector2(0.178, 0.0742)
+	var fm := StandardMaterial3D.new()
+	fm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	fm.albedo_texture = cluster_vp.get_texture()
+	_mesh_node(qm, fm, Vector3(0, -0.002, 0.0232), Basis.IDENTITY, cl)
+	# aguja (pivote en el centro del tacómetro: a la derecha de la cara)
+	cluster_needle = Node3D.new()
+	cluster_needle.position = Vector3(0.037, -0.004, 0.0245)
+	cl.add_child(cluster_needle)
+	var nb := BoxMesh.new()
+	nb.size = Vector3(0.0026, 0.030, 0.001)
+	var nm := StandardMaterial3D.new()
+	nm.albedo_color = Color(1.0, 0.35, 0.05)
+	nm.emission_enabled = true
+	nm.emission = Color(1.0, 0.35, 0.05)
+	nm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_mesh_node(nb, nm, Vector3(0, 0.014, 0), Basis.IDENTITY, cluster_needle)
+	var hubm := CylinderMesh.new()
+	hubm.top_radius = 0.004
+	hubm.bottom_radius = 0.004
+	hubm.height = 0.002
+	hubm.radial_segments = 10
+	_mesh_node(hubm, _mats["metal"], Vector3(0, 0, 0.0005), Basis(Vector3.RIGHT, PI / 2.0), cluster_needle)
+	# luces de cambio (9) en el borde de arriba
+	var cols := [Color(0.1, 1.0, 0.3), Color(0.1, 1.0, 0.3), Color(0.1, 1.0, 0.3), Color(1.0, 0.85, 0.1), Color(1.0, 0.85, 0.1), Color(1.0, 0.85, 0.1), Color(1.0, 0.15, 0.1), Color(1.0, 0.15, 0.1), Color(1.0, 0.15, 0.1)]
+	for i in 9:
+		var lm := BoxMesh.new()
+		lm.size = Vector3(0.012, 0.006, 0.003)
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = (cols[i] as Color).darkened(0.8)
+		_mesh_node(lm, mat, Vector3((float(i) - 4.0) * 0.0165, 0.0425, 0.024), Basis.IDENTITY, cl)
+		cluster_leds.append({"mat": mat, "col": cols[i]})
+
+## Cara del tacómetro (se dibuja una sola vez en un SubViewport): arco con números cada mil vueltas, zona roja y rótulos
+class ClusterFace extends Control:
+	var max_rpm := 8000.0
+	var up_frac := 0.85
+
+	func _draw() -> void:
+		var font := ThemeDB.fallback_font
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.025, 0.03), true)
+		var c := Vector2(size.x * 0.715, size.y * 0.55)
+		var r := 66.0
+		draw_arc(c, r + 5.0, deg_to_rad(-230.0), deg_to_rad(50.0), 64, Color(0.2, 0.22, 0.26), 2.0, true)
+		var thousands := int(max_rpm / 1000.0)
+		for i in range(0, thousands * 2 + 1):
+			var f := float(i) / float(thousands * 2)
+			var ang := deg_to_rad(-130.0 + 260.0 * f - 90.0)
+			var major := i % 2 == 0
+			var col := Color(0.9, 0.92, 0.95) if f < up_frac else Color(1.0, 0.25, 0.2)
+			var p0 := c + Vector2(cos(ang), sin(ang)) * (r - (14.0 if major else 8.0))
+			var p1 := c + Vector2(cos(ang), sin(ang)) * r
+			draw_line(p0, p1, col, 3.0 if major else 1.5, true)
+			if major:
+				var tp := c + Vector2(cos(ang), sin(ang)) * (r - 28.0)
+				draw_string(font, tp + Vector2(-6, 7), str(i / 2), HORIZONTAL_ALIGNMENT_CENTER, 14, 20, col)
+		draw_arc(c, r - 3.0, deg_to_rad(-130.0 + 260.0 * up_frac - 90.0), deg_to_rad(130.0 - 90.0), 24, Color(1.0, 0.2, 0.15, 0.9), 5.0, true)
+		draw_string(font, c + Vector2(-26, 46), "RPM x1000", HORIZONTAL_ALIGNMENT_CENTER, 52, 11, Color(0.6, 0.65, 0.72))
+		# franja izquierda: indicadores
+		draw_string(font, Vector2(14, 34), "DREAM", HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(1.0, 0.48, 0.1))
+		draw_string(font, Vector2(14, 58), "RACING", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.7, 0.75, 0.82))
+		draw_rect(Rect2(14, 84, 100, 3), Color(0.25, 0.28, 0.32), true)
+		for k in 4:
+			draw_circle(Vector2(26.0 + float(k) * 26.0, 112.0), 6.0, [Color(0.1, 0.5, 0.2), Color(0.6, 0.45, 0.05), Color(0.5, 0.1, 0.1), Color(0.1, 0.3, 0.55)][k])
 
 ## Aro circular y grueso: tubo que recorre un círculo; la marca naranja de las 12 va pintada
 func _rim_mesh() -> ArrayMesh:
@@ -875,6 +1057,11 @@ func _build_notes() -> void:
 # ───────────────────────── cuadro por cuadro ─────────────────────────
 ## Piloto y copiloto (con cámaras exteriores no se llama: no se dibujan)
 func update_crew(dt: float, p: CarSnapshot, in_handbrake: bool, time: float, rough: float) -> void:
+	if gaze_p == null:
+		gaze_p = Gaze.new("pilot", int(Time.get_ticks_usec()) & 0xffff)
+		gaze_c = Gaze.new("copilot", (int(Time.get_ticks_usec()) >> 3) & 0xffff)
+	gaze_p.update(dt)
+	gaze_c.update(dt)
 	if not rig_ok:
 		return
 	var m0: CrewMotion = mo[0]
@@ -932,10 +1119,14 @@ func update_crew(dt: float, p: CarSnapshot, in_handbrake: bool, time: float, rou
 	var fy := floor_y
 	var look := clampf(p.steerAngle * 0.45 + p.yawRate * 0.06, -0.35, 0.35) * (1.0 - maxf(sw, hw2) * 0.3)
 	look_yaw = look
+	# miradas con vida: casi nada cuando el volante está girando fuerte (el piloto mira la curva)
+	var gk := 1.0 - clampf(absf(look) * 3.5, 0.0, 1.0)
+	var g_yaw: float = gaze_p.yaw_out() * gk
+	var g_pit: float = gaze_p.pitch_out() * gk
 	# el piloto mira el mundo: la cabeza compensa un poco la inclinación del cuerpo (mantiene el horizonte)
 	var brake_nod := clampf(-p.aLong * 0.004, -0.02, 0.05)
-	rig[0].pose({"hips": Vector3(xD + b.x * 0.4 + jx * jit * 0.3, eY - 0.70 + b.y * 0.3 + jy * jit * 0.5, eZ - 0.11 + b.z * 0.3), "head": Vector3(xD + h.x, eY - 0.07 + h.y + brake_nod, eZ - 0.09 + h.z),
-		"roll": h.x * 1.2 - b.x * 0.5, "look": look, "look_y": -0.1 - brake_nod * 4.0, "hands": hands, "grip": 1.2,
+	rig[0].pose({"hips": Vector3(xD + b.x * 0.4 + jx * jit * 0.3, eY - 0.70 + b.y * 0.3 + jy * jit * 0.5 + 0.003 * sin(time * 1.6), eZ - 0.11 + b.z * 0.3), "head": Vector3(xD + h.x, eY - 0.07 + h.y + brake_nod, eZ - 0.09 + h.z),
+		"roll": h.x * 1.2 - b.x * 0.5, "look": look + g_yaw, "look_y": -0.1 - brake_nod * 4.0 + g_pit, "hands": hands, "grip": 1.2 + 0.45 * maxf(sw, hw2),
 		"feet": [{"side": "Left", "pos": Vector3(xD + 0.13, fy + 0.13, eZ + 0.60)}, {"side": "Right", "pos": m0.right_foot(xD, fy, eZ)}]})
 	# pedales
 	pedal_thr.rotation.x = 0.55 + (0.0 if m0.onBrake > 0.5 else m0.press * 0.30)
@@ -944,8 +1135,7 @@ func update_crew(dt: float, p: CarSnapshot, in_handbrake: bool, time: float, rou
 	var c1: CrewMotion = m1
 	var cb: Vector3 = c1.body
 	var ch: Vector3 = c1.head
-	var cycle := fmod(c1.t_look * 0.9 + 1.7, 6.5)
-	var want_read := 1.0 if (cycle < 1.9 and c1.brace < 0.2) else 0.0
+	var want_read := 1.0 if (gaze_c.is_reading() and c1.brace < 0.2) else 0.0
 	read_w += (want_read - read_w) * (1.0 - exp(-dt * (5.0 if want_read > 0.5 else 3.0)))
 	var sheet := Vector3(-xD + cb.x * 0.9 + 0.03, eY - 0.50 + cb.y + 0.03 * read_w, eZ + 0.12 + cb.z + 0.03 * read_w)
 	var x := sheet.x
@@ -959,9 +1149,9 @@ func update_crew(dt: float, p: CarSnapshot, in_handbrake: bool, time: float, rou
 	co_h[0]["pole"] = Vector3(0.5, -0.6, -0.3)
 	co_h[1]["pole"] = Vector3(0.5, -0.6, -0.3)
 	var ck := CrewMotion.co_look(c1.t_look)
-	var look_c := -0.05 + ck * (1.0 - read_w)
+	var look_c: float = -0.05 + (ck + float(gaze_c.yaw_out())) * (1.0 - read_w) * 0.8
 	rig[1].pose({"hips": Vector3(-xD + cb.x * 0.4, eY - 0.70 + cb.y * 0.3 + jy * jit * 0.4, eZ - 0.13 + cb.z * 0.3), "head": Vector3(-xD + ch.x * 0.9, eY - 0.09 + ch.y - 0.045 * read_w, eZ - 0.07 + ch.z + 0.05 * read_w),
-		"roll": ch.x * 1.1, "look": look_c, "look_y": -0.10 - 0.95 * read_w, "grip": 0.8, "hands": co_h,
+		"roll": ch.x * 1.1, "look": look_c, "look_y": -0.10 - 0.95 * read_w + float(gaze_c.pitch_out()) * (1.0 - read_w), "grip": 0.8, "hands": co_h,
 		"feet": [{"side": "Left", "pos": Vector3(-xD + 0.13, fy + 0.12, eZ + 0.55)}, {"side": "Right", "pos": Vector3(-xD - 0.13, fy + 0.12, eZ + 0.55)}]})
 
 func update_cabin(dt: float, p: CarSnapshot, in_handbrake: bool, time: float) -> void:
@@ -983,6 +1173,15 @@ func update_cabin(dt: float, p: CarSnapshot, in_handbrake: bool, time: float) ->
 		var d := end - piv
 		(w["blade"] as Node3D).position = piv + d * 0.5
 		(w["blade"] as Node3D).basis = _align_y(d)
+	# tacómetro de atrás del volante: aguja y luces de cambio
+	if cluster_needle != null:
+		var fr := clampf(p.rpm / _max_rpm, 0.0, 1.0)
+		cluster_needle.rotation.z = lerp_angle(cluster_needle.rotation.z, deg_to_rad(130.0 - 260.0 * fr), clampf(dt * 22.0, 0.0, 1.0))
+		var flash := p.rpm / _max_rpm >= _up_frac and int(time * 14.0) % 2 == 0
+		for i in cluster_leds.size():
+			var on := fr > 0.58 + float(i) * (_up_frac - 0.58) / 9.0
+			var cc: Color = cluster_leds[i]["col"]
+			(cluster_leds[i]["mat"] as StandardMaterial3D).albedo_color = cc if (on and (fr < _up_frac or flash)) else cc.darkened(0.82)
 	# display
 	_disp_t -= dt
 	if _disp_t <= 0.0:
@@ -1006,6 +1205,11 @@ var _nitro_cap := 0.0
 func set_engine(max_rpm: float, shift_up_rpm: float, nitro_cap: float) -> void:
 	_max_rpm = max_rpm
 	_up_frac = shift_up_rpm / max_rpm
+	if cluster_face != null:
+		cluster_face.max_rpm = max_rpm
+		cluster_face.up_frac = _up_frac
+		cluster_face.queue_redraw()
+		cluster_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 	_nitro_cap = nitro_cap
 
 ## Posición y mirada de la cámara interior, en el marco del habitáculo. mode: "onboard" | "rearcabin"
