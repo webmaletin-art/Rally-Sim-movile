@@ -38,7 +38,7 @@ func _cat_button(text: String, sub: String, cb: Callable) -> Button:
 	return b
 
 ## [categoría, clave, título, valores, etiquetas]
-const OPTION_CATS := [["graficos", "🖥 Gráficos", "calidad general, resolución, árboles, sombras"], ["texturas", "🧱 Texturas", "filtrado de las texturas"],
+const OPTION_CATS := [["graficos", "🖥 Gráficos", "calidad general, resolución, árboles, sombras"], ["texturas", "🧱 Texturas", "calidad automática o fija"],
 	["fisica", "⚙ Física y ayudas", "ABS, tracción, estabilidad"], ["sonido", "🔊 Sonido", "volúmenes y voz del copiloto"],
 	["manejo", "🎮 Manejo", "caja, dirección, inclinación"], ["camara", "🎥 Cámara", "cámara al empezar"], ["efectos", "✨ Efectos", "Lente Rally y efectos 2.0 (hasta 3 a la vez)"]]
 const OPTION_LIST := [
@@ -46,7 +46,7 @@ const OPTION_LIST := [
 	["graficos", "res", "Resolución del 3D", [0, 0.35, 0.5, 0.7, 1.0], ["Automática", "35%", "50%", "70%", "100%"]],
 	["graficos", "trees", "Árboles", ["auto", 0, 1500, 3000, 6000], ["Según la calidad", "Ninguno", "Pocos", "Normales", "Muchos"]],
 	["graficos", "shadowsQ", "Sombras", ["auto", false, true], ["Según la calidad", "No", "Sí"]],
-	["texturas", "textures", "Calidad de texturas", ["low", "mid", "high"], ["Baja", "Media", "Alta"]],
+	["texturas", "textures", "Calidad de texturas", ["auto", "low", "mid", "high"], ["Automática", "Baja", "Media", "Alta"]],
 	["fisica", "abs", "ABS", [false, true], ["No", "Sí"]],
 	["fisica", "tc", "Control de tracción", [0, 25, 50, 75, 100], ["Apagado", "25%", "50%", "75%", "100%"]],
 	["fisica", "stab", "Estabilidad", [0, 30, 60, 100], ["Apagada", "Baja", "Media", "Alta"]],
@@ -104,10 +104,57 @@ func options_page(body: VBoxContainer, cat = null) -> void:
 			b.text = "%s:  %s" % [o[2], o[4][i2]])
 		body.add_child(b)
 	if cat == "graficos":
+		_particles_row(body)
+	if cat == "manejo":
+		body.add_child(Kit.button("📐 Calibrar / recalibrar el acelerómetro", func() -> void:
+			sfx.play("click")
+			changed.emit("recal"), false, 19, Vector2(0, 52)))
+	if cat == "graficos":
 		var hint := Kit.label("La calidad automática ajusta la resolución sola según lo que aguante el teléfono.", 15, Kit.MUTED)
 		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		hint.custom_minimum_size.x = 380
 		body.add_child(hint)
+
+## Partículas (polvo, humo de las gomas, rocío, piedritas): barra de 0 a 10 (0 = sin partículas) o AUTO
+func _particles_row(body: VBoxContainer) -> void:
+	var p := Kit.panel(8, Kit.PANEL2)
+	body.add_child(p)
+	var col := Kit.vbox(4)
+	p.add_child(col)
+	var head := Kit.hbox(8)
+	col.add_child(head)
+	var lbl := Kit.label("", 19)
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(lbl)
+	var sl := HSlider.new()
+	sl.min_value = 0
+	sl.max_value = 10
+	sl.step = 1
+	sl.custom_minimum_size = Vector2(0, 30)
+	sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var refresh := func() -> void:
+		var v = profile.setting("particles")
+		var auto := str(v) == "auto"
+		var lvl := int(profile.setting("autoParticles")) if auto else int(v)
+		lbl.text = "Partículas: %s" % (("Automática (%d/10)" % lvl) if auto else ("%d/10%s" % [lvl, " (sin)" if lvl == 0 else ""]))
+		sl.set_value_no_signal(lvl)
+	var auto_b := Kit.button("AUTO", func() -> void:
+		sfx.play("click")
+		var v = profile.setting("particles")
+		profile.set_setting("particles", int(profile.setting("autoParticles")) if str(v) == "auto" else "auto")
+		changed.emit("particles")
+		refresh.call(), false, 16, Vector2(90, 44))
+	head.add_child(auto_b)
+	sl.value_changed.connect(func(v: float) -> void:
+		profile.set_setting("particles", int(v))
+		changed.emit("particles")
+		refresh.call())
+	col.add_child(sl)
+	var hl := Kit.label("Polvo y humo de las ruedas: 1 es poco, 10 es el máximo, 0 los quita. En AUTO el juego los baja solo si el teléfono no llega.", 13, Kit.MUTED)
+	hl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hl.custom_minimum_size.x = 340
+	col.add_child(hl)
+	refresh.call()
 
 # ───────────────────────── efectos ─────────────────────────
 func fx_page(body: VBoxContainer, col_box: VBoxContainer) -> void:
@@ -144,6 +191,12 @@ func fx_page(body: VBoxContainer, col_box: VBoxContainer) -> void:
 		sb.clip_text = true
 		srow.add_child(sb)
 		fx_slot_btns.append(sb)
+	var combo := Kit.button("🎬 Combo realista (oclusión + tonos de cine + grano)", func() -> void:
+		profile.set_setting("fx", [23, 25, 28])
+		sfx.play("buy")
+		changed.emit("fx")
+		_fx_refresh(), true, 17, Vector2(0, 48))
+	fixed.add_child(combo)
 	for k in Lens.FX_NAMES.size():
 		var id := k
 		var cost := "●".repeat(int(Lens.FX_COST[k])) if k > 0 else ""

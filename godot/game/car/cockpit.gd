@@ -345,7 +345,7 @@ func _b_dash() -> void:
 	tilt.rotation.x = 0.58
 	dome.add_child(tilt)
 	var pod := BoxMesh.new()
-	pod.size = Vector3(0.175, 0.075, 0.05)
+	pod.size = Vector3(0.196, 0.087, 0.05)
 	_mesh_node(pod, _mats["trim"], Vector3.ZERO, Basis.IDENTITY, tilt)
 	var stalk := BoxMesh.new()
 	stalk.size = Vector3(0.05, 0.05, 0.05)
@@ -368,7 +368,7 @@ func _b_dash() -> void:
 	# instrumento del copiloto (hoja de ruta): caja con pantallita
 	var rc := Vector3(-0.42, eY - 0.30, dz0 + 0.10)
 	_box(Vector3(0.20, 0.10, 0.10), rc, "trim", _face(rc, rc + Vector3(0.15, 0.2, -1)))
-	_label("GSKORP", Vector3(-0.66, eY - 0.29, dz0 + 0.095), Basis(Vector3.UP, PI) * Basis(Vector3.RIGHT, -0.5), 0.028, Color(0.9, 0.9, 0.92, 0.9))
+	_label("DREAM", Vector3(-0.66, eY - 0.29, dz0 + 0.095), Basis(Vector3.UP, PI) * Basis(Vector3.RIGHT, -0.5), 0.028, Color(0.9, 0.9, 0.92, 0.9))
 
 func _b_console() -> void:
 	var prof := PackedVector2Array([Vector2(eZ - 0.62, floor_y), Vector2(eZ - 0.62, 0.50), Vector2(eZ - 0.40, 0.60), Vector2(dz0 + 0.02, 0.62), Vector2(dz0 + 0.20, 0.54), Vector2(dz0 + 0.30, floor_y)])
@@ -568,7 +568,7 @@ func _b_glass_hood() -> void:
 	var nrm := ((wBL - wTL).cross(wBR - wTL)).normalized()
 	if nrm.z > 0.0:
 		nrm = -nrm
-	_label("GSKORP  RALLY  TEAM", strip_c + Vector3(0, 0, -0.01), _face(strip_c, eye), 0.026, Color(1, 1, 1, 0.95))
+	_label("DREAM  RACING  TEAM", strip_c + Vector3(0, 0, -0.01), _face(strip_c, eye), 0.026, Color(1, 1, 1, 0.95))
 	# parantes A finos
 	_box_between(wBL + Vector3(0.03, 0, 0), wTL + Vector3(0.03, 0, 0), 0.06, 0.08, "trim")
 	_box_between(wBR + Vector3(-0.03, 0, 0), wTR + Vector3(-0.03, 0, 0), 0.06, 0.08, "trim")
@@ -813,7 +813,7 @@ func _build_display(pos: Vector3, normal: Vector3, parent: Node3D) -> void:
 	disp_ctl.size = Vector2(256, 112)
 	disp_vp.add_child(disp_ctl)
 	var qm := QuadMesh.new()
-	qm.size = Vector2(0.155, 0.0678)
+	qm.size = Vector2(0.176, 0.077)
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.albedo_texture = disp_vp.get_texture()

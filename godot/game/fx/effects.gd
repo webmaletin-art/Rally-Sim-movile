@@ -13,6 +13,7 @@ const TEX_DIR := "res://game/fx/tex/"
 
 const MARKS := 500
 
+var intensity := 1.0 # 0 sin partículas … 1 todas (opción «Partículas» 0–10)
 var qk := 1.0 # 0.5 baja · 1.0 media · 1.5 alta (cantidad de partículas)
 var track: RefCounted
 var wetness := 0.0 # 0 seco … 1 lluvia fuerte
@@ -278,6 +279,8 @@ func emit_from(key: int, s: CarSnapshot, dt: float, tire_w: float, detail := 1.0
 	var car := _ensure_car(key)
 	if car["warm"] > 0:
 		return
+	var base_detail := detail
+	detail *= intensity
 	var fwd := Vector3(sin(s.yaw), 0.0, cos(s.yaw))
 	var left := Vector3(cos(s.yaw), 0.0, -sin(s.yaw))
 	var any := false
@@ -353,7 +356,7 @@ func emit_from(key: int, s: CarSnapshot, dt: float, tire_w: float, detail := 1.0
 	# piedritas: dos emisores por auto (atrás)
 	var d0: GPUParticles3D = car["debris"][0]
 	var d1: GPUParticles3D = car["debris"][1]
-	if debris_rate > 0.0 and detail >= 1.0:
+	if debris_rate > 0.0 and base_detail >= 1.0 and intensity >= 0.4:
 		var dir := -fwd * 0.9 + Vector3.UP * 0.8
 		for e in [d0, d1]:
 			var pm := (e as GPUParticles3D).process_material as ParticleProcessMaterial
