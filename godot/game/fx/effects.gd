@@ -389,6 +389,7 @@ func _dust_k(surf: int) -> float:
 		2: return 0.8
 		3: return 0.4
 		5: return 0.3
+		6: return 0.9
 	return 0.5
 
 func _dust_color(surf: int) -> Color:
@@ -397,6 +398,7 @@ func _dust_color(surf: int) -> Color:
 		2: return Color(0.58, 0.52, 0.42) # banquina
 		3: return Color(0.50, 0.50, 0.36) # pasto seco
 		5: return Color(0.30, 0.22, 0.15) # barro
+		6: return Color(0.93, 0.95, 0.98) # nieve en polvo
 	return Color(0.6, 0.55, 0.45)
 
 func _ground(x: float, z: float) -> float:

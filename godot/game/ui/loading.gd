@@ -3,6 +3,7 @@ extends CanvasLayer
 ## y consejos con dibujos sobre cómo se comporta el auto (peso, adherencia, subviraje, deriva, trazada) y sobre el nivel de simulación elegido.
 
 const Kit := preload("res://game/ui/ui_kit.gd")
+const AdvRoute := preload("res://game/adventure/adv_route.gd")
 
 var cfg: Dictionary
 var track_name := ""
@@ -33,6 +34,9 @@ func _ready() -> void:
 	root.add_child(bg)
 	var base := str(cfg.get("track", "")).replace("Rev", "")
 	var path := "res://game/ui/tracks/%s_%d.jpg" % [base, 0]
+	var adv := str(cfg.get("type", "")) == "adventure"
+	if adv:
+		path = "res://game/ui/tracks/adv%d.jpg" % int(cfg.get("stage", 0))
 	if ResourceLoader.exists(path):
 		var tr := TextureRect.new()
 		tr.texture = load(path)
@@ -50,7 +54,7 @@ func _ready() -> void:
 	left.position = Vector2(34, 30)
 	left.custom_minimum_size = Vector2(430, 0)
 	root.add_child(left)
-	left.add_child(Kit.label("CARGANDO MAPA", 42, Kit.ACCENT))
+	left.add_child(Kit.label("CARGANDO ETAPA" if adv else "CARGANDO MAPA", 42, Kit.ACCENT))
 	left.add_child(Kit.label(track_name, 28, Kit.TEXT))
 	var info := Kit.label(_info_text(), 18, Kit.MUTED)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -139,6 +143,13 @@ func _show_tip(i: int) -> void:
 
 func _info_text() -> String:
 	var lines: Array = []
+	if str(cfg.get("type", "")) == "adventure":
+		var S: Dictionary = AdvRoute.STAGES[int(cfg.get("stage", 0))]
+		lines.append(str(S["sub"]))
+		lines.append("Rival: " + str(S["rival"]["name"]) + ((" y " + str(S["rival2"]["name"])) if S.has("rival2") else ""))
+		lines.append("%.1f km hasta la próxima estación" % (AdvRoute.get_route().stage_length(int(cfg.get("stage", 0))) / 1000.0))
+		lines.append("Modo aventura · simulación total con un poco de ayuda")
+		return "\n".join(lines)
 	var typ: String = {"race": "Carrera", "timetrial": "Contrarreloj", "trap": "Radar", "free": "Prueba libre"}.get(str(cfg.get("type", "race")), "Carrera")
 	var l := "%s" % typ
 	if int(cfg.get("laps", 1)) > 1 and not (cfg.get("seg") is Array):

@@ -6,6 +6,7 @@ const Profile := preload("res://game/data/profile.gd")
 const MenuScript := preload("res://game/ui/menu.gd")
 const Rewards := preload("res://game/data/rewards.gd")
 const Loading := preload("res://game/ui/loading.gd")
+const AdvRoute := preload("res://game/adventure/adv_route.gd")
 const RACE_SCENE := preload("res://game/race.tscn")
 
 var autorace_used := false
@@ -50,6 +51,9 @@ func _start_race(cfg: Dictionary) -> void:
 		loading = Loading.new()
 		loading.cfg = cfg
 		loading.track_name = str(Menu_maps().get(str(cfg.get("track", "")), {}).get("name", ""))
+		if str(cfg.get("type", "")) == "adventure":
+			var si := int(cfg.get("stage", 0))
+			loading.track_name = "Etapa %d · %s" % [si + 1, str(AdvRoute.STAGES[si]["name"])]
 		add_child(loading)
 		await get_tree().process_frame
 		await get_tree().process_frame

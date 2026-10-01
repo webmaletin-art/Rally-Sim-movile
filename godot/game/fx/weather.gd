@@ -12,8 +12,9 @@ const PRESETS := {
 	"nublado": {"bg": "#9aa4ad", "zen": "#7b8792", "fog": [90.0, 560.0], "hemi": ["#d2d9e0", "#4b4a44", 1.25], "sun": ["#e8ecf0", 0.55], "pos": [60.0, 200.0, 40.0], "exp": 1.08, "wet": 0.0},
 	"lluvia": {"bg": "#6d7780", "zen": "#4d5760", "fog": [55.0, 340.0], "hemi": ["#aab4be", "#34332f", 1.0], "sun": ["#c8d0d8", 0.35], "pos": [40.0, 200.0, 60.0], "exp": 1.0, "wet": 1.0},
 	"ocaso": {"bg": "#5b6a8f", "zen": "#141b36", "fog": [110.0, 620.0], "hemi": ["#9fb0d8", "#2a2530", 0.8], "sun": ["#ff9a6a", 1.0], "pos": [-160.0, 30.0, -180.0], "exp": 1.15, "wet": 0.0},
+	"nieve": {"bg": "#c9d3dd", "zen": "#93a3b4", "fog": [70.0, 480.0], "hemi": ["#e6edf5", "#8a8f96", 1.3], "sun": ["#eef3f8", 0.6], "pos": [50.0, 180.0, 70.0], "exp": 1.1, "wet": 0.0, "snow": 1.0},
 }
-const ORDER := ["dia", "nublado", "lluvia", "atardecer", "ocaso"]
+const ORDER := ["dia", "nublado", "lluvia", "atardecer", "ocaso", "nieve"]
 
 var env: Environment
 var sun: DirectionalLight3D
@@ -30,6 +31,7 @@ var q := 1.0 # cantidad de gotas (0.5 baja · 1 media · 1.5 alta)
 
 var _rain: GPUParticles3D
 var _splash: GPUParticles3D
+var _snow: GPUParticles3D
 var _road_col := Color(1, 1, 1)
 var _ground_col := Color(1, 1, 1)
 
@@ -144,6 +146,42 @@ func _build_rain() -> void:
 	sp.color_ramp = gt
 	_splash.process_material = sp
 	add_child(_splash)
+	# nieve: copos blancos que caen despacio y se mecen con el viento
+	_snow = GPUParticles3D.new()
+	_snow.amount = int(1600.0 * q)
+	_snow.lifetime = 6.0
+	_snow.local_coords = false
+	_snow.emitting = false
+	_snow.preprocess = 4.0
+	_snow.visibility_aabb = AABB(Vector3(-40, -30, -40), Vector3(80, 60, 80))
+	_snow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var fq := QuadMesh.new()
+	fq.size = Vector2(0.07, 0.07)
+	var fm := StandardMaterial3D.new()
+	fm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	fm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	fm.albedo_texture = _rain_tex("splash.png")
+	fm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	fm.vertex_color_use_as_albedo = true
+	fm.disable_receive_shadows = true
+	fq.material = fm
+	_snow.draw_pass_1 = fq
+	var npm := ParticleProcessMaterial.new()
+	npm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	npm.emission_box_extents = Vector3(28, 0.5, 28)
+	npm.direction = Vector3(0.2, -1, 0.1)
+	npm.spread = 18.0
+	npm.initial_velocity_min = 1.2
+	npm.initial_velocity_max = 2.2
+	npm.gravity = Vector3(0.4, -0.6, 0.2)
+	npm.turbulence_enabled = true
+	npm.turbulence_noise_strength = 1.2
+	npm.turbulence_noise_scale = 3.0
+	npm.scale_min = 0.6
+	npm.scale_max = 1.6
+	npm.color = Color(1, 1, 1, 0.9)
+	_snow.process_material = npm
+	add_child(_snow)
 
 func _curve(pts: Array) -> CurveTexture:
 	var c := Curve.new()
@@ -211,6 +249,7 @@ func _apply_wet() -> void:
 	var raining := wet_target > 0.5
 	_rain.emitting = raining
 	_splash.emitting = raining
+	_snow.emitting = float(PRESETS[current].get("snow", 0.0)) > 0.5
 
 func _process(dt: float) -> void:
 	if not is_equal_approx(wet, wet_target):
@@ -219,4 +258,5 @@ func _process(dt: float) -> void:
 	# la lluvia acompaña a la cámara
 	if cam != null:
 		_rain.global_position = cam.global_position + Vector3(0, 13.0, 0)
+		_snow.global_position = cam.global_position + Vector3(0, 12.0, 0)
 		_splash.global_position = Vector3(cam.global_position.x, 0.06, cam.global_position.z)
