@@ -154,7 +154,7 @@ func _make_susp(body: Node3D, w: Dictionary, R: float, tw: float, arch_top: floa
 			rs = 0.044
 			wire = 0.0065
 			coils = 7.5
-			up_y = arch_top + 0.38
+			up_y = arch_top - 0.10 # bajo el capó: no deben asomar por arriba
 			inb = tw * 0.5 + 0.14
 			fwd = 0.1 * R * (1.0 if front else -1.0)
 	var low_off := Vector3(-side * inb, -0.20 * R, fwd)
