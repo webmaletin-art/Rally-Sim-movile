@@ -32,7 +32,8 @@ static func set_language(setting: String) -> void:
 				var t := Translation.new()
 				t.locale = current
 				for k in (d as Dictionary):
-					t.add_message(k, str(d[k]))
+					if str(d[k]) != "":
+						t.add_message(k, str(d[k]))
 				TranslationServer.add_translation(t)
 		_loaded.append(current)
 	TranslationServer.set_locale(current)
@@ -45,6 +46,34 @@ static func t(s: String) -> String:
 	if r == s and OS.is_debug_build() and s.length() > 2:
 		missing[s] = true
 	return r
+
+## Idiomas que se pueden elegir: automático, español y los que tienen al menos la mitad de los textos traducidos
+static func available_languages() -> Array:
+	var out: Array = [["auto", "Automático"], ["es", "Español"]]
+	for l in LANGS:
+		var code: String = l[0]
+		if code == "auto" or code == "es":
+			continue
+		if _coverage(code) >= 0.5:
+			out.append(l)
+	return out
+
+static var _cov := {}
+static func _coverage(code: String) -> float:
+	if _cov.has(code):
+		return _cov[code]
+	var path := "res://game/i18n/%s.json" % code
+	var c := 0.0
+	if FileAccess.file_exists(path):
+		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if d is Dictionary and (d as Dictionary).size() > 0:
+			var n := 0
+			for k in (d as Dictionary):
+				if str(d[k]) != "":
+					n += 1
+			c = float(n) / float((d as Dictionary).size())
+	_cov[code] = c
+	return c
 
 static func lang_name(code: String) -> String:
 	for l in LANGS:

@@ -17,6 +17,8 @@ const Effects := preload("res://game/fx/effects.gd")
 const Weather := preload("res://game/fx/weather.gd")
 const Lens := preload("res://game/fx/lens.gd")
 const Cockpit := preload("res://game/car/cockpit.gd")
+const Capture := preload("res://game/capture.gd")
+const Tr := preload("res://game/i18n/tr.gd")
 const CarAudio := preload("res://game/audio/car_audio.gd")
 const CameraRig := preload("res://game/car/camera_rig.gd")
 const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
@@ -226,6 +228,7 @@ func _ready() -> void:
 		race_hud.restart_pressed.connect(_restart)
 		race_hud.quit_pressed.connect(_quit)
 		race_hud.camera_pressed.connect(_next_camera)
+		race_hud.cine_pressed.connect(_toggle_cine)
 		race_hud.tests_pressed.connect(_show_tests)
 		controls.pause_pressed.connect(_toggle_pause)
 	hud = DebugPanel.new()
@@ -237,6 +240,8 @@ func _ready() -> void:
 	hud.bench_pressed.connect(_bench_start)
 	hud.copy_pressed.connect(_copy_report)
 	controls.camera_pressed.connect(_next_camera)
+	controls.shot_pressed.connect(_take_shot)
+	controls.show_shot = menu_mode and profile != null and profile.setting("capBtn") == true
 	load_progress.emit(0.44, "Clima y efectos…")
 	await get_tree().process_frame
 	fx = Effects.new()
@@ -1221,6 +1226,10 @@ func _apply_live_settings(key: String) -> void:
 		"recal":
 			controls.recalibrate_gyro()
 			race_hud.toast("Acelerómetro calibrado: sostené el teléfono como para jugar")
+		"capBtn":
+			controls.show_shot = profile.setting("capBtn") == true
+		"lang":
+			Tr.set_language(str(profile.setting("lang")))
 		"gearbox", "steerMode", "gyro", "gyroSens", "gyroDead", "gyroCurve", "gyroSmooth", "units", "wheelSize", "pedalSize":
 			_apply_controls_settings()
 		"volume", "volEngine", "volSurf", "volWind", "volTurbo", "volGear":
@@ -1343,6 +1352,23 @@ func _set_auto_particles(v: int) -> void:
 func _fx_setting() -> Array:
 	var a = profile.setting("fx")
 	return [int(a[0]), int(a[1]), int(a[2])] if a is Array and a.size() >= 3 else [0, 0, 0]
+
+## Captura de pantalla (con o sin HUD según Opciones → Captura)
+func _take_shot() -> void:
+	if profile == null:
+		return
+	var path: String = await Capture.take(self, profile)
+	if race_hud != null:
+		race_hud.toast("📷 Captura guardada" if path != "" else "No se pudo guardar la captura")
+
+## Modo cine: casi todo el HUD se esconde (los controles quedan casi invisibles pero siguen andando) para grabar con la grabadora del teléfono
+var cine := false
+func _toggle_cine() -> void:
+	cine = not cine
+	race_hud.set_cine(cine)
+	controls.modulate.a = 0.1 if cine else 1.0
+	if cine and paused:
+		_toggle_pause()
 
 func _toggle_pause() -> void:
 	if not menu_mode or (session == null and adv == null):

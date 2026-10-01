@@ -11,6 +11,7 @@ extends Control
 
 signal camera_pressed
 signal pause_pressed
+signal shot_pressed
 
 # ── opciones (las carga el juego) ──
 var steer_mode := "wheel" # "wheel" | "slider"
@@ -23,6 +24,7 @@ var gyro_dead := 1.5 # zona muerta (grados): inclinaciones menores no giran
 var gyro_curve := 1.0 # 1 = lineal · >1 = progresiva (poco giro al principio, más al final: más precisión al ir recto)
 var gyro_smooth := 15.0 # reacción del filtro (1/s): más alto = más rápido
 var use_mph := false
+var show_shot := true # botón de captura (opción «Botón de captura»)
 var show_speed := true # el panel de velocidad de arriba se oculta con las cámaras interiores (ya está en el tablero)
 var wheel_scale := 1.0 # tamaño del volante/barra (opción «Tamaño del volante»)
 var pedal_scale := 1.0 # tamaño del pedal
@@ -96,6 +98,8 @@ func rect_of(id: String) -> Rect2:
 			r = Rect2(vs.x - 10.0 * u - 40.0 * u, 10.0 * u, 40.0 * u, 40.0 * u)
 		"pause":
 			r = Rect2(vs.x - 18.0 * u - 80.0 * u, 10.0 * u, 40.0 * u, 40.0 * u)
+		"shot":
+			r = Rect2(vs.x - 26.0 * u - 120.0 * u, 10.0 * u, 40.0 * u, 40.0 * u)
 	if id == "wheel" or id == "slider":
 		r = Rect2(r.position.x, r.end.y - r.size.y * wheel_scale, r.size.x * wheel_scale, r.size.y * wheel_scale) # crece hacia arriba y a la derecha
 	elif id == "gears":
@@ -134,7 +138,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_touch_move(ev2.index, ev2.position)
 
 func _hit(pos: Vector2) -> String:
-	for id in ["cam", "pause"]:
+	for id in ["cam", "pause", "shot"]:
+		if id == "shot" and not show_shot:
+			continue
 		if rect_of(id).grow(4.0 * _u()).has_point(pos):
 			return id
 	for id in ["pedal", "handbrake", "nitro", "gears"]:
@@ -164,6 +170,8 @@ func _touch_down(idx: int, pos: Vector2) -> void:
 			camera_pressed.emit()
 		"pause":
 			pause_pressed.emit()
+		"shot":
+			shot_pressed.emit()
 		"wheel":
 			var c := rect_of("wheel").get_center()
 			wheel_touch_angle = atan2(pos.y - c.y, pos.x - c.x)
@@ -350,6 +358,17 @@ func _draw() -> void:
 		_draw_gears(rect_of("gears"), font, u)
 	_draw_round_button(rect_of("cam"), "CAM", false, Color(1.0, 0.8, 0.4), Color(0.2, 0.16, 0.08), Color(1.0, 0.82, 0.54), font, u * 0.5)
 	_draw_round_button(rect_of("pause"), "II", false, Color(0.7, 0.75, 0.85), Color(0.12, 0.14, 0.18), Color(0.8, 0.85, 0.95), font, u * 0.6)
+	if show_shot:
+		var sr := rect_of("shot")
+		_draw_round_button(sr, "", false, Color(0.7, 0.85, 1.0), Color(0.1, 0.15, 0.2), Color(0.8, 0.92, 1.0), font, u * 0.6)
+		# ícono de cámara: cuerpo, visor y lente
+		var cc := sr.get_center()
+		var w := sr.size.x * 0.46
+		var h := sr.size.x * 0.32
+		var col := Color(0.85, 0.93, 1.0)
+		draw_rect(Rect2(cc.x - w * 0.5, cc.y - h * 0.4, w, h), col, false, maxf(1.5, u * 1.4))
+		draw_rect(Rect2(cc.x - w * 0.22, cc.y - h * 0.65, w * 0.44, h * 0.25), col, true)
+		draw_arc(cc + Vector2(0, h * 0.1), h * 0.28, 0.0, TAU, 20, col, maxf(1.5, u * 1.4))
 	_draw_round_button(rect_of("handbrake"), "H", handbrake, Color(1.0, 0.24, 0.19), Color(0.35, 0.12, 0.12), Color(1.0, 0.47, 0.43), font, u)
 	if has_nitro:
 		_draw_round_button(rect_of("nitro"), "N₂O", nitro, Color(0.3, 0.65, 1.0), Color(0.07, 0.19, 0.35), Color(0.31, 0.7, 1.0), font, u, nitro_frac)

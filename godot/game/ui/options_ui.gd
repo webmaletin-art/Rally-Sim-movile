@@ -40,16 +40,19 @@ func _cat_button(text: String, sub: String, cb: Callable) -> Button:
 		cb.call())
 	return b
 
+## [categoría, ícono y nombre, ayuda]
+const OPTION_CATS := [["graficos", "🖥", "Gráficos", "calidad, resolución, árboles, texturas"], ["fisica", "⚙", "Física y ayudas", "ABS, tracción, estabilidad"],
+	["sonido", "🔊", "Sonido", "volúmenes y voz del copiloto"], ["manejo", "🎮", "Manejo", "caja, dirección, vibración"],
+	["inclinacion", "📱", "Inclinación", "volante con el acelerómetro"], ["controles", "🕹", "Controles", "volante y pedal en pantalla"],
+	["camara", "🎥", "Cámara", "cámara al empezar"], ["efectos", "✨", "Efectos", "Lente Rally y efectos 2.0"],
+	["idioma", "🌐", "Idioma", "español, English, português"], ["captura", "📷", "Captura", "botón, calidad y grabaciones"]]
 ## [categoría, clave, título, valores, etiquetas]
-const OPTION_CATS := [["graficos", "🖥 Gráficos", "calidad general, resolución, árboles, sombras"], ["texturas", "🧱 Texturas", "calidad automática o fija"],
-	["fisica", "⚙ Física y ayudas", "ABS, tracción, estabilidad"], ["sonido", "🔊 Sonido", "volúmenes y voz del copiloto"],
-	["manejo", "🎮 Manejo", "caja, dirección, inclinación, acelerómetro"], ["controles", "🕹 Controles en pantalla", "tamaño del volante y del pedal"], ["camara", "🎥 Cámara", "cámara al empezar"], ["efectos", "✨ Efectos", "Lente Rally y efectos 2.0 (hasta 3 a la vez)"]]
 const OPTION_LIST := [
 	["graficos", "quality", "Calidad general", ["auto", "low", "mid", "high"], ["Automática", "Baja", "Media", "Alta"]],
 	["graficos", "res", "Resolución del 3D", [0, 0.35, 0.5, 0.7, 1.0], ["Automática", "35%", "50%", "70%", "100%"]],
 	["graficos", "trees", "Árboles", ["auto", 0, 1500, 3000, 6000], ["Según la calidad", "Ninguno", "Pocos", "Normales", "Muchos"]],
 	["graficos", "shadowsQ", "Sombras", ["auto", false, true], ["Según la calidad", "No", "Sí"]],
-	["texturas", "textures", "Calidad de texturas", ["auto", "low", "mid", "high"], ["Automática", "Baja", "Media", "Alta"]],
+	["graficos", "textures", "Calidad de texturas", ["auto", "low", "mid", "high"], ["Automática", "Baja", "Media", "Alta"]],
 	["fisica", "abs", "ABS", [false, true], ["No", "Sí"]],
 	["fisica", "tc", "Control de tracción", [0, 25, 50, 75, 100], ["Apagado", "25%", "50%", "75%", "100%"]],
 	["fisica", "stab", "Estabilidad", [0, 30, 60, 100], ["Apagada", "Baja", "Media", "Alta"]],
@@ -65,11 +68,11 @@ const OPTION_LIST := [
 	["manejo", "steerMode", "Dirección", ["wheel", "slider"], ["Volante", "Barra"]],
 	["manejo", "units", "Unidades", ["kmh", "mph"], ["km/h", "mph"]],
 	["manejo", "haptics", "Vibración tipo volante (peso y baches)", [0, 1, 2, 3], ["Apagada", "Suave", "Media", "Fuerte"]],
-	["manejo", "gyro", "Volante con inclinación", [false, true], ["No", "Sí"]],
-	["manejo", "gyroSens", "Sensibilidad de la inclinación", [25, 40, 55, 70, 85, 100, 115, 130], ["Muy baja", "Baja", "Media baja", "Media", "Media alta", "Alta", "Muy alta", "Extrema"]],
-	["manejo", "gyroDead", "Zona muerta (ir recto sin temblar)", [0, 1.5, 3, 5], ["Ninguna", "Chica", "Media", "Grande"]],
-	["manejo", "gyroCurve", "Respuesta de la inclinación", [1.0, 1.35, 1.7], ["Lineal", "Progresiva", "Muy progresiva"]],
-	["manejo", "gyroSmooth", "Suavizado de la inclinación", [30.0, 15.0, 8.0, 5.0], ["Directo", "Normal", "Suave", "Muy suave"]],
+	["inclinacion", "gyro", "Volante con inclinación", [false, true], ["No", "Sí"]],
+	["inclinacion", "gyroSens", "Sensibilidad de la inclinación", [25, 40, 55, 70, 85, 100, 115, 130], ["Muy baja", "Baja", "Media baja", "Media", "Media alta", "Alta", "Muy alta", "Extrema"]],
+	["inclinacion", "gyroDead", "Zona muerta (ir recto sin temblar)", [0, 1.5, 3, 5], ["Ninguna", "Chica", "Media", "Grande"]],
+	["inclinacion", "gyroCurve", "Respuesta de la inclinación", [1.0, 1.35, 1.7], ["Lineal", "Progresiva", "Muy progresiva"]],
+	["inclinacion", "gyroSmooth", "Suavizado de la inclinación", [30.0, 15.0, 8.0, 5.0], ["Directo", "Normal", "Suave", "Muy suave"]],
 	["controles", "wheelSize", "Tamaño del volante", [70, 85, 100, 120, 140, 160], ["70%", "85%", "100%", "120%", "140%", "160%"]],
 	["controles", "pedalSize", "Tamaño del pedal", [70, 85, 100, 120, 140, 160], ["70%", "85%", "100%", "120%", "140%", "160%"]],
 	["camara", "camera", "Cámara al empezar", [0, 1, 2, 3, 4, 6, 7, 8], ["Casco", "Seguimiento", "Cerca", "Lejos", "Aérea", "Trasera (dos pilotos)", "Capó", "Paragolpes"]],
@@ -78,49 +81,74 @@ const OPTION_LIST := [
 func options_page(body: VBoxContainer, cat = null) -> void:
 	if cat == null:
 		_title("OPCIONES")
+		var g := Kit.grid(2, 8, 8)
+		body.add_child(g)
 		for c in OPTION_CATS:
 			var key: String = c[0]
-			body.add_child(_cat_button(c[1], c[2], func(): nav.call("fx", null) if key == "efectos" else nav.call("options", key)))
+			g.add_child(Kit.card_button(str(c[2]), str(c[3]), "", func() -> void:
+				sfx.play("click")
+				nav.call("fx", null) if key == "efectos" else nav.call("options", key), false, true, 62.0, 18, str(c[1])))
 		if reset_cb.is_valid():
-			body.add_child(Kit.label("PROGRESO", 16, Kit.MUTED))
-			body.add_child(Kit.button("🗑 BORRAR TODO EL PROGRESO", reset_cb, false, 20))
+			body.add_child(Kit.button("🗑 BORRAR TODO EL PROGRESO", reset_cb, false, 16, Vector2(0, 40)))
 		return
 	for c in OPTION_CATS:
 		if c[0] == cat:
-			_title(str(c[1]).to_upper())
+			_title(str(c[2]).to_upper())
+	if cat == "idioma":
+		_language_page(body)
+		return
+	if cat == "captura":
+		_capture_page(body)
+		return
+	if cat == "galeria":
+		_title("GALERÍA")
+		preload("res://game/ui/capture_ui.gd").gallery(body, nav, sfx)
+		return
+	var g2 := Kit.grid(2, 8, 8)
+	body.add_child(g2)
 	for o in OPTION_LIST:
 		if o[0] != cat:
 			continue
-		var key: String = o[1]
+		var key2: String = o[1]
 		var vals: Array = o[3]
-		var cur = profile.setting(key)
-		var idx := vals.find(cur)
-		if idx < 0:
-			idx = 0
-		var b := Kit.button("%s:  %s" % [o[2], o[4][idx]], Callable(), false, 20, Vector2(0, 52))
-		b.pressed.connect(func() -> void:
-			if Kit.scroll_moved:
-				Kit.scroll_moved = false
-				return
-			var cur2 = profile.setting(key)
-			var i2 := vals.find(cur2)
-			i2 = (i2 + 1) % vals.size()
-			profile.set_setting(key, vals[i2])
-			if key == "volume":
-				sfx.volume = float(vals[i2]) / 100.0
-			sfx.play("click")
-			changed.emit(key)
-			b.text = "%s:  %s" % [o[2], o[4][i2]])
-		body.add_child(b)
+		var labels: Array = o[4]
+		var cur = profile.setting(key2)
+		if vals.find(cur) < 0:
+			cur = vals[0]
+		var sel := Kit.selector(tr(str(o[2])), vals, cur, func(v) -> String: return tr(str(labels[vals.find(v)])), func(v) -> void:
+			profile.set_setting(key2, v)
+			if key2 == "volume":
+				sfx.volume = float(v) / 100.0
+			changed.emit(key2), sfx, 62.0)
+		g2.add_child(sel)
 	if cat == "graficos":
 		_particles_row(body)
-	if cat == "manejo":
+	if cat == "inclinacion":
 		_accel_block(body)
-	if cat == "graficos":
-		var hint := Kit.label("La calidad automática ajusta la resolución sola según lo que aguante el teléfono.", 15, Kit.MUTED)
-		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		hint.custom_minimum_size.x = 380
-		body.add_child(hint)
+
+## Idioma de los textos del juego (la voz del copiloto sigue el idioma del teléfono)
+func _language_page(body: VBoxContainer) -> void:
+	var Tr := preload("res://game/i18n/tr.gd")
+	var cur := str(profile.setting("lang"))
+	var g := Kit.grid(2, 8, 8)
+	body.add_child(g)
+	for l in Tr.available_languages():
+		var code: String = l[0]
+		var b := Kit.button(("✔ " if cur == code else "") + str(l[1]), func() -> void:
+			profile.set_setting("lang", code)
+			Tr.set_language(code)
+			sfx.play("click")
+			changed.emit("lang")
+			nav.call("options", "idioma"), cur == code, 18, Vector2(0, 54))
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		g.add_child(b)
+	var hint := Kit.wrap("Los textos del juego cambian al instante. La voz del copiloto usa el idioma de tu teléfono.", 13, Kit.MUTED, 300)
+	body.add_child(hint)
+
+## Botón de captura, calidad y grabaciones (la pantalla se arma en capture_ui.gd)
+func _capture_page(body: VBoxContainer) -> void:
+	var CaptureUi := preload("res://game/ui/capture_ui.gd")
+	CaptureUi.options_block(body, profile, sfx, nav, func(k: String) -> void: changed.emit(k))
 
 ## Lectura en vivo del acelerómetro (barras de los tres ejes + cuánto gira el volante) y botón de calibrar, sin salir de la pantalla
 class AccelMeter extends Control:
@@ -129,7 +157,7 @@ class AccelMeter extends Control:
 	var zero_t := 0.0
 
 	func _ready() -> void:
-		custom_minimum_size = Vector2(0, 150)
+		custom_minimum_size = Vector2(0, 124)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func calibrate() -> void:
@@ -150,7 +178,7 @@ class AccelMeter extends Control:
 		var colors := [Color(1, 0.4, 0.4), Color(0.4, 1, 0.5), Color(0.45, 0.7, 1)]
 		var bw := size.x - 70.0
 		for i in 3:
-			var y := 14.0 + float(i) * 26.0
+			var y := 8.0 + float(i) * 25.0
 			draw_string(font, Vector2(8, y + 12), names[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.8, 0.85, 0.9))
 			var cx := 34.0 + bw * 0.5
 			draw_rect(Rect2(34, y, bw, 16), Color(1, 1, 1, 0.07), true)
@@ -159,7 +187,7 @@ class AccelMeter extends Control:
 			draw_line(Vector2(cx, y), Vector2(cx, y + 16), Color(1, 1, 1, 0.5), 1.5)
 			draw_string(font, Vector2(size.x - 30, y + 13), "%.1f" % float(vals[i]), HORIZONTAL_ALIGNMENT_RIGHT, 28, 13, Color(0.8, 0.85, 0.9))
 		# volante: el ángulo de la gravedad en el plano de la pantalla respecto de la calibración
-		var y2 := 96.0
+		var y2 := 84.0
 		draw_string(font, Vector2(8, y2 + 14), "Giro", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(1.0, 0.82, 0.25))
 		var sens := float(sens_cb.call()) if sens_cb.is_valid() else 50.0
 		var full := 55.0 - sens * 0.40
@@ -179,21 +207,22 @@ class AccelMeter extends Control:
 			draw_string(font, Vector2(8, size.y - 8), "Sin lectura del acelerómetro (necesita la versión nueva instalada)", HORIZONTAL_ALIGNMENT_LEFT, size.x - 16, 13, Color(1, 0.4, 0.4))
 
 func _accel_block(body: VBoxContainer) -> void:
-	var hl := Kit.label("ACELERÓMETRO: inclinar el teléfono como un volante", 16, Kit.MUTED)
-	hl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hl.custom_minimum_size.x = 340
-	body.add_child(hl)
 	var meter := AccelMeter.new()
 	meter.sens_cb = func() -> float: return float(profile.setting("gyroSens"))
 	body.add_child(meter)
-	body.add_child(Kit.button("📐 CALIBRAR (sostené el teléfono como para jugar)", func() -> void:
+	var row := Kit.hbox(8)
+	body.add_child(row)
+	var cb := Kit.button("📐 CALIBRAR", func() -> void:
 		sfx.play("buy")
 		meter.calibrate()
-		changed.emit("recal"), true, 18, Vector2(0, 54)))
-	var tip := Kit.label("Activá «Volante con inclinación» arriba; la barra de Giro muestra cuánto doblás. «Sensibilidad» cambia cuánto hay que inclinar, «Zona muerta» evita que tiemble al ir recto y «Respuesta progresiva» da más precisión en las rectas.", 13, Kit.MUTED)
+		changed.emit("recal"), true, 18, Vector2(0, 46))
+	cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(cb)
+	var tip := Kit.label("Sostené el teléfono como para jugar y tocá Calibrar.", 12, Kit.MUTED)
 	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tip.custom_minimum_size.x = 340
-	body.add_child(tip)
+	tip.custom_minimum_size.x = 150
+	tip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(tip)
 
 ## Partículas (polvo, humo de las gomas, rocío, piedritas): barra de 0 a 10 (0 = sin partículas) o AUTO
 func _particles_row(body: VBoxContainer) -> void:
@@ -230,9 +259,9 @@ func _particles_row(body: VBoxContainer) -> void:
 		changed.emit("particles")
 		refresh.call())
 	col.add_child(sl)
-	var hl := Kit.label("Polvo y humo de las ruedas: 1 es poco, 10 es el máximo, 0 los quita. En AUTO el juego los baja solo si el teléfono no llega.", 13, Kit.MUTED)
+	var hl := Kit.label("Polvo y humo: 1 poco, 10 máximo, 0 sin partículas. AUTO las baja solo si el teléfono no llega.", 12, Kit.MUTED)
 	hl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hl.custom_minimum_size.x = 340
+	hl.custom_minimum_size.x = 300
 	col.add_child(hl)
 	refresh.call()
 
@@ -242,13 +271,9 @@ func fx_page(body: VBoxContainer, col_box: VBoxContainer) -> void:
 	fx_rows.clear()
 	fx_slot_btns.clear()
 	# fijo arriba (no se desplaza con la lista): los tres lugares y, del lugar elegido, el interruptor y la intensidad (se ve en vivo)
-	var fixed := Kit.vbox(8)
+	var fixed := Kit.vbox(6)
 	col_box.add_child(fixed)
 	col_box.move_child(fixed, 1)
-	var h2 := Kit.label("Tocá un lugar (hasta 3 efectos a la vez), elegí el efecto abajo y regulá la intensidad: se ve en el momento.", 14, Kit.MUTED)
-	h2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	h2.custom_minimum_size.x = 300
-	fixed.add_child(h2)
 	var srow := Kit.hbox(6)
 	fixed.add_child(srow)
 	for i in 3:
@@ -256,7 +281,7 @@ func fx_page(body: VBoxContainer, col_box: VBoxContainer) -> void:
 		var sb := Kit.button("", func() -> void:
 			fx_slot = slot
 			sfx.play("click")
-			_fx_refresh(), false, 17, Vector2(0, 54))
+			_fx_refresh(), false, 15, Vector2(0, 44))
 		sb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		sb.clip_text = true
 		srow.add_child(sb)
@@ -290,52 +315,79 @@ func fx_page(body: VBoxContainer, col_box: VBoxContainer) -> void:
 	fx_val = Kit.label("", 18, Kit.GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
 	fx_val.custom_minimum_size.x = 62
 	srow2.add_child(fx_val)
-	# arriba de la lista: lente y combo
+	# acciones: lente, combo realista y quitar todo
 	var lens_names := ["Apagado", "Suave", "Fuerte"]
-	var lb := Kit.button("Lente Rally:  %s" % lens_names[int(profile.setting("lens2"))], Callable(), false, 20, Vector2(0, 50))
+	var arow := Kit.hbox(6)
+	body.add_child(arow)
+	var lb := Kit.button("Lente: %s" % tr(lens_names[int(profile.setting("lens2"))]), Callable(), false, 15, Vector2(0, 42))
 	lb.pressed.connect(func() -> void:
 		if Kit.scroll_moved:
 			Kit.scroll_moved = false
 			return
 		var i := (int(profile.setting("lens2")) + 1) % 3
 		profile.set_setting("lens2", i)
-		lb.text = "Lente Rally:  %s" % lens_names[i]
+		lb.text = "%s: %s" % [tr("Lente"), tr(lens_names[i])]
 		sfx.play("click")
 		changed.emit("fx"))
-	body.add_child(lb)
-	var combo := Kit.button("🎬 Realista (oclusión + cromática + bodycam)", func() -> void:
+	lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	arow.add_child(lb)
+	var combo := Kit.button("🎬 Realista", func() -> void:
 		profile.set_setting("fx", [23, 24, 14])
 		profile.set_setting("fxOn", [true, true, true])
 		profile.set_setting("fxAmt", [1.0, 1.0, 1.0])
 		sfx.play("buy")
 		changed.emit("fx")
-		_fx_refresh(), true, 17, Vector2(0, 48))
-	body.add_child(combo)
-	body.add_child(Kit.button("✕ Quitar todos los efectos", func() -> void:
+		_fx_refresh(), true, 15, Vector2(0, 42))
+	combo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	arow.add_child(combo)
+	var clr := Kit.button("✕ Quitar", func() -> void:
 		profile.set_setting("fx", [0, 0, 0])
 		sfx.play("click")
 		changed.emit("fx")
-		_fx_refresh(), false, 17, Vector2(0, 46)))
-	for k in Lens.FX_NAMES.size():
+		_fx_refresh(), false, 15, Vector2(0, 42))
+	clr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	arow.add_child(clr)
+	var hold := VBoxContainer.new()
+	hold.add_theme_constant_override("separation", 6)
+	body.add_child(hold)
+	_fx_list(hold)
+	_fx_refresh()
+
+var fx_pg := 0
+const FX_PER_PAGE := 8
+
+func _fx_list(hold: VBoxContainer) -> void:
+	for c in hold.get_children():
+		c.queue_free()
+	fx_rows.clear()
+	var n := Lens.FX_NAMES.size()
+	var pages := maxi(1, int(ceil(float(n) / float(FX_PER_PAGE))))
+	fx_pg = clampi(fx_pg, 0, pages - 1)
+	var g := Kit.grid(2, 6, 6)
+	hold.add_child(g)
+	for k in range(fx_pg * FX_PER_PAGE, mini(n, (fx_pg + 1) * FX_PER_PAGE)):
 		var id := k
 		var cost := "●".repeat(int(Lens.FX_COST[k])) if k > 0 else ""
-		var b := Kit.button("", Callable(), false, 19, Vector2(0, 50))
-		var row := Kit.hbox(8)
+		var b := Kit.button("", Callable(), false, 15, Vector2(0, 44))
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var row := Kit.hbox(4)
 		row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		row.offset_left = 12
-		row.offset_right = -12
+		row.offset_left = 10
+		row.offset_right = -10
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		b.add_child(row)
-		var nl := Kit.label("%d. %s" % [k, Lens.FX_NAMES[k]] if k > 0 else "Ninguno", 19)
+		var nl := Kit.label("%d. %s" % [k, Lens.FX_NAMES[k]] if k > 0 else tr("Ninguno"), 14)
 		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		nl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		nl.clip_text = true
+		nl.custom_minimum_size.x = 30
 		row.add_child(nl)
-		var cl := Kit.label(cost, 14, Kit.MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
-		cl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		row.add_child(cl)
-		var ml := Kit.label("", 17, Kit.ACCENT, HORIZONTAL_ALIGNMENT_RIGHT)
+		var ml := Kit.label("", 14, Kit.ACCENT, HORIZONTAL_ALIGNMENT_RIGHT)
 		ml.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		row.add_child(ml)
+		var cl := Kit.label(cost, 9, Kit.MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+		cl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(cl)
 		b.pressed.connect(func() -> void:
 			if Kit.scroll_moved:
 				Kit.scroll_moved = false
@@ -349,13 +401,12 @@ func fx_page(body: VBoxContainer, col_box: VBoxContainer) -> void:
 			sfx.play("click")
 			changed.emit("fx")
 			_fx_refresh())
-		body.add_child(b)
+		g.add_child(b)
 		fx_rows.append({"id": id, "btn": b, "mark": ml})
-	var foot := Kit.label("● liviano … ●●●●● pesado para el teléfono. Los de contorno (boceto, pizarra, graphic black, 1-bit, sin city, borderlands, tiza, XIII) y el infrarrojo son los que más cuestan: si ves tirones, bajá la resolución.", 14, Kit.MUTED)
-	foot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	foot.custom_minimum_size.x = 300
-	body.add_child(foot)
-	_fx_refresh()
+	hold.add_child(Kit.pager(fx_pg, pages, func(pg: int) -> void:
+		fx_pg = pg
+		_fx_list(hold)
+		_fx_refresh()))
 
 func _fx_get() -> Array:
 	var a = profile.setting("fx")

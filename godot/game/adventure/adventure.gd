@@ -8,6 +8,7 @@ extends Node
 
 const AdvRoute := preload("res://game/adventure/adv_route.gd")
 const AdvData := preload("res://game/adventure/adv_data.gd")
+const Release := preload("res://game/data/release.gd")
 const AdvHud := preload("res://game/adventure/adv_hud.gd")
 const CinePilot := preload("res://game/adventure/cine_pilot.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
@@ -876,7 +877,7 @@ func _update_hud(_dt: float) -> void:
 	hud.set_cars(L)
 
 func _show_station() -> void:
-	hud.show_station(station_tab, {"stage": stage, "time": result.get("time", time), "margin": result.get("margin", 0.0), "vmax": result.get("vmax", vmax), "station": station_name}, st)
+	hud.show_station(station_tab, {"stage": stage, "time": result.get("time", time), "margin": result.get("margin", 0.0), "vmax": result.get("vmax", vmax), "station": station_name, "limit": Release.adventure_limit(r.profile)}, st)
 
 func _save() -> void:
 	if r.profile != null:

@@ -9,6 +9,9 @@ GAME = os.path.join(ROOT, 'godot', 'game')
 I18N = os.path.join(GAME, 'i18n')
 LANGS = ['en', 'pt', 'fr', 'it', 'de']
 SKIP_DIRS = {'i18n', 'models', 'audio_data'}
+# archivos de diagnóstico, esqueletos y nombres propios: no se traducen
+SKIP_FILES = {'ui/debug_panel.gd', 'car/rig_pilot.gd', 'car/pilot.gd', 'data/ai_cars.gd', 'session.gd', 'ui/ui_selector.gd'}
+SKIP_EXACT = {'Head', 'Hips', 'Left', 'Right', 'Index', 'Middle', 'Ring', 'Pinky', 'Thumb', 'Spine', 'Neck', 'Shoulder', 'Hand', 'Foot', 'Body', 'Crew', 'Processor', 'model name', 'Hardware'}
 # claves de los JSON de datos que llevan texto para mostrar
 JSON_TEXT_KEYS = {'name', 'n', 'info', 'desc', 'tagline', 'kind', 'engine', 'brand', 'model', 'title', 'text', 'sub', 'label', 'tip', 'bio', 'req'}
 
@@ -16,6 +19,8 @@ SPANISH_MARK = re.compile(r'[áéíóúñÁÉÍÓÚÑ¿¡]')
 
 def is_text(s: str) -> bool:
     s = s.strip()
+    if s in SKIP_EXACT or 'shader_type' in s or 'render_mode' in s or 'uniform ' in s or 'vec2' in s:
+        return False
     if len(s) < 3 or '://' in s or s.startswith('res:') or s.startswith('#') or s.startswith('user:'):
         return False
     if re.fullmatch(r'[a-z0-9_.\-/:]+', s):          # identificadores, rutas, ids
@@ -68,7 +73,7 @@ def collect():
         for fn in fns:
             p = os.path.join(dp, fn)
             rel = os.path.relpath(p, GAME)
-            if fn.endswith('.gd'):
+            if fn.endswith('.gd') and rel.replace(os.sep, '/') not in SKIP_FILES:
                 for s, ln in gd_strings(open(p, encoding='utf-8').read()):
                     if is_text(s):
                         found.setdefault(s, []).append('%s:%d' % (rel, ln))

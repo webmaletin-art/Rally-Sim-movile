@@ -10,6 +10,7 @@ signal restart_pressed
 signal quit_pressed
 signal tests_pressed
 signal camera_pressed
+signal cine_pressed
 signal options_changed(key: String)
 
 var session: RefCounted
@@ -26,6 +27,7 @@ var tick := 0.0
 var big_t := 0.0
 var toast_t := 0.0
 var pause_box: Control
+var cine_btn: Button
 var bar: ColorRect
 var bar_fill: ColorRect
 var minimap: Control
@@ -237,10 +239,20 @@ func _build_pause() -> void:
 	v.add_child(Kit.label("PAUSA", 38, Kit.ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(Kit.button("▶  SEGUIR", func(): resume_pressed.emit(), true))
 	v.add_child(Kit.button("🎥  CÁMARA", func(): camera_pressed.emit()))
+	cine_btn = Kit.button("🎬  MODO CINE (para grabar)", func(): cine_pressed.emit())
+	v.add_child(cine_btn)
 	v.add_child(Kit.button("↺  REINICIAR", func(): restart_pressed.emit()))
 	v.add_child(Kit.button("⚙  OPCIONES (gráficos, sonido, efectos…)", func(): open_options()))
 	v.add_child(Kit.button("🔧  PRUEBAS Y AJUSTES", func(): tests_pressed.emit()))
 	v.add_child(Kit.button("✕  SALIR", func(): quit_pressed.emit()))
+
+## Modo cine: se esconden los paneles del HUD (la pausa y las opciones siguen funcionando)
+func set_cine(on: bool) -> void:
+	for c in get_children():
+		if c != pause_box and c != opts_box and c is CanvasItem:
+			(c as CanvasItem).visible = not on
+	if cine_btn != null:
+		cine_btn.text = "🎬  SALIR DEL MODO CINE" if on else "🎬  MODO CINE (para grabar)"
 
 func set_paused(on: bool) -> void:
 	if on:
@@ -290,27 +302,27 @@ func _opts_go(name: String, arg, push := true) -> void:
 	opts_arg = arg
 	if opts_panel != null:
 		opts_panel.queue_free()
-	opts_panel = Kit.panel(14)
+	opts_panel = Kit.panel(12)
 	opts_panel.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
-	opts_panel.anchor_right = 0.50
-	opts_panel.offset_left = 14
-	opts_panel.offset_top = 14
-	opts_panel.offset_bottom = -14
+	opts_panel.anchor_right = 0.475
+	opts_panel.offset_left = 12
+	opts_panel.offset_top = 12
+	opts_panel.offset_bottom = -12
 	opts_panel.offset_right = 0
 	opts_box.add_child(opts_panel)
-	opts_col = Kit.vbox(10)
+	opts_col = Kit.vbox(8)
 	opts_panel.add_child(opts_col)
-	var head := Kit.hbox(10)
+	var head := Kit.hbox(8)
 	opts_col.add_child(head)
-	head.add_child(Kit.button("← ATRÁS", func(): opts.sfx.play("click"); _opts_back(), false, 18, Vector2(120, 46)))
-	opts_title = Kit.label("", 28, Kit.ACCENT)
+	head.add_child(Kit.button("← ATRÁS", func(): opts.sfx.play("click"); _opts_back(), false, 16, Vector2(104, 40)))
+	opts_title = Kit.label("", 26, Kit.ACCENT)
 	opts_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(opts_title)
 	opts_scroll = TouchScroll.new()
 	opts_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	opts_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	opts_col.add_child(opts_scroll)
-	opts_body = Kit.vbox(10)
+	opts_body = Kit.vbox(8)
 	opts_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	opts_scroll.add_child(opts_body)
 	if name == "fx":
