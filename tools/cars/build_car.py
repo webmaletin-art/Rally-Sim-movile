@@ -7,6 +7,8 @@
 Uso: python3 build_car.py <id> [<id> …]   (lee tools/cars/src/<fuente>.glb; configuración en CARS)"""
 import sys, json, struct, os
 import numpy as np, trimesh, fast_simplification
+from scipy import ndimage
+from skimage import measure
 from analyze import load
 from fit import arch_fit
 
@@ -238,13 +240,55 @@ def classify(V, F, N, meta, cfg):
     base = meta['lift']
     sst = lambda a, b, x: np.clip((x - a) / (b - a), 0, 1) ** 2 * (3 - 2 * np.clip((x - a) / (b - a), 0, 1))
     k = 1 - sst(base, base + 0.07 * H, V[:, 1])
-    k = np.where(ny < -0.4, 1.0, k)
+    k = np.where((ny < -0.4) & (V[:, 1] < base + 0.30 * H), 1.0, k)   # bajos del auto (no los reversos de los calados del capó)
     for a in meta['arches']:
         d = np.hypot(V[:, 2] - a['z'], V[:, 1] - a['yc'])
-        k = np.where((d < a['r'] * 1.03) & (np.abs(V[:, 0]) < 0.97 * hw), 1.0, k)
+        # solo el interior del paso (techo y paredes de adentro): la piel exterior (capó, guardabarros) mira hacia arriba o hacia afuera
+        k = np.where((d < a['r'] * 1.03) & (np.abs(V[:, 0]) < 0.90 * a['x_out']) & (ny < 0.30), 1.0, k)
     col = np.repeat((1 - k * 0.94)[:, None], 3, axis=1)
     gface = np.zeros(len(F), bool)
     return col, gface
+
+def remesh_skin(V, F, voxel=0.008, sigma=1.0, relax=8):
+    """Piel nueva y limpia: voxeliza la malla, descarta todo lo que no se ve desde afuera (interiores, piezas dobladas, calados con
+    doble pared) y saca una superficie lisa con marching cubes. Los modelos originales son de IA y traen capas internas y triángulos
+    retorcidos que, al reducirlos, se ven como rajaduras negras y paragolpes arrugados."""
+    lo = V.min(0) - 6 * voxel
+    hi = V.max(0) + 6 * voxel
+    shape = np.ceil((hi - lo) / voxel).astype(int) + 1
+    tri = V[F]
+    area = 0.5 * np.linalg.norm(np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]), axis=1)
+    n = np.maximum(1, np.ceil(area / (0.35 * voxel) ** 2 * 0.5).astype(int))      # muestras por triángulo (separación < media celda)
+    idx = np.repeat(np.arange(len(F)), n)
+    r1 = np.random.default_rng(1).random((len(idx), 2))
+    flip = r1.sum(1) > 1
+    r1[flip] = 1 - r1[flip]
+    P = tri[idx, 0] + r1[:, :1] * (tri[idx, 1] - tri[idx, 0]) + r1[:, 1:] * (tri[idx, 2] - tri[idx, 0])
+    P = np.vstack([P, V])
+    ijk = np.floor((P - lo) / voxel).astype(int)
+    surf = np.zeros(shape, bool)
+    surf[ijk[:, 0], ijk[:, 1], ijk[:, 2]] = True
+    wall = ndimage.binary_dilation(surf, iterations=1)                 # cierra las rendijas entre piezas
+    lab, nl = ndimage.label(~wall)
+    outside = lab == lab[0, 0, 0]                                      # el aire de afuera (toca el borde de la caja)
+    solid = ~outside
+    solid = ndimage.binary_erosion(solid, iterations=1)                # devuelve lo que sumó la dilatación
+    # el piso del auto queda abierto hacia abajo: se cierra con una tapa en y mínimo para que no se llene al revés
+    fld = ndimage.gaussian_filter(solid.astype(np.float32), sigma)
+    vv, ff, _, _ = measure.marching_cubes(fld, 0.5, spacing=(voxel, voxel, voxel))
+    vv = vv + lo
+    m = trimesh.Trimesh(vv, ff, process=True)
+    m.update_faces(m.nondegenerate_faces())
+    # normales hacia afuera
+    trimesh.repair.fix_normals(m)
+    if relax:
+        trimesh.smoothing.filter_taubin(m, lamb=0.5, nu=-0.53, iterations=relax)   # alisa los escalones de los voxeles sin encoger
+    return np.asarray(m.vertices), np.asarray(m.faces)
+
+def simplify(V, F, faces, agg):
+    """Reducción por colapso de aristas (error cuadrático) sobre la malla ya soldada."""
+    red = 1.0 - faces / len(F)
+    return fast_simplification.simplify(V.astype(np.float64), F.astype(np.int32), target_reduction=red, agg=agg)
 
 def build(cid):
     cfg = CARS[cid]
@@ -296,12 +340,17 @@ def build(cid):
         glass_meta = None
     meta = dict(id=cid, L=cfg['L'], H=H, hw=hw, scale=float(s), wheelbase=float(wheelbase), a=float(a_f), b=float(b_r), R=R, lift=float(ground),
                 weightFront=cfg['wf'], arch_top=float(top + ground), arches=arches, glass=glass_meta, wheel=WHEELS[cid])
+    if cfg.get('remesh', True):
+        V, F = remesh_skin(V, F, cfg.get('voxel', 0.012))
     # variantes hi / lo
     outs = {}
     for tag, faces in (('', cfg.get('tris', 24000)), ('_lo', 5000)):
-        red = 1.0 - faces / len(F)
-        pv, pf = fast_simplification.simplify(V.astype(np.float64), F.astype(np.int32), target_reduction=red, agg=(cfg.get('agg', 3) if tag == '' else 6))
-        V2, F2, N2 = vertex_normals(pv, pf)
+        pv, pf = simplify(V, F, faces, cfg.get('agg', 3) if tag == '' else 6)
+        if cfg.get('smooth', 0) and tag == '':   # quita las arrugas que deja la reducción en los paragolpes y guardabarros (Taubin: no encoge)
+            tm = trimesh.Trimesh(pv, pf, process=False)
+            trimesh.smoothing.filter_taubin(tm, lamb=0.5, nu=-0.53, iterations=int(cfg.get('smooth', 12)))
+            pv = np.asarray(tm.vertices)
+        V2, F2, N2 = vertex_normals(pv, pf, cfg.get('crease', 50.0))
         col, gface = classify(V2, F2, N2, meta, cfg)
         prims = []
         def sub(Ff):

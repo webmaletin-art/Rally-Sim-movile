@@ -21,7 +21,7 @@ const OVR := {
 	"gt": {"wmul": 1.45, "back": -0.95, "eye_h": 0.19, "cage": false},
 	"gt3": {"wmul": 1.25, "back": -0.9, "eye_h": 0.2, "cage": true},
 	"hyper": {"wmul": 1.30, "back": -0.7, "eye_h": 0.2, "cage": false},
-	"buggy": {"cage": true, "cowlZ": 0.45, "cowlY": 0.9, "eyeZ": -0.35, "eyeY": 1.32, "back": -1.2, "halfW": 0.6},
+	"buggy": {"cage": false, "cowlZ": 0.45, "cowlY": 0.9, "eyeZ": -0.35, "eyeY": 1.32, "back": -1.2, "halfW": 0.6},
 }
 
 static func has(id: String) -> bool:

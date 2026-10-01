@@ -1891,6 +1891,7 @@ func _frame(dt: float) -> void:
 			audiorec.set_recording_active(false)
 			audiorec.get_recording().save_to_wav(audiorec_path)
 		print("VEL ", int(controls.speed_kmh), " km/h · marcha ", controls.gear_text, " · ", fx.debug_info())
+		print("RENDER triángulos %d · llamadas %d · objetos %d" % [RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)])
 		if shot_path != "":
 			get_viewport().get_texture().get_image().save_png(shot_path)
 		if bench and fps_n > 0:

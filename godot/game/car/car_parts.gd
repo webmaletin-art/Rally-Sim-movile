@@ -45,16 +45,17 @@ func build(body: Node3D, V: RefCounted, p_meta: Dictionary, p_lo: bool, rim_col:
 			_mi(asm, WheelGen.tire_mesh(R, rr, tw, tread, lo), {"tire": mats["tire"]})
 			_mi(asm, WheelGen.rim_mesh(str(W["style"]), rr, wr, lo), {"rim": mats["rim"], "dark": mats["dark"], "steel": mats["steel"]})
 		# freno de disco (atrás de la llanta) y pinza (no gira)
-		var r_out := (rr - 0.012) * 0.90
-		var r_in := r_out * 0.45
-		var xd := wr * 0.5 - clampf(wr * 0.26, 0.03, 0.075) - 0.06
-		var disc := _mi(asm, WheelGen.disc_mesh(r_out, r_in, 0.026), {"disc": mats["disc"], "dark": mats["dark"]})
-		disc.position.x = xd
-		var cal_root := Node3D.new()
-		cal_root.scale = Vector3(side, 1.0, 1.0)
-		steer.add_child(cal_root)
-		var cal := _mi(cal_root, WheelGen.caliper_mesh(r_out, r_out - 0.075, 0.026, PI / 2.0 + (0.15 if front else 0.55), PI / 2.0 + (0.85 if front else 1.25)), {"caliper": mats["caliper"]})
-		cal.position.x = xd
+		if not lo: # de lejos (rivales) el disco y la pinza no se ven: se ahorran 3 llamadas de dibujo por rueda
+			var r_out := (rr - 0.012) * 0.90
+			var r_in := r_out * 0.45
+			var xd := wr * 0.5 - clampf(wr * 0.26, 0.03, 0.075) - 0.06
+			var disc := _mi(asm, WheelGen.disc_mesh(r_out, r_in, 0.026), {"disc": mats["disc"], "dark": mats["dark"]})
+			disc.position.x = xd
+			var cal_root := Node3D.new()
+			cal_root.scale = Vector3(side, 1.0, 1.0)
+			steer.add_child(cal_root)
+			var cal := _mi(cal_root, WheelGen.caliper_mesh(r_out, r_out - 0.075, 0.026, PI / 2.0 + (0.15 if front else 0.55), PI / 2.0 + (0.85 if front else 1.25)), {"caliper": mats["caliper"]})
+			cal.position.x = xd
 		var w := {"steer": steer, "spin": spin, "front": front, "angle": 0.0, "side": side, "tw": tw, "x": float(d[0]), "z": float(d[1])}
 		if not lo and not OS.has_environment("CAR_NOSUSP"):
 			_make_susp(body, w, R, tw, arch_top)
@@ -165,13 +166,9 @@ func _make_susp(body: Node3D, w: Dictionary, R: float, tw: float, arch_top: floa
 	spring.set_surface_override_material(0, mats["spring"])
 	strut.add_child(spring)
 	var dtube := MeshInstance3D.new()
-	dtube.mesh = WheelGen.tube_mesh(rs * 0.46, 0.04, 0.56, 8)
+	dtube.mesh = WheelGen.damper_mesh(rs)
 	dtube.set_surface_override_material(0, mats["damper"])
 	strut.add_child(dtube)
-	var drod := MeshInstance3D.new()
-	drod.mesh = WheelGen.tube_mesh(rs * 0.20, 0.5, 0.97, 6)
-	drod.set_surface_override_material(0, mats["rod"])
-	strut.add_child(drod)
 	# brazos inferiores (horquilla): dos barras del cubo al chasis
 	var arms: Array = []
 	for k in 2:

@@ -86,6 +86,14 @@ class MB:
 				continue
 			quad(c[f[0]], c[f[1]], c[f[2]], c[f[3]], bx * (f[4] as Vector3))
 
+	## suma la geometría de otra malla (para juntar superficies y ahorrar llamadas de dibujo)
+	func absorb(o: MB) -> void:
+		var base := v.size()
+		v.append_array(o.v)
+		n.append_array(o.n)
+		for i in o.idx:
+			idx.append(i + base)
+
 	func to_arrays() -> Array:
 		var a := []
 		a.resize(Mesh.ARRAY_MAX)
@@ -251,6 +259,9 @@ static func rim_mesh(style: String, rr: float, wr: float, lo: bool) -> ArrayMesh
 				_bolt(steel, a, rr * 0.985, xl + 0.003, 0.0075)
 		_:
 			_spokes(rim, 5, rr * 0.4, rr * 0.22, r0, rb, xl - 0.012, xf, 0.016, 0.0)
+	if lo: # de lejos no se distinguen las tuercas: una superficie menos
+		dark.absorb(steel)
+		steel = MB.new()
 	var mesh := _finish([["rim", rim], ["dark", dark], ["steel", steel]])
 	_cache[key] = mesh
 	return mesh
@@ -447,10 +458,7 @@ static func spring_mesh(r: float, wire: float, coils: float, lo: bool) -> ArrayM
 	return mesh
 
 ## Cilindro de altura 1 sobre +Y con el origen abajo (para el amortiguador y la varilla)
-static func tube_mesh(r: float, y0: float, y1: float, seg := 8) -> ArrayMesh:
-	var key := "tube|%.4f|%.3f|%.3f|%d" % [r, y0, y1, seg]
-	if _cache.has(key):
-		return _cache[key]
+static func _tube_mb(r: float, y0: float, y1: float, seg: int) -> MB:
 	var mb := MB.new()
 	# lathe sobre el eje X: se hace sobre X y se gira a Y
 	var m2 := MB.new()
@@ -464,6 +472,23 @@ static func tube_mesh(r: float, y0: float, y1: float, seg := 8) -> ArrayMesh:
 		mb.idx.append(m2.idx[k])
 		mb.idx.append(m2.idx[k + 2])
 		mb.idx.append(m2.idx[k + 1])
+	return mb
+
+static func tube_mesh(r: float, y0: float, y1: float, seg := 8) -> ArrayMesh:
+	var key := "tube|%.4f|%.3f|%.3f|%d" % [r, y0, y1, seg]
+	if _cache.has(key):
+		return _cache[key]
+	var mesh := _finish([["tube", _tube_mb(r, y0, y1, seg)]])
+	_cache[key] = mesh
+	return mesh
+
+## Amortiguador: cuerpo y vástago en una sola superficie (una llamada de dibujo en vez de dos)
+static func damper_mesh(rs: float) -> ArrayMesh:
+	var key := "damper|%.4f" % rs
+	if _cache.has(key):
+		return _cache[key]
+	var mb := _tube_mb(rs * 0.46, 0.04, 0.56, 8)
+	mb.absorb(_tube_mb(rs * 0.20, 0.5, 0.97, 6))
 	var mesh := _finish([["tube", mb]])
 	_cache[key] = mesh
 	return mesh
