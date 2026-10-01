@@ -13,6 +13,9 @@ const Career := preload("res://game/ui/menu_career.gd")
 const Garage := preload("res://game/ui/menu_garage.gd")
 const Lens := preload("res://game/fx/lens.gd")
 const OptionsUi := preload("res://game/ui/options_ui.gd")
+const MenuAdventure := preload("res://game/ui/menu_adventure.gd")
+const AdvData := preload("res://game/adventure/adv_data.gd")
+const AdvRoute := preload("res://game/adventure/adv_route.gd")
 
 var app: Node
 var profile: RefCounted
@@ -35,6 +38,7 @@ var screen := ""
 var screen_arg = null
 var career: RefCounted
 var garage: RefCounted
+var adventure: RefCounted
 var frames := 0
 var showcar := "" # prueba: muestra este auto en la sala
 var autotest := "" # prueba: arranca directo una prueba libre de este auto
@@ -91,6 +95,8 @@ func _ready() -> void:
 	career.m = self
 	garage = Garage.new()
 	garage.m = self
+	adventure = MenuAdventure.new()
+	adventure.m = self
 	_build_world()
 	_build_ui()
 	if showcar != "":
@@ -219,7 +225,7 @@ func go(name: String, arg = null, push := true) -> void:
 		panel.queue_free()
 	panel = Kit.panel(14)
 	panel.set_anchors_preset(Control.PRESET_LEFT_WIDE)
-	var wide := name in ["career", "events", "event", "workshop", "tune", "garage", "dealer", "results", "goals", "options", "quick", "paint", "fx", "level"]
+	var wide := name in ["career", "events", "event", "workshop", "tune", "garage", "dealer", "results", "goals", "options", "quick", "paint", "fx", "level", "adventure", "adv_skills", "adv_help", "adv_stages", "adv_start"]
 	panel.anchor_right = 0.52 if wide else 0.40
 	showroom.view_shift = 0.75 if wide else 0.5
 	panel.offset_left = 14
@@ -256,6 +262,7 @@ func go(name: String, arg = null, push := true) -> void:
 		"results": _results()
 		"career", "events", "event", "quick": career.build(name, arg)
 		"garage", "dealer", "workshop", "tune", "paint": garage.build(name, arg)
+		"adventure", "adv_skills", "adv_help", "adv_stages", "adv_start": adventure.build(name, arg)
 		_: _home()
 
 ## Antes de largar una carrera se elige el nivel de simulación (arcade / intermedio / simulador total / personalizado)
@@ -376,10 +383,18 @@ func _home() -> void:
 		["🎨 PINTURA", "color y acabado", func(): go("paint"), false],
 		["⭐ LOGROS", ("%d para cobrar" % Rewards.ach_ready(profile)) if Rewards.ach_ready(profile) > 0 else "objetivos", func(): go("goals"), false],
 		["⚙ OPCIONES", "manejo, sonido, cámara", func(): go("options"), false],
-		["📖 HISTORIA", "🔒 próximamente", func(): toast("El modo historia llega más adelante"), false],
 	]
+	var ast := AdvData.state(profile)
+	var adv_sub := "¡nuevo! · %d etapas" % AdvRoute.STAGES.size()
+	if ast["done"] == true:
+		adv_sub = "🏆 completada"
+	elif ast["started"] == true:
+		adv_sub = "etapa %d/%d" % [mini(int(ast["stage"]) + 1, AdvRoute.STAGES.size()), AdvRoute.STAGES.size()]
+	var advb := menu_button("🌄 AVENTURA", "La Ruta de los Sueños · " + adv_sub, func(): go("adventure"), true)
+	body.add_child(advb)
+	body.move_child(advb, 2)
 	for b in btns:
-		var mb := menu_button(b[0], b[1], b[2], b[3], b[0] != "📖 HISTORIA")
+		var mb := menu_button(b[0], b[1], b[2], b[3])
 		mb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		g.add_child(mb)
 	var test := menu_button("🔬 PRUEBAS", "rendimiento e informe", func(): app.start_race({}))

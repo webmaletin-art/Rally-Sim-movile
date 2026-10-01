@@ -49,7 +49,7 @@ func _init(p_track, p_phys: VehiclePhysics, opts := {}) -> void:
 	lane_t = lane
 	aggr = float(opts.get("aggr", 0.5))
 	var V = p.V
-	var surf := 0 if track.mode == "asphalt" else 1
+	var surf := 0 if (track.mode == "asphalt" or track.surf_mu.size() > 0) else 1
 	mu = V.mu * float(V.surfGrip[surf]) * minf(V.gripFront, V.gripRear) * (0.92 if surf == 0 else 0.84) * (0.8 + 0.15 * skill)
 	prof = speed_profile(track, snappedf(mu, 0.02))
 
@@ -63,6 +63,9 @@ static func speed_profile(track, mu_v: float) -> Dictionary:
 		return track.prof_cache[key]
 	var S: PackedVector3Array = track.samples
 	var N: int = track.n
+	# agarre por muestra (modo aventura: asfalto, tierra y nieve en la misma etapa)
+	var sm: PackedFloat32Array = track.surf_mu
+	var has_sm := sm.size() == N
 	var v := PackedFloat32Array()
 	v.resize(N)
 	var kap := PackedFloat32Array()
@@ -115,7 +118,8 @@ static func speed_profile(track, mu_v: float) -> Dictionary:
 		var k := maxf(k2[i], 1e-4)
 		var j2 := (i + 4) % N
 		var gd := maxf(0.0, (S[i].y - S[j2].y) / maxf(1.0, Vector2(S[j2].x - S[i].x, S[j2].z - S[i].z).length()))
-		v[i] = minf(95.0, sqrt(mu_v * (1.0 - 1.6 * minf(0.2, gd)) * G / (k + mu_v * kv)))
+		var mi := mu_v * (sm[i] if has_sm else 1.0)
+		v[i] = minf(95.0, sqrt(mi * (1.0 - 1.6 * minf(0.2, gd)) * G / (k + mi * kv)))
 	# crestas: con curvatura vertical convexa el auto se aliviana
 	for i in N:
 		var a := S[posmod(i - 3, N)]
@@ -133,7 +137,7 @@ static func speed_profile(track, mu_v: float) -> Dictionary:
 			var j := (i + 1) % N
 			var ds := S[i].distance_to(S[j])
 			var gr := (S[i].y - S[j].y) / maxf(0.5, ds)
-			var a := maxf(1.5, a_b - G * gr)
+			var a := maxf(1.5, a_b * (sm[i] if has_sm else 1.0) - G * gr)
 			v[i] = minf(v[i], sqrt(v[j] * v[j] + 2.0 * a * ds))
 	var out := {"v": v, "kap": kap}
 	track.prof_cache[key] = out

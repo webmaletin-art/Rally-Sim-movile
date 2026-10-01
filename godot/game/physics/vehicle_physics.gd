@@ -365,7 +365,7 @@ func _sub(h: float, thr_in: float, brk_in: float, steer_in: float, handbrake: bo
 			w.kappa = kap
 			w.alpha = alp
 			var po := 32.0 if w.surf == 0 else 26.0
-			var sg := V.surfGrip[w.surf] if w.surf >= 0 and w.surf < 6 else 0.4
+			var sg := V.surfGrip[w.surf] if w.surf >= 0 and w.surf < 7 else 0.4
 			var mu := grip_mul * V.mu * sg * (V.gripFront if w.front else V.gripRear) * (1.0 - 0.0009 * (w.press - po) * (w.press - po))
 			var sx := kap / V.slipPeakLong
 			var sy2 := alp / (V.slipPeakLat * w.pkLat)

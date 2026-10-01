@@ -10,6 +10,10 @@ const BUMP_AMP := [0.005, 0.03, 0.035, 0.045, 0.05, 0.03] # por superficie: asfa
 
 var hills := 0.0 # subidas y bajadas suaves del recorrido (0 = las de la versión HTML; 1 = las de las carreras de Dream Racing)
 var center_line := false # línea amarilla del medio (solo para el modo aventura)
+var open := false # ruta abierta (modo aventura): la última muestra no se une con la primera
+var surf_mu := PackedFloat32Array() # agarre relativo de cada muestra para la IA (vacío = igual en toda la pista)
+var wall_l := PackedFloat32Array() # límite lateral por muestra (modo aventura; vacío = el del auto)
+var wall_r := PackedFloat32Array()
 var route_id := ""
 var mode := "asphalt" # "asphalt" | "dirt"
 var half_width := 5.0
@@ -87,8 +91,17 @@ func make_view() -> Object:
 	v.max_xz = max_xz
 	v.grip_mul = grip_mul
 	v.prof_cache = prof_cache
+	v.open = open
+	v.surf_mu = surf_mu
+	v.wall_l = wall_l
+	v.wall_r = wall_r
+	_copy_view(v)
 	views.append(v)
 	return v
+
+## Las pistas derivadas copian acá sus datos extra a la vista nueva
+func _copy_view(_v: Object) -> void:
+	pass
 
 ## Agarre global de la pista (lluvia): se copia a todas las vistas
 func set_grip(g: float) -> void:
@@ -223,6 +236,8 @@ func _seg_d(x: float, z: float, i: int) -> float:
 func _scan(x: float, z: float, i0: int, cnt: int) -> void:
 	for k in cnt:
 		var i := posmod(i0 + k, n)
+		if open and i == n - 1:
+			continue
 		var a := samples[i]
 		var b := samples[(i + 1) % n]
 		var abx := b.x - a.x
@@ -252,6 +267,8 @@ func nearest(x: float, z: float) -> void:
 			while k < Wd:
 				k += 1
 				var j := posmod(i + st, n)
+				if open and (j == n - 1 or absi(j - i) > 1):
+					break
 				var dj := _seg_d(x, z, j)
 				if dj < d:
 					i = j

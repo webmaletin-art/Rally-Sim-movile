@@ -1,8 +1,8 @@
 {
  "genesis": {
-  "name": "Genesis X Skorpio Concept",
+  "name": "DR Bisonte XR",
   "visualType": "genesis",
-  "icon": "🦂",
+  "icon": "🦬",
   "tagline": "Prototipo híbrido AWD · el equilibrado",
   "firingOrder": 4,
   "mass": 2140,
@@ -119,7 +119,7 @@
   "powerScale": 1
  },
  "pickup": {
-  "name": "Titan Raptor X",
+  "name": "Pampero Yaguareté 4x4",
   "visualType": "pickup",
   "icon": "🛻",
   "tagline": "Pick-up 4x4 · potencia bruta",
@@ -241,7 +241,7 @@
   "powerScale": 1
  },
  "truck": {
-  "name": "Colossus Master 6x6",
+  "name": "Colossus Mamut 6x6",
   "visualType": "truck",
   "icon": "🚛",
   "tagline": "Camión Dakar · gigante imparable",

@@ -49,11 +49,19 @@ func _keep_in_wall() -> void:
 	var tr = phys.track
 	tr.nearest(phys.px, phys.pz)
 	var lat: float = tr.r_lat
-	if absf(lat) <= wall:
+	var lim_l := wall
+	var lim_r := wall
+	if tr.wall_r.size() > 0:
+		# modo aventura: el límite cambia por tramo y de cada lado (veredas, estaciones, túneles…)
+		var i: int = tr.r_idx
+		var j: int = mini(i + 1, tr.n - 1)
+		lim_l = lerpf(tr.wall_l[i], tr.wall_l[j], tr.r_t)
+		lim_r = lerpf(tr.wall_r[i], tr.wall_r[j], tr.r_t)
+	if lat <= lim_r and lat >= -lim_l:
 		return
 	var l: Vector3 = tr.laterals[tr.r_idx]
 	var sg := 1.0 if lat > 0.0 else -1.0
-	var over := absf(lat) - wall
+	var over := (lat - lim_r) if lat > 0.0 else (-lat - lim_l)
 	phys.px -= l.x * sg * over
 	phys.pz -= l.z * sg * over
 	var vn := (phys.vx * l.x + phys.vz * l.z) * sg # velocidad hacia afuera

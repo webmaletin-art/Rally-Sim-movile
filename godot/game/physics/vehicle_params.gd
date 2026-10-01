@@ -36,8 +36,8 @@ var slipPeakLong := 0.12
 var slipPeakLat := 0.16
 var tireFalloff := 1.4
 var rolling := 0.02
-## Agarre por superficie: 0 asfalto · 1 tierra · 2 banquina · 3 pasto · 4 afuera · 5 barro (los que faltan valen 0,4)
-var surfGrip := PackedFloat64Array([1.0, 0.6, 0.7, 0.45, 0.4, 0.35])
+## Agarre por superficie: 0 asfalto · 1 tierra · 2 banquina · 3 pasto · 4 afuera · 5 barro · 6 nieve (los que faltan valen 0,4)
+var surfGrip := PackedFloat64Array([1.0, 0.6, 0.7, 0.45, 0.4, 0.35, 0.47])
 var peakTorque := 1000.0
 var idleRpm := 800.0
 var launchRpm := 2500.0
@@ -83,7 +83,7 @@ var pressR := 30.0
 var turboLvl := 0
 var firingOrder := 4.0
 
-const SURF_NAMES := ["asphalt", "dirt", "shoulder", "grass", "outside", "mud"]
+const SURF_NAMES := ["asphalt", "dirt", "shoulder", "grass", "outside", "mud", "snow"]
 
 static func from_dict(d: Dictionary) -> RefCounted:
 	var p := new()
@@ -93,6 +93,8 @@ static func from_dict(d: Dictionary) -> RefCounted:
 			for i in SURF_NAMES.size():
 				if sg.has(SURF_NAMES[i]):
 					p.surfGrip[i] = float(sg[SURF_NAMES[i]])
+			if not sg.has("snow"):
+				p.surfGrip[6] = p.surfGrip[1] * 0.78 # nieve pisada: algo menos que la tierra
 		elif k == "gears":
 			p.gears = PackedFloat64Array(d[k])
 		elif k == "torqueCurve":

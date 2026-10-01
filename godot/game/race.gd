@@ -25,6 +25,11 @@ const AiCars := preload("res://game/data/ai_cars.gd")
 const Session := preload("res://game/session.gd")
 const RaceHud := preload("res://game/ui/race_hud.gd")
 const UiSfx := preload("res://game/audio/ui_sfx.gd")
+const AdvTrack := preload("res://game/adventure/adv_track.gd")
+const AdvWorld := preload("res://game/adventure/adv_world.gd")
+const AdvData := preload("res://game/adventure/adv_data.gd")
+const AdvRoute := preload("res://game/adventure/adv_route.gd")
+const Adventure := preload("res://game/adventure/adventure.gd")
 
 ## La carrera terminó (result: value, medal, position, time, etc.; lo arma _make_result) o se pidió salir al menú
 signal finished(result: Dictionary)
@@ -124,6 +129,9 @@ var view_at := -1.0 # prueba (vistas previas de las pistas): pone el auto en est
 var fx_arg := "" # prueba: efectos 2.0 por argumento (p. ej. --fx=11,3,0)
 var lens_auto := true # el filtro se apaga solo si el teléfono no llega
 var lens: Node # filtro de cámara (Lente Rally)
+var adv_mode := false # modo aventura (etapa de la Ruta de los Sueños)
+var adv_world: Node3D # mundo por tramos de la aventura
+var adv: Node # controlador de la aventura (etapa, rival, estaciones, cinemáticas)
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -165,12 +173,23 @@ func _ready() -> void:
 			cars_n = int(a.substr(7))
 		elif a.begins_with("--trees="):
 			trees_n = int(a.substr(8))
+		elif a.begins_with("--adv=") and cfg.is_empty():
+			# prueba: arranca directo una etapa de la aventura (--adv=3 o --adv=3:0.4 para empezar en esa fracción)
+			var parts := a.substr(6).split(":")
+			cfg = {"type": "adventure", "stage": int(parts[0]), "back": "home"}
+			if parts.size() > 1:
+				cfg["at"] = float(parts[1])
+			if OS.get_cmdline_user_args().has("--advintro"):
+				cfg["intro"] = true
 	vehicles = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
 	track_maps = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["maps"]
 	menu_mode = not cfg.is_empty()
+	adv_mode = str(cfg.get("type", "")) == "adventure"
+	if adv_mode:
+		Adventure.prepare_cfg(cfg, profile)
 	if menu_mode:
 		track_id = track_arg if track_arg != "" else str(cfg.get("track", "forest"))
-		weather_name = {"day": "dia", "overcast": "nublado", "rain": "lluvia", "sunset": "atardecer", "dusk": "ocaso"}.get(str(cfg.get("sky", "day")), "dia")
+		weather_name = {"day": "dia", "overcast": "nublado", "rain": "lluvia", "sunset": "atardecer", "dusk": "ocaso", "snow": "nieve"}.get(str(cfg.get("sky", "day")), "dia")
 		cars_n = 1 + int(cfg.get("ai", 0))
 		trees_n = 3000
 		wall_on = true
@@ -253,7 +272,17 @@ func _ready() -> void:
 		lens.fx = fa
 	load_progress.emit(0.56, "Plantando el bosque…")
 	await get_tree().process_frame
-	_rebuild_trees()
+	if adv_mode:
+		# el mundo de la aventura se arma por tramos: los primeros ~900 m antes de largar
+		var s_from: float = float(cfg.get("s_load", 0.0))
+		var c0: int = adv_world._chunk_at(s_from - 250.0)
+		var c1: int = adv_world._chunk_at(s_from + 900.0)
+		for ci in range(c0, c1 + 1):
+			adv_world._build_chunk_sync(ci)
+			load_progress.emit(0.56 + 0.14 * float(ci - c0 + 1) / float(c1 - c0 + 1), "Armando la ruta… %d m" % int(float(ci - c0 + 1) * 120.0))
+			await get_tree().process_frame
+	else:
+		_rebuild_trees()
 	load_progress.emit(0.70, "Armando los autos y los rivales…")
 	await get_tree().process_frame
 	_rebuild_cars()
@@ -345,6 +374,10 @@ func _build_world() -> void:
 
 ## Crea la pista elegida (el circuito de prueba o una de las rutas de la versión web)
 func _make_track() -> void:
+	if adv_mode:
+		track = AdvTrack.new(int(cfg.get("stage", 0)))
+		track_id = "adv"
+		return
 	if track_id == "prueba" or not track_maps.has(track_id):
 		track_id = "prueba"
 		track = CircuitTrack.new()
@@ -361,6 +394,14 @@ func _build_track_nodes() -> void:
 	track_root = Node3D.new()
 	world.add_child(track_root)
 	terrain_task = -1
+	if adv_mode:
+		adv_world = AdvWorld.new()
+		var q := str(profile.setting("quality")) if profile != null else "mid"
+		adv_world.setup(track, {"low": 0.6, "high": 1.3}.get(q, 1.0))
+		track_root.add_child(adv_world)
+		road_mat = adv_world.road_mat
+		ground_mat = adv_world.terrain_mat
+		return
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
 	pm.size = Vector2(6000, 6000)
@@ -445,6 +486,7 @@ const SIM_PRESETS := {
 	"arcade": {"abs": true, "tc": 80.0, "stab": 90.0, "line": 60.0},
 	"mid": {"abs": true, "tc": 50.0, "stab": 30.0, "line": 25.0},
 	"pro": {"abs": false, "tc": 0.0, "stab": 0.0, "line": 0.0},
+	"adv": {"abs": true, "tc": 30.0, "stab": 20.0, "line": 0.0}, # aventura: simulación total con un poco de ayuda
 }
 
 func _sim_assists() -> Dictionary:
@@ -515,7 +557,7 @@ func _rebuild_trees() -> void:
 		trees_node.queue_free()
 	trees_node = Node3D.new()
 	world.add_child(trees_node)
-	if trees_n <= 0:
+	if trees_n <= 0 or adv_mode:
 		return
 	var trunk := CylinderMesh.new()
 	trunk.top_radius = 0.13
@@ -657,6 +699,8 @@ func _add_tree_layer(mm: MultiMesh, center: Vector3, r_begin: float, r_end: floa
 
 ## Datos de cada auto de la parrilla: params (Dictionary de VehicleParams), paint, rim, name, visual_type, ai (opciones)
 func _car_setups() -> Array:
+	if adv_mode:
+		return Adventure.car_setups(self)
 	var out: Array = []
 	if not menu_mode:
 		var d: Dictionary = vehicles["t1plus"].duplicate()
@@ -726,6 +770,8 @@ func _rebuild_cars() -> void:
 		if menu_mode and cars_n > 1 and str(cfg.get("type")) == "race":
 			slot = cars_n - 1 if i == 0 else i - 1
 		var sp: Array = track.start_pose(slot, s0) if route else track.start_pose(slot)
+		if adv_mode:
+			sp = Adventure.start_pose(track, i, cfg)
 		car.place(sp[0], sp[1], sp[2])
 		car.restart_history(sim_t)
 		world.add_child(car.visual)
@@ -773,6 +819,13 @@ func _rebuild_cars() -> void:
 ## Cuenta regresiva + vueltas + meta (solo con el menú; la escena de pruebas anda libre)
 func _start_session() -> void:
 	session = null
+	if adv_mode:
+		if adv != null:
+			adv.queue_free()
+		adv = Adventure.new()
+		add_child(adv)
+		adv.setup(self)
+		return
 	if not menu_mode or not (track is RouteTrack):
 		return
 	var t := str(cfg.get("type", "race"))
@@ -1199,7 +1252,7 @@ func _fx_setting() -> Array:
 	return [int(a[0]), int(a[1]), int(a[2])] if a is Array and a.size() >= 3 else [0, 0, 0]
 
 func _toggle_pause() -> void:
-	if not menu_mode or session == null:
+	if not menu_mode or (session == null and adv == null):
 		return
 	paused = not paused
 	if paused:
@@ -1222,10 +1275,38 @@ func _show_tests(on := true) -> void:
 
 func _restart() -> void:
 	AudioServer.set_bus_mute(0, false)
+	if adv != null:
+		# aventura: la etapa vuelve a empezar desde la estación, con el daño que tenía el auto al salir
+		var st: Dictionary = AdvData.state(profile)
+		st["damage"] = (adv.dmg0 as Dictionary).duplicate()
+		profile.save()
+		restart_with({"type": "adventure", "stage": int(cfg["stage"]), "back": "adventure", "dmg0": (adv.dmg0 as Dictionary).duplicate()})
+		return
 	var c := cfg
 	var a := get_parent()
 	a.call_deferred("start_race", c)
 	queue_free()
+
+## Arranca otra carrera/etapa (la aventura pasa a la etapa siguiente o reintenta)
+func restart_with(c: Dictionary) -> void:
+	AudioServer.set_bus_mute(0, false)
+	var a := get_parent()
+	if a.has_method("start_race"):
+		a.call_deferred("start_race", c)
+		queue_free()
+
+## Túneles de la aventura: k = 0 afuera … 1 adentro (baja el sol y el cielo; las lámparas siguen)
+var _light_base := {}
+func set_tunnel_light(k: float) -> void:
+	if k == 0.0 and _light_k == 0.0:
+		_light_base = {"sun": sun.light_energy, "amb": env.ambient_light_energy}
+		return
+	if _light_base.is_empty():
+		_light_base = {"sun": sun.light_energy, "amb": env.ambient_light_energy}
+	_light_k = k
+	sun.light_energy = float(_light_base["sun"]) * (1.0 - 0.82 * k)
+	env.ambient_light_energy = float(_light_base["amb"]) * (1.0 - 0.45 * k)
+var _light_k := 0.0
 
 func _quit() -> void:
 	AudioServer.set_bus_mute(0, false)
@@ -1233,6 +1314,10 @@ func _quit() -> void:
 
 func _next_camera() -> void:
 	if cam_rig == null:
+		return
+	if adv != null:
+		if adv.state == "race":
+			race_hud.toast("🎥 " + adv.next_camera())
 		return
 	cam_rig.next()
 	if menu_mode and race_hud != null:
@@ -1366,12 +1451,16 @@ func _step_physics(dt: float) -> void:
 		else:
 			sn.pending_events.clear()
 			sn.pending_impact = 0.0
-	if menu_mode and cars.size() > 1 and session != null and session.state != "countdown":
+	if adv != null:
+		adv.pre_physics()
+	if menu_mode and cars.size() > 1 and ((session != null and session.state != "countdown") or adv != null):
 		_resolve_collisions()
 	for c in cars:
 		if c.wall_hit > 0.0:
 			if c.is_player:
 				pl_impact = maxf(pl_impact, c.wall_hit * 0.55)
+				if adv != null:
+					adv.on_hit(c.wall_hit, "wall")
 			c.wall_hit = 0.0
 	var h := 1.0 / 120.0
 	smooth_dt = lerpf(smooth_dt, minf(dt, 0.1), 0.02)
@@ -1405,6 +1494,8 @@ func _step_physics(dt: float) -> void:
 		pl.in_nitro = false
 	if controls.shift != 0:
 		pl.in_shift = controls.shift
+	if adv != null:
+		pl.in_steer = clampf(pl.in_steer + adv.steer_pull(), -1.0, 1.0) # la dirección golpeada tira hacia un lado
 	phys_frames += 1
 	if threaded:
 		phys_task = WorkerThreadPool.add_group_task(_step_car, cars.size(), -1, true, "fisica")
@@ -1457,6 +1548,8 @@ func _resolve_collisions() -> void:
 					hit = maxf(hit, _circle_hit(pa, pb, float(ia - 1), float(ib - 1)))
 			if hit > 0.0 and (a == 0 or b == 0):
 				pl_impact = maxf(pl_impact, hit * 0.7)
+				if adv != null:
+					adv.on_hit(hit, "car")
 
 func _circle_hit(pa, pb, ka: float, kb: float) -> float:
 	var La: float = pa.V.wheelBase + 1.5
@@ -1582,6 +1675,8 @@ func _frame(dt: float) -> void:
 		_bench_tick(dt)
 	if cars.is_empty():
 		return
+	if adv != null and not paused:
+		adv.tick(dt)
 	if session != null and not paused:
 		_tick_session(dt)
 		if OS.get_cmdline_user_args().has("--pausetest") and Engine.get_frames_drawn() == 100:
@@ -1605,6 +1700,11 @@ func _frame(dt: float) -> void:
 	var fwd := Vector3(sin(p.yaw), 0, cos(p.yaw))
 	cam_rig.aspect = float(world.size.x) / float(maxi(1, world.size.y))
 	cam_rig.update(dt, p, false)
+	if adv != null:
+		adv.camera(dt)
+	if adv_world != null:
+		adv_world.update(float(adv.prog[0]) if adv != null else float(cfg.get("s_load", 0.0)))
+		adv_world.follow(cam.global_position, env.fog_light_color)
 	var inside: bool = cam_rig.is_inside() and cockpit != null
 	var onboard: bool = cam_rig.mode() == "onboard"
 	if inside != was_inside or onboard != was_onboard:

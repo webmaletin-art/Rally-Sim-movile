@@ -63,6 +63,13 @@ func _ready() -> void:
 	lp_engine.resonance = 0.55
 	lp_engine.db = AudioEffectFilter.FILTER_12DB
 	AudioServer.add_bus_effect(engine_bus, lp_engine)
+	# viento: ruido grave y filtrado (se siente el aire, sin silbido)
+	var wind_bus := _make_bus("GSViento")
+	var lp_w := AudioEffectLowPassFilter.new()
+	lp_w.cutoff_hz = 650.0
+	lp_w.resonance = 0.4
+	lp_w.db = AudioEffectFilter.FILTER_24DB
+	AudioServer.add_bus_effect(wind_bus, lp_w)
 	ai_bus = _make_bus("GSRival")
 	var lp_ai := AudioEffectLowPassFilter.new()
 	lp_ai.cutoff_hz = 900.0
@@ -83,7 +90,7 @@ func _ready() -> void:
 	_voice("roll", "Master")
 	_voice("squeal", "Master")
 	_voice("gravel", "Master")
-	_voice("wind", "Master")
+	_voice("wind", "GSViento")
 	_voice("turbo", "Master")
 	_voice("rain", "Master")
 	_voice("engine_ai", "GSRival", false)
@@ -244,8 +251,8 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 	# pasto/tierra: nada parado, sube con la velocidad; el pasto suena más suave que la tierra/ripio
 	var mv := clampf((sp - 0.8) / 12.0, 0.0, 1.0)
 	tgt["grav"] = SND["gravel"] * mix["surf"] * minf(1.0, loose) * (0.35 + 0.65 * dirt_k) * mv * mv * (0.8 + _r() * 0.4)
-	tgt["wind"] = SND["wind"] * mix["wind"] * 0.7 * pow(clampf((sp - 6.0) / 42.0, 0.0, 1.0), 2.0)
-	tgt["windf"] = 500.0 + sp * 18.0
+	tgt["wind"] = SND["wind"] * mix["wind"] * 0.85 * pow(clampf((sp - 6.0) / 45.0, 0.0, 1.0), 1.7)
+	tgt["windf"] = 330.0 + sp * 5.5 # tono bajo: soplido del aire, no silbido
 	# caja: el tono sigue a la velocidad (eje de salida × dientes); suena acelerando y más aún levantando el pie; se corta en cada cambio
 	var G: Dictionary = GEAR_SND.get(vehicle_id, GEAR_SND["pickup"])
 	var shaft := absf(p.vLong) / (TAU * V.wheelRadius) * V.finalDrive
