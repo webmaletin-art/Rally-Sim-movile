@@ -85,6 +85,13 @@ jobs:
           godot --headless --script res://tests/wall_test.gd
           godot --headless --script res://tests/adv_route_test.gd
 
+      - name: Número de versión del APK (sube con cada compilación)
+        working-directory: godot
+        run: |
+          sed -i "s/^version\/code=.*/version\/code=${GITHUB_RUN_NUMBER}/" export_presets.cfg
+          sed -i "s/^version\/name=.*/version\/name=\"0.${GITHUB_RUN_NUMBER}\"/" export_presets.cfg
+          grep -n "^version/" export_presets.cfg
+
       - name: Exportar APK liviano, APK completo y contenido
         working-directory: godot
         env:
@@ -124,6 +131,18 @@ jobs:
             --notes "Paquete que descarga solo la app liviana al abrirse. No hace falta bajarlo a mano." \
             --prerelease
           gh release upload godot-content build/content.pck build/manifest.json --clobber
+
+      - name: Publicar los APK (link directo para instalar, sin iniciar sesión)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view godot-apk >/dev/null 2>&1 || gh release create godot-apk \
+            --title "APK de Dream Racing (para instalar)" \
+            --notes "Instalá DreamRacing-liviano.apk (baja el juego solo al abrirse). DreamRacing-completo.apk trae todo adentro." \
+            --prerelease
+          cp build/gskorp-light.apk build/DreamRacing-liviano.apk
+          cp build/gskorp-full.apk build/DreamRacing-completo.apk
+          gh release upload godot-apk build/DreamRacing-liviano.apk build/DreamRacing-completo.apk --clobber
 
       - name: Subir APK liviano
         uses: actions/upload-artifact@v4
