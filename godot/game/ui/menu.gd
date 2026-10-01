@@ -570,11 +570,12 @@ func _results() -> void:
 	body.add_child(grid)
 	var kv := [["Recompensa", Kit.fmt_cr(float(r["cr"]))], ["Experiencia", "+%d XP" % int(r["xp"])], ["Velocidad máxima", "%d km/h" % int(r["max_kmh"])], ["Distancia", "%.2f km" % (float(r["odo"]) / 1000.0)]]
 	for p in kv:
-		var kl := Kit.label(str(p[0]), 13, Kit.MUTED)
-		kl.clip_text = true
-		kl.custom_minimum_size.x = 40
+		var kl := Kit.label(tr(str(p[0])), 13, Kit.MUTED)
+		kl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		grid.add_child(kl)
-		grid.add_child(Kit.label(str(p[1]), 14, Kit.TEXT))
+		var vl := Kit.label(str(p[1]), 14, Kit.TEXT)
+		vl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_child(vl)
 	if str(r.get("cup_msg", "")) != "":
 		body.add_child(Kit.wrap(str(r["cup_msg"]), 15, Kit.GOLD, 300))
 	for u in r.get("level_ups", []):

@@ -20,6 +20,8 @@ func _init() -> void:
 	var vis := CarVisual.new()
 	vis.setup(V, false, Color(0.75, 0.08, 0.1), Color(0.8, 0.82, 0.86), "gloss")
 	vp.add_child(vis)
+	if OS.has_environment("LIV"): # prueba: rotulado (LIV=1..5) con color de franja naranja
+		vis.set_livery(int(OS.get_environment("LIV")), Color(0.1, 0.3, 0.9), Color(1.0, 0.5, 0.1), "gloss")
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.45, 0.52, 0.6)

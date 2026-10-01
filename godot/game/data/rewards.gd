@@ -24,11 +24,13 @@ static func events_of(tier_id: String) -> Array:
 
 static var _maps: Dictionary
 
-## ¿Se puede jugar este evento con lo que ya está portado? (carrera, contrarreloj y radar sobre una ruta)
+## ¿Se puede jugar este evento con lo que ya está portado? (carrera, contrarreloj y radar sobre una ruta, y drift en la plaza)
 static func playable(ev: Dictionary) -> bool:
 	if _maps.is_empty():
 		_maps = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["maps"]
 	var mp: Dictionary = _maps.get(str(ev["map"]), {})
+	if str(mp.get("kind", "")) == "drift":
+		return str(ev["type"]) == "drift"
 	return str(mp.get("kind", "")) == "route" and str(ev["type"]) in ["race", "timetrial", "trap"]
 
 ## Estrellas que pide una copa: mientras falten tipos de evento por portar, se pide como mucho el 70% de lo que se puede ganar antes
@@ -140,9 +142,15 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 			cr = int(round([150, 500, 800, 1200][medal] * laps * (1.0 + float(cfg.get("ai", 0)) / 3.0)))
 			xp = 120 * laps + medal * 60
 			show_medal = true
+		elif t == "drift":
+			cr = mini(2500, int(round(float(r["value"]) / 20.0)))
+			xp = int(round(float(r["value"]) / 60.0))
+			show_medal = false
 		else:
 			cr = 300
 			xp = 100
+	if t == "drift":
+		st["driftBest"] = maxf(float(st["driftBest"]), float(r["value"]))
 	if t == "race":
 		st["races"] = int(st["races"]) + 1
 		if int(r["value"]) == 1:
