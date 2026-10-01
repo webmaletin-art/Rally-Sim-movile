@@ -622,3 +622,80 @@ func build_start_gate(gi := 0, text := "DREAM RACING", color := Color(1, 1, 1)) 
 	ban.rotation.y = yaw + PI
 	g.add_child(ban)
 	return g
+
+
+## Guardarraíl a los dos lados del camino (sobre el borde de la banquina): postes en un MultiMesh y dos cintas de chapa acanalada.
+## rail_off: distancia al centro del camino. wood: valla de madera (tierra) en vez de chapa galvanizada.
+func build_guardrail(rail_off: float, wood := false) -> Node3D:
+	var g := Node3D.new()
+	var post_mesh := BoxMesh.new()
+	post_mesh.size = Vector3(0.14, 0.95, 0.14) if not wood else Vector3(0.2, 1.1, 0.2)
+	var pm := StandardMaterial3D.new()
+	pm.albedo_color = Color(0.45, 0.47, 0.5) if not wood else Color(0.33, 0.22, 0.13)
+	pm.roughness = 0.6
+	pm.metallic = 0.5 if not wood else 0.0
+	post_mesh.material = pm
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = post_mesh
+	mm.instance_count = n * 2
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var cols := PackedColorArray()
+	var idx := PackedInt32Array()
+	# perfil de la chapa (distancia hacia afuera, altura): acanalado en W; cada lado es una cinta continua
+	var prof: Array = [[0.0, 0.40], [0.035, 0.46], [0.0, 0.53], [0.05, 0.62], [0.0, 0.71], [0.035, 0.78], [0.0, 0.84]]
+	if wood:
+		prof = [[0.0, 0.50], [0.0, 0.66], [0.0, 0.80], [0.0, 0.96]]
+	var base_col := Color(0.78, 0.8, 0.83) if not wood else Color(0.42, 0.29, 0.18)
+	var k := 0
+	for sd in [-1.0, 1.0]:
+		var v0 := verts.size()
+		var np: int = prof.size()
+		for i in n:
+			var p: Vector3 = samples[i]
+			var l: Vector3 = laterals[i]
+			var y0: float = cy[i] - 0.06
+			var ox: float = p.x + l.x * sd * rail_off
+			var oz: float = p.z + l.z * sd * rail_off
+			# poste (un poco más afuera que la chapa)
+			var t: Vector3 = tangents[i]
+			var b := Basis(Vector3.UP, atan2(t.x, t.z))
+			mm.set_instance_transform(k, Transform3D(b, Vector3(ox + l.x * sd * 0.12, y0 + post_mesh.size.y * 0.5, oz + l.z * sd * 0.12)))
+			k += 1
+			for q in np:
+				var off: float = prof[q][0]
+				verts.append(Vector3(ox + l.x * sd * off, y0 + float(prof[q][1]), oz + l.z * sd * off))
+				norms.append(Vector3(-l.x * sd, 0.0, -l.z * sd))
+				cols.append(base_col * (0.92 + 0.12 * float(q % 2)))
+		for i in n:
+			var j := (i + 1) % n
+			for q in range(np - 1):
+				var a := v0 + i * np + q
+				var b2 := v0 + i * np + q + 1
+				var c := v0 + j * np + q
+				var d := v0 + j * np + q + 1
+				idx.append_array([a, b2, c, b2, d, c])
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = verts
+	arr[Mesh.ARRAY_NORMAL] = norms
+	arr[Mesh.ARRAY_COLOR] = cols
+	arr[Mesh.ARRAY_INDEX] = idx
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	var rm := StandardMaterial3D.new()
+	rm.vertex_color_use_as_albedo = true
+	rm.roughness = 0.45
+	rm.metallic = 0.55 if not wood else 0.0
+	rm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	am.surface_set_material(0, rm)
+	var rail := MeshInstance3D.new()
+	rail.mesh = am
+	rail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	g.add_child(rail)
+	var posts := MultiMeshInstance3D.new()
+	posts.multimesh = mm
+	posts.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	g.add_child(posts)
+	return g

@@ -336,7 +336,16 @@ func _build_track_nodes() -> void:
 		var sh := MeshInstance3D.new()
 		sh.mesh = track.build_shoulder_mesh()
 		track_root.add_child(sh)
-		track_root.add_child(track.build_start_gate())
+		var g0 := 0
+		var g1 := -1
+		if menu_mode and cfg.get("seg") is Array:
+			g0 = int(floor(float(cfg["seg"][0]) * float(track.n)))
+			g1 = int(floor(float(cfg["seg"][1]) * float(track.n)))
+		track_root.add_child(track.build_start_gate(g0, "LARGADA" if g1 >= 0 else "DREAM RACING"))
+		if g1 >= 0:
+			track_root.add_child(track.build_start_gate(g1, "📸 RADAR" if str(cfg.get("type")) == "trap" else "META", Color(1.0, 0.35, 0.3)))
+		if wall_on:
+			track_root.add_child(track.build_guardrail(rail_off(), track.mode == "dirt"))
 		var dims: Dictionary = track.terrain_dims()
 		terrain_r = int(dims["R"])
 		terrain_rows.clear()
@@ -374,8 +383,39 @@ func _check_terrain() -> void:
 ## Al acercarte, las capas se cambian solas. Antes se dibujaba todo el campo.
 const CHUNK := 200.0
 
+## Distancia del guardarraíl al centro del camino (sobre el borde de la banquina)
+func rail_off() -> float:
+	return float(track.half_width + track.shoulder) - 0.3
+
+## El auto no puede pasar de acá: el guardarraíl está a un metro de su centro
 func wall_dist() -> float:
-	return float(track.half_width + track.shoulder) + 11.0
+	return rail_off() - 1.0
+
+## Niveles de simulación (se eligen antes de largar): ayudas del auto del jugador
+const SIM_PRESETS := {
+	"arcade": {"abs": true, "tc": 80.0, "stab": 90.0, "line": 60.0},
+	"mid": {"abs": true, "tc": 50.0, "stab": 30.0, "line": 25.0},
+	"pro": {"abs": false, "tc": 0.0, "stab": 0.0, "line": 0.0},
+}
+
+func _sim_assists() -> Dictionary:
+	var lv := str(cfg.get("sim", profile.setting("simLevel")))
+	if SIM_PRESETS.has(lv):
+		return SIM_PRESETS[lv]
+	return {"abs": profile.setting("abs") == true, "tc": float(profile.setting("tc")), "stab": float(profile.setting("stab")), "line": float(profile.setting("lineAssist"))}
+
+## Cambio de una ayuda en las opciones: el nivel pasa a «personalizado» conservando los valores del nivel anterior en las otras
+func _assist_changed(key: String) -> void:
+	var lv := str(cfg.get("sim", profile.setting("simLevel")))
+	if SIM_PRESETS.has(lv):
+		var P: Dictionary = SIM_PRESETS[lv]
+		var map := {"abs": "abs", "tc": "tc", "stab": "stab", "lineAssist": "line"}
+		for k in map:
+			if k != key:
+				profile.set_setting(k, P[map[k]] if k == "abs" else int(P[map[k]]))
+		profile.set_setting("simLevel", "custom")
+		cfg["sim"] = "custom"
+	_apply_assists()
 
 func _rebuild_trees() -> void:
 	if trees_node != null:
@@ -443,8 +483,8 @@ func _rebuild_trees() -> void:
 				var off := rng.randf_range(near_min, near_min + 250.0) * (1.0 if rng.randf() < 0.5 else -1.0)
 				if wall_on:
 					# pista solo de camino: árboles hasta el límite, con una franja densa justo ahí (el "muro de árboles")
-					var wl := wall_dist()
-					off = (rng.randf_range(near_min, wl - 2.0) if rng.randf() < 0.5 else rng.randf_range(wl - 3.0, wl + 9.0)) * (1.0 if rng.randf() < 0.5 else -1.0)
+					var wl := rail_off()
+					off = (rng.randf_range(wl + 3.5, wl + 12.0) if rng.randf() < 0.55 else rng.randf_range(wl + 11.0, wl + 26.0)) * (1.0 if rng.randf() < 0.5 else -1.0)
 				px = sp.x + l.x * off
 				pz = sp.z + l.z * off
 				# que no caiga sobre otro tramo de la pista (curvas cerradas y cruces)
@@ -540,7 +580,8 @@ func _car_setups() -> Array:
 		for i in cars_n:
 			out.append({"params": d, "paint": paints[i % paints.size()], "rim": Color(1.0, 0.42, 0.03), "name": "Rival %d" % i, "visual_type": "t1plus", "ai": {"skill": 0.92 + 0.02 * float(i % 4), "lane": (float(i % 3) - 1.0) * 1.6, "aggr": 0.3 + 0.1 * float(i % 5)}})
 		return out
-	var assists := {"abs": (profile.setting("abs") == true), "tc": float(profile.setting("tc")), "stab": float(profile.setting("stab"))}
+	var sa := _sim_assists()
+	var assists := {"abs": sa["abs"], "tc": sa["tc"], "stab": sa["stab"]}
 	var pid := str(cfg["car"])
 	var pst: Dictionary = cfg["state"]
 	var pp: Dictionary = pst.get("paint", {"body": "#1a4fe0", "rim": "#ff6a08"})
@@ -613,6 +654,8 @@ func _rebuild_cars() -> void:
 			_load_cabin_cfg()
 		if wall_on and route:
 			car.wall = wall_dist()
+			if i == 0:
+				assist_view = track.make_view()
 		cars.append(car)
 		if auto_player and i == 0 and route:
 			car.driver = AIDriver.new(track.make_view(), car.phys, {"skill": 0.95})
@@ -893,7 +936,7 @@ func _tick_session(dt: float) -> void:
 			if d is AIDriver:
 				var gap: float = session.prog[i] - session.prog[0]
 				d.boost = 0.93 if gap > 140.0 else (1.05 if gap < -160.0 else 1.0)
-	race_hud.update_hud(dt, cars.size())
+	race_hud.update_hud(dt, cars.size(), cars)
 	if _dbg_finish and Engine.get_frames_drawn() % 30 == 0:
 		print("SES ", session.state, " t=", snappedf(session.time, 0.1), " prog=", int(session.prog[0]), "/", int(session.race_len), " v=", int(absf(cars[0].snap.vLong) * 3.6), " dt=", snappedf(dt, 0.001))
 	if session.state == "done":
@@ -967,12 +1010,12 @@ func _apply_live_settings(key: String) -> void:
 			_on_resize()
 		"particles":
 			fx.intensity = _particle_level() / 10.0
-		"abs", "tc", "stab":
-			_apply_assists()
+		"abs", "tc", "stab", "lineAssist":
+			_assist_changed(key)
 		"recal":
 			controls.recalibrate_gyro()
 			race_hud.toast("Acelerómetro calibrado: sostené el teléfono como para jugar")
-		"gearbox", "steerMode", "gyro", "gyroSens", "units":
+		"gearbox", "steerMode", "gyro", "gyroSens", "units", "wheelSize", "pedalSize":
 			_apply_controls_settings()
 		"volume", "volEngine", "volSurf", "volWind", "volTurbo", "volGear":
 			AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(profile.setting("volume")) / 80.0, 0.001)))
@@ -994,11 +1037,11 @@ func _apply_assists() -> void:
 		return
 	_finish_physics()
 	var V: VehicleParams = cars[0].phys.V
-	var tc := float(profile.setting("tc"))
-	V.abs = (profile.setting("abs") == true)
-	V.tractionControl = tc > 0.0
-	V.tcSlip = float(vehicles[str(cfg["car"])]["tcSlip"]) * (1.6 - tc / 100.0)
-	V.stabilityAssist = float(profile.setting("stab")) / 100.0
+	var sa := _sim_assists()
+	V.abs = sa["abs"] == true
+	V.tractionControl = float(sa["tc"]) > 0.0
+	V.tcSlip = float(vehicles[str(cfg["car"])]["tcSlip"]) * (1.6 - float(sa["tc"]) / 100.0)
+	V.stabilityAssist = float(sa["stab"]) / 100.0
 
 func _apply_controls_settings() -> void:
 	manual_gearbox = str(profile.setting("gearbox")) == "manual"
@@ -1010,6 +1053,8 @@ func _apply_controls_settings() -> void:
 	controls.gyro_on = (profile.setting("gyro") == true)
 	controls.gyro_sens = float(profile.setting("gyroSens"))
 	controls.use_mph = str(profile.setting("units")) == "mph"
+	controls.wheel_scale = float(profile.setting("wheelSize")) / 100.0
+	controls.pedal_scale = float(profile.setting("pedalSize")) / 100.0
 	if controls.gyro_on:
 		controls.recalibrate_gyro()
 
@@ -1223,6 +1268,13 @@ func _step_physics(dt: float) -> void:
 		else:
 			sn.pending_events.clear()
 			sn.pending_impact = 0.0
+	if menu_mode and cars.size() > 1 and session != null and session.state != "countdown":
+		_resolve_collisions()
+	for c in cars:
+		if c.wall_hit > 0.0:
+			if c.is_player:
+				pl_impact = maxf(pl_impact, c.wall_hit * 0.55)
+			c.wall_hit = 0.0
 	var h := 1.0 / 120.0
 	smooth_dt = lerpf(smooth_dt, minf(dt, 0.1), 0.02)
 	acc = minf(acc + dt, 0.05)
@@ -1240,6 +1292,10 @@ func _step_physics(dt: float) -> void:
 	pl.in_steer = controls.steer
 	pl.in_handbrake = controls.handbrake
 	pl.in_nitro = controls.nitro
+	if menu_mode and session != null and session.state == "run" and assist_view != null:
+		var la := float(_sim_assists()["line"]) / 100.0
+		if la > 0.0:
+			pl.in_steer = clampf(pl.in_steer + _line_steer(pl) * la * 0.85 * (1.0 - absf(pl.in_steer)), -1.0, 1.0)
 	if session != null and session.state == "countdown":
 		pl.in_throttle = 0.0 # en la largada el auto está frenado hasta el "¡YA!"
 		pl.in_brake = 1.0
@@ -1259,6 +1315,108 @@ func _step_physics(dt: float) -> void:
 		for i in cars.size():
 			_step_car(i)
 		phys_us += Time.get_ticks_usec() - t0
+
+## Ayuda de trazada: volante que apunta al centro del camino (seguimiento de punto adelantado, como la IA); se mezcla con lo que hace el jugador
+var assist_view
+func _line_steer(pl) -> float:
+	var ph = pl.phys
+	var v = assist_view
+	v.nearest(ph.px, ph.pz)
+	var spd := maxf(3.0, sqrt(ph.vx * ph.vx + ph.vz * ph.vz))
+	var Ld := clampf(5.0 + spd * 0.55, 8.0, 32.0)
+	var i: int = v.r_idx
+	var acc := 0.0
+	var n: int = v.n
+	while acc < Ld:
+		var j := (i + 1) % n
+		acc += (v.samples[i] as Vector3).distance_to(v.samples[j])
+		i = j
+	var tg: Vector3 = v.samples[i]
+	var fx := sin(ph.yaw)
+	var fz := cos(ph.yaw)
+	var lx := cos(ph.yaw)
+	var lz := -sin(ph.yaw)
+	var dx: float = tg.x - ph.px
+	var dz: float = tg.z - ph.pz
+	var alpha := atan2(dx * lx + dz * lz, maxf(0.5, dx * fx + dz * fz))
+	var delta := atan(2.0 * ph.V.wheelBase * sin(alpha) / Ld)
+	return clampf(-delta / (ph.V.maxSteer * ph.steer_scale(spd)), -1.0, 1.0)
+
+## Choques entre autos: tres círculos por auto, impulso con rebote parcial y roce; también gira los autos según dónde pega
+func _resolve_collisions() -> void:
+	var n := cars.size()
+	for a in n:
+		var pa = cars[a].phys
+		for b in range(a + 1, n):
+			var pb = cars[b].phys
+			var dx: float = pb.px - pa.px
+			var dz: float = pb.pz - pa.pz
+			if dx * dx + dz * dz > 40.0:
+				continue
+			var hit := 0.0
+			for ia in 3:
+				for ib in 3:
+					hit = maxf(hit, _circle_hit(pa, pb, float(ia - 1), float(ib - 1)))
+			if hit > 0.0 and (a == 0 or b == 0):
+				pl_impact = maxf(pl_impact, hit * 0.7)
+
+func _circle_hit(pa, pb, ka: float, kb: float) -> float:
+	var La: float = pa.V.wheelBase + 1.5
+	var Lb: float = pb.V.wheelBase + 1.5
+	var ra := maxf(0.95, pa.V.trackF * 0.5 + 0.05)
+	var rb := maxf(0.95, pb.V.trackF * 0.5 + 0.05)
+	var oax: float = sin(pa.yaw) * ka * La * 0.34
+	var oaz: float = cos(pa.yaw) * ka * La * 0.34
+	var obx: float = sin(pb.yaw) * kb * Lb * 0.34
+	var obz: float = cos(pb.yaw) * kb * Lb * 0.34
+	var cx: float = (pb.px + obx) - (pa.px + oax)
+	var cz: float = (pb.pz + obz) - (pa.pz + oaz)
+	var d := sqrt(cx * cx + cz * cz)
+	var over := ra + rb - d
+	if over <= 0.0 or d < 0.001:
+		return 0.0
+	var nx := cx / d
+	var nz := cz / d
+	var ma: float = pa.V.mass
+	var mb: float = pb.V.mass
+	# separar (el liviano se mueve más)
+	var wa := mb / (ma + mb)
+	pa.px -= nx * over * wa
+	pa.pz -= nz * over * wa
+	pb.px += nx * over * (1.0 - wa)
+	pb.pz += nz * over * (1.0 - wa)
+	# puntos de contacto respecto de cada centro
+	var rax := oax + nx * ra
+	var raz := oaz + nz * ra
+	var rbx := obx - nx * rb
+	var rbz := obz - nz * rb
+	var vax: float = pa.vx + pa.yawRate * raz
+	var vaz: float = pa.vz - pa.yawRate * rax
+	var vbx: float = pb.vx + pb.yawRate * rbz
+	var vbz: float = pb.vz - pb.yawRate * rbx
+	var rvx := vbx - vax
+	var rvz := vbz - vaz
+	var vn := rvx * nx + rvz * nz
+	if vn >= 0.0:
+		return 0.0
+	var ta := raz * nx - rax * nz
+	var tb := rbz * nx - rbx * nz
+	var denom := 1.0 / ma + 1.0 / mb + ta * ta / float(pa.V.Izz) + tb * tb / float(pb.V.Izz)
+	var j := -(1.0 + 0.22) * vn / denom
+	pa.vx -= j * nx / ma
+	pa.vz -= j * nz / ma
+	pb.vx += j * nx / mb
+	pb.vz += j * nz / mb
+	pa.yawRate -= j * ta / float(pa.V.Izz)
+	pb.yawRate += j * tb / float(pb.V.Izz)
+	# roce lateral entre las chapas
+	var vt := -rvx * nz + rvz * nx
+	var jt := clampf(-vt * 0.12 / (1.0 / ma + 1.0 / mb), -0.25 * j, 0.25 * j)
+	pa.vx -= -jt * nz / ma
+	pa.vz -= jt * nx / ma
+	pb.vx += -jt * nz / mb
+	pb.vz += jt * nx / mb
+	return -vn
 
 func _step_car(i: int) -> void:
 	var c: Car = cars[i]

@@ -43,7 +43,8 @@ func step(dt: float) -> void:
 	if wall > 0.0:
 		_keep_in_wall()
 
-## Pista solo de camino: pasado el límite lateral el auto choca contra la línea de árboles (se lo devuelve y rebota)
+## Pista solo de camino: pasado el límite lateral el auto choca contra el guardarraíl (se lo devuelve, rebota un poco y raspa: lo frena)
+var wall_hit := 0.0 # velocidad del último choque contra el guardarraíl (m/s); la lee el sonido
 func _keep_in_wall() -> void:
 	var tr = phys.track
 	tr.nearest(phys.px, phys.pz)
@@ -57,11 +58,18 @@ func _keep_in_wall() -> void:
 	phys.pz -= l.z * sg * over
 	var vn := (phys.vx * l.x + phys.vz * l.z) * sg # velocidad hacia afuera
 	if vn > 0.0:
-		phys.vx -= l.x * sg * vn * 1.3 # rebota un poco
-		phys.vz -= l.z * sg * vn * 1.3
-		phys.vx *= 0.985
-		phys.vz *= 0.985
-		phys.yawRate *= 0.9
+		wall_hit = maxf(wall_hit, vn)
+		phys.vx -= l.x * sg * vn * 1.25 # rebota
+		phys.vz -= l.z * sg * vn * 1.25
+		# raspa contra la chapa: pierde velocidad a lo largo
+		var drag := 1.0 - clampf(0.012 + vn * 0.004, 0.0, 0.08)
+		phys.vx *= drag
+		phys.vz *= drag
+		phys.yawRate *= 0.92
+	else:
+		# apoyado contra el riel (sin acercarse): roce suave
+		phys.vx *= 0.9975
+		phys.vz *= 0.9975
 
 ## Reinicia el historial del dibujado en la hora t (al colocar el auto)
 func restart_history(t: float) -> void:

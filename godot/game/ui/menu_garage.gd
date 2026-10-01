@@ -154,6 +154,16 @@ func _dealer() -> void:
 			m.sfx.play("click")
 			m.refresh_car(cid, st), false, 18, Vector2(110, 50))
 		brow.add_child(see)
+		var trow := Kit.hbox(8)
+		v.add_child(trow)
+		for tt in [["🏁 PROBAR EN ASFALTO", "lake"], ["🏜 PROBAR EN TIERRA", "forest"]]:
+			var tmap: String = tt[1]
+			var tb := Kit.button(tt[0], func() -> void:
+				m.sfx.play("click")
+				var tcfg := {"type": "free", "track": tmap, "ai": 0, "sky": "day", "car": cid, "state": st.duplicate(true), "testCar": true, "back": "dealer", "seed": 7}
+				m.launch(tcfg, false), false, 16, Vector2(0, 46))
+			tb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			trow.add_child(tb)
 		if owned:
 			var ob := Kit.button("✔ EN TU GARAJE", Callable(), false, 18, Vector2(0, 50))
 			ob.disabled = true

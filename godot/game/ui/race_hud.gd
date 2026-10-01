@@ -22,11 +22,13 @@ var time_l: Label
 var sub_l: Label
 var big_l: Label
 var toast_l: Label
+var tick := 0.0
 var big_t := 0.0
 var toast_t := 0.0
 var pause_box: Control
 var bar: ColorRect
 var bar_fill: ColorRect
+var minimap: Control
 var opts: RefCounted
 var opts_box: Control
 var opts_body: VBoxContainer
@@ -73,7 +75,77 @@ func _ready() -> void:
 	toast_l.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	toast_l.offset_top = 150
 	add_child(toast_l)
+	minimap = MiniMap.new()
+	add_child(minimap)
 	_build_pause()
+
+## Minimapa: el recorrido (se dibuja una vez) y los autos (se mueven)
+class MiniMap extends Control:
+	var pts := PackedVector2Array()
+	var seg_a := -1
+	var seg_b := -1
+	var cars: Array = []
+	var colors: Array = []
+	var minv := Vector2.ZERO
+	var scale_k := 1.0
+	var box := Vector2(210, 120)
+	var tick := 0.0
+
+	func setup_track(track, seg, colors_in: Array) -> void:
+		colors = colors_in
+		var n: int = track.n
+		var raw := PackedVector2Array()
+		var lo := Vector2(1e9, 1e9)
+		var hi := Vector2(-1e9, -1e9)
+		var step := maxi(1, n / 160)
+		for i in range(0, n, step):
+			var p: Vector3 = track.samples[i]
+			var q := Vector2(p.x, -p.z) # el norte (−z) queda arriba
+			raw.append(q)
+			lo = lo.min(q)
+			hi = hi.max(q)
+		var sz := hi - lo
+		var m := 8.0
+		scale_k = minf((box.x - 2 * m) / maxf(sz.x, 1.0), (box.y - 2 * m) / maxf(sz.y, 1.0))
+		minv = lo - (box - sz * scale_k) * 0.5 / scale_k
+		pts.clear()
+		for q in raw:
+			pts.append((q - minv) * scale_k)
+		if seg is Array:
+			seg_a = int(floor(float(seg[0]) * float(raw.size())))
+			seg_b = int(floor(float(seg[1]) * float(raw.size())))
+		custom_minimum_size = box
+		size = box
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		queue_redraw()
+
+	func set_cars(list: Array) -> void:
+		cars = list
+		queue_redraw()
+
+	func _to_map(x: float, z: float) -> Vector2:
+		return (Vector2(x, -z) - minv) * scale_k
+
+	func _draw() -> void:
+		if pts.size() < 3:
+			return
+		draw_rect(Rect2(Vector2.ZERO, box), Color(0.03, 0.05, 0.08, 0.62), true)
+		draw_rect(Rect2(Vector2.ZERO, box), Color(1, 1, 1, 0.18), false, 1.5)
+		var loop := pts.duplicate()
+		loop.append(pts[0])
+		draw_polyline(loop, Color(1, 1, 1, 0.28), 5.0, true)
+		draw_polyline(loop, Color(0.55, 0.6, 0.68, 0.9), 2.5, true)
+		if seg_a >= 0 and seg_b > seg_a:
+			draw_polyline(pts.slice(seg_a, mini(seg_b + 1, pts.size())), Color(1.0, 0.55, 0.15), 3.5, true)
+		draw_circle(pts[maxi(seg_a, 0)], 4.0, Color(0.3, 0.9, 0.5))
+		for i in range(cars.size() - 1, -1, -1):
+			var c: Array = cars[i]
+			var pos := _to_map(float(c[0]), float(c[1]))
+			if i == 0:
+				draw_circle(pos, 6.0, Color.WHITE)
+				draw_circle(pos, 4.2, Color(1.0, 0.48, 0.1))
+			else:
+				draw_circle(pos, 3.8, colors[i] if i < colors.size() else Color.WHITE)
 
 func setup(s: RefCounted, c: Dictionary, r: Array) -> void:
 	session = s
@@ -82,6 +154,10 @@ func setup(s: RefCounted, c: Dictionary, r: Array) -> void:
 	var t := str(c.get("type", "race"))
 	pos_l.visible = t == "race"
 	lap_l.visible = true
+	var cols: Array = []
+	for x in r:
+		cols.append(x["color"])
+	minimap.setup_track(s.track, c.get("seg"), cols)
 
 func big(t: String, color := Color.WHITE) -> void:
 	big_l.text = t
@@ -93,7 +169,18 @@ func toast(t: String, kind := "") -> void:
 	toast_l.add_theme_color_override("font_color", Kit.GREEN if kind == "up" else (Kit.RED if kind == "down" else Color.WHITE))
 	toast_t = 2.2
 
-func update_hud(dt: float, n_cars: int) -> void:
+func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
+	# el minimapa va arriba a la derecha, a la izquierda de los botones de pausa y cámara
+	var vs := get_viewport_rect().size
+	var u := vs.y / 393.0
+	minimap.position = Vector2(vs.x - 140.0 * u - minimap.box.x, 10.0 * u)
+	tick += dt
+	if tick > 0.05:
+		tick = 0.0
+		var L: Array = []
+		for c in car_list:
+			L.append([c.snap.px, c.snap.pz])
+		minimap.set_cars(L)
 	if session == null:
 		top.visible = false
 		return
@@ -106,7 +193,9 @@ func update_hud(dt: float, n_cars: int) -> void:
 	var t := str(cfg.get("type", "race"))
 	if t == "race":
 		pos_l.text = "%d/%d" % [s.position_of(0, n_cars), n_cars]
-	if s.laps > 1:
+	if t == "free":
+		lap_l.text = "PRUEBA LIBRE · salí desde la pausa"
+	elif s.laps > 1:
 		lap_l.text = "VUELTA %d/%d" % [s.lap_of_player(), s.laps]
 	else:
 		var left := maxf(s.race_len - maxf(s.prog[0], 0.0), 0.0)

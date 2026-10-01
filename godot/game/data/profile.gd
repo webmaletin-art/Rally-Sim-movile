@@ -11,7 +11,7 @@ const DEFAULT_SETTINGS := {
 	"visual": "none", "shadows": true, "mirrors": true, "rearCam": false, "notes": true, "copilot": true, "chatter": "normal",
 	"steerMode": "wheel", "gyro": false, "gyroSens": 50, "gameSpeed": 100, "quality": "auto", "gearbox": "auto", "volume": 80, "volEngine": 100,
 	"volSurf": 30, "volWind": 30, "volTurbo": 100, "volGear": 100, "rawShake": 25, "askSetup": true, "music": true, "units": "kmh",
-	"abs": true, "tc": 50, "stab": 30, "camera": 1, "hud": "full", "vibrate": true, "lens2": 0, "fx": [0, 0, 0], "fxAmt": [1.0, 1.0, 1.0], "fxOn": [true, true, true], "textures": "auto", "particles": "auto", "autoParticles": 10, "autoTex": "high", "autoRes": 0.8, "trees": "auto", "shadowsQ": "auto", "res": 0, "weather": "dia",
+	"abs": true, "tc": 50, "stab": 30, "camera": 1, "hud": "full", "vibrate": true, "lens2": 0, "fx": [23, 24, 14], "fxAmt": [1.0, 1.0, 1.0], "fxOn": [true, true, true], "simLevel": "mid", "lineAssist": 0, "wheelSize": 100, "pedalSize": 100, "textures": "auto", "particles": "auto", "autoParticles": 10, "autoTex": "high", "autoRes": 0.8, "trees": "auto", "shadowsQ": "auto", "res": 0, "weather": "dia",
 }
 
 var d: Dictionary

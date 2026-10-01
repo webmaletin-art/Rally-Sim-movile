@@ -199,14 +199,14 @@ func _event(id: String) -> void:
 	go_b.disabled = block != ""
 	m.body.add_child(go_b)
 
-func _start_event(ev: Dictionary, tier: Dictionary) -> void:
+func _start_event(ev: Dictionary, tier: Dictionary, ask := true) -> void:
 	var pid: String = m.profile.current_id()
 	var cfg := {"type": ev["type"], "track": ev["map"], "laps": int(ev.get("laps", 1)), "ai": int(ev.get("ai", 0)), "time": ev.get("time", 0), "sky": ev.get("sky", "day"),
 		"maxPI": int(tier["maxPI"]), "skill": float(tier["skill"]) * (1.03 if ev.get("final", false) else 1.0), "aiCar": str(tier.get("car", "")), "event": ev, "tier": tier,
 		"seed": int(str(ev["id"]).unicode_at(1)), "car": pid, "state": m.profile.car(), "back": "events:" + str(tier["id"])}
 	if ev.has("seg"):
 		cfg["seg"] = ev["seg"]
-	m.app.start_race(cfg)
+	m.launch(cfg, ask)
 
 # ───────────────────────── carrera rápida ─────────────────────────
 func _quick() -> void:
@@ -245,4 +245,4 @@ func _start_quick() -> void:
 	var q := quick
 	var cfg := {"type": q["mode"], "track": q["map"], "laps": int(q["laps"]), "ai": int(q["ai"]) if q["mode"] == "race" else 0, "sky": q["sky"], "maxPI": maxi(560, pi + 20),
 		"skill": 0.9 * float(q["skill"]), "quick": true, "seed": 7, "car": pid, "state": m.profile.car(), "back": "quick"}
-	m.app.start_race(cfg)
+	m.launch(cfg)

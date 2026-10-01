@@ -21,6 +21,8 @@ var gyro_invert := false
 var gyro_sens := 50.0 # 0..100 → cuánto hay que inclinar
 var use_mph := false
 var show_speed := true # el panel de velocidad de arriba se oculta con las cámaras interiores (ya está en el tablero)
+var wheel_scale := 1.0 # tamaño del volante/barra (opción «Tamaño del volante»)
+var pedal_scale := 1.0 # tamaño del pedal
 var layout := {} # id → {x, y, s}: posición (fracción de pantalla) y tamaño relativo, para el editor de controles
 
 # ── salidas ──
@@ -90,6 +92,12 @@ func rect_of(id: String) -> Rect2:
 			r = Rect2(vs.x - 10.0 * u - 40.0 * u, 10.0 * u, 40.0 * u, 40.0 * u)
 		"pause":
 			r = Rect2(vs.x - 18.0 * u - 80.0 * u, 10.0 * u, 40.0 * u, 40.0 * u)
+	if id == "wheel" or id == "slider":
+		r = Rect2(r.position.x, r.end.y - r.size.y * wheel_scale, r.size.x * wheel_scale, r.size.y * wheel_scale) # crece hacia arriba y a la derecha
+	elif id == "gears":
+		r.position.x += 158.0 * u * (wheel_scale - 1.0)
+	elif id == "pedal":
+		r = Rect2(r.end.x - r.size.x * pedal_scale, r.position.y + r.size.y * (1.0 - pedal_scale) * 0.5, r.size.x * pedal_scale, r.size.y * pedal_scale)
 	var L: Dictionary = layout.get(id, {})
 	if not L.is_empty():
 		var s: float = float(L.get("s", 1.0))
