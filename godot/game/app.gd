@@ -8,6 +8,7 @@ const Rewards := preload("res://game/data/rewards.gd")
 const Loading := preload("res://game/ui/loading.gd")
 const AdvRoute := preload("res://game/adventure/adv_route.gd")
 const RACE_SCENE := preload("res://game/race.tscn")
+const Tr := preload("res://game/i18n/tr.gd")
 
 var autorace_used := false
 var profile: RefCounted
@@ -16,6 +17,7 @@ var race: Node
 
 func _ready() -> void:
 	profile = Profile.new()
+	Tr.setup(profile)
 	var dbg := false
 	var menu_forced := false
 	for a in OS.get_cmdline_user_args():

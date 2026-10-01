@@ -6,6 +6,7 @@ const Kit := preload("res://game/ui/ui_kit.gd")
 const AdvRoute := preload("res://game/adventure/adv_route.gd")
 const AdvData := preload("res://game/adventure/adv_data.gd")
 const AdvHud := preload("res://game/adventure/adv_hud.gd")
+const Release := preload("res://game/data/release.gd")
 
 var m: Node # menu.gd
 
@@ -17,82 +18,92 @@ func build(name: String, arg) -> void:
 		"adv_stages": _stages()
 		"adv_start": _start_info()
 
-func _text(t: String, size := 18, col := Kit.TEXT) -> void:
-	var l := Kit.label(t, size, col)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size.x = 360
-	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	m.body.add_child(l)
+func _text(t: String, size := 16, col := Kit.TEXT) -> void:
+	m.body.add_child(Kit.wrap(t, size, col, 300))
 
 func _main() -> void:
 	m.set_title("AVENTURA")
 	var st := AdvData.state(m.profile)
 	m.refresh_car(AdvData.CAR, AdvData.car_state(st)) # el DR Bisonte negro de la aventura en la sala
 	m.adv_car_shown = true
+	var limit := Release.adventure_limit(m.profile)
 	var stage: int = mini(int(st["stage"]), AdvRoute.STAGES.size() - 1)
 	var done: bool = st["done"] == true
-	m.body.add_child(Kit.label("La Ruta de los Sueños", 30, Kit.GOLD))
+	var capped := stage >= limit and not done
+	if capped:
+		stage = limit - 1
 	var mp := AdvHud.RouteMap.new()
 	mp.cur = stage if not done else -1
-	mp.done = int(st["stage"])
-	mp.custom_minimum_size = Vector2(0, 210)
+	mp.done = mini(int(st["stage"]), limit)
+	mp.custom_minimum_size = Vector2(0, 122)
 	m.body.add_child(mp)
 	if done:
-		_text("🏆 ¡Completaste la aventura! El DR Bisonte XR está en tu garaje. Podés volver a correr cualquier etapa.", 18, Kit.GREEN)
+		_text("🏆 ¡Completaste la aventura! El DR Bisonte XR está en tu garaje. Podés volver a correr cualquier etapa.", 15, Kit.GREEN)
 	elif st["started"] == true:
 		var S: Dictionary = AdvRoute.STAGES[stage]
-		_stage_image(stage)
-		_text("Etapa %d de %d: %s — %s" % [stage + 1, AdvRoute.STAGES.size(), S["name"], S["sub"]], 19)
-		_text("Rival: %s%s" % [S["rival"]["name"], ("  👑" if S["rival"].get("boss", false) else "")], 17, Kit.MUTED)
+		var info := Kit.hbox(10)
+		m.body.add_child(info)
+		var th := _thumb(stage)
+		if th != null:
+			info.add_child(th)
+		var col := Kit.vbox(0)
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info.add_child(col)
+		col.add_child(Kit.label("%s %d/%d" % [tr("Etapa"), stage + 1, AdvRoute.STAGES.size()], 13, Kit.MUTED))
+		var nl := Kit.label(str(S["name"]), 20, Kit.TEXT)
+		nl.clip_text = true
+		nl.custom_minimum_size.x = 40
+		col.add_child(nl)
+		col.add_child(Kit.wrap(str(S["sub"]), 13, Kit.MUTED, 150))
+		col.add_child(Kit.label("%s: %s%s" % [tr("Rival"), S["rival"]["name"], ("  👑" if S["rival"].get("boss", false) else "")], 13, Kit.MUTED))
 	else:
-		_text("Una sola ruta larguísima, de estación en estación: %d etapas, ciudades, campos, montaña, túneles, una cantera y la nieve. En cada etapa hay un rival que tenés que pasar." % AdvRoute.STAGES.size(), 18)
-	if not done:
-		var lbl := "▶ SEGUIR LA AVENTURA · ETAPA %d" % (stage + 1) if st["started"] == true else "▶ COMENZAR LA AVENTURA"
+		_text("Una sola ruta larguísima, de estación en estación: ciudades, campos, montaña, túneles, una cantera y la nieve. En cada etapa hay un rival que tenés que pasar.", 15)
+	if capped:
+		_text("🚧 Completaste la primera parte. Las próximas etapas llegan con una actualización.", 14, Kit.GOLD)
+	if not done and not capped:
+		var lbl := "▶ SEGUIR · ETAPA %d" % (stage + 1) if st["started"] == true else "▶ COMENZAR LA AVENTURA"
 		m.body.add_child(m.menu_button(lbl, "%d puntos de habilidad para gastar" % int(st["points"]) if int(st["points"]) > 0 else "", func() -> void:
 			if st["started"] == true or st["intro"] == true:
 				_play(stage, false)
 			else:
 				m.go("adv_start"), true))
-	var g := GridContainer.new()
-	g.columns = 2
-	g.add_theme_constant_override("h_separation", 10)
-	g.add_theme_constant_override("v_separation", 10)
-	g.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var g := Kit.grid(4, 6, 6)
 	m.body.add_child(g)
 	var items := [
-		["⭐ HABILIDADES", "%d puntos" % int(st["points"]), func(): m.go("adv_skills")],
-		["📖 CÓMO SE JUEGA", "estaciones, talleres, rival", func(): m.go("adv_help", 0)],
-		["🗺 ETAPAS", "repetir las ganadas", func(): m.go("adv_stages")],
-		["↺ REINICIAR", "empezar de cero", func(): _confirm_reset()],
+		["⭐", "HABILIDADES", "%d pts" % int(st["points"]), func(): m.go("adv_skills")],
+		["📖", "CÓMO SE JUEGA", "", func(): m.go("adv_help", 0)],
+		["🗺", "ETAPAS", "", func(): m.go("adv_stages")],
+		["↺", "REINICIAR", "", func(): _confirm_reset()],
 	]
 	for it in items:
-		var b: Button = m.menu_button(str(it[0]), str(it[1]), it[2])
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		g.add_child(b)
+		g.add_child(m.tile(str(it[0]), str(it[1]), str(it[2]), it[3], false, 70.0))
+
+## Miniatura de la etapa (la misma foto de la pantalla de carga)
+func _thumb(si: int) -> Control:
+	var path := "res://game/ui/tracks/adv%d.jpg" % si
+	if not ResourceLoader.exists(path):
+		return null
+	var tr_ := TextureRect.new()
+	tr_.texture = load(path)
+	tr_.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr_.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	tr_.custom_minimum_size = Vector2(150, 90)
+	return tr_
 
 ## Antes de empezar por primera vez: qué es y cómo se maneja
 func _start_info() -> void:
 	m.set_title("ANTES DE EMPEZAR")
-	m.body.add_child(Kit.label("SIMULACIÓN TOTAL…", 30, Kit.ACCENT))
-	m.body.add_child(Kit.label("…con un poco de ayuda", 24, Kit.GOLD))
+	m.body.add_child(Kit.label("SIMULACIÓN TOTAL…", 26, Kit.ACCENT))
+	m.body.add_child(Kit.label("…con un poco de ayuda", 20, Kit.GOLD))
 	_text("La aventura se maneja como un simulador: el auto tiene peso, las gomas se deslizan y cada superficie agarra distinto. Para que sea disfrutable de punta a punta tiene ABS y un poco de control de tracción y de estabilidad (se pueden cambiar en Opciones → Física).")
-	_text("Manejás el DR Bisonte XR negro del equipo Dream Racing. Primero vas a ver una presentación, después la explicación de cómo se juega y el mapa, y largás desde la Estación Aurora.", 18, Kit.MUTED)
+	_text("Manejás el DR Bisonte XR negro del equipo Dream Racing. Primero ves una presentación, después la explicación de cómo se juega y el mapa, y largás desde la Estación Aurora.", 14, Kit.MUTED)
 	m.body.add_child(m.menu_button("▶ EMPEZAR", "presentación y primera etapa", func(): _play(0, true), true))
 
-## Foto de la etapa (la misma de la pantalla de carga)
-func _stage_image(si: int) -> void:
-	var path := "res://game/ui/tracks/adv%d.jpg" % si
-	if not ResourceLoader.exists(path):
-		return
-	var tr := TextureRect.new()
-	tr.texture = load(path)
-	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	tr.custom_minimum_size = Vector2(0, 150)
-	tr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	m.body.add_child(tr)
-
 func _play(stage: int, intro: bool) -> void:
+	if stage >= Release.adventure_limit(m.profile):
+		m.sfx.play("error")
+		m.toast(tr("Esta etapa llega en una próxima actualización"))
+		return
 	var c := {"type": "adventure", "stage": stage, "back": "adventure"}
 	if intro:
 		c["intro"] = true
@@ -101,24 +112,23 @@ func _play(stage: int, intro: bool) -> void:
 func _skills() -> void:
 	m.set_title("HABILIDADES")
 	var st := AdvData.state(m.profile)
-	m.body.add_child(Kit.label("PUNTOS: %d" % int(st["points"]), 26, Kit.GOLD))
-	_text("Cada etapa ganada te da %d puntos. Cada nivel cuesta tantos puntos como su número (nivel 1 = 1 punto … nivel 5 = 5). Las habilidades valen solo en la aventura." % AdvData.POINTS_PER_STAGE, 16, Kit.MUTED)
 	var sk: Dictionary = st["skills"]
+	m.body.add_child(Kit.label("%s: %d   ·   +%d %s" % [tr("PUNTOS"), int(st["points"]), AdvData.POINTS_PER_STAGE, tr("por etapa ganada")], 16, Kit.GOLD))
 	for S in AdvData.SKILLS:
 		var id := str(S["id"])
 		var lvl := int(sk.get(id, 0))
-		var p := Kit.panel(10, Kit.PANEL2)
+		var p := Kit.panel(8, Kit.PANEL2)
 		m.body.add_child(p)
-		var row := Kit.hbox(12)
+		var row := Kit.hbox(10)
 		p.add_child(row)
-		row.add_child(Kit.label(str(S["icon"]), 34))
-		var col := Kit.vbox(2)
+		row.add_child(Kit.label(str(S["icon"]), 28))
+		var col := Kit.vbox(0)
 		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(col)
-		col.add_child(Kit.label("%s  %s" % [S["name"], "●".repeat(lvl) + "○".repeat(AdvData.MAX_LEVEL - lvl)], 21))
-		var dl := Kit.label(str(S["desc"]) + "\n" + str(S["per"]), 15, Kit.MUTED)
-		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		dl.custom_minimum_size.x = 240
+		col.add_child(Kit.label("%s  %s" % [S["name"], "●".repeat(lvl) + "○".repeat(AdvData.MAX_LEVEL - lvl)], 17))
+		var dl := Kit.label(str(S["per"]), 12, Kit.MUTED)
+		dl.clip_text = true
+		dl.custom_minimum_size.x = 40
 		col.add_child(dl)
 		if lvl < AdvData.MAX_LEVEL:
 			var c := AdvData.cost(lvl + 1)
@@ -130,24 +140,24 @@ func _skills() -> void:
 					st["points"] = int(st["points"]) - c2
 					m.profile.save()
 					m.sfx.play("buy")
-				m.go("adv_skills", null, false), int(st["points"]) >= c, 17, Vector2(130, 50))
+				m.go("adv_skills", null, false), int(st["points"]) >= c, 15, Vector2(112, 44))
 			b.disabled = int(st["points"]) < c
 			row.add_child(b)
 		else:
-			row.add_child(Kit.label("MÁX", 18, Kit.GREEN))
+			row.add_child(Kit.label("MÁX", 16, Kit.GREEN))
 
 const HELP := [
 	["CÓMO SE JUEGA", "• En cada etapa hay un rival adelante tuyo: pasalo y llegá primero a la próxima estación de servicio.\n• El rival maneja a tu ritmo: si vas con cuidado, él también; si apretás al límite, él aprieta. Si lo pasás, va a pelear por recuperar el puesto, pero nunca te choca a propósito.\n• Si llega él primero, repetís la etapa desde la estación anterior.\n• Al final te esperan dos jefes súper rápidos."],
 	["ESTACIONES DE SERVICIO", "Son los puntos de guardado. Cuando llegás primero el auto entra solo, carga combustible y se guarda el avance. Antes de seguir podés leer la GUÍA de la próxima etapa (te explica un ajuste y te recomienda uno), ajustar el auto y gastar los puntos de habilidad."],
 	["TALLERES", "En el camino hay talleres mecánicos. Un cartel te avisa antes: INGRESAR o SEGUIR. Entrar y salir no cuesta nada; cada reparación lleva unos segundos… y el rival no te espera.\nLos golpes dañan el auto: el motor pierde potencia, la dirección tira hacia un costado y la suspensión pierde agarre."],
-	["CÁMARAS", "La aventura se juega con tres cámaras: tercera persona, adentro con el piloto y sobre el capó. Cambialas con el botón CAM."],
+	["CÁMARAS", "La aventura se juega con cuatro cámaras: tercera persona, el casco del piloto, adentro con el piloto y el copiloto, y sobre el capó. Cambialas con el botón CAM."],
 ]
 
 func _help(page: int) -> void:
 	m.set_title("CÓMO SE JUEGA")
 	var P: Array = HELP[clampi(page, 0, HELP.size() - 1)]
-	m.body.add_child(Kit.label(str(P[0]), 28, Kit.ACCENT))
-	_text(str(P[1]), 19)
+	m.body.add_child(Kit.label(str(P[0]), 22, Kit.ACCENT))
+	_text(str(P[1]), 15)
 	var row := Kit.hbox(10)
 	m.body.add_child(row)
 	if page > 0:
@@ -159,25 +169,42 @@ func _help(page: int) -> void:
 		b1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(b1)
 
+var st_page := 0
+
 func _stages() -> void:
 	m.set_title("ETAPAS")
 	var st := AdvData.state(m.profile)
+	var limit := Release.adventure_limit(m.profile)
 	var reached := int(st["stage"])
 	var best: Dictionary = st["best"]
-	for si in AdvRoute.STAGES.size():
+	var per := 8
+	var total := AdvRoute.STAGES.size()
+	var pages := int(ceil(float(total) / float(per)))
+	st_page = clampi(st_page, 0, pages - 1)
+	var g := Kit.grid(2, 6, 6)
+	m.body.add_child(g)
+	for si in range(st_page * per, mini(total, (st_page + 1) * per)):
 		var S: Dictionary = AdvRoute.STAGES[si]
-		var open := si <= reached
+		var avail := si < limit
+		var open := si <= reached and avail
 		var sub := str(S["sub"])
 		if best.has(str(si)):
-			sub += "  ·  mejor tiempo " + Kit.fmt_time(float(best[str(si)]))
-		var b: Button = m.menu_button("%d · %s%s" % [si + 1, S["name"], "" if open else "  🔒"], sub, func(): _play(si, false), si == reached and not (st["done"] == true), open)
-		m.body.add_child(b)
+			sub = Kit.fmt_time(float(best[str(si)]))
+		var right := "🔒" if not open else ("▶" if si == reached and not (st["done"] == true) else "✔")
+		if not avail:
+			right = "🚧"
+		var idx := si
+		g.add_child(Kit.card_button(str(S["name"]), sub, right, func() -> void: _play(idx, false), si == reached and avail and not (st["done"] == true), open, 58.0, 15, str(si + 1)))
+	if pages > 1:
+		m.body.add_child(Kit.pager(st_page, pages, func(pg: int) -> void:
+			st_page = pg
+			m.go("adv_stages", null, false)))
 
 func _confirm_reset() -> void:
 	for c in m.body.get_children():
 		c.queue_free()
-	m.body.add_child(Kit.label("¿Reiniciar la aventura?", 28, Kit.RED))
-	_text("Se pierde el avance de las etapas, los puntos y las habilidades de la aventura.", 18, Kit.MUTED)
+	m.body.add_child(Kit.label("¿Reiniciar la aventura?", 26, Kit.RED))
+	_text("Se pierde el avance de las etapas, los puntos y las habilidades de la aventura.", 15, Kit.MUTED)
 	m.body.add_child(Kit.button("Sí, empezar de cero", func():
 		AdvData.reset(m.profile)
 		m.go("adventure", null, false), false, 22))

@@ -17,6 +17,8 @@ const Effects := preload("res://game/fx/effects.gd")
 const Weather := preload("res://game/fx/weather.gd")
 const Lens := preload("res://game/fx/lens.gd")
 const Cockpit := preload("res://game/car/cockpit.gd")
+const Capture := preload("res://game/capture.gd")
+const Tr := preload("res://game/i18n/tr.gd")
 const CarAudio := preload("res://game/audio/car_audio.gd")
 const CameraRig := preload("res://game/car/camera_rig.gd")
 const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
@@ -226,6 +228,7 @@ func _ready() -> void:
 		race_hud.restart_pressed.connect(_restart)
 		race_hud.quit_pressed.connect(_quit)
 		race_hud.camera_pressed.connect(_next_camera)
+		race_hud.cine_pressed.connect(_toggle_cine)
 		race_hud.tests_pressed.connect(_show_tests)
 		controls.pause_pressed.connect(_toggle_pause)
 	hud = DebugPanel.new()
@@ -237,6 +240,8 @@ func _ready() -> void:
 	hud.bench_pressed.connect(_bench_start)
 	hud.copy_pressed.connect(_copy_report)
 	controls.camera_pressed.connect(_next_camera)
+	controls.shot_pressed.connect(_take_shot)
+	controls.show_shot = menu_mode and profile != null and profile.setting("capBtn") == true
 	load_progress.emit(0.44, "Clima y efectos…")
 	await get_tree().process_frame
 	fx = Effects.new()
@@ -768,7 +773,7 @@ func _car_setups() -> Array:
 	var pst: Dictionary = cfg["state"]
 	var pp: Dictionary = pst.get("paint", {"body": "#1a4fe0", "rim": "#ff6a08"})
 	out.append({"params": CarBuild.build_params(vehicles[pid], pst, assists), "paint": Color(str(pp["body"])), "rim": Color(str(pp.get("rim", "#2a2d33"))), "name": str(profile.d["name"]), "finish": str(pp.get("finish", "gloss")), "visual_type": str(vehicles[pid].get("visualType", pid)), "ai": {},
-		"livery": int(pp.get("livery", 0)), "accent": Color(str(pp.get("accent", "#ff6a08"))), "tire": Color(str(pp.get("tire", "#141516")))})
+		"livery": int(pp.get("livery", 0)), "accent": Color(str(pp.get("accent", "#ff6a08"))), "tire": Color(str(pp.get("tire", "#141516"))), "parts": pp})
 	var n_ai := int(cfg.get("ai", 0))
 	if n_ai > 0:
 		var rng := RandomNumberGenerator.new()
@@ -815,6 +820,8 @@ func _rebuild_cars() -> void:
 			car.visual.set_livery(int(su["livery"]), paint, su.get("accent", Color(1.0, 0.5, 0.1)), str(su.get("finish", "gloss")))
 		if su.has("tire"):
 			car.visual.set_tire_color(su["tire"])
+		if su.has("parts"):
+			car.visual.set_parts(su["parts"])
 		if i > 0:
 			if route:
 				car.driver = AIDriver.new(track.make_view(), car.phys, su["ai"])
@@ -1219,7 +1226,11 @@ func _apply_live_settings(key: String) -> void:
 		"recal":
 			controls.recalibrate_gyro()
 			race_hud.toast("Acelerómetro calibrado: sostené el teléfono como para jugar")
-		"gearbox", "steerMode", "gyro", "gyroSens", "units", "wheelSize", "pedalSize":
+		"capBtn":
+			controls.show_shot = profile.setting("capBtn") == true
+		"lang":
+			Tr.set_language(str(profile.setting("lang")))
+		"gearbox", "steerMode", "gyro", "gyroSens", "gyroDead", "gyroCurve", "gyroSmooth", "units", "wheelSize", "pedalSize":
 			_apply_controls_settings()
 		"volume", "volEngine", "volSurf", "volWind", "volTurbo", "volGear":
 			AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(profile.setting("volume")) / 80.0, 0.001)))
@@ -1256,11 +1267,47 @@ func _apply_controls_settings() -> void:
 	controls.steer_mode = "wheel" if str(profile.setting("steerMode")) == "wheel" else "slider"
 	controls.gyro_on = (profile.setting("gyro") == true)
 	controls.gyro_sens = float(profile.setting("gyroSens"))
+	controls.gyro_dead = float(profile.setting("gyroDead"))
+	controls.gyro_curve = float(profile.setting("gyroCurve"))
+	controls.gyro_smooth = float(profile.setting("gyroSmooth"))
 	controls.use_mph = str(profile.setting("units")) == "mph"
 	controls.wheel_scale = float(profile.setting("wheelSize")) / 100.0
 	controls.pedal_scale = float(profile.setting("pedalSize")) / 100.0
 	if controls.gyro_on:
 		controls.recalibrate_gyro()
+
+## Vibración del teléfono como un volante con fuerza de retorno: aprieta con la carga lateral y el patinaje, zumba con los pozos y
+## la tierra suelta y da un golpe seco con los impactos. Apagada por defecto (opción «Vibración tipo volante»).
+var _hap_t := 0.0
+func _haptics(dt: float, p, impact: float) -> void:
+	var lv := int(profile.setting("haptics"))
+	if lv <= 0:
+		return
+	_hap_t -= dt
+	var k: float = [0.0, 0.5, 0.85, 1.2][clampi(lv, 0, 3)]
+	if impact > 2.2:
+		Input.vibrate_handheld(110, clampf(0.45 + impact * 0.08, 0.5, 1.0))
+		_hap_t = 0.15
+		return
+	if _hap_t > 0.0:
+		return
+	var sp := sqrt(p.vx * p.vx + p.vz * p.vz)
+	if sp < 2.0:
+		return
+	var load := clampf(absf(p.aLat) / 14.0, 0.0, 1.0) # carga lateral: el volante «pesa» en las curvas
+	var rough := 0.0
+	var slip := 0.0
+	for i in 4:
+		var o := i * 8
+		if p.wheel_fx[o] < 0.5:
+			continue
+		if int(p.wheel_fx[o + 1]) != 0:
+			rough += 0.12 # tierra, pasto, nieve: zumbido
+		slip = maxf(slip, maxf(absf(p.wheel_fx[o + 3]), absf(p.wheel_fx[o + 4])))
+	var amp: float = (load * 0.55 + clampf(rough, 0.0, 0.4) * clampf(sp / 25.0, 0.0, 1.0) + clampf(slip - 0.15, 0.0, 0.6) * 0.5) * k
+	if amp > 0.07:
+		Input.vibrate_handheld(55, clampf(amp, 0.0, 1.0))
+		_hap_t = 0.065
 
 ## Nivel de partículas 0–10 (polvo, humo de gomas, rocío, piedritas). En automático es el que el juego aprendió que aguanta el teléfono.
 func _particle_level() -> int:
@@ -1305,6 +1352,23 @@ func _set_auto_particles(v: int) -> void:
 func _fx_setting() -> Array:
 	var a = profile.setting("fx")
 	return [int(a[0]), int(a[1]), int(a[2])] if a is Array and a.size() >= 3 else [0, 0, 0]
+
+## Captura de pantalla (con o sin HUD según Opciones → Captura)
+func _take_shot() -> void:
+	if profile == null:
+		return
+	var path: String = await Capture.take(self, profile)
+	if race_hud != null:
+		race_hud.toast("📷 Captura guardada" if path != "" else "No se pudo guardar la captura")
+
+## Modo cine: casi todo el HUD se esconde (los controles quedan casi invisibles pero siguen andando) para grabar con la grabadora del teléfono
+var cine := false
+func _toggle_cine() -> void:
+	cine = not cine
+	race_hud.set_cine(cine)
+	controls.modulate.a = 0.1 if cine else 1.0
+	if cine and paused:
+		_toggle_pause()
 
 func _toggle_pause() -> void:
 	if not menu_mode or (session == null and adv == null):
@@ -1767,7 +1831,7 @@ func _frame(dt: float) -> void:
 	if inside != was_inside or onboard != was_onboard:
 		was_inside = inside
 		was_onboard = onboard
-		cars[0].visual.body.visible = not inside
+		cars[0].visual.set_inside(inside)
 		controls.show_speed = not inside
 		cockpit.set_inside(inside, not onboard)
 	if inside:
@@ -1788,6 +1852,8 @@ func _frame(dt: float) -> void:
 	controls.gear_text = "R" if p.gear < 0 else ("N" if p.gear == 0 else str(p.gear))
 	controls.rpm_frac = p.rpm / cars[0].phys.V.maxRpm
 	lens.update(dt, controls.speed_kmh, 1.0 if controls.nitro else 0.0)
+	if menu_mode and not paused:
+		_haptics(dt, p, pl_impact)
 	if audio_on and not paused:
 		audio.update(p, cars[0].phys.V, dt, pl_events, pl_impact)
 		pl_events = []

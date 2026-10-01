@@ -75,6 +75,8 @@ static func reward_for(ev: Dictionary, medal: int, tier: Dictionary) -> Dictiona
 
 ## ¿Está abierto el evento? Devuelve "" si sí, o el motivo. Los eventos que todavía no se pueden jugar no traban a los siguientes.
 static func event_locked(profile: RefCounted, ev: Dictionary) -> String:
+	if preload("res://game/data/release.gd").dev(profile):
+		return ""
 	var lst: Array = []
 	for e in events_of(str(ev["tier"])):
 		if playable(e):
@@ -92,6 +94,10 @@ static func event_locked(profile: RefCounted, ev: Dictionary) -> String:
 	return "" if m.call(lst[i - 1]["id"]) >= 1 else "Conseguí medalla en «%s»" % lst[i - 1]["name"]
 
 static func tier_open(profile: RefCounted, tier: Dictionary) -> bool:
+	if not preload("res://game/data/release.gd").tier_allowed(profile, str(tier["id"])):
+		return false
+	if preload("res://game/data/release.gd").dev(profile):
+		return true # modo desarrollador: todas las copas abiertas
 	if tier.has("car") and not profile.owns(str(tier["car"])):
 		return false
 	return profile.stars() >= stars_needed(tier)

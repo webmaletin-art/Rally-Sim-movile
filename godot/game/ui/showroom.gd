@@ -99,6 +99,7 @@ func set_car(id: String, state: Dictionary, vehicles: Dictionary) -> void:
 	car.visual.set_livery(int(pp.get("livery", 0)), Color(str(pp["body"])), Color(str(pp.get("accent", "#ff6a08"))), str(pp.get("finish", "gloss")))
 	if pp.has("tire"):
 		car.visual.set_tire_color(Color(str(pp["tire"])))
+	car.visual.set_parts(pp)
 	car.place(0, 0, 0)
 	for i in 160:
 		car.step_and_record(1.0 / 120.0, float(i + 1) / 120.0) # deja que la suspensión se asiente

@@ -14,6 +14,8 @@ const Garage := preload("res://game/ui/menu_garage.gd")
 const Lens := preload("res://game/fx/lens.gd")
 const OptionsUi := preload("res://game/ui/options_ui.gd")
 const MenuAdventure := preload("res://game/ui/menu_adventure.gd")
+const MenuAbout := preload("res://game/ui/menu_about.gd")
+const Release := preload("res://game/data/release.gd")
 const AdvData := preload("res://game/adventure/adv_data.gd")
 const AdvRoute := preload("res://game/adventure/adv_route.gd")
 
@@ -39,10 +41,12 @@ var screen_arg = null
 var career: RefCounted
 var garage: RefCounted
 var adventure: RefCounted
+var about: RefCounted
 var frames := 0
 var showcar := "" # prueba: muestra este auto en la sala
 var autotest := "" # prueba: arranca directo una prueba libre de este auto
 var sky_arg := "" # prueba: fuerza el clima de la carrera (day, overcast, sunset, dusk, rain)
+var no_consent := false # prueba: salta la pantalla de aceptación del primer inicio
 var autorace := "" # prueba: arranca directo este evento (p. ej. d2)
 var shot_path := ""
 var shot_frames := 0
@@ -75,6 +79,8 @@ func _ready() -> void:
 			sky_arg = a.substr(6)
 		elif a.begins_with("--autorace="):
 			autorace = a.substr(11)
+		elif a == "--noconsent":
+			no_consent = true
 	if (profile.d["owned"] as Dictionary).is_empty():
 		_first_time()
 	sfx = UiSfx.new()
@@ -97,6 +103,8 @@ func _ready() -> void:
 	garage.m = self
 	adventure = MenuAdventure.new()
 	adventure.m = self
+	about = MenuAbout.new()
+	about.m = self
 	_build_world()
 	_build_ui()
 	if showcar != "":
@@ -120,7 +128,10 @@ func _ready() -> void:
 	var arg0 = parts[1] if parts.size() > 1 else null
 	if parts[0] == "level":
 		arg0 = {"type": "race", "track": "lake", "ai": 3, "car": profile.current_id(), "state": profile.car()} # solo para probar la pantalla
-	go(parts[0], arg0)
+	if start_screen == "home" and not no_consent and MenuAbout.needs_consent(profile):
+		go("consent")
+	else:
+		go(parts[0], arg0)
 	if not daily.is_empty():
 		toast("🎁 Premio diario: +%s (racha %d)" % [Kit.fmt_cr(float(daily["amount"])), int(daily["streak"])])
 		sfx.play("coin")
@@ -160,7 +171,7 @@ func _build_world() -> void:
 
 func _on_resize() -> void:
 	var win := Vector2(DisplayServer.window_get_size())
-	var sc := 0.62
+	var sc := 0.8
 	world.size = Vector2i(maxi(480, int(win.x * sc)), maxi(270, int(win.y * sc)))
 	view_rect.position = Vector2.ZERO
 	view_rect.size = get_viewport().get_visible_rect().size
@@ -227,34 +238,36 @@ func go(name: String, arg = null, push := true) -> void:
 	screen_arg = arg
 	if panel != null:
 		panel.queue_free()
-	panel = Kit.panel(14)
+	panel = Kit.panel(12)
 	panel.set_anchors_preset(Control.PRESET_LEFT_WIDE)
-	var wide := name in ["career", "events", "event", "workshop", "tune", "garage", "dealer", "results", "goals", "options", "quick", "paint", "fx", "level", "adventure", "adv_skills", "adv_help", "adv_stages", "adv_start"]
-	panel.anchor_right = 0.52 if wide else 0.40
-	showroom.view_shift = 0.75 if wide else 0.5
-	panel.offset_left = 14
-	panel.offset_top = 14
-	panel.offset_bottom = -14
+	var frac := 0.385 if name == "home" else 0.475
+	panel.anchor_right = frac
+	showroom.view_shift = 1.9 * frac - 0.26 # el auto queda en el medio de lo que no tapa el panel
+	panel.offset_left = 12
+	panel.offset_top = 12
+	panel.offset_bottom = -12
 	panel.offset_right = 0
 	root.add_child(panel)
-	var col := Kit.vbox(10)
+	var col := Kit.vbox(8)
 	col_box = col
 	panel.add_child(col)
-	var head := Kit.hbox(10)
+	var head := Kit.hbox(8)
 	col.add_child(head)
-	if name != "home":
-		head.add_child(Kit.button("← ATRÁS", back, false, 18, Vector2(120, 46)))
-	title_l = Kit.label("", 30, Kit.ACCENT)
+	if name != "home" and name != "consent":
+		head.add_child(Kit.button("← ATRÁS", back, false, 16, Vector2(104, 40)))
+	title_l = Kit.label("", 26, Kit.ACCENT)
 	title_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_l.clip_text = true
+	title_l.custom_minimum_size.x = 40
 	head.add_child(title_l)
-	credits_l = Kit.label("", 20, Kit.GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
+	credits_l = Kit.label("", 18, Kit.GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
 	head.add_child(credits_l)
 	update_credits()
-	var sc := TouchScroll.new()
+	var sc := TouchScroll.new() # red de seguridad: las pantallas están armadas para entrar sin desplazar
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_child(sc)
-	body = Kit.vbox(10)
+	body = Kit.vbox(8)
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(body)
 	match name:
@@ -266,6 +279,8 @@ func go(name: String, arg = null, push := true) -> void:
 		"results": _results()
 		"career", "events", "event", "quick": career.build(name, arg)
 		"garage", "dealer", "workshop", "tune", "paint": garage.build(name, arg)
+		"about", "privacy", "terms", "credits": about.build(name, arg)
+		"consent": about.consent_screen()
 		"adventure", "adv_skills", "adv_help", "adv_stages", "adv_start": adventure.build(name, arg)
 		_: _home()
 
@@ -289,22 +304,27 @@ func _level_screen(cfg) -> void:
 		sfx.play("click")
 		var c: Dictionary = cfg
 		c["sim"] = str(profile.setting("simLevel"))
-		app.start_race(c), true, 28, Vector2(0, 64))
+		app.start_race(c), true, 26, Vector2(0, 58))
 	body.add_child(play)
+	var g := Kit.grid(2, 8, 8)
+	body.add_child(g)
 	for lv in SIM_LEVELS:
 		var id: String = lv[0]
-		var b := Kit.button("", Callable(), cur == id, 20, Vector2(0, 76))
-		var v := Kit.vbox(0)
+		var b := Kit.button("", Callable(), cur == id, 20, Vector2(0, 112))
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var v := Kit.vbox(2)
 		v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		v.offset_left = 14
-		v.offset_right = -14
+		v.offset_left = 12
+		v.offset_right = -12
+		v.offset_top = 8
 		v.alignment = BoxContainer.ALIGNMENT_CENTER
 		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var dark := Color(0.05, 0.06, 0.08)
-		v.add_child(Kit.label(str(lv[1]) + ("  ✔" if cur == id else ""), 22, dark if cur == id else Kit.TEXT))
-		var dl := Kit.label(str(lv[2]), 14, dark if cur == id else Kit.MUTED)
+		v.add_child(Kit.label(tr(str(lv[1])) + ("  ✔" if cur == id else ""), 19, dark if cur == id else Kit.TEXT))
+		var dl := Kit.label(tr(str(lv[2])), 12, dark if cur == id else Kit.MUTED)
 		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		dl.custom_minimum_size.x = 340
+		dl.custom_minimum_size.x = 150
+		dl.max_lines_visible = 5
 		v.add_child(dl)
 		b.add_child(v)
 		b.pressed.connect(func() -> void:
@@ -314,12 +334,10 @@ func _level_screen(cfg) -> void:
 			profile.set_setting("simLevel", id)
 			sfx.play("click")
 			go("level", cfg, false))
-		body.add_child(b)
+		g.add_child(b)
 	if cur == "custom":
-		body.add_child(Kit.label("AYUDAS", 16, Kit.MUTED))
-		var title_keep := title_l.text
 		opts.options_page(body, "fisica")
-		title_l.text = title_keep
+		title_l.text = "NIVEL DE SIMULACIÓN"
 
 func back() -> void:
 	sfx.play("click")
@@ -358,9 +376,37 @@ func menu_button(text: String, sub: String, cb: Callable, accent := false, enabl
 	return b
 
 # ───────────────────────── inicio ─────────────────────────
+## Mosaico del inicio: ícono, nombre y una línea chica
+func tile(icon: String, text: String, sub: String, cb: Callable, accent := false, h := 70.0) -> Button:
+	var b := Kit.button("", Callable(), accent, 20, Vector2(0, h))
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var v := Kit.vbox(0)
+	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	var col := Color(0.05, 0.06, 0.08) if accent else Kit.TEXT
+	v.add_child(Kit.label(icon, 22, col, HORIZONTAL_ALIGNMENT_CENTER))
+	var tl := Kit.label(text, 16, col, HORIZONTAL_ALIGNMENT_CENTER)
+	tl.clip_text = true
+	tl.custom_minimum_size.x = 40
+	v.add_child(tl)
+	if sub != "":
+		var sl := Kit.label(sub, 11, col.darkened(0.15) if accent else Kit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		sl.clip_text = true
+		sl.custom_minimum_size.x = 40
+		v.add_child(sl)
+	b.add_child(v)
+	b.pressed.connect(func() -> void:
+		if Kit.scroll_moved:
+			Kit.scroll_moved = false
+			return
+		sfx.play("click")
+		cb.call())
+	return b
+
 func _home() -> void:
 	title_l.text = ""
-	var t := Kit.label("DREAM RACING", 44, Kit.ACCENT)
+	var t := Kit.label("DREAM RACING", 38, Kit.ACCENT)
 	body.add_child(t)
 	var car_id: String = profile.current_id()
 	var cm: Dictionary = CarBuild.catalog()["cars"][car_id]
@@ -368,46 +414,36 @@ func _home() -> void:
 	var V: Dictionary = CarBuild.build_params(vehicles[car_id], st)
 	var pf: Dictionary = CarBuild.perf_of(V)
 	var cls: Dictionary = CarBuild.class_of(int(pf["pi"]))
-	var chip := Kit.label("%s %s  ·  Clase %s · PI %d" % [cm["brand"], cm["model"], cls["c"], int(pf["pi"])], 18, Kit.MUTED)
+	var chip := Kit.label("%s %s · %s %s · PI %d" % [cm["brand"], cm["model"], tr("Clase"), cls["c"], int(pf["pi"])], 14, Kit.MUTED)
+	chip.clip_text = true
+	chip.custom_minimum_size.x = 40
 	body.add_child(chip)
-	var g := GridContainer.new()
-	g.columns = 2
-	g.add_theme_constant_override("h_separation", 10)
-	g.add_theme_constant_override("v_separation", 10)
-	g.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(g)
 	var next_ev := _next_event()
-	var btns := [
-		["🏆 CARRERA", "%d ⭐ · %d/%d eventos" % [profile.stars(), _done_events(), CarBuild.catalog()["events"].size()], func(): go("career"), true],
-		["⚡ RÁPIDA", "elegí pista y rivales", func(): go("quick"), false],
-		["🚗 GARAJE", "tus autos", func(): go("garage"), false],
-		["🏬 CONCESIONARIA", "comprá autos", func(): go("dealer"), false],
-		["🔧 TALLER", "piezas y neumáticos", func(): go("workshop"), false],
-		["🎚 AJUSTE", "suspensión y más", func(): go("tune"), false],
-		["🎨 PINTURA", "color y acabado", func(): go("paint"), false],
-		["⭐ LOGROS", ("%d para cobrar" % Rewards.ach_ready(profile)) if Rewards.ach_ready(profile) > 0 else "objetivos", func(): go("goals"), false],
-		["⚙ OPCIONES", "manejo, sonido, cámara", func(): go("options"), false],
-	]
+	if not next_ev.is_empty():
+		body.add_child(menu_button("▶ SEGUIR CARRERA", str(next_ev["name"]), func(): go("event", next_ev["id"]), true))
 	var ast := AdvData.state(profile)
 	var adv_sub := "¡nuevo! · %d etapas" % AdvRoute.STAGES.size()
 	if ast["done"] == true:
 		adv_sub = "🏆 completada"
 	elif ast["started"] == true:
 		adv_sub = "etapa %d/%d" % [mini(int(ast["stage"]) + 1, AdvRoute.STAGES.size()), AdvRoute.STAGES.size()]
-	var advb := menu_button("🌄 AVENTURA", "La Ruta de los Sueños · " + adv_sub, func(): go("adventure"), true)
-	body.add_child(advb)
-	body.move_child(advb, 2)
-	for b in btns:
-		var mb := menu_button(b[0], b[1], b[2], b[3])
-		mb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		g.add_child(mb)
-	var test := menu_button("🔬 PRUEBAS", "rendimiento e informe", func(): app.start_race({}))
-	test.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	g.add_child(test)
-	if not next_ev.is_empty():
-		var cont := menu_button("▶ SEGUIR CARRERA", str(next_ev["name"]), func(): go("event", next_ev["id"]), true)
-		body.add_child(cont)
-		body.move_child(cont, 2)
+	body.add_child(menu_button("🌄 AVENTURA", "La Ruta de los Sueños · " + adv_sub, func(): go("adventure"), next_ev.is_empty()))
+	var g := Kit.grid(3, 8, 8)
+	body.add_child(g)
+	var tiles := [
+		["🏆", "CARRERA", "%d ⭐" % profile.stars(), func(): go("career"), false],
+		["⚡", "RÁPIDA", "pista y rivales", func(): go("quick"), false],
+		["🚗", "GARAJE", "tus autos", func(): go("garage"), false],
+		["🏬", "TIENDA", "comprá autos", func(): go("dealer"), false],
+		["🔧", "TALLER", "piezas · pintura", func(): go("workshop", 0), false],
+		["⭐", "LOGROS", ("%d para cobrar" % Rewards.ach_ready(profile)) if Rewards.ach_ready(profile) > 0 else "objetivos", func(): go("goals"), false],
+		["⚙", "OPCIONES", "manejo · sonido", func(): go("options"), false],
+		["ℹ", "ACERCA DE", "créditos · legales", func(): go("about"), false],
+	]
+	if Release.dev(profile):
+		tiles.append(["🔬", "PRUEBAS", "rendimiento", func(): app.start_race({}), false])
+	for tl in tiles:
+		g.add_child(tile(str(tl[0]), str(tl[1]), str(tl[2]), tl[3], bool(tl[4])))
 
 func _done_events() -> int:
 	var n := 0
@@ -427,32 +463,50 @@ func _next_event() -> Dictionary:
 	return {}
 
 # ───────────────────────── logros ─────────────────────────
+var goals_page := 0
+const GOALS_PER_PAGE := 6
+
 func _goals() -> void:
 	title_l.text = "LOGROS"
 	var claimed: Dictionary = profile.d["claimed"]
-	for a in CarBuild.catalog()["achievements"]:
+	var all: Array = CarBuild.catalog()["achievements"]
+	var pages := maxi(1, int(ceil(float(all.size()) / float(GOALS_PER_PAGE))))
+	goals_page = clampi(goals_page, 0, pages - 1)
+	var g := Kit.grid(2, 8, 8)
+	body.add_child(g)
+	for i in range(goals_page * GOALS_PER_PAGE, mini(all.size(), (goals_page + 1) * GOALS_PER_PAGE)):
+		var a: Dictionary = all[i]
 		var id := str(a["id"])
 		var got := claimed.has(id)
 		var ok := Rewards.ach_done(profile, id)
-		var p := Kit.panel(10, Kit.PANEL2 if not got else Color(0.1, 0.2, 0.14, 0.95))
-		body.add_child(p)
-		var row := Kit.hbox(12)
-		p.add_child(row)
-		row.add_child(Kit.label(str(a["icon"]), 34))
-		var col := Kit.vbox(0)
-		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(col)
-		col.add_child(Kit.label(str(a["n"]), 22, Kit.GOLD if ok and not got else (Kit.GREEN if got else Kit.TEXT)))
-		var dl := Kit.label(str(a["d"]), 16, Kit.MUTED)
+		var p := Kit.panel(8, Kit.PANEL2 if not got else Color(0.1, 0.2, 0.14, 0.95))
+		p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		g.add_child(p)
+		var v := Kit.vbox(2)
+		p.add_child(v)
+		var head := Kit.hbox(6)
+		v.add_child(head)
+		head.add_child(Kit.label(str(a["icon"]), 26))
+		var nl := Kit.label(str(a["n"]), 16, Kit.GOLD if ok and not got else (Kit.GREEN if got else Kit.TEXT))
+		nl.clip_text = true
+		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nl.custom_minimum_size.x = 40
+		head.add_child(nl)
+		var dl := Kit.label(str(a["d"]), 12, Kit.MUTED)
 		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		dl.custom_minimum_size.x = 200
-		col.add_child(dl)
+		dl.custom_minimum_size.x = 150
+		dl.max_lines_visible = 2
+		v.add_child(dl)
 		if got:
-			row.add_child(Kit.label("COBRADO ✔", 18, Kit.GREEN))
+			v.add_child(Kit.label("COBRADO ✔", 14, Kit.GREEN))
 		elif ok:
-			row.add_child(Kit.button("COBRAR " + Kit.fmt_cr(float(a["cr"])), func(): _claim(a), true, 18, Vector2(170, 48)))
+			v.add_child(Kit.button("COBRAR " + Kit.fmt_cr(float(a["cr"])), func(): _claim(a), true, 14, Vector2(0, 32)))
 		else:
-			row.add_child(Kit.label(Kit.fmt_cr(float(a["cr"])), 18, Kit.MUTED))
+			v.add_child(Kit.label(Kit.fmt_cr(float(a["cr"])), 14, Kit.MUTED))
+	if pages > 1:
+		body.add_child(Kit.pager(goals_page, pages, func(pg: int) -> void:
+			goals_page = pg
+			go("goals", null, false)))
 
 func _claim(a: Dictionary) -> void:
 	profile.d["claimed"][a["id"]] = 1
@@ -480,47 +534,60 @@ func _results() -> void:
 	var r: Dictionary = app.pending_result
 	title_l.text = "RESULTADO"
 	var cfg: Dictionary = r.get("cfg", {})
-	body.add_child(Kit.label(str(r.get("event_name", "")), 26, Kit.TEXT))
+	var top := Kit.hbox(10)
+	body.add_child(top)
+	var l0 := Kit.vbox(0)
+	l0.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(l0)
+	var en := Kit.label(str(r.get("event_name", "")), 18, Kit.MUTED)
+	en.clip_text = true
+	en.custom_minimum_size.x = 40
+	l0.add_child(en)
 	var t := str(r.get("type", "race"))
 	var big := ""
 	match t:
-		"race": big = "%d° puesto" % int(r["pos"])
+		"race": big = "%d° %s" % [int(r["pos"]), tr("puesto")]
 		"trap": big = "%d km/h" % int(r["value"])
+		"drift": big = "%d pts" % int(r["value"])
 		_: big = Kit.fmt_time(float(r["time"]))
-	var bl := Kit.label(big, 54, Kit.GOLD)
-	body.add_child(bl)
+	l0.add_child(Kit.label(big, 44, Kit.GOLD))
 	if bool(r.get("show_medal", false)):
 		var med := int(r["medal"])
 		var names := ["Sin medalla", "🥉 Bronce", "🥈 Plata", "🥇 ORO"]
-		body.add_child(Kit.label(names[med], 34, [Kit.MUTED, Color(0.85, 0.55, 0.3), Color(0.8, 0.85, 0.92), Kit.GOLD][med]))
+		top.add_child(Kit.label(tr(names[med]), 28, [Kit.MUTED, Color(0.85, 0.55, 0.3), Color(0.8, 0.85, 0.92), Kit.GOLD][med]))
 	if bool(r.get("record", false)):
-		body.add_child(Kit.label("🏅 ¡NUEVO RÉCORD!", 24, Kit.GREEN))
-	var row := Kit.hbox(10)
+		body.add_child(Kit.label("🏅 ¡NUEVO RÉCORD!", 20, Kit.GREEN))
+	var row := Kit.hbox(8)
 	body.add_child(row)
-	var again := Kit.button("↺ REPETIR", func(): app.start_race(cfg), true, 22)
+	var again := Kit.button("↺ REPETIR", func(): app.start_race(cfg), true, 20, Vector2(0, 50))
 	again.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(again)
 	var to := "career" if not cfg.get("event", {}).is_empty() else "home"
-	var cont := Kit.button("CONTINUAR", func(): stack.clear(); go(to, null, false), false, 22)
+	var cont := Kit.button("CONTINUAR", func(): stack.clear(); go(to, null, false), false, 20, Vector2(0, 50))
 	cont.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(cont)
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 24)
+	var grid := Kit.grid(4, 12, 2)
 	body.add_child(grid)
 	var kv := [["Recompensa", Kit.fmt_cr(float(r["cr"]))], ["Experiencia", "+%d XP" % int(r["xp"])], ["Velocidad máxima", "%d km/h" % int(r["max_kmh"])], ["Distancia", "%.2f km" % (float(r["odo"]) / 1000.0)]]
 	for p in kv:
-		grid.add_child(Kit.label(p[0], 20, Kit.MUTED))
-		grid.add_child(Kit.label(p[1], 20, Kit.TEXT))
+		var kl := Kit.label(str(p[0]), 13, Kit.MUTED)
+		kl.clip_text = true
+		kl.custom_minimum_size.x = 40
+		grid.add_child(kl)
+		grid.add_child(Kit.label(str(p[1]), 14, Kit.TEXT))
 	if str(r.get("cup_msg", "")) != "":
-		body.add_child(Kit.label(str(r["cup_msg"]), 22, Kit.GOLD))
+		body.add_child(Kit.wrap(str(r["cup_msg"]), 15, Kit.GOLD, 300))
 	for u in r.get("level_ups", []):
-		body.add_child(Kit.label("⬆ ¡NIVEL %d! +%s" % [int(u["level"]), Kit.fmt_cr(float(u["bonus"]))], 24, Kit.GREEN))
+		body.add_child(Kit.label("⬆ ¡NIVEL %d! +%s" % [int(u["level"]), Kit.fmt_cr(float(u["bonus"]))], 18, Kit.GREEN))
 	if t == "race" and not (r["standings"] as Array).is_empty():
-		body.add_child(Kit.label("CLASIFICACIÓN", 16, Kit.MUTED))
+		var sg := Kit.grid(2, 14, 2)
+		body.add_child(sg)
 		var i := 0
 		for s in r["standings"]:
 			i += 1
-			var line := "%d.  %s   %s" % [i, s["name"], Kit.fmt_time(float(s["time"])) if float(s["time"]) >= 0.0 else "—"]
-			body.add_child(Kit.label(line, 20, Kit.ACCENT if s["player"] else Kit.TEXT))
+			var line := "%d. %s  %s" % [i, s["name"], Kit.fmt_time(float(s["time"])) if float(s["time"]) >= 0.0 else "—"]
+			var sl := Kit.label(line, 14, Kit.ACCENT if s["player"] else Kit.TEXT)
+			sl.clip_text = true
+			sl.custom_minimum_size.x = 40
+			sg.add_child(sl)
 	sfx.play("finish")

@@ -8,13 +8,14 @@ extends Node
 
 const AdvRoute := preload("res://game/adventure/adv_route.gd")
 const AdvData := preload("res://game/adventure/adv_data.gd")
+const Release := preload("res://game/data/release.gd")
 const AdvHud := preload("res://game/adventure/adv_hud.gd")
 const CinePilot := preload("res://game/adventure/cine_pilot.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const AIDriver := preload("res://game/ai/ai_driver.gd")
 const Profile := preload("res://game/data/profile.gd")
 
-const CAMS := [1, 0, 7] # tercera persona, piloto, capó
+const CAMS := [1, 0, 6, 7] # tercera persona, piloto (casco), interior atrás (se ve el piloto y el copiloto) y capó
 
 var r # race.gd
 var track
@@ -876,7 +877,7 @@ func _update_hud(_dt: float) -> void:
 	hud.set_cars(L)
 
 func _show_station() -> void:
-	hud.show_station(station_tab, {"stage": stage, "time": result.get("time", time), "margin": result.get("margin", 0.0), "vmax": result.get("vmax", vmax), "station": station_name}, st)
+	hud.show_station(station_tab, {"stage": stage, "time": result.get("time", time), "margin": result.get("margin", 0.0), "vmax": result.get("vmax", vmax), "station": station_name, "limit": Release.adventure_limit(r.profile)}, st)
 
 func _save() -> void:
 	if r.profile != null:

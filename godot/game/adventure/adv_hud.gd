@@ -552,7 +552,11 @@ func show_station(tab: String, data: Dictionary, st: Dictionary) -> void:
 			tune_page(body, st)
 		"skills":
 			skills_page(body, st)
-	if last:
+	var capped := (stage + 1) >= int(data.get("limit", 99)) and not last
+	if capped:
+		_text(body, "🚧 Hasta acá llega la primera parte de la aventura. Las próximas etapas llegan con una actualización; tu avance queda guardado.", 18, Kit.GOLD)
+		_row_buttons(body, [["💾 GUARDAR Y SALIR", "save_quit", true]])
+	elif last:
 		_row_buttons(body, [["🏆 TERMINAR LA AVENTURA", "finish", true]])
 	else:
 		_row_buttons(body, [["▶ CONTINUAR A LA ETAPA %d" % (stage + 2), "next", true], ["💾 GUARDAR Y SALIR", "save_quit"]])
