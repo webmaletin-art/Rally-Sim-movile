@@ -1637,8 +1637,10 @@ func _step_physics(dt: float) -> void:
 	pl.in_nitro = controls.nitro
 	if menu_mode and session != null and session.state == "run" and assist_view != null:
 		var la := float(_sim_assists()["line"]) / 100.0
-		if la > 0.0:
-			pl.in_steer = clampf(pl.in_steer + _line_steer(pl) * la * 0.85 * (1.0 - absf(pl.in_steer)), -1.0, 1.0)
+		# con el auto casi parado la ayuda no gira el volante (antes se veía el volante torcido en la largada)
+		var moving := clampf((absf(pl.phys.vLong) - 2.0) / 5.0, 0.0, 1.0)
+		if la > 0.0 and moving > 0.0:
+			pl.in_steer = clampf(pl.in_steer + _line_steer(pl) * la * 0.85 * moving * (1.0 - absf(pl.in_steer)), -1.0, 1.0)
 	if session != null and session.state == "countdown":
 		pl.in_throttle = 0.0 # en la largada el auto está frenado hasta el "¡YA!"
 		pl.in_brake = 1.0
