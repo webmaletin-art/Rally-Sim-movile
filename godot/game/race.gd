@@ -115,6 +115,8 @@ var was_inside := false
 var was_onboard := false
 var cam_index := 1
 var wall_on := false # pista solo de camino: límite lateral con árboles (se activa en las carreras del menú)
+var track_arg := ""
+var view_at := -1.0 # prueba (vistas previas de las pistas): pone el auto en esta fracción del recorrido
 var fx_arg := "" # prueba: efectos 2.0 por argumento (p. ej. --fx=11,3,0)
 var lens_auto := true # el filtro se apaga solo si el teléfono no llega
 var lens: Node # filtro de cámara (Lente Rally)
@@ -150,8 +152,11 @@ func _ready() -> void:
 			auto_player = true
 		elif a.begins_with("--fx="):
 			fx_arg = a.substr(5)
+		elif a.begins_with("--viewat="):
+			view_at = float(a.substr(9))
 		elif a.begins_with("--track="):
 			track_id = a.substr(8)
+			track_arg = track_id
 		elif a.begins_with("--cars="):
 			cars_n = int(a.substr(7))
 		elif a.begins_with("--trees="):
@@ -160,7 +165,7 @@ func _ready() -> void:
 	track_maps = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["maps"]
 	menu_mode = not cfg.is_empty()
 	if menu_mode:
-		track_id = str(cfg.get("track", "forest"))
+		track_id = track_arg if track_arg != "" else str(cfg.get("track", "forest"))
 		weather_name = {"day": "dia", "overcast": "nublado", "rain": "lluvia", "sunset": "atardecer", "dusk": "ocaso"}.get(str(cfg.get("sky", "day")), "dia")
 		cars_n = 1 + int(cfg.get("ai", 0))
 		trees_n = 3000
@@ -214,13 +219,6 @@ func _ready() -> void:
 		AudioServer.add_bus_effect(0, audiorec)
 		audiorec.set_recording_active(true)
 	audio.rain(weather_name == "lluvia")
-	if fx_arg != "":
-		var fa: Array = []
-		for t in fx_arg.split(","):
-			fa.append(int(t))
-		while fa.size() < 3:
-			fa.append(0)
-		lens.fx = fa
 	if menu_mode:
 		# opciones del jugador
 		lens.apply_settings(profile)
@@ -233,8 +231,23 @@ func _ready() -> void:
 		AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(profile.setting("volume")) / 80.0, 0.001)))
 		_apply_quality_settings()
 		_apply_controls_settings()
+	if fx_arg != "":
+		var fa: Array = []
+		for t in fx_arg.split(","):
+			fa.append(int(t))
+		while fa.size() < 3:
+			fa.append(0)
+		lens.fx = fa
 	_rebuild_trees()
 	_rebuild_cars()
+	if OS.get_cmdline_user_args().has("--hidecars"):
+		for c in cars:
+			c.visual.visible = false
+	if OS.get_cmdline_user_args().has("--nohud"):
+		controls.visible = false
+		hud.visible = false
+		if race_hud != null:
+			race_hud.visible = false
 	if autobench:
 		_bench_start()
 
@@ -305,7 +318,7 @@ func _make_track() -> void:
 			track.outside_surf = 1.0
 		return
 	var m: Dictionary = track_maps[track_id]
-	track = RouteTrack.new(str(m["route"]), str(m["mode"]), m.get("reverse", false) == true)
+	track = RouteTrack.new(str(m["route"]), str(m["mode"]), m.get("reverse", false) == true, 1.0 if menu_mode else 0.0)
 
 ## Suelo, camino, banquina y terreno de la pista (el terreno se calcula en hilos y aparece cuando está listo)
 func _build_track_nodes() -> void:
@@ -346,6 +359,8 @@ func _build_track_nodes() -> void:
 			track_root.add_child(track.build_start_gate(g1, "📸 RADAR" if str(cfg.get("type")) == "trap" else "META", Color(1.0, 0.35, 0.3)))
 		if wall_on:
 			track_root.add_child(track.build_guardrail(rail_off(), track.mode == "dirt"))
+			var tn := 1500 if (menu_mode and str(profile.setting("quality")) == "low") else (6000 if (menu_mode and str(profile.setting("quality")) == "high") else 3500)
+			track_root.add_child(track.build_tufts(tn, rail_off() + 0.6, 4242))
 		var dims: Dictionary = track.terrain_dims()
 		terrain_r = int(dims["R"])
 		terrain_rows.clear()
@@ -417,6 +432,50 @@ func _assist_changed(key: String) -> void:
 		cfg["sim"] = "custom"
 	_apply_assists()
 
+## Corteza: vetas verticales marrones con nudos (se repite sin costura)
+func _bark_tex() -> ImageTexture:
+	var N := 128
+	var img := Image.create(N, N, false, Image.FORMAT_RGB8)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	for y in N:
+		for x in N:
+			var fx := float(x) / float(N) * TAU
+			var streak := 0.5 + 0.5 * sin(fx * 11.0 + sin(float(y) / float(N) * TAU * 2.0) * 1.3) * sin(fx * 5.0 + 0.7)
+			var v := 0.34 + 0.22 * streak + 0.07 * rng.randf()
+			img.set_pixel(x, y, Color(v * 1.0, v * 0.76, v * 0.55))
+	for k in 18: # nudos / grietas oscuras
+		var bx := rng.randi() % N
+		var by := rng.randi() % N
+		for j in 9:
+			var c := img.get_pixel((bx + j / 4) % N, (by + j) % N)
+			img.set_pixel((bx + j / 4) % N, (by + j) % N, c.darkened(0.45))
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
+## Copa del pino: tres conos superpuestos, cada uno más angosto; más oscuros abajo (sombra propia falsa)
+func _crown_mesh(seg: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var layers := [[1.75, 2.0, 0.0], [1.35, 1.9, 1.35], [0.95, 1.7, 2.6]] # radio, alto, altura de la base
+	for L in layers:
+		var r: float = L[0]
+		var h: float = L[1]
+		var y0: float = L[2] - 2.3
+		for i in seg + 3:
+			var a0 := TAU * float(i) / float(seg + 3)
+			var a1 := TAU * float(i + 1) / float(seg + 3)
+			var p0 := Vector3(cos(a0) * r, y0, sin(a0) * r)
+			var p1 := Vector3(cos(a1) * r, y0, sin(a1) * r)
+			var tip := Vector3(0, y0 + h, 0)
+			var nrm := ((p1 - p0).cross(tip - p0)).normalized()
+			for v in [p0, tip, p1]:
+				var shade := 0.62 + 0.38 * clampf((v.y - y0) / h, 0.0, 1.0)
+				st.set_color(Color(shade, shade, shade))
+				st.set_normal(nrm)
+				st.add_vertex(v)
+	return st.commit()
+
 func _rebuild_trees() -> void:
 	if trees_node != null:
 		trees_node.queue_free()
@@ -425,19 +484,13 @@ func _rebuild_trees() -> void:
 	if trees_n <= 0:
 		return
 	var trunk := CylinderMesh.new()
-	trunk.top_radius = 0.14
-	trunk.bottom_radius = 0.24
-	trunk.height = 2.4
-	trunk.radial_segments = 5
+	trunk.top_radius = 0.13
+	trunk.bottom_radius = 0.26
+	trunk.height = 2.6
+	trunk.radial_segments = 7
 	trunk.rings = 1
 	trunk.cap_top = false
-	var crown := CylinderMesh.new()
-	crown.top_radius = 0.0
-	crown.bottom_radius = 1.7
-	crown.height = 4.6
-	crown.radial_segments = 6
-	crown.rings = 1
-	crown.cap_top = false
+	var crown := _crown_mesh(4)
 	var low := CylinderMesh.new()
 	low.top_radius = 0.0
 	low.bottom_radius = 1.8
@@ -447,13 +500,16 @@ func _rebuild_trees() -> void:
 	low.cap_top = false
 	low.cap_bottom = false
 	var tm := StandardMaterial3D.new()
-	tm.albedo_color = Color(0.30, 0.20, 0.12)
+	tm.albedo_texture = _bark_tex()
+	tm.albedo_color = Color(0.85, 0.78, 0.7)
+	tm.uv1_scale = Vector3(2.0, 3.0, 1.0)
 	tm.roughness = 1.0
 	var cm := StandardMaterial3D.new()
-	cm.albedo_color = Color(0.10, 0.32, 0.12)
+	cm.albedo_color = Color(0.11, 0.34, 0.13)
+	cm.vertex_color_use_as_albedo = true
 	cm.roughness = 1.0
 	trunk.material = tm
-	crown.material = cm
+	crown.surface_set_material(0, cm)
 	low.material = cm
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 12345
@@ -544,6 +600,7 @@ func _rebuild_trees() -> void:
 func _multimesh(mesh: Mesh, list: Array, center: Vector3, y_off: float, size_k: float, step: int) -> MultiMesh:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
 	mm.mesh = mesh
 	var n := int(ceil(float(list.size()) / float(step)))
 	mm.instance_count = n
@@ -551,6 +608,8 @@ func _multimesh(mesh: Mesh, list: Array, center: Vector3, y_off: float, size_k: 
 		var e: Array = list[j * step]
 		var sc: float = float(e[2]) * size_k
 		mm.set_instance_transform(j, Transform3D(Basis().scaled(Vector3(sc, sc, sc)), Vector3(float(e[0]) - center.x, y_off * sc + float(e[3]) - center.y, float(e[1]) - center.z)))
+		var tv := 0.82 + 0.36 * fposmod(float(e[0]) * 0.137 + float(e[1]) * 0.291, 1.0) # cada árbol con su tono de verde
+		mm.set_instance_color(j, Color(tv, tv * (0.95 + 0.1 * fposmod(float(e[1]) * 0.53, 1.0)), tv * 0.95))
 	return mm
 
 func _add_tree_layer(mm: MultiMesh, center: Vector3, r_begin: float, r_end: float) -> void:
@@ -613,6 +672,8 @@ func _rebuild_cars() -> void:
 	var s0 := 0
 	if menu_mode and cfg.get("seg") is Array:
 		s0 = int(floor(float(cfg["seg"][0]) * float(track.n)))
+	if view_at >= 0.0 and track is RouteTrack:
+		s0 = int(floor(view_at * float(track.n)))
 	for i in cars_n:
 		var su: Dictionary = setups[i]
 		var d: Dictionary = su["params"]

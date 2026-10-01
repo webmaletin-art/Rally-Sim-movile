@@ -8,6 +8,8 @@ extends "res://game/physics/track_base.gd"
 const N_SAMPLES := 1100
 const BUMP_AMP := [0.005, 0.03, 0.035, 0.045, 0.05, 0.03] # por superficie: asfalto, tierra, banquina, pasto, afuera, barro
 
+var hills := 0.0 # subidas y bajadas suaves del recorrido (0 = las de la versión HTML; 1 = las de las carreras de Dream Racing)
+var center_line := false # línea amarilla del medio (solo para el modo aventura)
 var route_id := ""
 var mode := "asphalt" # "asphalt" | "dirt"
 var half_width := 5.0
@@ -41,9 +43,10 @@ var views: Array = [] # vistas creadas (para propagar el agarre)
 var prof_cache := {} # perfiles de velocidad de la IA (se comparten con las vistas)
 
 ## route: nombre en routes.json; reverse: sentido inverso. p_mode: "asphalt" o "dirt"
-func _init(p_route := "", p_mode := "asphalt", reverse := false) -> void:
+func _init(p_route := "", p_mode := "asphalt", reverse := false, p_hills := 0.0) -> void:
 	if p_route == "":
 		return
+	hills = p_hills
 	if _routes.is_empty():
 		_routes = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["routes"]
 	var r: Dictionary = _routes[p_route]
@@ -149,6 +152,9 @@ func _build() -> void:
 		var a := ctrl[ii].y
 		var b2 := ctrl[(ii + 1) % lc].y
 		y[i] = a + (b2 - a) * u2 + 0.20 * sin(t * PI * 6.0) + 0.10 * sin(t * PI * 15.0)
+		if hills > 0.0:
+			# frecuencias enteras: el recorrido cerrado empalma sin escalón
+			y[i] += hills * (7.0 * sin(t * TAU * 2.0 + 0.7) + 3.5 * sin(t * TAU * 5.0 + 2.0) + 1.2 * sin(t * TAU * 11.0 + 0.3))
 	for W in [6, 6, 4]:
 		var o := PackedFloat64Array()
 		o.resize(n)
@@ -373,9 +379,10 @@ func _asphalt_tex() -> ImageTexture:
 				img.set_pixel(x, y, Color(0.92, 0.92, 0.88))
 			for x in range(114, 120):
 				img.set_pixel(x, y, Color(0.92, 0.92, 0.88))
-		for y in range(0, 128):
-			for x in range(62, 67):
-				img.set_pixel(x, y, Color(0.96, 0.80, 0.27))
+		if center_line:
+			for y in range(0, 128):
+				for x in range(62, 67):
+					img.set_pixel(x, y, Color(0.96, 0.80, 0.27))
 	else:
 		for y in 256:
 			for xs in [38, 90]:
@@ -484,8 +491,12 @@ func build_shoulder_mesh() -> ArrayMesh:
 						idx.append_array(tri)
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)
+	var uvs2 := PackedVector2Array()
+	for v in verts:
+		uvs2.append(Vector2(v.x, v.z) * 0.22)
 	arr[Mesh.ARRAY_VERTEX] = verts
 	arr[Mesh.ARRAY_COLOR] = cols
+	arr[Mesh.ARRAY_TEX_UV] = uvs2
 	arr[Mesh.ARRAY_INDEX] = idx
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
@@ -495,6 +506,7 @@ func build_shoulder_mesh() -> ArrayMesh:
 	var out := st.commit()
 	var mat := StandardMaterial3D.new()
 	mat.vertex_color_use_as_albedo = true
+	mat.albedo_texture = grass_texture()
 	mat.roughness = 1.0
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	out.surface_set_material(0, mat)
@@ -546,6 +558,9 @@ func build_terrain_mesh(rows: Array, r: int) -> ArrayMesh:
 	for row in rows:
 		verts.append_array(row[0])
 		cols.append_array(row[1])
+	var uvs := PackedVector2Array()
+	for v in verts:
+		uvs.append(Vector2(v.x, v.z) * 0.22)
 	var idx := PackedInt32Array()
 	for iz in r:
 		for ix in r:
@@ -558,6 +573,7 @@ func build_terrain_mesh(rows: Array, r: int) -> ArrayMesh:
 	arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = verts
 	arr[Mesh.ARRAY_COLOR] = cols
+	arr[Mesh.ARRAY_TEX_UV] = uvs
 	arr[Mesh.ARRAY_INDEX] = idx
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
@@ -567,6 +583,7 @@ func build_terrain_mesh(rows: Array, r: int) -> ArrayMesh:
 	var out := st.commit()
 	var mat := StandardMaterial3D.new()
 	mat.vertex_color_use_as_albedo = true
+	mat.albedo_texture = grass_texture()
 	mat.roughness = 1.0
 	out.surface_set_material(0, mat)
 	return out
@@ -699,3 +716,102 @@ func build_guardrail(rail_off: float, wood := false) -> Node3D:
 	posts.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	g.add_child(posts)
 	return g
+
+
+## Textura de pasto: ruido de varias escalas y briznas cortas (256 px con mipmaps); se tiñe con el color de cada vértice
+static var _grass_cache: ImageTexture
+static func grass_texture() -> ImageTexture:
+	if _grass_cache != null:
+		return _grass_cache
+	var N := 256
+	var img := Image.create(N, N, false, Image.FORMAT_RGB8)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 77
+	for y in N:
+		for x in N:
+			var fx := float(x) / float(N) * TAU
+			var fy := float(y) / float(N) * TAU
+			# ruido periódico (las frecuencias son enteras: la textura repite sin costura)
+			var low := 0.5 + 0.25 * sin(fx * 2.0 + sin(fy * 3.0)) + 0.25 * sin(fy * 3.0 + sin(fx * 2.0) * 1.5)
+			var mid := 0.5 + 0.5 * sin(fx * 9.0 + fy * 5.0) * sin(fy * 8.0 - fx * 3.0)
+			var v := 0.78 + 0.16 * low + 0.07 * mid + 0.07 * rng.randf()
+			img.set_pixel(x, y, Color(v * 0.97, v, v * 0.93))
+	# brizna: trazo corto casi vertical, más claro o más oscuro
+	for k in 2600:
+		var bx := rng.randi() % N
+		var by := rng.randi() % N
+		var ln := 3 + rng.randi() % 6
+		var lean := rng.randf_range(-0.5, 0.5)
+		var shade := 0.72 if rng.randf() < 0.5 else 1.14
+		for j in ln:
+			var px := posmod(bx + int(lean * float(j)), N)
+			var py := (by - j + N) % N
+			var c := img.get_pixel(px, py)
+			img.set_pixel(px, py, Color(clampf(c.r * shade, 0.0, 1.0), clampf(c.g * shade, 0.0, 1.0), clampf(c.b * shade, 0.0, 1.0)))
+	img.generate_mipmaps()
+	_grass_cache = ImageTexture.create_from_image(img)
+	return _grass_cache
+
+## Matas de pasto y flores pegadas al camino: cuadrados cruzados con transparencia, repartidos en un MultiMesh (se ven hasta ~90 m)
+func build_tufts(count: int, from_off: float, seed_v: int) -> MultiMeshInstance3D:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_v
+	var N := 64
+	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	for b in 14:
+		var bx := 6.0 + float(b) * 3.6 + rng.randf() * 2.0
+		var hgt := rng.randf_range(0.45, 0.95) * float(N - 2)
+		var lean := rng.randf_range(-0.35, 0.35)
+		var col := Color(0.18 + rng.randf() * 0.12, 0.42 + rng.randf() * 0.2, 0.12 + rng.randf() * 0.08, 1.0)
+		for j in int(hgt):
+			var w := 1.0 + (1.0 - float(j) / hgt) * 2.2
+			var px := bx + lean * float(j) * 0.5
+			for dx in range(-int(w), int(w) + 1):
+				var xx := clampi(int(px) + dx, 0, N - 1)
+				var yy := N - 1 - j
+				img.set_pixel(xx, yy, col.lightened(float(j) / hgt * 0.25))
+	img.generate_mipmaps()
+	var tex := ImageTexture.create_from_image(img)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = tex
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	mat.alpha_scissor_threshold = 0.5
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mat.roughness = 1.0
+	mat.vertex_color_use_as_albedo = true
+	var quad_a := QuadMesh.new()
+	quad_a.size = Vector2(1.1, 0.7)
+	quad_a.center_offset = Vector3(0, 0.35, 0)
+	quad_a.material = mat
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	mm.mesh = quad_a
+	mm.instance_count = count * 2 # cada mata son dos cuadrados cruzados
+	var view = make_view()
+	view.hint = -1
+	var k := 0
+	for q in count:
+		var si := rng.randi() % n
+		var p: Vector3 = samples[si]
+		var l: Vector3 = laterals[si]
+		var off := from_off + rng.randf() * rng.randf() * 18.0
+		var sg := 1.0 if rng.randf() < 0.5 else -1.0
+		var x: float = p.x + l.x * sg * off
+		var z: float = p.z + l.z * sg * off
+		view.hint = si
+		var y: float = view.ground_smooth(x, z) - 0.02
+		var sc := rng.randf_range(0.7, 1.5)
+		var yaw := rng.randf() * PI
+		var tint := Color(0.85 + rng.randf() * 0.3, 0.9 + rng.randf() * 0.2, 0.8 + rng.randf() * 0.2)
+		for cr in 2:
+			var b := Basis(Vector3.UP, yaw + float(cr) * PI * 0.5).scaled(Vector3(sc, sc, sc))
+			mm.set_instance_transform(k, Transform3D(b, Vector3(x, y, z)))
+			mm.set_instance_color(k, tint)
+			k += 1
+	var inst := MultiMeshInstance3D.new()
+	inst.multimesh = mm
+	inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	inst.visibility_range_end = 95.0
+	return inst
