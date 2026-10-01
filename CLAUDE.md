@@ -4,5 +4,5 @@
 - Hoja de ruta y pendientes: `ROADMAP.md`.
 
 ## Recordatorios pendientes (avisarle al dueño en la próxima orden)
-- Modo aventura: plan en `docs/MODO_AVENTURA.md`. Antes de arrancar, explicarle al dueño cómo se va a hacer; arrancar cuando diga «continúa con el modo aventura».
+- Modo aventura: hecho (r26+), detalle en `docs/MODO_AVENTURA.md`. Pedirle al dueño que lo pruebe y diga qué ajustar (ritmo de los rivales, largo de las etapas).
 - El nombre del proyecto Godot (`config/name`) sigue «GSkorp Rally» a propósito: cambiarlo mueve la carpeta de guardado y se pierde el perfil.

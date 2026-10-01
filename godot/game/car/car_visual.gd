@@ -12,6 +12,7 @@ var body: Node3D
 var wheels: Array = [] # {steer, spin, front, angle}
 var lo := false
 var shell: Node3D
+var tire_mat: StandardMaterial3D
 var blob: MeshInstance3D # sombrita suave en el piso (no hace falta una sombra de verdad)
 static var _blob_mat: StandardMaterial3D
 
@@ -50,12 +51,10 @@ func setup(p_params: VehicleParams, p_lo: bool, paint: Color, rim: Color, finish
 				m.metallic = 0.6
 				m.roughness = 0.1
 				m.cull_mode = BaseMaterial3D.CULL_DISABLED
+				mi.set_surface_override_material(s, m)
 			else:
-				m.albedo_color = paint
-				var fin: Array = FINISH.get(finish, FINISH["gloss"])
-				m.metallic = fin[0]
-				m.roughness = fin[1]
-			mi.set_surface_override_material(s, m)
+				# carrocería: el sombreador de pintura (los colores de vértice del modelo vienen azules: se usa solo su brillo)
+				mi.set_surface_override_material(s, _paint_material(0, paint, Color(1.0, 0.5, 0.1), finish))
 	_make_blob()
 	# ruedas
 	var wheel_scene: PackedScene = load("res://game/models/volt_wheel%s.glb" % suffix)
@@ -63,7 +62,7 @@ func setup(p_params: VehicleParams, p_lo: bool, paint: Color, rim: Color, finish
 	var a := V.wheelBase * (1.0 - V.weightFront)
 	var b := V.wheelBase * V.weightFront
 	var defs := [[V.trackF / 2.0, a, true], [-V.trackF / 2.0, a, true], [V.trackR / 2.0, -b, false], [-V.trackR / 2.0, -b, false]]
-	var tire_mat := StandardMaterial3D.new()
+	tire_mat = StandardMaterial3D.new()
 	tire_mat.albedo_color = Color(0.08, 0.085, 0.09)
 	tire_mat.roughness = 0.93
 	var rim_mat := StandardMaterial3D.new()
@@ -91,6 +90,99 @@ func setup(p_params: VehicleParams, p_lo: bool, paint: Color, rim: Color, finish
 				var n2 := mt.resource_name if mt else ""
 				mi.set_surface_override_material(s, tire_mat if n2 == "tire" else (ring_mat if n2 == "ring" else rim_mat))
 		wheels.append({"steer": steer, "spin": spin, "front": d[2], "angle": 0.0})
+
+## Rotulados: dibujos de pintura calculados sobre la carrocería (no hace falta textura): franjas, banda lateral, la «onda»
+## de Dream Racing, bicolor y el rally con el círculo del número en las puertas. 0 = liso.
+const LIVERIES := ["Liso", "Franjas", "Banda lateral", "Onda Dream", "Bicolor", "Rally"]
+const LIVERY_SHADER := """
+shader_type spatial;
+uniform vec3 paint : source_color = vec3(0.1, 0.3, 0.9);
+uniform vec3 accent : source_color = vec3(1.0, 0.5, 0.1);
+uniform vec3 accent2 : source_color = vec3(0.95, 0.95, 0.93);
+uniform int pattern = 0;
+uniform float metal = 0.45;
+uniform float rough = 0.35;
+varying vec3 lp;
+varying vec3 ln;
+void vertex() {
+	lp = VERTEX;
+	ln = NORMAL;
+}
+float band(float v, float a, float b) {
+	float w = max(fwidth(v), 0.002) * 1.2;
+	return smoothstep(a - w, a + w, v) * (1.0 - smoothstep(b - w, b + w, v));
+}
+void fragment() {
+	vec3 c = paint;
+	float side = smoothstep(0.35, 0.55, abs(ln.x));
+	float top = smoothstep(0.25, 0.5, ln.y);
+	float ax = abs(lp.x);
+	if (pattern == 1) {
+		float m = (band(ax, 0.10, 0.30) * top) + band(ax, 0.10, 0.30) * smoothstep(0.3, 0.6, abs(ln.z)) * step(0.5, lp.y);
+		c = mix(c, accent, clamp(m, 0.0, 1.0));
+		c = mix(c, accent2, band(ax, 0.32, 0.36) * top);
+	} else if (pattern == 2) {
+		float y0 = 0.52 + (lp.z - 0.2) * 0.06;
+		c = mix(c, accent, band(lp.y, y0, y0 + 0.17) * side);
+		c = mix(c, accent2, band(lp.y, y0 + 0.21, y0 + 0.25) * side);
+	} else if (pattern == 3) {
+		float wave = 0.62 + 0.18 * sin(lp.z * 1.5 + 0.6);
+		c = mix(c, accent, band(lp.y, wave - 0.09, wave + 0.04) * side);
+		c = mix(c, accent2, band(lp.y, wave + 0.07, wave + 0.10) * side);
+		c = mix(c, accent, band(ax, 0.0, 0.05) * top * step(0.4, lp.z));
+	} else if (pattern == 4) {
+		float k = lp.z * 0.9 - lp.y * 0.7;
+		c = mix(c, accent, smoothstep(0.05, 0.12, k));
+		c = mix(c, accent2, band(k, -0.03, 0.03));
+	} else if (pattern == 5) {
+		vec2 d = vec2(lp.z - 0.15, lp.y - 0.78);
+		float r = length(d);
+		float disc = (1.0 - smoothstep(0.30, 0.31, r)) * side;
+		float ring = band(r, 0.30, 0.36) * side;
+		c = mix(c, accent2, disc);
+		c = mix(c, accent, ring);
+		c = mix(c, accent, band(ax, 0.0, 0.22) * top * step(0.0, lp.z));
+	}
+	// el modelo trae la pintura original (azul) en los colores de vértice: se usa solo cuánto brilla cada parte
+	float k = clamp(dot(COLOR.rgb, vec3(0.2126, 0.7152, 0.0722)) / 0.114, 0.0, 1.0);
+	ALBEDO = c * k;
+	METALLIC = metal;
+	ROUGHNESS = rough;
+}
+"""
+static var _livery_shader: Shader
+
+## Color de las gomas (negro de fábrica)
+func set_tire_color(c: Color) -> void:
+	if tire_mat != null:
+		tire_mat.albedo_color = c
+
+static func _paint_material(pattern: int, paint: Color, accent: Color, finish: String, accent2 := Color(0.95, 0.95, 0.93)) -> ShaderMaterial:
+	if _livery_shader == null:
+		_livery_shader = Shader.new()
+		_livery_shader.code = LIVERY_SHADER
+	var fin: Array = FINISH.get(finish, FINISH["gloss"])
+	var sm := ShaderMaterial.new()
+	sm.shader = _livery_shader
+	sm.set_shader_parameter("paint", paint)
+	sm.set_shader_parameter("accent", accent)
+	sm.set_shader_parameter("accent2", accent2)
+	sm.set_shader_parameter("pattern", pattern)
+	sm.set_shader_parameter("metal", float(fin[0]))
+	sm.set_shader_parameter("rough", float(fin[1]))
+	return sm
+
+## Cambia la pintura de la carrocería por la del rotulado elegido (pattern 0 = lisa)
+func set_livery(pattern: int, paint: Color, accent: Color, finish := "gloss", accent2 := Color(0.95, 0.95, 0.93)) -> void:
+	if shell == null:
+		return
+	for mi in _mesh_instances(shell):
+		var mesh: Mesh = mi.mesh
+		for sidx in mesh.get_surface_count():
+			var mat := mesh.surface_get_material(sidx)
+			if mat != null and mat.resource_name == "glass":
+				continue
+			mi.set_surface_override_material(sidx, _paint_material(pattern, paint, accent, finish, accent2))
 
 func _make_blob() -> void:
 	if _blob_mat == null:

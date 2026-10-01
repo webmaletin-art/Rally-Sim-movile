@@ -92,7 +92,8 @@ static func car_setups(race) -> Array:
 	P["gripFront"] = float(P["gripFront"]) * float(dm["grip"])
 	P["gripRear"] = float(P["gripRear"]) * float(dm["grip"])
 	var pname := str(profile.d["name"]) if profile != null else "Piloto"
-	var out: Array = [{"params": P, "paint": Color(str(AdvData.PAINT["body"])), "rim": Color(str(AdvData.PAINT["rim"])), "name": pname, "finish": str(AdvData.PAINT["finish"]), "visual_type": str(vehicles[AdvData.CAR].get("visualType", AdvData.CAR)), "ai": {}}]
+	var out: Array = [{"params": P, "paint": Color(str(AdvData.PAINT["body"])), "rim": Color(str(AdvData.PAINT["rim"])), "name": pname, "finish": str(AdvData.PAINT["finish"]), "visual_type": str(vehicles[AdvData.CAR].get("visualType", AdvData.CAR)), "ai": {},
+		"livery": int(AdvData.PAINT["livery"]), "accent": Color(str(AdvData.PAINT["accent"]))}]
 	var S0: Dictionary = AdvRoute.STAGES[int(cfg["stage"])]
 	var rv: Array = [S0["rival"]]
 	if S0.has("rival2"):
@@ -107,7 +108,8 @@ static func car_setups(race) -> Array:
 		RP["gripRear"] = float(RP["gripRear"]) * float(R0.get("grip", 1.0))
 		RP["vGov"] = 0.0
 		out.append({"params": RP, "paint": Color(str(R0["paint"])), "rim": Color(0.12, 0.12, 0.14), "name": str(R0["name"]), "finish": "gloss",
-			"visual_type": str(vehicles[cid].get("visualType", cid)), "ai": {"skill": float(R0["skill"]), "lane": 1.2 * (1.0 if k == 0 else -1.0), "aggr": 0.6}})
+			"visual_type": str(vehicles[cid].get("visualType", cid)), "ai": {"skill": float(R0["skill"]), "lane": 1.2 * (1.0 if k == 0 else -1.0), "aggr": 0.6},
+			"livery": 1 + (int(cfg["stage"]) + k) % 5, "accent": Color(str(R0.get("accent", "#1b2a6b" if Color(str(R0["paint"])).get_luminance() > 0.6 else "#f5f5f2")))})
 	return out
 
 ## Dónde se coloca cada auto al armar la etapa: [x, z, yaw]
@@ -318,6 +320,16 @@ func _enter(s: String) -> void:
 			_shot({"kind": "fixed", "pos": p + L * (lat0 + 3.0) + Vector3(0, 1.7, 0), "fov": 48.0, "track": true})
 			hud.big("¡LLEGASTE PRIMERO!", station_name, 3.0, Kit_GOLD())
 			r.sfx.play("finish")
+		"fuel":
+			# el auto quedó junto al surtidor: carga combustible (cámara bajita, mirando el surtidor y el auto)
+			hud.big("⛽", "Cargando combustible…", 3.0, Kit_GOLD())
+			r.sfx.play("coin")
+			var ie: int = track.i_end
+			var p: Vector3 = track.samples[ie]
+			var L: Vector3 = track.laterals[ie]
+			var tg: Vector3 = track.tangents[ie]
+			var lat0: float = float(track.hwa[ie]) + _lay_at(track, ie)
+			_shot({"kind": "dolly", "pos": p + L * (lat0 * 0.5 + 2.6 - 3.3) - tg * 5.5 + Vector3(0, float(track.cy[ie]) - p.y + 1.3, 0), "dir": tg * 0.25, "fov": 46.0})
 		"station":
 			hud.cine(true)
 			station_tab = "sum"
@@ -440,6 +452,10 @@ func tick(dt: float) -> void:
 			var cp2 = r.cars[0].driver
 			_rival_follow(dt)
 			if (cp2 is CinePilot and cp2.done and t > 1.5) or t > 14.0:
+				_enter("fuel")
+		"fuel":
+			_rival_follow(dt)
+			if t > 3.2:
 				_enter("station")
 		"station", "lost":
 			_rival_follow(dt)
