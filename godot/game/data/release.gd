@@ -9,14 +9,30 @@ const PUBLIC_TIERS := ["debut"]
 ## Autos que solo se consiguen jugando: se ven y se prueban en la concesionaria, pero se compran recién al ganarlos
 const REWARD_CARS := ["genesis"]
 
+## Versión de Google Play (se compila con la característica «store»): sin modo desarrollador, sin pruebas de rendimiento y sin descargas
+static func store() -> bool:
+	return OS.has_feature("store")
+
+## Hay compras dentro del juego para desbloquear el juego completo (si es false, lo bloqueado dice «próxima actualización»)
+const IAP_FULL := true
+
 static func dev(profile: RefCounted) -> bool:
-	return profile != null and profile.setting("dev") == true
+	return not store() and profile != null and profile.setting("dev") == true
+
+## ¿Tiene el juego completo? (compra «dr_full» o modo desarrollador)
+static func full(profile: RefCounted) -> bool:
+	if dev(profile):
+		return true
+	return profile != null and ((profile.d.get("iap", {}) as Dictionary).get("dr_full", false) == true)
+
+static func lock_text() -> String:
+	return "Desbloqueá el juego completo en 💎 COMPRAS" if IAP_FULL else "Llega en una próxima actualización"
 
 static func adventure_limit(profile: RefCounted) -> int:
-	return 99 if dev(profile) else ADVENTURE_STAGES
+	return 99 if full(profile) else ADVENTURE_STAGES
 
 static func tier_allowed(profile: RefCounted, tier_id: String) -> bool:
-	return dev(profile) or PUBLIC_TIERS.has(tier_id)
+	return full(profile) or PUBLIC_TIERS.has(tier_id)
 
 ## ¿Aparece en la concesionaria? (todos: los autos de premio se pueden ver y probar, pero no comprar hasta ganarlos)
 static func car_for_sale(_profile: RefCounted, _id: String) -> bool:

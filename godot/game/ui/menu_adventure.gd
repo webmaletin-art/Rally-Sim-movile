@@ -102,7 +102,7 @@ func _start_info() -> void:
 func _play(stage: int, intro: bool) -> void:
 	if stage >= Release.adventure_limit(m.profile):
 		m.sfx.play("error")
-		m.toast(tr("Esta etapa llega en una próxima actualización"))
+		m.toast(tr(Release.lock_text()))
 		return
 	var c := {"type": "adventure", "stage": stage, "back": "adventure"}
 	if intro:
