@@ -5,7 +5,7 @@ Todo lo que ya está armado en el repositorio y lo que tiene que hacer el dueño
 ## 1. Qué ya está listo en el código
 | Cosa | Dónde |
 |---|---|
-| Preset de exportación **«Google Play (AAB)»**: juego completo adentro (sin descargas), Gradle + AAB, API objetivo **36**, arm64 + armeabi-v7a, sin permiso de Internet, íconos propios, característica `store` | `godot/export_presets.cfg` (preset.3) |
+| Preset de exportación **«Google Play (AAB)»**: juego completo adentro (sin descargas), Gradle + AAB, API objetivo **36**, arm64 + armeabi-v7a, íconos propios, característica `store` | `godot/export_presets.cfg` (preset.3) |
 | Flujo de compilación **«Build Play Store AAB»** (manual): instala la plantilla de Gradle, el plugin de compras, firma, versión automática y publica el `.aab` en la release `play-aab` | `.github/workflows/build-aab.yml` |
 | Compras dentro del juego (Google Play Billing): productos, pantalla COMPRAS, restaurar, créditos, juego completo | `godot/game/store/products.gd`, `store/billing.gd`, `ui/menu_store.gd` |
 | Versión «store»: sin modo desarrollador, sin prueba de rendimiento, sin descargas, textos legales con compras | `Release.store()` (`data/release.gd`) |
@@ -67,7 +67,7 @@ Los íconos del lanzador (adaptativo + monocromo) ya están en `godot/store/icon
 ## 5. Qué queda oculto o apagado en la versión de Play (ya hecho, solo en el AAB)
 - **Modo desarrollador** (siete toques en la versión): no se puede activar y, aunque un perfil lo tuviera guardado, se ignora.
 - **RENDIMIENTO** (prueba de rendimiento): sin botón en el menú ni arranque directo.
-- **Descargas / permiso de Internet**: el juego va completo adentro y no pide Internet.
+- **Descargas**: el juego va completo adentro y funciona sin conexión (los permisos de red que figuran en el AAB los agrega la biblioteca de compras de Google).
 - **Textos legales** (privacidad y términos): versión de Google Play, que cuenta las compras.
 - Los argumentos de línea de comandos de prueba (`--perf`, `--autotest`…) no existen en Android.
 
@@ -87,4 +87,5 @@ Los íconos del lanzador (adaptativo + monocromo) ya están en `godot/store/icon
 ## 7. Cosas técnicas a vigilar
 - **API 36 exigida por Google** desde el 31/08/2026 (hay prórroga hasta el 1/11/2026 si se pide). El flujo compila contra la plataforma 36 aunque Godot 4.4 trae la plantilla de la 35: si Gradle se queja, hay que subir a Godot 4.5 (hay que probar el juego en esa versión).
 - **Plugin de compras**: el flujo lo baja de `godotengine/godot-google-play-billing`; si no lo encuentra el AAB sale marcado `SIN-COMPRAS`. La API del plugin se ajustará en la primera prueba interna (no se puede probar fuera de Google Play).
-- Tamaño: el AAB debe pesar menos de 200 MB (hoy el contenido pesa ~18 MB).
+- Tamaño: el AAB debe pesar menos de 200 MB (la prueba de armado dio **70 MB**).
+- **Verificado en la compilación de prueba (r1):** el AAB se arma de punta a punta, apunta a la API 36, trae el plugin y la biblioteca de compras, el nombre de paquete `com.gskorp.dreamracing` y vibración; salió con la clave de depuración (por eso se llama `PRUEBA`).
