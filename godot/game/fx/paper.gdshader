@@ -13,6 +13,10 @@ uniform float edge_px = 0.9;
 uniform float grain_amt : hint_range(0.0, 0.5) = 0.16;
 uniform float tint_var : hint_range(0.0, 0.3) = 0.10;
 uniform float bright = 1.35;
+// destellos de sol (mapa de ensueño): algunas caras de papel «brillan» cuando reflejan el sol hacia la cámara
+uniform float glint = 0.0;
+uniform vec3 sun_dir = vec3(0.4, 0.6, 0.7); // hacia el sol, en el mundo
+uniform vec3 glint_col : source_color = vec3(1.0, 0.93, 0.78);
 
 varying vec3 v_bary;
 varying vec3 v_col;
@@ -48,4 +52,11 @@ void fragment() {
 	}
 	ALBEDO = mix(base, to_lin(edge_col), line * edge_amt);
 	ROUGHNESS = 1.0;
+	if (glint > 0.0) {
+		vec3 L = normalize((VIEW_MATRIX * vec4(sun_dir, 0.0)).xyz);
+		vec3 H = normalize(L + normalize(VIEW));
+		float sp = pow(max(dot(fn, H), 0.0), 70.0);
+		float gate = step(0.42, fract(sin(dot(floor(v_wpos * 2.3), vec3(12.9898, 78.233, 37.719))) * 43758.5453)); // solo algunas caras
+		EMISSION = glint_col * sp * gate * glint * 2.2;
+	}
 }

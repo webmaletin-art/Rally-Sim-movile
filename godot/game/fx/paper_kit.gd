@@ -52,6 +52,20 @@ static func material(detail: Texture2D = null, detail_amt := 0.0, detail_scale :
 	_mats[key] = m
 	return m
 
+## Material de papel con destellos de sol (mapa de ensueño). sun_dir: hacia el sol, en el mundo
+static func glint_material(sun_dir: Vector3, amt := 1.0) -> ShaderMaterial:
+	var key := "glint|%s|%.2f" % [str(sun_dir), amt]
+	if _mats.has(key):
+		return _mats[key]
+	var m := ShaderMaterial.new()
+	m.shader = SHADER
+	m.set_shader_parameter("grain", grain())
+	m.set_shader_parameter("edge_amt", 0.5)
+	m.set_shader_parameter("glint", amt)
+	m.set_shader_parameter("sun_dir", sun_dir)
+	_mats[key] = m
+	return m
+
 ## Agrega a una malla una superficie de caras de color liso (verts: 3 puntos por cara · cols: un color por vértice, igual en los tres)
 static func add_surface(m: ArrayMesh, verts: PackedVector3Array, cols: PackedColorArray, mat: Material = null) -> void:
 	var n := verts.size()

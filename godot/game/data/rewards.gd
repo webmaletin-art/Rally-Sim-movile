@@ -31,7 +31,7 @@ static func playable(ev: Dictionary) -> bool:
 	var mp: Dictionary = _maps.get(str(ev["map"]), {})
 	if str(mp.get("kind", "")) == "drift":
 		return str(ev["type"]) == "drift"
-	return str(mp.get("kind", "")) == "route" and str(ev["type"]) in ["race", "timetrial", "trap"]
+	return str(mp.get("kind", "")) in ["route", "dream"] and str(ev["type"]) in ["race", "timetrial", "trap"]
 
 ## Estrellas que pide una copa: mientras falten tipos de evento por portar, se pide como mucho el 70% de lo que se puede ganar antes
 static func stars_needed(tier: Dictionary) -> int:

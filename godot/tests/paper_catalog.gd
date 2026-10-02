@@ -9,6 +9,7 @@ func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		out = args[0]
+	var prefix := args[1] if args.size() > 1 else "" # solo las piezas cuyo id empieza así (por ejemplo «d_» = flora de ensueño)
 	DirAccess.make_dir_recursive_absolute(out)
 	var groups := {"1_arboles": ["arbol", "palmera"], "2_plantas_flores_rocas": ["arbusto", "planta", "flor", "bambu", "roca", "pasto"], "3_calle_y_suelo": ["calle"]}
 	var cat := PaperKit.catalog()
@@ -16,7 +17,7 @@ func _init() -> void:
 	for gname in groups:
 		var items: Array = []
 		for c in cat:
-			if (groups[gname] as Array).has(str(c["cat"])):
+			if (groups[gname] as Array).has(str(c["cat"])) and str(c["id"]).begins_with(prefix):
 				items.append(c)
 		var per := 10
 		for part in int(ceil(float(items.size()) / float(per))):
@@ -45,6 +46,9 @@ func _shot(gname: String, items: Array, out: String, kind: String) -> void:
 	var cols := 5
 	var rows := int(ceil(float(items.size()) / float(cols)))
 	var cell := 13.0 if kind == "1_arboles" else (3.4 if kind == "2_plantas_flores_rocas" else 7.0)
+	var args2 := OS.get_cmdline_user_args()
+	if args2.size() > 2 and kind == "2_plantas_flores_rocas":
+		cell = float(args2[2]) # tamaño de la celda (más chico = más zoom)
 	var vscale := 1.0
 	for i in items.size():
 		var c: Dictionary = items[i]

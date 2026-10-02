@@ -254,6 +254,7 @@ func _quick() -> void:
 		if str(_maps()[k].get("kind", "")) == "route" and not _maps()[k].get("hidden", false) and not _maps()[k].get("trench", false):
 			route_maps.append(k)
 	route_maps.append("paperRace") # selva de papel: ruta y tierra, angosta y tupida
+	route_maps.append("dream") # Vórtice de Ensueño: vuelta inmensa de flores con subida, bajada y peralte
 	route_maps.append("drift") # la plaza de drift
 	route_maps.append("adventure") # la Ruta de los Sueños del modo aventura, para recorrerla completa
 	var adv: bool = str(quick["map"]) == "adventure"
@@ -287,7 +288,8 @@ func _quick() -> void:
 	if not adv and car_ids.size() > 0:
 		defs.append(["Auto", "car", car_ids, func(v): return _quick_car_name(v)])
 	if not adv:
-		defs.append(["Clima", "sky", ["day", "overcast", "sunset", "dusk", "rain"], func(v): return tr(SKY_N[v])])
+		if str(quick["map"]) != "dream": # el Vórtice de Ensueño tiene su propio cielo
+			defs.append(["Clima", "sky", ["day", "overcast", "sunset", "dusk", "rain"], func(v): return tr(SKY_N[v])])
 		if str(quick["map"]) == "drift":
 			defs.append(["Drift", "dmode", ["free", "duel"], func(v): return tr("Libre (por puntos)") if v == "free" else tr("Duelo contra un bot")])
 			if str(quick["dmode"]) == "duel":
@@ -308,7 +310,7 @@ func _quick() -> void:
 			if key == "dmode":
 				m.go("quick", null, false)
 			if key == "map":
-				if (str(v) == "adventure") != (str(prev) == "adventure") or (str(v) == "drift") != (str(prev) == "drift"):
+				if _map_kind(str(v)) != _map_kind(str(prev)):
 					m.go("quick", null, false) # cambian los ajustes que se muestran
 				else:
 					refresh_pv.call(), m.sfx, 60.0)
@@ -316,6 +318,10 @@ func _quick() -> void:
 	if adv:
 		m.body.add_child(Kit.wrap(tr("Práctica: corrés la etapa con el DR Bisonte de la aventura; no cuenta para tu avance ni da premios."), 13, Kit.MUTED, 300))
 	m.body.add_child(Kit.button("¡CORRER!", func(): _start_quick(), true, 26, Vector2(0, 58)))
+
+## Familia del mapa de la Carrera rápida: cambia qué ajustes se muestran
+func _map_kind(id: String) -> String:
+	return id if id in ["adventure", "drift", "picada", "dream"] else "route"
 
 func _start_quick() -> void:
 	var q := quick

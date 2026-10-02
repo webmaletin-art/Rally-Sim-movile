@@ -25,6 +25,7 @@ var nitro := false
 var stuck_t := 0.0
 var off_t := 0.0
 var boost := 1.0
+var pace := 1.0 # ritmo extra que ajusta la carrera para que el rival se quede a la par del jugador (Vórtice de Ensueño)
 var idx := 0
 var lat := 0.0
 var t_frac := 0.0
@@ -52,6 +53,16 @@ func _init(p_track, p_phys: VehiclePhysics, opts := {}) -> void:
 	var surf := 0 if (track.mode == "asphalt" or track.surf_mu.size() > 0) else 1
 	mu = V.mu * float(V.surfGrip[surf]) * minf(V.gripFront, V.gripRear) * (0.92 if surf == 0 else 0.84) * (0.8 + 0.15 * skill)
 	prof = speed_profile(track, snappedf(mu, 0.02))
+
+## Ritmo (multiplicador de la velocidad objetivo) que lo deja a la par del jugador: gap = metros que le lleva de ventaja (negativo: va atrás),
+## want = ventaja que busca. Si se escapa afloja (hasta 25 % menos), si se queda aprieta (hasta 12 % más).
+static func pace_target(gap: float, want: float) -> float:
+	return 1.0 - clampf((gap - want) / 50.0, -1.2, 2.5) * 0.10
+
+## Potencia extra (multiplicador del motor del rival) para que pueda alcanzar o esperar al jugador aunque su auto sea más flojo o más fuerte en las subidas:
+## hasta +90 % si se quedó muy atrás, hasta −35 % si se escapó.
+static func power_target(gap: float, want: float) -> float:
+	return 1.0 - clampf((gap - want) / 70.0, -0.9, 0.35)
 
 static func _wrap(a: float) -> float:
 	return atan2(sin(a), cos(a))
@@ -186,6 +197,7 @@ func update(ph: VehiclePhysics, h: float) -> Vector3:
 	for k in range(0, look + 1):
 		vt = minf(vt, pv[(idx + k) % N])
 	vt *= (1.0 + (boost - 1.0) * 0.35 if boost > 1.0 else boost) * (0.82 + 0.18 * skill)
+	vt *= pace
 	if max_v > 0.0:
 		vt = minf(vt, max_v)
 	# prudencia: después de un susto baja un poco el ritmo y lo recupera de a poco

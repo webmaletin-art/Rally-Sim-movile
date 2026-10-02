@@ -90,6 +90,7 @@ jobs:
           godot --headless --script res://tests/paper_test.gd
           godot --headless --script res://tests/release_test.gd
           godot --headless --script res://tests/drag_test.gd
+          godot --headless --script res://tests/dream_test.gd
 
       - name: Número de versión del APK (sube con cada compilación)
         working-directory: godot

@@ -11,6 +11,8 @@ const DriftSession := preload("res://game/drift_session.gd")
 const PaperTrack := preload("res://game/track/paper_track.gd")
 const Drag := preload("res://game/data/drag.gd")
 const PaperWorld := preload("res://game/track/paper_world.gd")
+const DreamTrack := preload("res://game/track/dream_track.gd")
+const DreamWorld := preload("res://game/track/dream_world.gd")
 const DriftBot := preload("res://game/ai/drift_bot.gd")
 const MeshChunks := preload("res://game/track/mesh_chunks.gd")
 const PerfBench := preload("res://game/perf_bench.gd")
@@ -293,9 +295,13 @@ func _ready() -> void:
 	weather = Weather.new()
 	world.add_child(weather)
 	weather.setup(env, sun, cam, track, fx, road_mat, ground_mat)
+	if track is DreamTrack:
+		weather_name = "dia" # el Vórtice de Ensueño tiene su propio cielo: sin lluvia ni nubes del clima común
 	weather.apply(weather_name, true)
 	if track is PaperTrack:
 		_paper_atmosphere()
+	if track is DreamTrack:
+		_dream_atmosphere()
 	audio = CarAudio.new()
 	add_child(audio)
 	sfx = UiSfx.new()
@@ -439,6 +445,10 @@ func _build_world() -> void:
 	cam.make_current()
 	_build_track_nodes()
 
+## Vórtice de Ensueño: cielo con Júpiter gigante, niebla pastel, sol dorado y reflejos de sol sobre las flores
+func _dream_atmosphere() -> void:
+	DreamWorld.atmosphere(env, sun, cam, world)
+
 ## Paper Race: cielo y niebla de papel (la selva se cierra a lo lejos), luz suave y pareja
 func _paper_atmosphere() -> void:
 	env.background_color = Color(0.88, 0.91, 0.84)
@@ -471,6 +481,9 @@ func _make_track() -> void:
 	var m: Dictionary = track_maps[track_id]
 	if str(m.get("kind", "")) == "drift":
 		track = DriftTrack.new()
+		return
+	if str(m.get("kind", "")) == "dream":
+		track = DreamTrack.new(str(m["route"]), str(m["mode"]), false, 0.0) # Vórtice de Ensueño: la vuelta inmensa de flores
 		return
 	if str(m.get("kind", "")) == "paper":
 		track = PaperTrack.new(str(m["route"]), str(m["mode"]), false, 0.6) # Paper Race: selva de papel, ruta y tierra
@@ -506,6 +519,15 @@ func _build_track_nodes() -> void:
 		track_root.add_child(track.build_world())
 		road_mat = track.road_mat
 		ground_mat = track.ground_mat
+		return
+	if track is DreamTrack:
+		var dw := DreamWorld.new()
+		var dq: float = float({"low": 0.5, "high": 1.0}.get(str(profile.setting("quality")) if profile != null else "mid", 0.75))
+		dw.setup(track, dq, DreamWorld.SUN)
+		track_root.add_child(dw)
+		road_mat = StandardMaterial3D.new()
+		ground_mat = StandardMaterial3D.new()
+		track_root.add_child(track.build_start_gate(0, "VÓRTICE DE ENSUEÑO"))
 		return
 	if track is PaperTrack:
 		var pw := PaperWorld.new()
@@ -680,7 +702,7 @@ func _rebuild_trees() -> void:
 		trees_node.queue_free()
 	trees_node = Node3D.new()
 	world.add_child(trees_node)
-	if trees_n <= 0 or adv_mode or track is DriftTrack or track is PaperTrack:
+	if trees_n <= 0 or adv_mode or track is DriftTrack or track is PaperTrack or track is DreamTrack:
 		return
 	var trunk := CylinderMesh.new()
 	trunk.top_radius = 0.13
@@ -1381,6 +1403,18 @@ func _change_track(id: String) -> void:
 	_rebuild_trees()
 	_rebuild_cars()
 
+## Rivales a la par (Vórtice de Ensueño): cada rival ajusta su ritmo según la distancia que lo separa del jugador. Si se escapa, afloja; si se queda,
+## aprieta (hasta un 12 % más rápido que su ritmo cómodo). Apunta a ir apenas adelante, con una ondita lenta para que la pelea se sienta viva.
+func _pace_rivals(dt: float) -> void:
+	for i in range(1, cars.size()):
+		var d = cars[i].driver
+		if d is AIDriver:
+			var gap: float = session.prog[i] - session.prog[0] # > 0: el rival va adelante
+			var want := 8.0 + 10.0 * sin(session.time * 0.15 + float(i))
+			var target: float = AIDriver.pace_target(gap, want)
+			d.pace = lerpf(d.pace, target, clampf(dt * 1.5, 0.0, 1.0))
+			cars[i].phys.powerMul = lerpf(cars[i].phys.powerMul, AIDriver.power_target(gap, want), clampf(dt * 1.0, 0.0, 1.0))
+
 ## Sesión: cuenta regresiva, vueltas, posiciones y fin. Después de la meta el auto frena solo y a los 2,5 s sale el resultado.
 func _tick_session(dt: float) -> void:
 	session.update(dt, cars)
@@ -1397,6 +1431,8 @@ func _tick_session(dt: float) -> void:
 			if d is AIDriver:
 				var gap: float = session.prog[i] - session.prog[0]
 				d.boost = 0.93 if gap > 140.0 else (1.05 if gap < -160.0 else 1.0)
+	if session.state == "run" and track is DreamTrack and str(cfg.get("type")) == "race":
+		_pace_rivals(dt)
 	race_hud.update_hud(dt, cars.size(), cars)
 	if _dbg_finish and Engine.get_frames_drawn() % 30 == 0:
 		print("SES ", session.state, " t=", snappedf(session.time, 0.1), " prog=", int(session.prog[0]), "/", int(session.race_len), " v=", int(absf(cars[0].snap.vLong) * 3.6), " dt=", snappedf(dt, 0.001))

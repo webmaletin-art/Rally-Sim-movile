@@ -10,6 +10,7 @@ const BUMP_AMP := [0.005, 0.03, 0.035, 0.045, 0.05, 0.03] # por superficie: asfa
 
 var hills := 0.0 # subidas y bajadas suaves del recorrido (0 = las de la versión HTML; 1 = las de las carreras de Dream Racing)
 var center_line := false # línea amarilla del medio (solo para el modo aventura)
+var n_samples := N_SAMPLES # muestras del camino (las rutas muy largas piden más)
 var flat := false # sin ondulación del asfalto (la picada)
 var open := false # ruta abierta (modo aventura): la última muestra no se une con la primera
 var road_surf := PackedByteArray() # superficie del camino por muestra (0 asfalto · 1 tierra); vacío = la del modo de la pista
@@ -62,6 +63,7 @@ func _init(p_route := "", p_mode := "asphalt", reverse := false, p_hills := 0.0)
 	shoulder = float(r["shoulder"])
 	dips = r.get("dips", [])
 	flat = r.get("flat", false) == true
+	n_samples = int(r.get("samples", N_SAMPLES))
 	var pts: Array = r["points"]
 	if reverse:
 		var tail: Array = pts.slice(1)
@@ -144,9 +146,9 @@ func _build() -> void:
 		lens[i] = lens[i - 1] + prev.distance_to(c)
 		prev = c
 	var total := lens[div]
-	samples.resize(N_SAMPLES)
-	for i in N_SAMPLES:
-		var target := total * float(i) / float(N_SAMPLES)
+	samples.resize(n_samples)
+	for i in n_samples:
+		var target := total * float(i) / float(n_samples)
 		var lo := 0
 		var hi := div
 		while lo < hi:
@@ -160,7 +162,7 @@ func _build() -> void:
 		var seg := lens[b + 1] - lens[b]
 		var u := (target - lens[b]) / seg if seg > 0.0 else 0.0
 		samples[i] = _curve_point((float(b) + u) / float(div))
-	n = N_SAMPLES
+	n = n_samples
 	# altura: interpolación de los puntos de control + ondulación, suavizada con media móvil circular
 	var y := PackedFloat64Array()
 	y.resize(n)
@@ -225,6 +227,8 @@ func _apply_dips() -> void:
 			samples[i].y += -float(d["amp"]) * win * 0.5 * (1.0 - cos(2.0 * PI * (c[i] - s0) / float(d["wave"])))
 
 func _road_offset(i: int) -> float:
+	if flat:
+		return 0.0
 	var t := float(i) / float(n)
 	return 0.06 + 0.10 * sin(t * PI * 5.0) + 0.04 * sin(t * PI * 13.0) - 0.25 * exp(-pow((t - 0.43) / 0.045, 2.0)) + 0.18 * exp(-pow((t - 0.73) / 0.06, 2.0))
 
