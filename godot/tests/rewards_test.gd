@@ -1,5 +1,5 @@
 extends SceneTree
-## Medallas, premios y puertas de las copas (js/events.js): valores calculados a mano de la versión HTML.
+## Medallas, premios y puertas de las copas. Los premios son los de la economía justa de 1.0 (bases de las copas más bajas y 1°100 % · 2°60 % · 3°40 % · 4°20 %); las medallas y puertas siguen la versión HTML.
 
 const Rewards := preload("res://game/data/rewards.gd")
 
@@ -23,9 +23,9 @@ func _init() -> void:
 	check("medalla d1 50 s", Rewards.medal_for(d1, 50.0), 0)
 	check("medalla carrera 1°", Rewards.medal_for(d2, 1.0), 3)
 	check("medalla carrera 4°", Rewards.medal_for(d2, 4.0), 0)
-	check("premio d2 oro", Rewards.reward_for(d2, 3, debut), {"cr": 3500, "xp": 871})
-	check("premio d2 plata", Rewards.reward_for(d2, 2, debut), {"cr": 2650, "xp": 670})
-	check("premio final oro", Rewards.reward_for(d7, 3, debut), {"cr": 5600, "xp": 1306})
+	check("premio d2 oro", Rewards.reward_for(d2, 3, debut), {"cr": 2000, "xp": 637})
+	check("premio d2 plata", Rewards.reward_for(d2, 2, debut), {"cr": 1200, "xp": 490})
+	check("premio final oro", Rewards.reward_for(d7, 3, debut), {"cr": 3200, "xp": 955})
 	check("d1 jugable", Rewards.playable(d1), true)
 	check("d3 (estacionar) no jugable", Rewards.playable(Rewards.event_by_id("d3")), false)
 	check("d5 (drift en la plaza) jugable", Rewards.playable(Rewards.event_by_id("d5")), true)

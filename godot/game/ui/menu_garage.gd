@@ -187,6 +187,12 @@ func _cars(mine: bool) -> void:
 			ob.disabled = true
 			ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			brow.add_child(ob)
+		elif Release.PREMIUM_CARS.has(id) and not Release.dev(m.profile):
+			var pb := Kit.button("💎 DESBLOQUEAR EN COMPRAS", func() -> void:
+				m.sfx.play("click")
+				m.go("iap"), true, 18, Vector2(0, 52))
+			pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			brow.add_child(pb)
 		elif not Release.can_buy(m.profile, id):
 			var lk := Kit.button("🔒 SE GANA TERMINANDO LA AVENTURA", Callable(), false, 17, Vector2(0, 52))
 			lk.disabled = true

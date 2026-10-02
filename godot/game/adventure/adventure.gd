@@ -898,6 +898,8 @@ func _save_station() -> void:
 	if int(st["stage"]) <= stage:
 		st["stage"] = stage + 1
 		st["points"] = int(st["points"]) + AdvData.POINTS_PER_STAGE
+		if r.profile != null and AdvData.practice.is_empty():
+			r.profile.earn(float(AdvData.stage_reward(stage))) # unas monedas por etapa ganada (la 1ª vez)
 	st["tries"] = 0
 	var best: Dictionary = st["best"]
 	var key := str(stage)
@@ -1033,6 +1035,6 @@ func _finish_adventure() -> void:
 			pf.give(AdvData.CAR)
 		var cs: Dictionary = pf.d["owned"][AdvData.CAR]
 		cs["paint"] = AdvData.PAINT.duplicate()
-		pf.earn(50000.0)
+		pf.earn(20000.0)
 		pf.save()
-	hud.show_final({"reward": 50000})
+	hud.show_final({"reward": 20000})

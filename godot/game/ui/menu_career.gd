@@ -242,12 +242,8 @@ func _cars_cat() -> Dictionary:
 	return CarBuild.catalog()
 
 func _quick_car_name(v) -> String:
-	var id := str(v)
-	if id == "cur":
-		var cid: String = m.profile.current_id()
-		return tr("Mi auto") + (" (%s)" % _cars_cat()["cars"][cid]["model"] if cid != "" else "")
-	var cm: Dictionary = _cars_cat()["cars"][id]
-	return "%s %s%s" % [cm["brand"], cm["model"], "" if m.profile.owns(id) else " 🔒"]
+	var cm: Dictionary = _cars_cat()["cars"][str(v)]
+	return "%s %s" % [cm["brand"], cm["model"]]
 
 func _quick() -> void:
 	m.set_title("CARRERA RÁPIDA")
@@ -268,9 +264,14 @@ func _quick() -> void:
 		for c in pv_box.get_children():
 			c.queue_free()
 		pv_box.add_child(preview(str(quick["map"]), 128.0))
-	var car_ids: Array = ["cur"]
+	var car_ids: Array = []
 	for id in _cars_cat()["order"]:
-		car_ids.append(str(id)) # todos los de la tienda, también los que no tenés: se prueban sin premio
+		if m.profile.owns(str(id)):
+			car_ids.append(str(id)) # Carrera rápida: solo con tus autos (los de la tienda se prueban desde la tienda)
+	if str(quick.get("car", "cur")) == "cur" or not car_ids.has(str(quick.get("car", "cur"))):
+		quick["car"] = str(m.profile.current_id())
+	if not adv and m.profile.owns(str(quick["car"])):
+		m.refresh_car(str(quick["car"]), m.profile.d["owned"][str(quick["car"])]) # tu auto en la escena, junto a los pilotos
 	var stages: Array = []
 	for i in mini(AdvRoute.STAGES.size(), Release.adventure_limit(m.profile)):
 		stages.append(i)
@@ -281,7 +282,7 @@ func _quick() -> void:
 		defs.append(["Etapa", "stage", stages, func(v): return "%d · %s" % [int(v) + 1, str(AdvRoute.STAGES[int(v)]["name"])]])
 	else:
 		defs.append(["Modo", "mode", ["race", "timetrial"], func(v): return tr("Carrera") if v == "race" else tr("Contrarreloj")])
-	if not adv:
+	if not adv and car_ids.size() > 0:
 		defs.append(["Auto", "car", car_ids, func(v): return _quick_car_name(v)])
 	if not adv:
 		defs.append(["Clima", "sky", ["day", "overcast", "sunset", "dusk", "rain"], func(v): return tr(SKY_N[v])])
@@ -294,6 +295,8 @@ func _quick() -> void:
 		var sel := Kit.selector(tr(str(o[0])), o[2], quick[key], o[3], func(v) -> void:
 			var prev = quick[key]
 			quick[key] = v
+			if key == "car":
+				m.refresh_car(str(v), m.profile.d["owned"][str(v)]) # el auto elegido aparece en la escena, junto a los pilotos
 			if key == "map":
 				if (str(v) == "adventure") != (str(prev) == "adventure") or (str(v) == "drift") != (str(prev) == "drift"):
 					m.go("quick", null, false) # cambian los ajustes que se muestran
@@ -302,23 +305,16 @@ func _quick() -> void:
 		g.add_child(sel)
 	if adv:
 		m.body.add_child(Kit.wrap(tr("Práctica: corrés la etapa con el DR Bisonte de la aventura; no cuenta para tu avance ni da premios."), 13, Kit.MUTED, 300))
-	elif str(quick["car"]) != "cur" and not m.profile.owns(str(quick["car"])):
-		m.body.add_child(Kit.wrap(tr("🔒 Auto de la tienda: se prueba sin premios. En la pausa tenés el taller de prueba para ajustar todo."), 13, Kit.MUTED, 300))
 	m.body.add_child(Kit.button("¡CORRER!", func(): _start_quick(), true, 26, Vector2(0, 58)))
 
 func _start_quick() -> void:
 	var q := quick
-	var pid: String = m.profile.current_id()
-	var picked := str(q.get("car", "cur"))
-	var test_car := false
+	var pid: String = str(q.get("car", m.profile.current_id()))
+	if not m.profile.owns(pid):
+		pid = m.profile.current_id()
+	m.profile.select(pid)
 	var st: Dictionary = m.profile.car()
-	if picked != "cur":
-		pid = picked
-		if m.profile.owns(pid):
-			st = (m.profile.d["owned"][pid] as Dictionary).duplicate(true)
-		else:
-			st = m.profile.new_car_state(pid)
-			test_car = true
+	var test_car := false
 	var pi := _player_pi()
 	if str(q["map"]) == "adventure":
 		var ac := {"type": "adventure", "stage": int(q.get("stage", 0)), "back": "quick", "practice": true, "intro": false}

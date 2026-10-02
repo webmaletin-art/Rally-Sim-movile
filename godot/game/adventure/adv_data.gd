@@ -57,6 +57,10 @@ static func reset(profile: RefCounted) -> void:
 	profile.d["adv"] = default_state()
 	profile.save()
 
+## Monedas por ganar una etapa por primera vez (crece de a poco: de $ 500 a $ 1.600)
+static func stage_reward(stage: int) -> int:
+	return 500 + stage * 100
+
 static func cost(next_level: int) -> int:
 	return next_level
 

@@ -55,7 +55,7 @@ func is_ready() -> bool:
 	return client != null and connected
 
 func owned(id: String) -> bool:
-	return profile != null and ((profile.d.get("iap", {}) as Dictionary).get(id, false) == true)
+	return Release.covers(profile, id)
 
 func price_of(id: String) -> String:
 	return str((details.get(id, {}) as Dictionary).get("price", ""))
@@ -138,11 +138,12 @@ func _handle(p: Dictionary) -> void:
 				client.acknowledge_purchase(token)
 
 func _grant_unlock(id: String) -> void:
-	if profile == null or owned(id):
+	if profile == null or ((profile.d.get("iap", {}) as Dictionary).get(id, false) == true):
 		return
 	if not profile.d.has("iap"):
 		profile.d["iap"] = {}
 	profile.d["iap"][id] = true
+	Release.sync_cars(profile) # los autos premium comprados pasan al garaje
 	profile.save()
 	message.emit(Tr.t("¡Gracias! Compra lista."))
 	state_changed.emit()

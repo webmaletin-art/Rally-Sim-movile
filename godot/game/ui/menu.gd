@@ -156,6 +156,8 @@ func _ready() -> void:
 		go("consent")
 	else:
 		go(parts[0], arg0)
+		if start_screen == "home":
+			store.offer_popup() # cartel de ofertas (una vez por sesión)
 	if not daily.is_empty():
 		toast("🎁 Premio diario: +%s (racha %d)" % [Kit.fmt_cr(float(daily["amount"])), int(daily["streak"])])
 		sfx.play("coin")
@@ -309,6 +311,7 @@ func go(name: String, arg = null, push := true) -> void:
 			if not Release.store():
 				perf.build(name, arg)
 		"iap": store.build()
+		"soon": _soon_screen(str(arg))
 		"adventure", "adv_skills", "adv_help", "adv_stages", "adv_start": adventure.build(name, arg)
 		_: _home()
 
@@ -456,6 +459,11 @@ func _home() -> void:
 	elif ast["started"] == true:
 		adv_sub = "etapa %d/%d" % [mini(int(ast["stage"]) + 1, AdvRoute.STAGES.size()), AdvRoute.STAGES.size()]
 	body.add_child(menu_button("🌄 AVENTURA", "La Ruta de los Sueños · " + adv_sub, func(): go("adventure"), next_ev.is_empty()))
+	# lo que viene: cerrado, con carteles de qué va a traer
+	var soon := Kit.grid(2, 8, 8)
+	body.add_child(soon)
+	soon.add_child(tile("🌐", "MODO ONLINE", "PRONTO", func(): go("soon", "online"), false, 70.0))
+	soon.add_child(tile("🗺", "MUNDO ABIERTO", "PRONTO", func(): go("soon", "world"), false, 70.0))
 	var g := Kit.grid(3, 8, 8)
 	body.add_child(g)
 	var tiles := [
@@ -473,6 +481,21 @@ func _home() -> void:
 		tiles.append(["📊", "RENDIMIENTO", "probá tu teléfono", func(): go("perf"), false]) # no va en la versión de Google Play
 	for tl in tiles:
 		g.add_child(tile(str(tl[0]), str(tl[1]), str(tl[2]), tl[3], bool(tl[4])))
+
+## Pantallas «pronto» del modo online y del mundo abierto (todavía cerrados)
+func _soon_screen(kind: String) -> void:
+	var online := kind == "online"
+	set_title("MODO ONLINE" if online else "MUNDO ABIERTO")
+	body.add_child(Kit.label("🚧 PRONTO", 34, Kit.ACCENT))
+	if online:
+		body.add_child(Kit.wrap("Se viene el modo online: carreras de jugador contra jugador, un ranking mundial y eventos mensuales con premios.", 18, Kit.TEXT, 300))
+		for t in ["🏁 Carreras JcJ contra otros pilotos", "🏆 Ranking de tiempos y puntos", "📅 Eventos mensuales", "🌍 Mundo abierto compartido"]:
+			body.add_child(Kit.label(t, 18, Kit.GOLD))
+	else:
+		body.add_child(Kit.wrap("Llega el mundo abierto: ciudades amplias, diversos biomas, rutas espectaculares y libre recorrido, con misiones por todo el mapa.", 18, Kit.TEXT, 300))
+		for t in ["🏙 Ciudades amplias para recorrer", "🌲 Biomas distintos: selva, montaña, nieve, desierto", "🛣 Rutas espectaculares y libre recorrido", "🎯 Misiones en el mundo abierto"]:
+			body.add_child(Kit.label(t, 18, Kit.GOLD))
+	body.add_child(Kit.wrap("Llegará en una actualización gratuita del juego. ¡Gracias por jugar!", 14, Kit.MUTED, 300))
 
 func _done_events() -> int:
 	var n := 0
