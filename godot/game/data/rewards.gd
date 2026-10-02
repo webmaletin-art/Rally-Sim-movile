@@ -149,9 +149,13 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 		else:
 			cr = 300
 			xp = 100
-	if t == "drift":
+	var practice: bool = cfg.get("testCar", false) == true or cfg.get("labbed", false) == true # prueba de un auto o con el taller de la pausa: no paga ni cuenta
+	if practice:
+		cr = 0
+		xp = 0
+	if t == "drift" and not practice:
 		st["driftBest"] = maxf(float(st["driftBest"]), float(r["value"]))
-	if t == "race":
+	if t == "race" and not practice:
 		st["races"] = int(st["races"]) + 1
 		if int(r["value"]) == 1:
 			st["wins"] = int(st["wins"]) + 1

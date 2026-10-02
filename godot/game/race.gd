@@ -142,6 +142,9 @@ var cam_rig: RefCounted
 var was_inside := false
 var was_onboard := false
 var cam_index := 1
+var lab_state: Dictionary = {} # taller de prueba de la pausa: estado del auto con ajustes (vacío = el auto tal cual)
+var lab_orig: Dictionary = {}
+var _pausetest_done := false
 var wall_on := false # pista solo de camino: límite lateral con árboles (se activa en las carreras del menú)
 var track_arg := ""
 var view_at := -1.0 # prueba (vistas previas de las pistas): pone el auto en esta fracción del recorrido
@@ -247,7 +250,13 @@ func _ready() -> void:
 		race_hud.quit_pressed.connect(_quit)
 		race_hud.camera_pressed.connect(_next_camera)
 		race_hud.cine_pressed.connect(_toggle_cine)
-		race_hud.tests_pressed.connect(_show_tests)
+		race_hud.cam_step.connect(func(d: int) -> void:
+			if cam_rig != null:
+				cam_rig.next(d)
+				_save_cam_adj())
+		race_hud.camadj_changed.connect(_save_cam_adj)
+		race_hud.lab_changed.connect(_lab_apply)
+		race_hud.lab_reset.connect(_lab_reset)
 		controls.pause_pressed.connect(_toggle_pause)
 	hud = DebugPanel.new()
 	hud.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -258,6 +267,12 @@ func _ready() -> void:
 	hud.bench_pressed.connect(_bench_start)
 	hud.copy_pressed.connect(_copy_report)
 	controls.camera_pressed.connect(_next_camera)
+	controls.cam_drag.connect(func(rel: Vector2) -> void:
+		if cam_rig != null and not paused:
+			cam_rig.drag(rel))
+	controls.cam_zoom.connect(func(f: float) -> void:
+		if cam_rig != null and not paused:
+			cam_rig.zoom(f))
 	controls.shot_pressed.connect(_take_shot)
 	controls.show_shot = menu_mode and profile != null and profile.setting("capBtn") == true
 	load_progress.emit(0.44, "Clima y efectos…")
@@ -278,6 +293,8 @@ func _ready() -> void:
 		sfx.volume = float(profile.setting("volume")) / 100.0
 		race_hud.setup_options(profile, sfx)
 		race_hud.options_changed.connect(_apply_live_settings)
+		if not adv_mode and not pb_active and (cfg.get("testCar", false) == true or cfg.get("quick", false) == true):
+			_lab_init()
 	if audiorec_path != "":
 		audiorec = AudioEffectRecord.new()
 		AudioServer.add_bus_effect(0, audiorec)
@@ -342,6 +359,8 @@ func _ready() -> void:
 	if pb_active:
 		_pb_start()
 	is_loaded = true
+	if OS.get_cmdline_user_args().has("--labtest"):
+		print("LABTEST: carga lista, sesión ", session)
 	load_progress.emit(1.0, "Listo")
 	loaded_emit_deferred()
 
@@ -811,6 +830,8 @@ func _car_setups() -> Array:
 	var assists := {"abs": sa["abs"], "tc": sa["tc"], "stab": sa["stab"]}
 	var pid := str(cfg["car"])
 	var pst: Dictionary = cfg["state"]
+	if not lab_state.is_empty():
+		pst = lab_state # taller de prueba de la pausa: el mismo auto con todos los ajustes liberados
 	var pp: Dictionary = pst.get("paint", {"body": "#1a4fe0", "rim": "#ff6a08"})
 	out.append({"params": CarBuild.build_params(vehicles[pid], pst, assists), "paint": Color(str(pp["body"])), "rim": Color(str(pp.get("rim", "#2a2d33"))), "name": str(profile.d["name"]), "finish": str(pp.get("finish", "gloss")), "visual_type": str(vehicles[pid].get("visualType", pid)), "ai": {},
 		"livery": int(pp.get("livery", 0)), "accent": Color(str(pp.get("accent", "#ff6a08"))), "tire": Color(str(pp.get("tire", "#141516"))), "parts": pp})
@@ -898,7 +919,11 @@ func _rebuild_cars() -> void:
 			cam_rig.cockpit = cockpit
 			cam_rig.ground_off = -Vp.comHeight + Vp.rideOffset
 			cam_rig.mount = car.visual.compute_mounts(float(cockpit.C["cowlZ"]), float(cockpit.C["eyeY"]))
+			if menu_mode and profile != null and profile.setting("camAdj") is Dictionary:
+				cam_rig.adj = (profile.setting("camAdj") as Dictionary).duplicate(true)
 			cam_rig.set_preset(cam_index)
+			if race_hud != null:
+				race_hud.rig = null if adv_mode else cam_rig
 			was_inside = false
 			_load_cabin_cfg()
 		if track is DriftTrack:
@@ -1590,7 +1615,7 @@ func _restart() -> void:
 		var st: Dictionary = AdvData.state(profile)
 		st["damage"] = (adv.dmg0 as Dictionary).duplicate()
 		profile.save()
-		restart_with({"type": "adventure", "stage": int(cfg["stage"]), "back": "adventure", "dmg0": (adv.dmg0 as Dictionary).duplicate()})
+		restart_with({"type": "adventure", "stage": int(cfg["stage"]), "back": str(cfg.get("back", "adventure")), "dmg0": (adv.dmg0 as Dictionary).duplicate()})
 		return
 	var c := cfg
 	var a := get_parent()
@@ -1600,6 +1625,9 @@ func _restart() -> void:
 ## Arranca otra carrera/etapa (la aventura pasa a la etapa siguiente o reintenta)
 func restart_with(c: Dictionary) -> void:
 	AudioServer.set_bus_mute(0, false)
+	if cfg.get("practice", false) == true and str(c.get("type", "")) == "adventure":
+		c["practice"] = true # práctica de Carrera rápida: sigue siendo práctica y vuelve a la Carrera rápida
+		c["back"] = "quick"
 	var a := get_parent()
 	if a.has_method("start_race"):
 		a.call_deferred("start_race", c)
@@ -1622,6 +1650,61 @@ func _quit() -> void:
 	AudioServer.set_bus_mute(0, false)
 	exit_requested.emit(str(cfg.get("back", "home")))
 
+## Ajuste de cámara del jugador (pausa → AJUSTAR CÁMARA): se guarda en el perfil
+func _save_cam_adj() -> void:
+	if cam_rig == null or profile == null:
+		return
+	cam_index = cam_rig.index
+	profile.set_setting("camAdj", (cam_rig.adj as Dictionary).duplicate(true))
+
+## Taller de prueba (pausa): el estado del auto con todos los ajustes liberados; se arma al empezar y se aplica recién al primer cambio
+func _lab_init() -> void:
+	var base: Dictionary
+	if cfg.has("lab_state"):
+		base = cfg["lab_state"]
+		lab_state = base
+	else:
+		base = (cfg["state"] as Dictionary).duplicate(true)
+		base["lab"] = {"all": true}
+		if not base.has("tune"):
+			base["tune"] = {}
+		if int((base.get("upg", {}) as Dictionary).get("aero", 0)) == 0:
+			base["tune"]["aeroF"] = 0.0 # el auto no trae kit aerodinámico de fábrica: arranca en cero
+			base["tune"]["aeroR"] = 0.0
+	if cfg.has("lab_orig"):
+		lab_orig = cfg["lab_orig"]
+	else:
+		lab_orig = (base as Dictionary).duplicate(true) # el auto de fábrica (para «volver»); sobrevive a un reinicio
+		cfg["lab_orig"] = lab_orig
+	race_hud.lab = base
+	race_hud.lab_defs = CarBuild.default_tune(vehicles[str(cfg["car"])])
+	race_hud.lab_on = true
+
+## Rearma el auto con los ajustes nuevos. En drift y en las pruebas libres queda donde estaba; en una carrera vuelve a la parrilla.
+func _lab_apply() -> void:
+	if cars.is_empty() or race_hud == null:
+		return
+	lab_state = race_hud.lab
+	cfg["lab_state"] = lab_state
+	cfg["labbed"] = true # una prueba con el taller no da premios ni cuenta para los récords
+	var keep := track is DriftTrack or str(cfg.get("type", "")) == "free"
+	var ph = cars[0].phys
+	var pose := [ph.px, ph.pz, ph.yaw]
+	if cam_rig != null:
+		cam_index = cam_rig.index
+	_rebuild_cars()
+	if keep and not cars.is_empty():
+		cars[0].place(pose[0], pose[1], pose[2])
+		if session is DriftSession:
+			session.cd = minf(session.cd, 0.2) # sin cuenta regresiva de nuevo
+	race_hud.toast(Tr.t("🔧 Ajuste aplicado"))
+
+func _lab_reset() -> void:
+	race_hud.lab = lab_orig.duplicate(true)
+	_lab_apply()
+	lab_state = {}
+	cfg.erase("lab_state")
+
 func _next_camera() -> void:
 	if cam_rig == null:
 		return
@@ -1630,6 +1713,7 @@ func _next_camera() -> void:
 			adv.hud.toast("🎥 " + adv.next_camera())
 		return
 	cam_rig.next()
+	cam_index = cam_rig.index
 	if menu_mode and race_hud != null:
 		race_hud.toast("🎥 " + cam_rig.cam_name())
 	else:
@@ -1997,15 +2081,36 @@ func _frame(dt: float) -> void:
 		adv.tick(dt)
 	if session != null and not paused:
 		_tick_session(dt)
-		if OS.get_cmdline_user_args().has("--pausetest") and Engine.get_frames_drawn() == 100:
+		if OS.get_cmdline_user_args().has("--pausetest") and not _pausetest_done and Engine.get_process_frames() >= 100:
+			_pausetest_done = true
 			_toggle_pause()
 			if OS.get_cmdline_user_args().has("--optstest"):
 				race_hud.open_options()
 				race_hud._opts_go("options", "graficos")
 				profile.set_setting("fx", [9, 3, 0])
 				_apply_live_settings("fx")
+			if OS.get_cmdline_user_args().has("--labtest"):
+				# prueba: abre el taller de la pausa, cambia ajustes, aplica y vuelve a aplicar (el auto debe quedar donde estaba)
+				race_hud.open_page("lab")
+				var before := [cars[0].phys.px, cars[0].phys.pz]
+				race_hud.lab["tune"]["springF"] = 140.0
+				race_hud.lab["tune"]["gripR"] = 80.0
+				race_hud.lab["lab"]["power"] = 200.0
+				race_hud.lab["tires"] = "drift"
+				race_hud.lab_changed.emit()
+				await get_tree().process_frame
+				print("LAB: potencia %.2f resortes %.0f%% pose %s → %s · cars %d" % [cars[0].phys.V.powerScale, 140.0, str(before), str([cars[0].phys.px, cars[0].phys.pz]), cars.size()])
+				race_hud.open_page("camadj")
+				race_hud.cam_step.emit(1)
+				cam_rig.set_adj("dist", 2.0)
+				_save_cam_adj()
+				print("CAMADJ: ", profile.setting("camAdj"), " cam ", cam_rig.cam_name())
+				race_hud.lab_reset.emit()
+				await get_tree().process_frame
+				print("LAB reset: potencia %.2f" % cars[0].phys.V.powerScale)
 			await get_tree().create_timer(1.0, true, false, true).timeout
-			get_viewport().get_texture().get_image().save_png(shot_path)
+			if shot_path != "":
+				get_viewport().get_texture().get_image().save_png(shot_path)
 			get_tree().quit()
 	for c in cars:
 		c.snap.sample(render_t)

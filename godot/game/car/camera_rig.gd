@@ -32,6 +32,30 @@ var pos := Vector3.ZERO
 var time := 0.0
 var aspect := 2.0
 
+## Ajustes del jugador por cámara (índice → {dist, height, side, fov}) en metros / grados; se cambian desde la pausa → CÁMARA
+var adj := {}
+
+func adj_of(k: String) -> float:
+	var d: Variant = adj.get(str(index))
+	return float((d as Dictionary).get(k, 0.0)) if d is Dictionary else 0.0
+
+func set_adj(k: String, v: float) -> void:
+	var d: Dictionary = adj.get(str(index), {})
+	d[k] = v
+	adj[str(index)] = d
+
+## Rotar la cámara libre arrastrando el dedo y acercarla/alejarla con dos dedos
+func drag(rel: Vector2) -> void:
+	if mode() != "custom":
+		return
+	custom_yaw_off -= rel.x * 0.009
+	custom_elev = clampf(custom_elev + rel.y * 0.006, -0.15, 1.35)
+
+func zoom(f: float) -> void:
+	if mode() != "custom":
+		return
+	custom_dist = clampf(custom_dist / f, 2.5, 40.0)
+
 # cámara libre
 var custom_yaw_off := 0.0
 var custom_elev := 0.28
@@ -105,11 +129,15 @@ func _chase(dt: float, p: CarSnapshot, c: Dictionary) -> void:
 	yaw += dy * (1.0 - exp(-dt * 2.3))
 	var fx := sin(yaw)
 	var fz := cos(yaw)
-	var target_d: float = float(c["dist"]) + clampf(spd * 0.018, 0.0, 1.1) - clampf(p.aLong * 0.07, -0.4, 0.7)
+	var target_d: float = float(c["dist"]) + adj_of("dist") + clampf(spd * 0.018, 0.0, 1.1) - clampf(p.aLong * 0.07, -0.4, 0.7)
 	dist += (target_d - dist) * (1.0 - exp(-dt * 3.0))
 	var ix := p.px - fx * dist
 	var iz := p.pz - fz * dist
-	var iy: float = p.py + float(c["height"])
+	var iy: float = p.py + float(c["height"]) + adj_of("height")
+	var rx := cos(yaw)
+	var rz := -sin(yaw)
+	ix += rx * adj_of("side")
+	iz += rz * adj_of("side")
 	var gy := _ground(ix, iz) + 0.7
 	if iy < gy:
 		iy = gy
@@ -130,7 +158,7 @@ func _chase(dt: float, p: CarSnapshot, c: Dictionary) -> void:
 	var bt := clampf(-p.aLat * 0.010, -0.07, 0.07)
 	bank += (bt - bank) * (1.0 - exp(-dt * 3.0))
 	cam.rotate_object_local(Vector3.BACK, bank)
-	cam.fov = float(c["fov"]) + minf(spd / 45.0, 1.0) * 8.0
+	cam.fov = float(c["fov"]) + adj_of("fov") + minf(spd / 45.0, 1.0) * 8.0
 
 func _loose(p: CarSnapshot) -> bool:
 	for i in 4:
@@ -143,16 +171,17 @@ func _custom(dt: float, p: CarSnapshot, c: Dictionary) -> void:
 	var ang := p.yaw + PI + custom_yaw_off
 	var cos_e := cos(custom_elev)
 	var sin_e := sin(custom_elev)
-	var ox := sin(ang) * custom_dist * cos_e
-	var oz := cos(ang) * custom_dist * cos_e
-	var oy := custom_dist * sin_e
+	var cd := maxf(1.5, custom_dist + adj_of("dist"))
+	var ox := sin(ang) * cd * cos_e
+	var oz := cos(ang) * cd * cos_e
+	var oy := cd * sin_e
 	var cy := cos(p.yaw)
 	var sy := sin(p.yaw)
 	var pan_x := cy * custom_pan_r + sy * custom_pan_f
 	var pan_z := -sy * custom_pan_r + cy * custom_pan_f
 	var tx := p.px + ox + pan_x
 	var tz := p.pz + oz + pan_z
-	var ty := p.py + oy + custom_pan_u
+	var ty := p.py + oy + custom_pan_u + adj_of("height")
 	var gy := _ground(tx, tz) + 0.25
 	if ty < gy:
 		ty = gy
@@ -163,29 +192,33 @@ func _custom(dt: float, p: CarSnapshot, c: Dictionary) -> void:
 	pos = pos.lerp(target, 1.0 - exp(-dt * 14.0))
 	cam.position = pos
 	cam.look_at(Vector3(p.px, p.py + custom_tgt_y, p.pz))
-	cam.fov = c["fov"]
+	cam.fov = float(c["fov"]) + adj_of("fov")
 
 ## capó / paragolpes: rígidas, con la vibración del camino
 func _mounted(p: CarSnapshot, c: Dictionary, rough: float) -> void:
 	var m: Dictionary = mount[c["mode"]]
 	var vib := (0.006 if c["mode"] == "bumper" else 0.003) * (0.4 + rough * 1.6) * minf(1.0, absf(p.vLong) / 20.0)
-	var lp := Vector3(sin(time * 39.7) * vib, float(m["y"]) + sin(time * 47.3) * vib, float(m["z"]))
-	var ll := Vector3(0.0, float(m["y"]) + float(m["ly"]), float(m["z"]) + 12.0)
+	var ax := adj_of("side")
+	var ay := adj_of("height")
+	var az := -adj_of("dist") # «distancia» positiva = más atrás
+	var lp := Vector3(sin(time * 39.7) * vib + ax, float(m["y"]) + sin(time * 47.3) * vib + ay, float(m["z"]) + az)
+	var ll := Vector3(ax, float(m["y"]) + ay + float(m["ly"]), float(m["z"]) + az + 12.0)
 	var t := visual.global_transform
 	var wp := t * lp # los puntos de montaje ya vienen en el marco del auto
 	var wl := t * ll
 	cam.position = wp
 	cam.look_at(wl, t.basis.y)
 	var spd := sqrt(p.vx * p.vx + p.vz * p.vz)
-	cam.fov = float(c["fov"]) + minf(spd / 50.0, 1.0) * 5.0
+	cam.fov = float(c["fov"]) + adj_of("fov") + minf(spd / 50.0, 1.0) * 5.0
 	cam.near = 0.08
 
 func _inside(p: CarSnapshot, m: String, rough: float) -> void:
 	var d: Dictionary = cockpit.camera_local(m, p, time, rough)
 	var t := visual.global_transform
 	var base := Vector3(0, ground_off, 0)
-	var wp := t * (base + (d["pos"] as Vector3))
-	var wl := t * (base + (d["look"] as Vector3))
+	var off := Vector3(adj_of("side"), adj_of("height"), -adj_of("dist"))
+	var wp := t * (base + (d["pos"] as Vector3) + off)
+	var wl := t * (base + (d["look"] as Vector3) + off)
 	var up := t.basis.y
 	if d["roll"] != 0.0:
 		up = up.rotated((wl - wp).normalized(), float(d["roll"]))
@@ -193,5 +226,5 @@ func _inside(p: CarSnapshot, m: String, rough: float) -> void:
 	cam.look_at(wl, up)
 	# ángulo HORIZONTAL fijo como en los simuladores (con el vertical se veía todo el habitáculo en un celular)
 	var hf := float(d["hfov"]) * PI / 360.0
-	cam.fov = clampf(2.0 * atan(tan(hf) / aspect) * 180.0 / PI, 46.0, 74.0)
+	cam.fov = clampf(2.0 * atan(tan(hf) / aspect) * 180.0 / PI, 46.0, 74.0) + adj_of("fov")
 	cam.near = 0.04

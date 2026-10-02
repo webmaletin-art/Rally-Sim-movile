@@ -4,6 +4,8 @@ extends Control
 const Kit := preload("res://game/ui/ui_kit.gd")
 const TouchScroll := preload("res://game/ui/touch_scroll.gd")
 const OptionsUi := preload("res://game/ui/options_ui.gd")
+const Tr := preload("res://game/i18n/tr.gd")
+const LabPanel := preload("res://game/ui/lab_panel.gd")
 
 signal resume_pressed
 signal restart_pressed
@@ -12,6 +14,10 @@ signal tests_pressed
 signal camera_pressed
 signal cine_pressed
 signal options_changed(key: String)
+signal cam_step(d: int) # cambiar de cámara desde el panel de ajuste (−1 anterior, 1 siguiente)
+signal camadj_changed # se movió una barra del ajuste de cámara (race.gd lo guarda)
+signal lab_changed # se movió una barra del taller de prueba (race.gd rearma el auto)
+signal lab_reset
 
 var session: RefCounted
 var cfg: Dictionary
@@ -42,6 +48,11 @@ var opts_page := ""
 var opts_arg = null
 var opts_panel: PanelContainer
 var opts_scroll: ScrollContainer
+var rig: RefCounted # CameraRig del jugador (null en la aventura, que tiene sus propias cámaras)
+var lab_on := false # ¿hay taller de prueba? (prueba de autos, Carrera rápida y drift)
+var lab: Dictionary = {} # estado del auto de la prueba
+var lab_defs: Dictionary = {}
+var lab_tab: Array = [0]
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -258,6 +269,9 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 		big_l.modulate.a = clampf(big_t / 0.5, 0.0, 1.0)
 		if big_t <= 0.0:
 			big_l.text = ""
+
+## Los avisos se apagan solos aunque no haya sesión que actualice el HUD (aventura, pausa)
+func _process(dt: float) -> void:
 	if toast_t > 0.0:
 		toast_t -= dt
 		toast_l.modulate.a = clampf(toast_t / 0.5, 0.0, 1.0)
@@ -289,32 +303,70 @@ func _build_pause() -> void:
 	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pause_box.add_child(cc)
-	var p := Kit.panel(18)
-	p.position = Vector2(20, 80) # a un costado: se ve la cámara detrás mientras se elige
+	# panel a la izquierda (a la derecha se ve el auto y la cámara) con botones grandes de dos en dos; si no entra, se desliza
+	var p := Kit.panel(14)
+	p.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	p.anchor_right = 0.46
+	p.offset_left = 12
+	p.offset_top = 12
+	p.offset_bottom = -12
+	p.offset_right = 0
 	cc.add_child(p)
-	var v := Kit.vbox(12)
-	v.custom_minimum_size = Vector2(340, 0)
-	p.add_child(v)
-	v.add_child(Kit.label("PAUSA", 38, Kit.ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(Kit.button("▶  SEGUIR", func(): resume_pressed.emit(), true))
-	v.add_child(Kit.button("🎥  CÁMARA", func(): camera_pressed.emit()))
-	cine_btn = Kit.button("🎬  MODO CINE (para grabar)", func(): cine_pressed.emit())
-	v.add_child(cine_btn)
-	v.add_child(Kit.button("↺  REINICIAR", func(): restart_pressed.emit()))
-	v.add_child(Kit.button("⚙  OPCIONES (gráficos, sonido, efectos…)", func(): open_options()))
-	v.add_child(Kit.button("🔧  PRUEBAS Y AJUSTES", func(): tests_pressed.emit()))
-	v.add_child(Kit.button("✕  SALIR", func(): quit_pressed.emit()))
+	var sc := TouchScroll.new()
+	sc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	p.add_child(sc)
+	pause_col = Kit.vbox(8)
+	pause_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(pause_col)
+	_fill_pause()
+
+var pause_col: VBoxContainer
+
+## Los botones se rearman al abrir la pausa (el taller y el ajuste de cámara solo aparecen si corresponden)
+func _fill_pause() -> void:
+	for c in pause_col.get_children():
+		c.queue_free()
+	pause_col.add_child(Kit.label("PAUSA", 34, Kit.ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
+	var go := Kit.button("▶  SEGUIR", func(): resume_pressed.emit(), true, 26, Vector2(0, 66))
+	pause_col.add_child(go)
+	var pair := func(a: Button, b: Button) -> void:
+		var row := Kit.hbox(8)
+		pause_col.add_child(row)
+		a.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(a)
+		if b != null:
+			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(b)
+	var sz := Vector2(0, 62)
+	var cam_b := Kit.button("🎥  CÁMARA", func(): camera_pressed.emit(), false, 19, sz)
+	var adj_b: Button = null
+	if rig != null:
+		adj_b = Kit.button("📐  AJUSTAR CÁMARA", func(): open_page("camadj"), false, 19, sz)
+	pair.call(cam_b, adj_b)
+	cine_btn = Kit.button("🎬  MODO CINE", func(): cine_pressed.emit(), false, 19, sz)
+	pair.call(cine_btn, Kit.button("⚙  OPCIONES", func(): open_options(), false, 19, sz))
+	if lab_on:
+		var lb := Kit.button("🔧  TALLER DE PRUEBA  (grip, suspensión, potencia…)", func(): open_page("lab"), false, 19, sz)
+		lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pause_col.add_child(lb)
+	pair.call(Kit.button("↺  REINICIAR", func(): restart_pressed.emit(), false, 19, sz), Kit.button("✕  SALIR", func(): quit_pressed.emit(), false, 19, sz))
+	cine_btn.text = "🎬  SALIR DEL MODO CINE" if cine_on else "🎬  MODO CINE"
+
+var cine_on := false
 
 ## Modo cine: se esconden los paneles del HUD (la pausa y las opciones siguen funcionando)
 func set_cine(on: bool) -> void:
 	for c in get_children():
 		if c != pause_box and c != opts_box and c is CanvasItem:
 			(c as CanvasItem).visible = not on
+	cine_on = on
 	if cine_btn != null:
-		cine_btn.text = "🎬  SALIR DEL MODO CINE" if on else "🎬  MODO CINE (para grabar)"
+		cine_btn.text = "🎬  SALIR DEL MODO CINE" if on else "🎬  MODO CINE"
 
 func set_paused(on: bool) -> void:
 	if on:
+		_fill_pause()
 		big_t = 0.0
 		big_l.text = ""
 		toast_t = 0.0 if toast_l.text == "" else toast_t
@@ -342,6 +394,14 @@ func open_options() -> void:
 	opts_stack.clear()
 	opts_page = ""
 	_opts_go("options", null, false)
+
+## Páginas propias de la pausa (ajuste de cámara, taller de prueba): el mismo panel de la izquierda que las opciones
+func open_page(name: String) -> void:
+	pause_box.visible = false
+	opts_box.visible = true
+	opts_stack.clear()
+	opts_page = ""
+	_opts_go(name, null, false)
 
 func _opts_close() -> void:
 	opts_box.visible = false
@@ -386,5 +446,82 @@ func _opts_go(name: String, arg, push := true) -> void:
 	opts_scroll.add_child(opts_body)
 	if name == "fx":
 		opts.fx_page(opts_body, opts_col)
+	elif name == "camadj":
+		_cam_page()
+	elif name == "lab":
+		_lab_page()
 	else:
 		opts.options_page(opts_body, arg)
+
+
+# ───────────────────────── ajuste de cámara ─────────────────────────
+## Por cada cámara: distancia (más atrás o más adelante), altura, lado y campo de visión. Se guarda en el perfil.
+func _cam_page() -> void:
+	opts_title.text = Tr.t("AJUSTE DE CÁMARA")
+	if rig == null:
+		return
+	var mode: String = rig.mode()
+	var inside := mode == "onboard" or mode == "rearcabin" or mode == "hood" or mode == "bumper"
+	var head := Kit.hbox(6)
+	opts_body.add_child(head)
+	head.add_child(Kit.button("◀", func() -> void:
+		cam_step.emit(-1)
+		_opts_go("camadj", null, false), false, 22, Vector2(60, 52)))
+	var nl := Kit.label(Tr.t(str(rig.cam_name())), 21, Kit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+	nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(nl)
+	head.add_child(Kit.button("▶", func() -> void:
+		cam_step.emit(1)
+		_opts_go("camadj", null, false), false, 22, Vector2(60, 52)))
+	if mode == "custom":
+		opts_body.add_child(Kit.wrap("Con el juego en marcha: arrastrá un dedo por la pantalla para girar la cámara y pellizcá con dos dedos para acercarla o alejarla.", 14, Kit.MUTED, 200))
+	var rows := [
+		["dist", "Distancia (largo)", -0.6 if inside else -4.0, 0.6 if inside else 10.0, 0.05 if inside else 0.1, "m", "Más atrás (+) o más adelante (−) de donde está."],
+		["height", "Altura", -0.3 if inside else -1.5, 0.3 if inside else 4.0, 0.05 if inside else 0.1, "m", "Más arriba (+) o más abajo (−)."],
+		["side", "Posición lateral", -0.3 if inside else -3.0, 0.3 if inside else 3.0, 0.05 if inside else 0.1, "m", "Corre la cámara a la izquierda (−) o a la derecha (+)."],
+		["fov", "Ángulo de visión", -15.0, 25.0, 1.0, "°", "Más ángulo ve más cosas y da más sensación de velocidad; menos ángulo acerca."],
+	]
+	var info := Kit.wrap("", 13, Kit.MUTED, 200)
+	for r in rows:
+		var key: String = r[0]
+		var v0: float = rig.adj_of(key)
+		var row := Kit.hbox(8)
+		opts_body.add_child(row)
+		var lbl := Kit.label(str(r[1]), 16, Kit.TEXT)
+		lbl.custom_minimum_size.x = 168
+		lbl.clip_text = true
+		row.add_child(lbl)
+		var sl := HSlider.new()
+		sl.min_value = float(r[2])
+		sl.max_value = float(r[3])
+		sl.step = float(r[4])
+		sl.value = v0
+		sl.custom_minimum_size = Vector2(0, 40)
+		sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(sl)
+		var unit: String = r[5]
+		var vl := Kit.label("%+.2f %s" % [v0, unit] if inside and key != "fov" else "%+.1f %s" % [v0, unit], 15, Kit.GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
+		vl.custom_minimum_size.x = 84
+		row.add_child(vl)
+		var txt := Tr.t(str(r[6]))
+		sl.value_changed.connect(func(nv: float) -> void:
+			rig.set_adj(key, nv)
+			vl.text = "%+.2f %s" % [nv, unit] if inside and key != "fov" else "%+.1f %s" % [nv, unit]
+			info.text = txt)
+		sl.drag_ended.connect(func(_c: bool) -> void: camadj_changed.emit())
+	opts_body.add_child(info)
+	opts_body.add_child(Kit.button("↺  RESTABLECER ESTA CÁMARA", func() -> void:
+		rig.adj.erase(str(rig.index))
+		camadj_changed.emit()
+		_opts_go("camadj", null, false), false, 18, Vector2(0, 52)))
+
+# ───────────────────────── taller de prueba ─────────────────────────
+func _lab_page() -> void:
+	opts_title.text = Tr.t("TALLER DE PRUEBA")
+	if lab.is_empty():
+		return
+	LabPanel.build(opts_body, lab, lab_defs, lab_tab, func() -> void: lab_changed.emit(), func() -> void: _opts_go("lab", null, false), func() -> void:
+		lab_reset.emit()
+		_opts_go("lab", null, false), opts.sfx if opts != null else null)

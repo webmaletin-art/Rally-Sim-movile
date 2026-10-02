@@ -56,6 +56,13 @@ var _fx_base := {}
 
 ## Completa la configuración de la carrera antes de armarla (auto, clima, rivales)
 static func prepare_cfg(cfg: Dictionary, profile: RefCounted) -> void:
+	if cfg.get("practice", false) == true:
+		AdvData.practice = AdvData.default_state()
+		AdvData.practice["stage"] = int(cfg.get("stage", 0))
+		AdvData.practice["intro"] = true
+		AdvData.practice["started"] = true
+	else:
+		AdvData.practice = {}
 	var stv := AdvData.state(profile) if profile != null else AdvData.default_state()
 	var si: int = clampi(int(cfg.get("stage", stv["stage"])), 0, AdvRoute.STAGES.size() - 1)
 	cfg["stage"] = si

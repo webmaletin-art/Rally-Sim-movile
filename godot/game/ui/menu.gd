@@ -120,7 +120,13 @@ func _ready() -> void:
 	var daily: Dictionary = profile.daily_check()
 	if autotest != "" and not app.autorace_used:
 		app.autorace_used = true
-		launch({"type": "free", "track": "lake", "ai": 0, "sky": "day", "car": autotest, "state": profile.new_car_state(autotest), "testCar": true, "back": "dealer", "seed": 7}, false)
+		var at := autotest.split("@") # prueba: --autotest=gt (lago) o --autotest=gt@drift (plaza de drift)
+		var tc := {"type": "free", "track": "lake", "ai": 0, "sky": "day", "car": at[0], "state": profile.new_car_state(at[0]), "testCar": true, "back": "dealer", "seed": 7}
+		if at.size() > 1 and at[1] == "drift":
+			tc["type"] = "drift"
+			tc["track"] = "drift"
+			tc["time"] = 1800
+		launch(tc, false)
 		return
 	if perf_arg != "" and not app.autorace_used:
 		app.autorace_used = true
