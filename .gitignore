@@ -4,3 +4,5 @@ android/
 *.apk
 *.aab
 build/
+__pycache__/
+*.pyc
