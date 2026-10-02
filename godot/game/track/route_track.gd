@@ -11,6 +11,7 @@ const BUMP_AMP := [0.005, 0.03, 0.035, 0.045, 0.05, 0.03] # por superficie: asfa
 var hills := 0.0 # subidas y bajadas suaves del recorrido (0 = las de la versión HTML; 1 = las de las carreras de Dream Racing)
 var center_line := false # línea amarilla del medio (solo para el modo aventura)
 var open := false # ruta abierta (modo aventura): la última muestra no se une con la primera
+var road_surf := PackedByteArray() # superficie del camino por muestra (0 asfalto · 1 tierra); vacío = la del modo de la pista
 var surf_mu := PackedFloat32Array() # agarre relativo de cada muestra para la IA (vacío = igual en toda la pista)
 var wall_l := PackedFloat32Array() # límite lateral por muestra (modo aventura; vacío = el del auto)
 var wall_r := PackedFloat32Array()
@@ -95,6 +96,7 @@ func make_view(register := true) -> Object:
 	v.prof_cache = prof_cache
 	v.open = open
 	v.surf_mu = surf_mu
+	v.road_surf = road_surf
 	v.wall_l = wall_l
 	v.wall_r = wall_r
 	_copy_view(v)
@@ -323,9 +325,11 @@ func _micro_bump(x: float, z: float, surf: int) -> float:
 	var nn := sin(x * 0.71 + z * 0.53) * sin(x * 0.29 - z * 0.83 + 1.3) * 0.6 + sin(x * 1.9 + z * 1.3 + 0.7) * 0.15 + sin(x * 0.17 + z * 0.13 + 2.1) * 0.25
 	return a * (0.5 + 0.5 * nn)
 
-func _surf_of(d: float) -> int:
+func _surf_of(d: float, idx := -1) -> int:
 	var se := half_width + shoulder
 	if d <= half_width:
+		if idx >= 0 and road_surf.size() == n:
+			return int(road_surf[idx])
 		return 0 if mode == "asphalt" else 1
 	if d <= se:
 		return 2
@@ -346,7 +350,7 @@ func ground_info(x: float, z: float) -> Vector2:
 			y = r_y - 0.05 * t # la banquina baja apenas hacia la cuneta
 		else:
 			y = _outside_y(d, se, x, z, r_y)
-	var surf := _surf_of(d)
+	var surf := _surf_of(d, r_idx)
 	return Vector2(y + _micro_bump(x, z, surf), float(surf))
 
 ## Altura del terreno sin la ondulación fina (para dibujar)

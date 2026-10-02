@@ -1,0 +1,8 @@
+Vegetación y suelo de Operación Nexus
+- arboles/                       árboles del pack (.glb + texturas .jpg junto a cada uno)
+- plantas_flores_arbustos/       plantas, flores, arbustos, bambú, hortensia, lavanda
+- rocas/                         rocas
+- suelo_asfalto_calle/           veredas, cruce peatonal, estacionamiento, arenero, separador de carril
+- procedural_arboles_y_plantas/  las especies que genera el juego por código (pino, hoja ancha, álamo, seco, arbusto, roca, cactus, pino nevado, abedul, palmera, pasto) exportadas a .glb
+- texturas_suelo_asfalto/        texturas procedurales del juego (asfalto, pasto, tierra, hormigón, baldosa, piso de madera, ladrillo, pared, madera) en PNG 128 px
+Nota: el asfalto y el pasto del terreno no son modelos: son texturas procedurales que se repiten (por eso van como PNG).

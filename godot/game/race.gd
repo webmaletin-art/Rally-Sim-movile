@@ -8,6 +8,8 @@ const CircuitTrack := preload("res://game/track/circuit_track.gd")
 const RouteTrack := preload("res://game/track/route_track.gd")
 const DriftTrack := preload("res://game/track/drift_track.gd")
 const DriftSession := preload("res://game/drift_session.gd")
+const PaperTrack := preload("res://game/track/paper_track.gd")
+const PaperWorld := preload("res://game/track/paper_world.gd")
 const DriftBot := preload("res://game/ai/drift_bot.gd")
 const MeshChunks := preload("res://game/track/mesh_chunks.gd")
 const PerfBench := preload("res://game/perf_bench.gd")
@@ -285,6 +287,8 @@ func _ready() -> void:
 	world.add_child(weather)
 	weather.setup(env, sun, cam, track, fx, road_mat, ground_mat)
 	weather.apply(weather_name, true)
+	if track is PaperTrack:
+		_paper_atmosphere()
 	audio = CarAudio.new()
 	add_child(audio)
 	sfx = UiSfx.new()
@@ -428,6 +432,17 @@ func _build_world() -> void:
 	cam.make_current()
 	_build_track_nodes()
 
+## Paper Race: cielo y niebla de papel (la selva se cierra a lo lejos), luz suave y pareja
+func _paper_atmosphere() -> void:
+	env.background_color = Color(0.88, 0.91, 0.84)
+	env.fog_enabled = true
+	env.fog_light_color = Color(0.84, 0.89, 0.80)
+	env.fog_density = 0.0062
+	env.ambient_light_color = Color(0.86, 0.88, 0.82)
+	env.ambient_light_energy = 0.8
+	sun.light_energy = 1.0
+	sun.light_color = Color(1.0, 0.96, 0.88)
+
 ## Crea la pista elegida (el circuito de prueba o una de las rutas de la versión web)
 func _make_track() -> void:
 	if adv_mode:
@@ -449,6 +464,9 @@ func _make_track() -> void:
 	var m: Dictionary = track_maps[track_id]
 	if str(m.get("kind", "")) == "drift":
 		track = DriftTrack.new()
+		return
+	if str(m.get("kind", "")) == "paper":
+		track = PaperTrack.new(str(m["route"]), str(m["mode"]), false, 0.6) # Paper Race: selva de papel, ruta y tierra
 		return
 	track = RouteTrack.new(str(m["route"]), str(m["mode"]), m.get("reverse", false) == true, 1.0 if menu_mode else 0.0)
 
@@ -479,6 +497,15 @@ func _build_track_nodes() -> void:
 		track_root.add_child(track.build_world())
 		road_mat = track.road_mat
 		ground_mat = track.ground_mat
+		return
+	if track is PaperTrack:
+		var pw := PaperWorld.new()
+		var qd: float = float({"low": 0.55, "high": 1.15}.get(str(profile.setting("quality")) if profile != null else "mid", 0.85))
+		pw.setup(track, qd)
+		track_root.add_child(pw)
+		road_mat = StandardMaterial3D.new() # el clima no toca los materiales de papel
+		ground_mat = StandardMaterial3D.new()
+		track_root.add_child(track.build_start_gate(0, "DREAM RACING"))
 		return
 	var ground := MeshInstance3D.new()
 	var pm := PlaneMesh.new()
@@ -644,7 +671,7 @@ func _rebuild_trees() -> void:
 		trees_node.queue_free()
 	trees_node = Node3D.new()
 	world.add_child(trees_node)
-	if trees_n <= 0 or adv_mode or track is DriftTrack:
+	if trees_n <= 0 or adv_mode or track is DriftTrack or track is PaperTrack:
 		return
 	var trunk := CylinderMesh.new()
 	trunk.top_radius = 0.13
