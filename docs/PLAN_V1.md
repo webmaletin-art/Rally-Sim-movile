@@ -1,6 +1,18 @@
 # Plan de la versión 1.0 (decisiones del dueño + propuestas a confirmar)
 
-Estado: **en espera del zip de assets** (íconos + logotipo + nombres de autos). Hasta entonces no se toca el menú principal.
+Estado: **todo lo de juego y tienda está hecho** (ver «Hecho»). **En espera del zip de assets** (íconos + logotipo + nombres de autos): hasta entonces no se toca el menú principal (reorganización sin scroll, íconos nuevos, mundo 3D con cámara libre detrás del menú).
+
+## Hecho (r de esta tanda)
+- Economía rebalanceada, packs y compras (`dr_full`, `dr_adventure`, `dr_garage`, autos premium sueltos; sin créditos), 3 etapas gratis, cartel de ofertas, Online y Mundo abierto en «PRONTO».
+- Carrera rápida solo con autos propios (el auto se ve en la escena 3D), reglaje y pintura con costo (probar gratis, pagar al aplicar).
+- **Duelo de drift** contra un bot adaptativo (Carrera rápida → Drift → Duelo contra un bot, nivel fácil/normal/difícil).
+- **Picada** de 400 m (mapa «Picada», Carrera rápida y dos eventos de copa: Picada del Domingo y Picada Nocturna): caja manual obligatoria, barra de vueltas con zona verde de cambio perfecto (cambio al doble de rápido), cambio tarde = rebote contra el limitador, rival a la par; resultado con «cambios perfectos: X de Y». Prueba: `tests/drag_test.gd`.
+- Idiomas: español, inglés, portugués, **francés, italiano y alemán** (textos del juego).
+
+## Pendiente
+- **Voz del copiloto en el idioma elegido**: en la versión Godot el copiloto hablado **todavía no está portado** (existe solo en la versión HTML, con 756 frases grabadas en español, `audio/cd/`). Plan: portar `js/copilot.js` (situaciones, prioridades, pausas) y reproducir las grabaciones en español; para los demás idiomas usar la voz del sistema (`DisplayServer.tts_speak`) con las frases traducidas, o grabarlas con una voz de cada idioma.
+- Carreras A→B / checkpoints sobre tramos de tierra y asfalto de la ruta de aventura.
+- Menú principal sin scroll, íconos y nombres nuevos (esperando el zip).
 
 ## Decidido por el dueño
 - Estudio: **SRGamestudios** · paquete **com.srg.dreamracing** · contacto roldanhr98@gmail.com · ícono: el «DR» provisorio actual.
@@ -19,4 +31,4 @@ Estado: **en espera del zip de assets** (íconos + logotipo + nombres de autos).
 - Idiomas: completar los que falten; voz del copiloto en el idioma elegido.
 
 ## Pendiente de confirmar (ver chat)
-Precios y packs · cuáles son los 3 superdeportivos · venta de créditos · copas restantes · tarifa de reglaje · largo y cantidad de cambios de la picada · voces del copiloto (voz del sistema o grabadas).
+Precios finales en Play Console · cuáles son los 3 superdeportivos (hoy: Mamut 6x6, GT3 RS y Aerion) · copas restantes · cómo se hablan las voces del copiloto (voz del sistema o grabadas).

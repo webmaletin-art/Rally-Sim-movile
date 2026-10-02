@@ -44,10 +44,13 @@ La versión de prueba (APK liviano / completo de GitHub) **no cambia**: todo lo 
 7. **Productos integrados** (Monetizar → Productos → Productos integrados), con **estos IDs exactos** (los pide el código):
    | ID | Tipo | Qué es | Precio sugerido (a confirmar por vos) |
    |---|---|---|---|
-   | `dr_full` | no consumible | Juego completo: las 12 etapas de la aventura y todas las copas | USD 4,99 |
-   | `dr_credits_s` | consumible | $ 25.000 de créditos | USD 0,99 |
-   | `dr_credits_m` | consumible | $ 100.000 de créditos | USD 2,99 |
-   | `dr_credits_l` | consumible | $ 300.000 de créditos | USD 6,99 |
+   | `dr_full` | no consumible | **Juego completo**: aventura (12 etapas), todas las copas y los 3 autos premium | USD 1,99 |
+   | `dr_adventure` | no consumible | Aventura completa (12 etapas, tenés 3 gratis) y las copas Nacional, Continental y Leyenda | USD 0,99 |
+   | `dr_garage` | no consumible | Garaje premium: Mamut 6x6, GT3 RS y Aerion | USD 1,99 |
+   | `car_truck` | no consumible | Colossus Mamut 6x6 (camión) | USD 0,99 |
+   | `car_gt3` | no consumible | Altair GT3 RS | USD 0,99 |
+   | `car_hyper` | no consumible | Vortex Aerion | USD 0,99 |
+   Todos son **no consumibles** (se compran una vez y se recuperan con «Restaurar compras»). **No se venden créditos.** Los precios los pone Play Console: el juego muestra el que devuelve Google.
    También hace falta tener la cuenta de pagos de comerciante (Perfil de pagos) completa.
 8. **Probar las compras**: subí el primer AAB a **Pruebas internas**, agregá tu correo como tester y como *tester de licencia* (Configuración → Pruebas de licencia), instalá desde el link de Play y comprá (las compras de testers no cobran). **Las compras no se pueden probar con el APK de GitHub.**
 9. **Producción**: crear versión → subir AAB → notas de versión → enviar a revisión (tarda de horas a unos días).
@@ -72,10 +75,10 @@ Los íconos del lanzador (adaptativo + monocromo) ya están en `godot/store/icon
 - Los argumentos de línea de comandos de prueba (`--perf`, `--autotest`…) no existen en Android.
 
 ### Propuestas que necesitan tu OK (todavía NO las hice)
-1. **Idiomas francés, italiano y alemán**: están en la lista pero casi no tienen traducción (se ve español). Propongo dejar solo **español, inglés y portugués** en el AAB hasta traducirlos.
+1. **Idiomas**: español, inglés, portugués, francés, italiano y alemán ya tienen traducción de los textos del juego (la voz grabada del copiloto todavía solo existe en español, ver `docs/PLAN_V1.md`).
 2. **Taller de prueba de la pausa** (ajusta todo gratis en pruebas de autos de la tienda y Carrera rápida): ¿lo dejamos para todos o solo en la prueba de autos de la tienda? Como se venden créditos, quizá convenga dejarlo solo en la tienda.
-3. **Reparto gratis / pago**: hoy son gratis las 2 primeras etapas de la aventura y la copa Debut; todo lo demás con `dr_full`. ¿Te sirve ese corte?
-4. **Bolsas de créditos**: ¿vendemos créditos o solo `dr_full`? (Los IDs y precios de arriba son una propuesta.)
+3. **Reparto gratis / pago**: hoy son gratis las 3 primeras etapas de la aventura, la copa Debut y todos los mapas; el resto con `dr_adventure` / `dr_garage` / `dr_full`.
+4. **Créditos**: no se venden (decidido).
 5. **DR Bisonte XR** en la tienda ($250.000): se ve y se prueba, pero se compra recién al terminar la aventura. ¿Lo mantenemos así en la versión de Play?
 6. **Ícono provisorio**: ¿querés un logo propio?
 

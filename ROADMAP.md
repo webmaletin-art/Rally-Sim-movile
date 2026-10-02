@@ -3,6 +3,10 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
+- ✅ **Picada de 400 m** (`game/data/drag.gd`, mapa «Picada» en `data/routes.json`): caja manual obligatoria, zona verde de cambio perfecto en la barra de vueltas, rival a la par, dos eventos de copa. Prueba `tests/drag_test.gd`.
+- ✅ **Duelo de drift** contra un bot adaptativo (`drift_session.gd`: la mitad del puntaje del bot sigue tu ritmo, con ventaja según el nivel).
+- ✅ **Idiomas francés, italiano y alemán** (todos los textos del juego; `tools/i18n/batches/b15…b21`).
+- 🗒 **Falta**: voz del copiloto en el idioma elegido (el copiloto hablado todavía no está portado a Godot; ver `docs/PLAN_V1.md`), carreras A→B/checkpoints en la ruta de aventura, y el menú nuevo cuando llegue el zip de assets.
 - ✅ **Paper Race** (`docs/PAPER_RACE.md`): pista de papel (papercraft) de 1,9 km con tramos de ruta y tierra y una selva muy tupida hecha con todo el pack de vegetación convertido a papel; en Carrera rápida. Íconos del menú principal guardados en `biblioteca/ui/menu_principal/` para la próxima actualización.
 - 🗒 **Plan 1.0 y assets**: `docs/PLAN_V1.md` (decisiones y pendientes), `docs/assets/` (lista de íconos con nombres de archivo, nombres de autos y prompt para generar los PNG sin fondo). Paquete `com.srg.dreamracing`.
 - ✅ **Preparado para Google Play** (guía en `docs/PLAY_STORE.md`): preset «Google Play (AAB)» + flujo «Build Play Store AAB» con firma por secretos, API 36, versión automática; versión `store` (sin modo desarrollador, sin prueba de rendimiento, sin descargas ni Internet); compras dentro del juego con Google Play Billing (`store/`, pantalla COMPRAS: `dr_full` + bolsas de créditos); textos legales con compras y web de privacidad/términos; íconos y gráfico de la ficha (`tools/play`, `store_listing/`). Falta: secretos de firma, activar Pages, crear la app y los productos en Play Console, probar compras en «Prueba interna», capturas desde el teléfono.
