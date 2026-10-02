@@ -16,6 +16,7 @@ const OptionsUi := preload("res://game/ui/options_ui.gd")
 const MenuAdventure := preload("res://game/ui/menu_adventure.gd")
 const MenuAbout := preload("res://game/ui/menu_about.gd")
 const MenuPerf := preload("res://game/ui/menu_perf.gd")
+const MenuStore := preload("res://game/ui/menu_store.gd")
 const Release := preload("res://game/data/release.gd")
 const AdvData := preload("res://game/adventure/adv_data.gd")
 const AdvRoute := preload("res://game/adventure/adv_route.gd")
@@ -44,6 +45,7 @@ var garage: RefCounted
 var adventure: RefCounted
 var about: RefCounted
 var perf: RefCounted
+var store: RefCounted
 var frames := 0
 var showcar := "" # prueba: muestra este auto en la sala
 var perf_arg := ""
@@ -112,6 +114,8 @@ func _ready() -> void:
 	about.m = self
 	perf = MenuPerf.new()
 	perf.m = self
+	store = MenuStore.new()
+	store.m = self
 	_build_world()
 	_build_ui()
 	if showcar != "":
@@ -128,7 +132,7 @@ func _ready() -> void:
 			tc["time"] = 1800
 		launch(tc, false)
 		return
-	if perf_arg != "" and not app.autorace_used:
+	if perf_arg != "" and not app.autorace_used and not Release.store():
 		app.autorace_used = true
 		perf._start(perf_arg)
 		return
@@ -298,7 +302,10 @@ func go(name: String, arg = null, push := true) -> void:
 		"garage", "dealer", "workshop", "tune", "paint": garage.build(name, arg)
 		"about", "privacy", "terms", "credits": about.build(name, arg)
 		"consent": about.consent_screen()
-		"perf": perf.build(name, arg)
+		"perf":
+			if not Release.store():
+				perf.build(name, arg)
+		"iap": store.build()
 		"adventure", "adv_skills", "adv_help", "adv_stages", "adv_start": adventure.build(name, arg)
 		_: _home()
 
@@ -457,8 +464,10 @@ func _home() -> void:
 		["⭐", "LOGROS", ("%d para cobrar" % Rewards.ach_ready(profile)) if Rewards.ach_ready(profile) > 0 else "objetivos", func(): go("goals"), false],
 		["⚙", "OPCIONES", "manejo · sonido", func(): go("options"), false],
 		["ℹ", "ACERCA DE", "créditos · legales", func(): go("about"), false],
-		["📊", "RENDIMIENTO", "probá tu teléfono", func(): go("perf"), false],
+		["💎", "COMPRAS", "juego completo · créditos", func(): go("iap"), false],
 	]
+	if not Release.store():
+		tiles.append(["📊", "RENDIMIENTO", "probá tu teléfono", func(): go("perf"), false]) # no va en la versión de Google Play
 	for tl in tiles:
 		g.add_child(tile(str(tl[0]), str(tl[1]), str(tl[2]), tl[3], bool(tl[4])))
 

@@ -86,6 +86,7 @@ jobs:
           godot --headless --script res://tests/adv_route_test.gd
           godot --headless --script res://tests/cars_test.gd
           godot --headless --script res://tests/drift_test.gd
+          godot --headless --script res://tests/practice_test.gd
 
       - name: Número de versión del APK (sube con cada compilación)
         working-directory: godot

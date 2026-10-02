@@ -96,7 +96,7 @@ func _tiers() -> void:
 				done += 1
 		var right := "%d/%d" % [done, evs.size()]
 		if not allowed:
-			right = "🔒 Próximamente"
+			right = "🔒 Completo" if Release.IAP_FULL else "🔒 Próximamente"
 		elif not open:
 			if t.has("car") and not m.profile.owns(str(t["car"])):
 				right = "🔒 %s" % CarBuild.catalog()["cars"][t["car"]]["model"]
@@ -109,7 +109,7 @@ func _tiers() -> void:
 func _open_tier(t: Dictionary) -> void:
 	if not Release.tier_allowed(m.profile, str(t["id"])):
 		m.sfx.play("error")
-		m.toast("Esta copa llega en una próxima actualización")
+		m.toast(Release.lock_text())
 		return
 	if not Rewards.tier_open(m.profile, t):
 		m.sfx.play("error")

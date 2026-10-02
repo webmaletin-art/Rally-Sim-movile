@@ -5,7 +5,7 @@ extends RefCounted
 const Kit := preload("res://game/ui/ui_kit.gd")
 const Release := preload("res://game/data/release.gd")
 
-const POLICY_URL := "https://github.com/webmaletin-art/Rally-Sim-movile/blob/main/docs/PRIVACIDAD.md"
+const POLICY_URL := "https://webmaletin-art.github.io/Rally-Sim-movile/docs/privacidad.html"
 const TERMS_URL := "https://github.com/webmaletin-art/Rally-Sim-movile/blob/main/docs/TERMINOS.md"
 const CONSENT_VERSION := 1
 
@@ -29,12 +29,18 @@ const PRIVACY := [
 	["Capturas", "Las capturas de pantalla que sacás con el botón de captura se guardan en tu teléfono, en la carpeta de imágenes del juego. Las podés borrar desde la galería del juego."],
 	["Internet", "La app se conecta solo para descargar contenido del juego (modelos, pistas, música y actualizaciones) desde el repositorio público del proyecto en GitHub. Como en cualquier descarga, GitHub puede registrar tu dirección IP según su propia política."],
 	["Permisos", "Internet (descargar contenido) y vibración (opcional). No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono."],
-	["Niños", "El juego no tiene publicidad, compras con dinero real ni chat, y no recopila datos de nadie, incluidos los menores."],
+	["Niños", "El juego no tiene publicidad ni chat, y no recopila datos de nadie, incluidos los menores. Las compras dentro del juego se hacen con la cuenta de Google Play de un adulto."],
+]
+
+## Versión de Google Play: funciona sin internet; solo las compras pasan por Google Play
+const PRIVACY_STORE := [
+	["Internet", "El juego funciona sin conexión: todo viene dentro de la app. Solo se usa internet, a través de Google Play, cuando hacés una compra dentro del juego. Los datos de pago los maneja Google y nunca llegan a nosotros."],
+	["Permisos", "Vibración (opcional) y el servicio de compras de Google Play. No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono."],
 ]
 
 const TERMS := [
 	["Uso personal", "Dream Racing es un juego de simulación para entretenimiento, ofrecido «tal cual», sin garantías."],
-	["Todo es virtual", "El dinero, los autos, las estrellas y los logros son virtuales: no tienen valor real, no se canjean ni se venden. No hay compras con dinero real."],
+	["Todo es virtual", "El dinero, los autos, las estrellas y los logros son virtuales: no tienen valor real, no se canjean por dinero ni se venden."],
 	["Seguridad", "Es un juego: no imites lo que ves en la vida real y no uses el teléfono mientras manejás un vehículo."],
 	["Contenido descargable", "El juego descarga contenido adicional de internet; la primera vez hace falta conexión. El contenido puede cambiar con las actualizaciones."],
 	["Propiedad intelectual", "El juego, sus autos, pistas y diseños pertenecen a sus autores. Los modelos de Mixamo y de Sweet Home 3D se usan según sus licencias (ver Créditos)."],
@@ -42,12 +48,42 @@ const TERMS := [
 	["Cambios", "Podemos actualizar estos términos y el juego. Seguir usando la app después de un cambio implica aceptarlo."],
 ]
 
+## Versión de Google Play: con compras dentro del juego
+const TERMS_STORE := [
+	["Compras", "Podés comprar con dinero real el juego completo y bolsas de créditos a través de Google Play. Las cobra y las administra Google: los reembolsos y reclamos se piden en Google Play, según sus políticas. Los créditos y el juego completo son para usar en el juego y no se pueden transferir ni canjear por dinero."],
+	["Contenido descargable", "El juego completo viene dentro de la app y funciona sin conexión. Las actualizaciones se instalan desde Google Play."],
+]
+
+func _privacy() -> Array:
+	return _merged(PRIVACY, PRIVACY_STORE) if Release.store() else PRIVACY
+
+func _terms() -> Array:
+	return _merged(TERMS, TERMS_STORE) if Release.store() else TERMS
+
+## Reemplaza las secciones de igual título y agrega las nuevas al final
+func _merged(base: Array, extra: Array) -> Array:
+	var out: Array = []
+	for it in base:
+		var rep: Variant = null
+		for e in extra:
+			if str(e[0]) == str(it[0]):
+				rep = e
+		out.append(rep if rep != null else it)
+	for e in extra:
+		var found := false
+		for it in base:
+			if str(it[0]) == str(e[0]):
+				found = true
+		if not found:
+			out.append(e)
+	return out
+
 func build(name: String, arg) -> void:
 	match name:
 		"about": _hub()
 		"credits": _paged("CRÉDITOS", CREDITS, 3, "credits")
-		"privacy": _paged("PRIVACIDAD", PRIVACY, 3, "privacy")
-		"terms": _paged("TÉRMINOS DE USO", TERMS, 4, "terms")
+		"privacy": _paged("PRIVACIDAD", _privacy(), 3, "privacy")
+		"terms": _paged("TÉRMINOS DE USO", _terms(), 4, "terms")
 
 func version_text() -> String:
 	var f := "res://game/build_id.txt"
@@ -81,14 +117,14 @@ func _tap_version() -> void:
 		taps = 0
 	tap_t = now
 	taps += 1
-	if taps >= 7 and not Release.dev(m.profile):
+	if taps >= 7 and not Release.dev(m.profile) and not Release.store():
 		Release.activate_dev(m.profile)
 		m.refresh_car()
 		m.update_credits()
 		m.sfx.play("buy")
 		m.toast(tr("🛠 Modo desarrollador: todo desbloqueado"))
 		m.go("about", null, false)
-	elif taps >= 3 and not Release.dev(m.profile):
+	elif taps >= 3 and not Release.dev(m.profile) and not Release.store():
 		m.toast(tr("Faltan %d toques…") % (7 - taps))
 
 ## Texto en secciones con paginador (n secciones por página)
@@ -117,7 +153,7 @@ static func needs_consent(profile: RefCounted) -> bool:
 func consent_screen() -> void:
 	m.set_title("BIENVENIDO")
 	m.body.add_child(Kit.label("Antes de empezar", 26, Kit.ACCENT))
-	m.body.add_child(Kit.wrap("Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Descarga contenido del juego desde internet.", 15, Kit.TEXT, 300))
+	m.body.add_child(Kit.wrap("Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Funciona sin internet; las compras dentro del juego pasan por Google Play." if Release.store() else "Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Descarga contenido del juego desde internet.", 15, Kit.TEXT, 300))
 	var g := Kit.grid(2, 8, 8)
 	m.body.add_child(g)
 	g.add_child(m.tile("🔒", "POLÍTICA DE PRIVACIDAD", "", func() -> void:

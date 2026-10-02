@@ -2,7 +2,7 @@
 
 **Dream Racing** · Última actualización: octubre de 2026
 
-> Antes de publicar: completar el contacto (más abajo) y alojar este archivo en una URL pública (por ejemplo GitHub Pages) para pegarla en Google Play Console → «Contenido de la app → Política de privacidad».
+> Se publica en `https://webmaletin-art.github.io/Rally-Sim-movile/docs/privacidad.html` (GitHub Pages; ver docs/PLAY_STORE.md). Antes de publicar: completar el contacto (más abajo) en este archivo y en `docs/privacidad.html`.
 
 ## Español
 
@@ -16,15 +16,20 @@ Dream Racing es un juego sin cuentas, sin publicidad y sin análisis (analytics)
 - **Vibración**: se usa para la respuesta háptica del juego si la activás.
 
 ### Conexión a internet
-La app se conecta a internet únicamente para **descargar contenido del juego** (modelos, pistas, música y actualizaciones) desde el repositorio público del proyecto en GitHub (`github.com/webmaletin-art/Rally-Sim-movile`). Al descargar, GitHub puede registrar tu dirección IP como en cualquier descarga web, según su propia política de privacidad. El juego no envía ninguna información tuya en esas descargas.
+**Versión de Google Play:** el juego completo viene dentro de la app y funciona sin conexión. Solo se usa internet, a través de Google Play, cuando hacés una compra dentro del juego; los datos de pago los maneja Google y nunca llegan a nosotros.
+
+**Versión de prueba descargable (APK):** la app se conecta a internet únicamente para **descargar contenido del juego** (modelos, pistas, música y actualizaciones) desde el repositorio público del proyecto en GitHub (`github.com/webmaletin-art/Rally-Sim-movile`). Al descargar, GitHub puede registrar tu dirección IP como en cualquier descarga web, según su propia política de privacidad. El juego no envía ninguna información tuya en esas descargas.
 
 ### Permisos de Android
-- `INTERNET`: descargar el contenido del juego.
+- `INTERNET` (solo en la versión de prueba descargable): descargar el contenido del juego. La versión de Google Play no lo pide.
 - `VIBRATE`: vibración del dispositivo (opcional).
 No pedimos acceso a contactos, ubicación, cámara, micrófono ni archivos personales.
 
 ### Niños
-El juego no contiene publicidad, compras con dinero real ni chat. No recopilamos datos de ninguna persona, incluidos los menores de edad.
+El juego no contiene publicidad ni chat. No recopilamos datos de ninguna persona, incluidos los menores de edad. Las compras dentro del juego (juego completo y bolsas de créditos) se hacen con la cuenta de Google Play de un adulto.
+
+### Compras dentro del juego
+Las procesa Google Play Billing. Google puede tratar tus datos de pago y de cuenta según su propia política de privacidad; el juego solo recibe la confirmación de que la compra se hizo (qué producto) y la guarda en tu teléfono.
 
 ### Terceros
 No usamos SDK de publicidad, análisis ni redes sociales. Los modelos de personajes animados provienen de Mixamo (Adobe) y algunos modelos de escenario de Sweet Home 3D (bibliotecas de uso libre); ver «Créditos» dentro del juego.
@@ -49,15 +54,20 @@ Dream Racing has no accounts, no ads and no analytics. **We do not collect, sell
 - **Vibration** is used for the game's haptic feedback if you turn it on.
 
 ### Internet access
-The app connects to the internet only to **download game content** (models, tracks, music and updates) from the project's public GitHub repository (`github.com/webmaletin-art/Rally-Sim-movile`). As with any web download, GitHub may log your IP address under its own privacy policy. The game sends no information about you in these downloads.
+**Google Play version:** the full game is inside the app and works offline. The internet is used only, through Google Play, when you make an in-game purchase; payment data is handled by Google and never reaches us.
+
+**Downloadable test version (APK):** the app connects to the internet only to **download game content** (models, tracks, music and updates) from the project's public GitHub repository (`github.com/webmaletin-art/Rally-Sim-movile`). As with any web download, GitHub may log your IP address under its own privacy policy. The game sends no information about you in these downloads.
 
 ### Android permissions
-- `INTERNET`: download game content.
+- `INTERNET` (only in the downloadable test version): download game content. The Google Play version does not request it.
 - `VIBRATE`: device vibration (optional).
 We do not request contacts, location, camera, microphone or personal files.
 
 ### Children
-The game has no advertising, no real-money purchases and no chat. We do not collect data from anyone, including minors.
+The game has no advertising and no chat. We do not collect data from anyone, including minors. In-game purchases (full game and credit packs) are made with an adult's Google Play account.
+
+### In-app purchases
+They are processed by Google Play Billing. Google may process your payment and account data under its own privacy policy; the game only receives confirmation that the purchase was made (which product) and stores it on your phone.
 
 ### Third parties
 We use no advertising, analytics or social SDKs. Animated character models come from Mixamo (Adobe) and some scenery models from Sweet Home 3D (free-to-use libraries); see "Credits" in the game.

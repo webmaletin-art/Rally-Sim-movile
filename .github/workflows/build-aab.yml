@@ -1,0 +1,185 @@
+name: Build Play Store AAB
+
+# Compila el .aab de Dream Racing para subir a Google Play (preset «Google Play (AAB)»: juego completo adentro, sin descargas,
+# sin modo desarrollador ni prueba de rendimiento, con compras de Google Play).
+# Se lanza a mano: Actions → «Build Play Store AAB» → Run workflow.
+#
+# FIRMA (Settings → Secrets and variables → Actions → New repository secret):
+#   ANDROID_KEYSTORE_BASE64    el archivo .keystore (clave de SUBIDA) codificado en base64
+#   ANDROID_KEYSTORE_PASSWORD  contraseña del keystore (tiene que ser la MISMA que la de la clave)
+#   ANDROID_KEY_ALIAS          alias de la clave
+# Sin esos secretos igual compila, pero firmado con la clave de depuración: sirve para probar el armado, NO lo acepta Google Play.
+# Guía completa: docs/PLAY_STORE.md
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Nombre de versión que ve el jugador (ej. 1.0.0)'
+        required: false
+        default: '1.0.0'
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: 4.4.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools build-tools;35.0.1 platforms;android-35 platforms;android-36'
+
+      - name: Instalar Godot y plantillas de exportación
+        run: |
+          set -e
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          curl -sSL -o godot.zip $base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          sudo mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+          curl -sSL -o tpz.zip $base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          dir=$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p $dir
+          unzip -q -j tpz.zip 'templates/android_*' 'templates/version.txt' -d $dir
+          rm -f tpz.zip godot.zip
+          ls -la $dir
+          godot --headless --version
+
+      - name: Plantilla de compilación de Android (Gradle)
+        run: |
+          set -e
+          mkdir -p godot/android/build
+          unzip -q $HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/android_source.zip -d godot/android/build
+          echo "${GODOT_VERSION}.stable" > godot/android/.build_version
+          touch godot/android/build/.gdignore
+          # Google Play exige apuntar a la API 36: se compila con la plataforma 36 (la plantilla de Godot 4.4 trae la 35)
+          sed -i 's/compileSdk *: *[0-9]*/compileSdk : 36/' godot/android/build/config.gradle || true
+          echo "android.suppressUnsupportedCompileSdk=36" >> godot/android/build/gradle.properties
+          grep -n "compileSdk\|targetSdk\|minSdk" godot/android/build/config.gradle || true
+
+      - name: Plugin de compras (Google Play Billing)
+        id: billing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p plugin && cd plugin
+          gh release download --repo godotengine/godot-google-play-billing --pattern '*.zip' || true
+          for z in *.zip; do [ -f "$z" ] && unzip -q -o "$z" -d unz || true; done
+          cfg=$(find . -name plugin.cfg -path '*GodotGooglePlayBilling*' | head -1)
+          echo "plugin.cfg: $cfg"
+          if [ -z "$cfg" ]; then
+            echo "::warning::No se pudo instalar el plugin de compras: el AAB sale SIN COMPRAS"
+            echo "ok=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          mkdir -p ../godot/addons
+          rm -rf ../godot/addons/GodotGooglePlayBilling
+          cp -r "$(dirname $cfg)" ../godot/addons/GodotGooglePlayBilling
+          cd ../godot
+          printf '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/GodotGooglePlayBilling/plugin.cfg")\n' >> project.godot
+          find addons -maxdepth 3 | head -30
+          echo "ok=true" >> $GITHUB_OUTPUT
+
+      - name: Firma
+        id: sign
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -n "$KS_B64" ] && [ -n "$KS_PASS" ] && [ -n "$KS_ALIAS" ]; then
+            echo "$KS_B64" | base64 -d > $RUNNER_TEMP/upload.keystore
+            echo "path=$RUNNER_TEMP/upload.keystore" >> $GITHUB_OUTPUT
+            echo "user=$KS_ALIAS" >> $GITHUB_OUTPUT
+            echo "real=true" >> $GITHUB_OUTPUT
+            echo "Firmando con la clave de SUBIDA"
+          else
+            echo "path=$GITHUB_WORKSPACE/godot/keystore/debug.keystore" >> $GITHUB_OUTPUT
+            echo "user=androiddebugkey" >> $GITHUB_OUTPUT
+            echo "real=false" >> $GITHUB_OUTPUT
+            echo "::warning::Sin secretos de firma: se usa la clave de depuración (Google Play NO acepta este AAB)"
+          fi
+
+      - name: Configurar Godot (SDK de Android)
+        run: |
+          mkdir -p $HOME/.config/godot
+          cat > $HOME/.config/godot/editor_settings-4.4.tres <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$GITHUB_WORKSPACE/godot/keystore/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+
+      - name: Importar recursos
+        working-directory: godot
+        run: |
+          godot --headless --import || true
+          godot --headless --import || true
+
+      - name: Pruebas
+        working-directory: godot
+        run: |
+          godot --headless --script res://tests/build_test.gd
+          godot --headless --script res://tests/rewards_test.gd
+          godot --headless --script res://tests/practice_test.gd
+          godot --headless --script res://tests/cars_test.gd
+          godot --headless --script res://tests/drift_test.gd
+
+      - name: Número de versión (sube con cada compilación)
+        working-directory: godot
+        run: |
+          code=$((1000 + GITHUB_RUN_NUMBER))
+          sed -i "/^\[preset.3.options\]/,\$ s/^version\/code=.*/version\/code=${code}/" export_presets.cfg
+          sed -i "/^\[preset.3.options\]/,\$ s/^version\/name=.*/version\/name=\"${{ github.event.inputs.version_name }}\"/" export_presets.cfg
+          sed -n '/^\[preset.3.options\]/,$p' export_presets.cfg | grep -n "^version/\|target_sdk\|unique_name"
+          echo "r${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}" > game/build_id.txt
+          echo "VERSION_CODE=${code}" >> $GITHUB_ENV
+
+      - name: Exportar el AAB
+        working-directory: godot
+        env:
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ steps.sign.outputs.path }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ steps.sign.outputs.user }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'android' }}
+        run: |
+          mkdir -p ../build
+          godot --headless --export-release "Google Play (AAB)" ../build/DreamRacing-play.aab
+          ls -la ../build
+
+      - name: Nombre del archivo según firma y compras
+        run: |
+          n=DreamRacing-play-v${VERSION_CODE}
+          [ "${{ steps.sign.outputs.real }}" = "true" ] || n=${n}-PRUEBA-firma-de-depuracion
+          [ "${{ steps.billing.outputs.ok }}" = "true" ] || n=${n}-SIN-COMPRAS
+          cp build/DreamRacing-play.aab build/${n}.aab
+          echo "AAB_NAME=${n}.aab" >> $GITHUB_ENV
+
+      - name: Publicar el AAB (release «play-aab»)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view play-aab >/dev/null 2>&1 || gh release create play-aab \
+            --title "AAB para Google Play" \
+            --notes "Archivos .aab para subir a Play Console. El que NO dice PRUEBA ni SIN-COMPRAS es el bueno." \
+            --prerelease
+          gh release upload play-aab build/${AAB_NAME} --clobber
+
+      - name: Subir AAB como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.AAB_NAME }}
+          path: build/${{ env.AAB_NAME }}
