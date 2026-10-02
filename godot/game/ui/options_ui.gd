@@ -123,6 +123,14 @@ func options_page(body: VBoxContainer, cat = null) -> void:
 		g2.add_child(sel)
 	if cat == "graficos":
 		_particles_row(body)
+		body.add_child(Kit.wrap("Al abrir el juego por primera vez se eligen solos según tu teléfono y se corrigen en el menú. Si cambiaste cosas y querés volver a eso:", 12, Kit.MUTED, 300))
+		body.add_child(Kit.button("🔄 AJUSTE AUTOMÁTICO PARA MI TELÉFONO", func() -> void:
+			for k in ["quality", "trees", "shadowsQ", "textures", "particles"]:
+				profile.set_setting(k, "auto")
+			profile.set_setting("res", 0)
+			profile.set_setting("autotuned", false)
+			sfx.play("click")
+			changed.emit("retune"), false, 15, Vector2(0, 50)))
 	if cat == "inclinacion":
 		_accel_block(body)
 

@@ -18,6 +18,7 @@ const MenuAbout := preload("res://game/ui/menu_about.gd")
 const MenuPerf := preload("res://game/ui/menu_perf.gd")
 const MenuStore := preload("res://game/ui/menu_store.gd")
 const Release := preload("res://game/data/release.gd")
+const Autotune := preload("res://game/autotune.gd")
 const AdvData := preload("res://game/adventure/adv_data.gd")
 const AdvRoute := preload("res://game/adventure/adv_route.gd")
 
@@ -102,6 +103,8 @@ func _ready() -> void:
 	opts.changed.connect(func(key: String) -> void:
 		if key == "fx":
 			apply_fx()
+		elif key == "retune":
+			start_autotune()
 		elif key == "recal":
 			toast("El acelerómetro se calibra solo al empezar la carrera; para recalibrar usá Opciones desde la pausa"))
 	career = Career.new()
@@ -118,6 +121,7 @@ func _ready() -> void:
 	store.m = self
 	_build_world()
 	_build_ui()
+	start_autotune()
 	if showcar != "":
 		refresh_car(showcar, profile.new_car_state(showcar))
 	# el premio del día, una sola vez por día
@@ -247,6 +251,18 @@ func _build_ui() -> void:
 	toast_l.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	toast_l.position = Vector2(0, -24)
 	layer.add_child(toast_l)
+
+## Ajuste automático de gráficos según el teléfono: nivel inicial por el hardware y corrección midiendo los cuadros del menú (ver autotune.gd)
+func start_autotune() -> void:
+	if autotest != "" or perf_arg != "" or autorace != "" or shot_path != "" or not Autotune.pending(profile):
+		return
+	Autotune.apply_tier(profile, Autotune.device_tier())
+	var pr := Autotune.Probe.new()
+	pr.apply = func(t: int) -> void: Autotune.apply_tier(profile, t)
+	pr.done.connect(func(tier: int, _changed: bool) -> void:
+		toast(tr("⚙ Gráficos ajustados a tu teléfono: %s") % tr(Autotune.tier_name(tier))))
+	add_child(pr)
+	pr.begin(profile)
 
 func toast(t: String) -> void:
 	toast_l.text = t

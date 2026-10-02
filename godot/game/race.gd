@@ -522,7 +522,8 @@ func _build_track_nodes() -> void:
 		return
 	if track is DreamTrack:
 		var dw := DreamWorld.new()
-		var dq: float = float({"low": 0.5, "high": 1.0}.get(str(profile.setting("quality")) if profile != null else "mid", 0.75))
+		var dq_q := str(profile.setting("quality")) if profile != null else "mid"
+		var dq: float = float({"low": 0.5, "high": 1.0}.get(dq_q, 0.75)) if dq_q != "auto" else float([0.5, 0.75, 1.0][clampi(int(profile.setting("autoTier")), 0, 2)])
 		dw.setup(track, dq, DreamWorld.SUN)
 		track_root.add_child(dw)
 		road_mat = StandardMaterial3D.new()
@@ -1475,12 +1476,12 @@ func _make_result() -> Dictionary:
 ## Calidad (baja/media/alta/automática), texturas y volúmenes elegidos en Opciones
 func _apply_quality_settings() -> void:
 	var q := str(profile.setting("quality"))
-	var tree_q := {"low": 1500, "mid": 3000, "high": 6000, "auto": 3000}
+	var tree_q := {"low": 1500, "mid": 3000, "high": 6000, "auto": int(profile.setting("autoTrees"))}
 	var cap := {"low": 0.45, "mid": 0.65, "high": 0.85, "auto": 0.8}
 	var t = profile.setting("trees")
 	trees_n = int(tree_q.get(q, 3000)) if str(t) == "auto" else int(t)
 	var sh = profile.setting("shadowsQ")
-	sun.shadow_enabled = (q == "high") if str(sh) == "auto" else sh == true
+	sun.shadow_enabled = (q == "high" or (q == "auto" and profile.setting("autoShadows") == true)) if str(sh) == "auto" else sh == true
 	_ar_cap = float(profile.setting("autoRes")) if q == "auto" else float(cap.get(q, 0.8))
 	if res_auto:
 		res_scale = minf(res_scale, _ar_cap)
