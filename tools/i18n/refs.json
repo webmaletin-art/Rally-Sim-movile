@@ -9,10 +9,10 @@
 "perf_bench.gd:175"
 ],
 " km/h · marcha ": [
-"race.gd:2193"
+"race.gd:2197"
 ],
 " y Bosque (tierra)": [
-"race.gd:1202"
+"race.gd:1205"
 ],
 " · %d rivales": [
 "ui/loading.gd:158"
@@ -38,10 +38,10 @@
 "ui/menu_career.gd:154"
 ],
 " · MHz máx.: ": [
-"race.gd:1255"
+"race.gd:1258"
 ],
 " · SIN ": [
-"race.gd:1103"
+"race.gd:1106"
 ],
 "%-52s → %3d FPS · %5.1f ms · p95 %5.1f · p99 %5.1f · peor %5.1f · >20ms %4.1f%% · tirones(>33ms) %3d · fís %4.1f · código %4.1f · render CPU %4.1f / GPU %4.1f · %3d llam · %3dk tri": [
 "perf_bench.gd:138"
@@ -56,10 +56,10 @@
 "adventure/adv_hud.gd:497"
 ],
 "%2d autos · %5d árb · pil %s · som %s · hilos %s · res %3d%%%s  →  %3d FPS · %5.1f ms · fis %4.1f · código %4.1f ms · %4d llam · %dk tri": [
-"race.gd:1101"
+"race.gd:1104"
 ],
 "%d MB en total · %d MB libres": [
-"race.gd:1261"
+"race.gd:1264"
 ],
 "%d autos + sombras": [
 "perf_bench.gd:63"
@@ -103,19 +103,19 @@
 "perf_bench.gd:137"
 ],
 "(No se corrió la prueba automática. Estado actual:)": [
-"race.gd:1272"
+"race.gd:1275"
 ],
 "(SIN e=efectos c=cielo n=niebla f=filtro de cámara h=controles m=mundo 3D: se apaga a propósito para medir cuánto cuesta; código = tiempo del script por cuadro)": [
-"race.gd:1280"
+"race.gd:1283"
 ],
 "(este teléfono no la informa)": [
-"race.gd:1261"
+"race.gd:1264"
 ],
 "(fís = milisegundos por cuadro que el hilo principal pierde esperando a la física; con hilos debería ser ~0)": [
-"race.gd:1281"
+"race.gd:1284"
 ],
 "(no informa)": [
-"race.gd:1255"
+"race.gd:1258"
 ],
 "(render CPU/GPU = ms que tarda el motor en preparar/dibujar el mundo 3D según el propio motor; 0.0 = este teléfono no lo mide · FPS = cuadros por segundo promedio · p95/p99 = tiempo de cuadro del 95/99 % de los cuadros · fís = ms que el hilo principal espera a la física · código = ms de script por cuadro · llam = llamadas de dibujo · tri = triángulos)": [
 "perf_bench.gd:199"
@@ -142,7 +142,7 @@
 "perf_bench.gd:54"
 ],
 "1 hilo": [
-"race.gd:2177"
+"race.gd:2181"
 ],
 "1-Bit tramado": [
 "fx/lens.gd:274"
@@ -190,7 +190,7 @@
 "perf_bench.gd:210"
 ],
 "=== INFORME DREAM RACING (Godot) ===": [
-"race.gd:1239"
+"race.gd:1242"
 ],
 "A quienes probaron el juego, mandaron ideas y ayudaron a que cada versión salga mejor.": [
 "ui/menu_about.gd:23"
@@ -227,7 +227,7 @@
 "adventure/adv_hud.gd:521"
 ],
 "AJUSTE DE CÁMARA": [
-"ui/race_hud.gd:457"
+"ui/race_hud.gd:460"
 ],
 "ALTAIR": [
 "data/catalog.json"
@@ -260,18 +260,18 @@
 "fx/lens.gd:275"
 ],
 "Acabado": [
-"ui/menu_garage.gd:476"
+"ui/menu_garage.gd:488"
 ],
 "Aceleración": [
-"ui/menu_garage.gd:157",
+"ui/menu_garage.gd:158",
 "adventure/adv_data.gd:15"
 ],
 "Acelerómetro calibrado: sostené el teléfono como para jugar": [
-"race.gd:1441",
-"race.gd:1814"
+"race.gd:1444",
+"race.gd:1817"
 ],
 "Acero": [
-"ui/menu_garage.gd:14"
+"ui/menu_garage.gd:15"
 ],
 "Acua (azulado)": [
 "fx/lens.gd:272"
@@ -283,10 +283,10 @@
 "data/catalog.json"
 ],
 "Aero": [
-"ui/menu_garage.gd:12"
+"ui/menu_garage.gd:13"
 ],
 "Aerodinámica": [
-"ui/menu_garage.gd:12",
+"ui/menu_garage.gd:13",
 "data/catalog.json"
 ],
 "Agarre de las gomas (todo)": [
@@ -307,6 +307,12 @@
 "Al tocar «Acepto» confirmás que leíste y aceptás la política de privacidad y los términos de uso.": [
 "ui/menu_about.gd:131"
 ],
+"Alerón alto: la cola queda pegada y estable, pero baja la velocidad máxima.": [
+"data/catalog.json"
+],
+"Alerón bajo: más velocidad máxima, pero la cola se vuelve inestable rápido.": [
+"data/catalog.json"
+],
 "Alerón trasero regulable": [
 "data/catalog.json"
 ],
@@ -317,7 +323,7 @@
 "data/catalog.json"
 ],
 "Alineación": [
-"ui/menu_garage.gd:12"
+"ui/menu_garage.gd:13"
 ],
 "Almacén y Estación La Tranquera": [
 "adventure/adv_route.gd:133"
@@ -334,7 +340,13 @@
 "ui/options_ui.gd:60"
 ],
 "Altura": [
-"ui/race_hud.gd:478",
+"ui/race_hud.gd:481",
+"data/catalog.json"
+],
+"Amortiguador blando al hundirse: absorbe baches, pero el auto se hamaca.": [
+"data/catalog.json"
+],
+"Amortiguador duro al hundirse: se hunde menos, pero rebota en los baches.": [
 "data/catalog.json"
 ],
 "Amortiguador: compresión": [
@@ -358,16 +370,16 @@
 "ui/loading.gd:162"
 ],
 "Armando el recorrido…": [
-"race.gd:230"
+"race.gd:231"
 ],
 "Armando el terreno…": [
-"race.gd:337"
+"race.gd:338"
 ],
 "Armando la ruta… %d m": [
-"race.gd:330"
+"race.gd:331"
 ],
 "Armando los autos y los rivales…": [
-"race.gd:334"
+"race.gd:335"
 ],
 "Arrancás en el pueblo: esquinas a 90° y calles angostas. Frená antes de cada esquina y acelerá a la salida. Afuera del pueblo el asfalto es rápido.": [
 "adventure/adv_route.gd:47"
@@ -387,11 +399,23 @@
 "Auto": [
 "ui/menu_career.gd:284"
 ],
+"Auto alto: pasa baches y saltos, pero se inclina más hacia los costados en las curvas.": [
+"data/catalog.json"
+],
+"Auto bajo: más firme y estable en asfalto, pero raspa en baches y saltos.": [
+"data/catalog.json"
+],
 "Auto de carreras con matrícula. Alerón gigante, gomas lisas y un motor que grita hasta las 9000 vueltas.": [
 "data/catalog.json"
 ],
 "Auto de la prueba: %s · calidad general: %s · resolución del mundo 3D en los pasos: fija (la automática se apaga)": [
-"race.gd:1199"
+"race.gd:1202"
+],
+"Auto liviano: acelera, frena y gira mejor.": [
+"ui/lab_panel.gd:13"
+],
+"Auto pesado: más estable en las rectas, pero más lento para todo.": [
+"ui/lab_panel.gd:13"
 ],
 "Autoblocante deportivo": [
 "data/catalog.json"
@@ -433,7 +457,7 @@
 "perf_bench.gd:46"
 ],
 "BENCH fps medio %.1f · %s": [
-"race.gd:2198"
+"race.gd:2202"
 ],
 "BIENVENIDO": [
 "ui/menu_about.gd:118"
@@ -486,10 +510,22 @@
 "Barra": [
 "ui/options_ui.gd:68"
 ],
+"Barra dura adelante: menos inclinación, pero la trompa empuja y cuesta girar.": [
+"data/catalog.json"
+],
+"Barra dura atrás: la cola se suelta más fácil (el auto cruza).": [
+"data/catalog.json"
+],
 "Barra estabilizadora del.": [
 "data/catalog.json"
 ],
 "Barra estabilizadora tras.": [
+"data/catalog.json"
+],
+"Barra suelta adelante: la trompa se inclina más en curva, pero agarra más.": [
+"data/catalog.json"
+],
+"Barra suelta atrás: la cola agarra más.": [
 "data/catalog.json"
 ],
 "Barrera de los 200": [
@@ -509,6 +545,9 @@
 ],
 "Blanco y negro": [
 "fx/lens.gd:272"
+],
+"Blando al volver: la rueda tarda en volver al piso y el auto queda rebotando.": [
+"data/catalog.json"
 ],
 "Bleach bypass (cine)": [
 "fx/lens.gd:272"
@@ -593,13 +632,13 @@
 "data/catalog.json"
 ],
 "COMPLETA": [
-"race.gd:1202"
+"race.gd:1205"
 ],
 "COMPONENTES": [
 "perf_bench.gd:172"
 ],
 "COMPRAR  ": [
-"ui/menu_garage.gd:191"
+"ui/menu_garage.gd:197"
 ],
 "CON FILTROS": [
 "perf_bench.gd:172",
@@ -641,7 +680,7 @@
 "data/catalog.json"
 ],
 "Calidad automática: partículas al %d/10": [
-"race.gd:1563"
+"race.gd:1566"
 ],
 "Calidad de la captura": [
 "ui/capture_ui.gd:16"
@@ -725,7 +764,7 @@
 "data/catalog.json"
 ],
 "Carbono": [
-"ui/menu_garage.gd:14"
+"ui/menu_garage.gd:15"
 ],
 "Carbono-cerámicos": [
 "data/catalog.json"
@@ -754,7 +793,7 @@
 "data/rewards.gd:187"
 ],
 "Carrocería": [
-"ui/menu_garage.gd:13"
+"ui/menu_garage.gd:14"
 ],
 "Casco": [
 "ui/options_ui.gd:78"
@@ -773,6 +812,12 @@
 ],
 "Cerca": [
 "ui/options_ui.gd:78"
+],
+"Cerca de 0: más tracción en las rectas, menos agarre en curva atrás.": [
+"data/catalog.json"
+],
+"Cerca de 0: ruedas derechas. Frena mejor, pero agarra menos en curva.": [
+"data/catalog.json"
 ],
 "Chacarero y piloto de rally. En la tierra se siente en casa.": [
 "adventure/adv_route.gd:126"
@@ -818,7 +863,7 @@
 "ui/menu_career.gd:286"
 ],
 "Clima y efectos…": [
-"race.gd:277"
+"race.gd:278"
 ],
 "Clásico 4x4 ’85": [
 "data/catalog.json"
@@ -832,6 +877,12 @@
 "Coilovers de competición": [
 "data/catalog.json"
 ],
+"Cola abierta: nerviosa, rota con facilidad.": [
+"data/catalog.json"
+],
+"Cola cerrada: estable y predecible.": [
+"data/catalog.json"
+],
 "Coleccionista": [
 "data/catalog.json"
 ],
@@ -839,7 +890,7 @@
 "data/vehicles.json"
 ],
 "Compilando efectos…": [
-"race.gd:343"
+"race.gd:344"
 ],
 "Completaste la Ruta de los Sueños": [
 "adventure/adv_hud.gd:702"
@@ -854,7 +905,7 @@
 "ui/loading.gd:182"
 ],
 "Con el juego en marcha: arrastrá un dedo por la pantalla para girar la cámara y pellizcá con dos dedos para acercarla o alejarla.": [
-"ui/race_hud.gd:475"
+"ui/race_hud.gd:478"
 ],
 "Con lluvia el agarre baja mucho. Gomas de barro (M/T) o de grava, presión baja (24 psi) y la suspensión blanda. Frená antes y no muevas el volante de golpe.": [
 "adventure/adv_data.gd:31"
@@ -878,7 +929,7 @@
 "data/catalog.json"
 ],
 "Construyendo camino, banquinas y guardarraíl…": [
-"race.gd:233"
+"race.gd:234"
 ],
 "Contenido descargable": [
 "ui/menu_about.gd:39"
@@ -916,7 +967,7 @@
 "adventure/adv_route.gd:60"
 ],
 "Corre la cámara a la izquierda (−) o a la derecha (+).": [
-"ui/race_hud.gd:479"
+"ui/race_hud.gd:482"
 ],
 "Corredor de picadas de la ciudad. Muy rápido en las rectas, se apura en las esquinas.": [
 "adventure/adv_route.gd:110"
@@ -976,7 +1027,7 @@
 "ui/loading.gd:177"
 ],
 "DETALLE (p50/p95/p99 = tiempo de cuadro del 50%, 95% y 99% de los cuadros; cuadros lentos = tirones)": [
-"race.gd:1282"
+"race.gd:1285"
 ],
 "DR Bisonte XR": [
 "data/vehicles.json"
@@ -990,7 +1041,7 @@
 "car/cockpit.gd:691"
 ],
 "DREAM RACING": [
-"race.gd:507",
+"race.gd:510",
 "ui/menu_about.gd:58",
 "ui/menu.gd:427"
 ],
@@ -999,6 +1050,10 @@
 ],
 "DRIFT": [
 "track/drift_track.gd:303"
+],
+"Debajo de cada ajuste ves qué pasa si lo bajás (▼) y si lo subís (▲).": [
+"ui/lab_panel.gd:70",
+"ui/menu_garage.gd:342"
 ],
 "Dejá el teléfono quieto, con batería y sin otras aplicaciones abiertas. No toques la pantalla.": [
 "ui/menu_perf.gd:12"
@@ -1019,10 +1074,10 @@
 "fx/lens.gd:275"
 ],
 "Detalles": [
-"ui/menu_garage.gd:13"
+"ui/menu_garage.gd:14"
 ],
 "Dibujado del mundo 3D a %d%% de la pantalla": [
-"race.gd:1264"
+"race.gd:1267"
 ],
 "Diez banderas repartidas por todo el valle.": [
 "data/catalog.json"
@@ -1039,6 +1094,12 @@
 "Diferencial activo de competición": [
 "data/catalog.json"
 ],
+"Diferencial suelto: gira fácil, pero la rueda de adentro patina al acelerar.": [
+"data/catalog.json"
+],
+"Diferencial trabado: sale fuerte de las curvas, pero cuesta más hacerlo girar.": [
+"data/catalog.json"
+],
 "Difícil": [
 "ui/menu_career.gd:290"
 ],
@@ -1049,7 +1110,7 @@
 "ui/options_ui.gd:75"
 ],
 "Discos": [
-"ui/menu_garage.gd:13"
+"ui/menu_garage.gd:14"
 ],
 "Discos ventilados + pinzas de 6 pistones": [
 "data/catalog.json"
@@ -1058,10 +1119,10 @@
 "ui/menu.gd:588"
 ],
 "Distancia (largo)": [
-"ui/race_hud.gd:477"
+"ui/race_hud.gd:480"
 ],
 "Diversión (gustos raros)": [
-"ui/menu_garage.gd:12"
+"ui/menu_garage.gd:13"
 ],
 "Diésel 13L 1000 cv": [
 "data/catalog.json"
@@ -1073,7 +1134,7 @@
 "adventure/adv_route.gd:136"
 ],
 "Dorado": [
-"ui/menu_garage.gd:14"
+"ui/menu_garage.gd:15"
 ],
 "Dos jefes a la vez: La Sombra y El Lobo Blanco. La cumbre tiene nieve, después tierra y al final asfalto hasta la Estación de los Sueños. Elegí el ajuste que más confianza te dé.": [
 "adventure/adv_data.gd:34"
@@ -1116,6 +1177,9 @@
 "Duro = responde rápido y rola poco. Blando = copia el terreno y tracciona en tierra.": [
 "data/catalog.json"
 ],
+"Duro al volver: la rueda vuelve rápido, pero puede despegarse en pozos seguidos.": [
+"data/catalog.json"
+],
 "ECU reprogramada + árboles de levas": [
 "data/catalog.json"
 ],
@@ -1126,8 +1190,8 @@
 "adventure/adv_hud.gd:428"
 ],
 "EQUIPADO": [
-"ui/menu_garage.gd:288",
-"ui/menu_garage.gd:308"
+"ui/menu_garage.gd:297",
+"ui/menu_garage.gd:317"
 ],
 "ESTACIONES DE SERVICIO": [
 "ui/menu_adventure.gd:151"
@@ -1209,7 +1273,7 @@
 "ui/menu_about.gd:37"
 ],
 "El disco de freno se ve por entre los rayos de la llanta. Las pinzas llevan el color de «Pinzas».": [
-"ui/menu_garage.gd:432"
+"ui/menu_garage.gd:444"
 ],
 "El informe ya quedó copiado. Pegalo en el chat para que lo analice.": [
 "ui/perf_results.gd:27"
@@ -1327,7 +1391,7 @@
 "ui/menu.gd:588"
 ],
 "Extras": [
-"ui/menu_garage.gd:12"
+"ui/menu_garage.gd:13"
 ],
 "Extrema": [
 "ui/options_ui.gd:72"
@@ -1344,7 +1408,7 @@
 "perf_bench.gd:169"
 ],
 "FPS %d · cuadro %.1f ms · física %.2f ms/cuadro (%s)\nAutos %d · pilotos %s · árboles %d · sombras %s\nLlamadas %d · objetos %d · triángulos %dk": [
-"race.gd:2176"
+"race.gd:2180"
 ],
 "FRENADA: el peso va adelante": [
 "ui/loading.gd:218"
@@ -1385,11 +1449,17 @@
 "adventure/adv_data.gd:16"
 ],
 "Frenado": [
-"ui/menu_garage.gd:159"
+"ui/menu_garage.gd:160"
+],
+"Freno fuerte: frena en menos distancia, pero las ruedas se bloquean más fácil.": [
+"data/catalog.json"
+],
+"Freno suave: frena menos, pero casi nunca se bloquean las ruedas.": [
+"data/catalog.json"
 ],
 "Frenos": [
-"ui/menu_garage.gd:12",
-"ui/menu_garage.gd:12",
+"ui/menu_garage.gd:13",
+"ui/menu_garage.gd:13",
 "data/catalog.json"
 ],
 "Frenás más tarde y más fuerte.": [
@@ -1416,7 +1486,7 @@
 "ui/options_ui.gd:104"
 ],
 "GARAJE": [
-"ui/menu_garage.gd:87",
+"ui/menu_garage.gd:88",
 "ui/menu.gd:454"
 ],
 "GIRO": [
@@ -1427,7 +1497,7 @@
 "adventure/adv_route.gd:131"
 ],
 "GPU: %s · %s · %s": [
-"race.gd:1262"
+"race.gd:1265"
 ],
 "GT3 de pista": [
 "data/catalog.json"
@@ -1441,6 +1511,12 @@
 "Garaje completo": [
 "data/catalog.json"
 ],
+"Giran mucho: cierra curvas lentas y deja derrapar con mucho ángulo, pero es más nervioso.": [
+"data/catalog.json"
+],
+"Giran poco las ruedas: más estable a alta velocidad, pero no cierra curvas lentas.": [
+"data/catalog.json"
+],
 "Giro": [
 "ui/options_ui.gd:191"
 ],
@@ -1448,9 +1524,21 @@
 "fx/lens.gd:273"
 ],
 "Gomas": [
-"ui/lab_panel.gd:149",
-"ui/menu_garage.gd:12",
-"ui/menu_garage.gd:13"
+"ui/lab_panel.gd:152",
+"ui/menu_garage.gd:13",
+"ui/menu_garage.gd:14"
+],
+"Gomas blandas adelante: más agarre en tierra y en baches, pero la dirección responde más lenta.": [
+"data/catalog.json"
+],
+"Gomas blandas atrás: la cola se agarra mejor al piso.": [
+"data/catalog.json"
+],
+"Gomas duras adelante: dirección rápida y precisa en asfalto, pero resbalan más en tierra.": [
+"data/catalog.json"
+],
+"Gomas duras atrás: la cola se suelta más fácil, útil para derrapar.": [
+"data/catalog.json"
 ],
 "Gomas y tierra": [
 "ui/options_ui.gd:62"
@@ -1547,7 +1635,7 @@
 "data/catalog.json"
 ],
 "Informe copiado ✔  Pegalo en el chat": [
-"race.gd:1306"
+"race.gd:1309"
 ],
 "Infrarrojo con brillo": [
 "fx/lens.gd:273"
@@ -1583,7 +1671,7 @@
 "ui/capture_ui.gd:17"
 ],
 "Juego: versión %s": [
-"race.gd:1241"
+"race.gd:1244"
 ],
 "KAZE": [
 "data/catalog.json"
@@ -1613,16 +1701,19 @@
 "adventure/adv_route.gd:184"
 ],
 "LAB reset: potencia %.2f": [
-"race.gd:2106"
+"race.gd:2110"
 ],
 "LAB: potencia %.2f resortes %.0f%% pose %s → %s · cars %d": [
-"race.gd:2098"
+"race.gd:2102"
+],
+"LABTEST: carga lista, sesión ": [
+"race.gd:363"
 ],
 "LARGADA": [
-"race.gd:507"
+"race.gd:510"
 ],
 "LISTO. El informe ya quedó copiado (pegalo en el chat). INFORME lo vuelve a copiar.": [
-"race.gd:1032"
+"race.gd:1035"
 ],
 "LLEGÓ PRIMERO": [
 "adventure/adv_hud.gd:694"
@@ -1775,10 +1866,10 @@
 "car/car_visual.gd:194"
 ],
 "Listo": [
-"race.gd:361"
+"race.gd:364"
 ],
 "Llantas": [
-"ui/menu_garage.gd:13"
+"ui/menu_garage.gd:14"
 ],
 "Llanura, chacras y molinos": [
 "adventure/adv_route.gd:59"
@@ -1799,7 +1890,7 @@
 "ui/menu_about.gd:19"
 ],
 "Los cambios no se guardan ni cuestan nada: son solo para probar. Se aplican al soltar la barra.": [
-"ui/lab_panel.gd:134"
+"ui/lab_panel.gd:137"
 ],
 "Los cambios se aplican al salir de la estación.": [
 "adventure/adventure.gd:1009"
@@ -1820,8 +1911,8 @@
 "adventure/adv_route.gd:147"
 ],
 "META": [
-"race.gd:509",
-"race.gd:1006"
+"race.gd:512",
+"race.gd:1009"
 ],
 "MINA SANTA BÁRBARA": [
 "adventure/adv_route.gd:141",
@@ -1841,7 +1932,7 @@
 ],
 "Manejo": [
 "ui/options_ui.gd:45",
-"ui/menu_garage.gd:158"
+"ui/menu_garage.gd:159"
 ],
 "Manejás el DR Bisonte XR negro del equipo Dream Racing. Primero ves una presentación, después la explicación de cómo se juega y el mapa, y largás desde la Estación Aurora.": [
 "ui/menu_adventure.gd:99"
@@ -1897,7 +1988,7 @@
 "perf_bench.gd:209"
 ],
 "Memoria: %s": [
-"race.gd:1261"
+"race.gd:1264"
 ],
 "Menos agarre en las curvas": [
 "adventure/adv_hud.gd:659"
@@ -1905,11 +1996,20 @@
 "Menos caída atrás = más tracción en línea recta; más caída = más agarre lateral.": [
 "data/catalog.json"
 ],
+"Menos grip adelante: la trompa se va de punta y el auto no gira.": [
+"data/catalog.json"
+],
+"Menos grip atrás: las ruedas traseras derrapan más.": [
+"data/catalog.json"
+],
 "Menos peso = acelera, frena y dobla mejor.": [
 "data/catalog.json"
 ],
 "Menos potencia": [
 "adventure/adv_hud.gd:659"
+],
+"Menos potencia: acelera más lento y es más fácil de controlar.": [
+"ui/lab_panel.gd:12"
 ],
 "Menos presión = más huella y agarre en tierra, pero respuesta más blanda. Más presión = más precisa y rápida en asfalto.": [
 "data/catalog.json"
@@ -1968,7 +2068,19 @@
 "data/catalog.json"
 ],
 "Motor: Godot %s · renderizador %s": [
-"race.gd:1242"
+"race.gd:1245"
+],
+"Mucha carga adelante: la trompa se pega al piso en curvas rápidas, pero gasta velocidad.": [
+"data/catalog.json"
+],
+"Mucho agarre: pegado al piso, curvas muy rápidas.": [
+"ui/lab_panel.gd:15"
+],
+"Mucho aire en contra: el auto se frena solo a alta velocidad.": [
+"ui/lab_panel.gd:14"
+],
+"Mucho recorrido: aguanta saltos y baches grandes, pero se hamaca más.": [
+"ui/lab_panel.gd:16"
 ],
 "Muchos": [
 "ui/options_ui.gd:53"
@@ -2005,6 +2117,12 @@
 "ui/options_ui.gd:62",
 "ui/options_ui.gd:63"
 ],
+"Muy negativo: más agarre de costado atrás, pero menos tracción al acelerar.": [
+"data/catalog.json"
+],
+"Muy negativo: ruedas muy inclinadas hacia adentro. Más agarre en curva, pero frena y acelera peor.": [
+"data/catalog.json"
+],
 "Muy progresiva": [
 "ui/options_ui.gd:74"
 ],
@@ -2028,10 +2146,10 @@
 "data/catalog.json"
 ],
 "Más arriba (+) o más abajo (−).": [
-"ui/race_hud.gd:478"
+"ui/race_hud.gd:481"
 ],
 "Más atrás (+) o más adelante (−) de donde está.": [
-"ui/race_hud.gd:477"
+"ui/race_hud.gd:480"
 ],
 "Más baja = centro de gravedad bajo, menos balanceo. Más alta = pasa mejor los pozos y saltos.": [
 "data/catalog.json"
@@ -2048,11 +2166,26 @@
 "Más dura atrás = más sobreviraje (la cola sale).": [
 "data/catalog.json"
 ],
+"Más freno adelante: frena recto y estable, pero cuesta girar mientras frenás.": [
+"data/catalog.json"
+],
+"Más freno atrás: el auto gira al frenar y puede irse de cola.": [
+"data/catalog.json"
+],
 "Más fuerza de frenado y menos fatiga.": [
+"data/catalog.json"
+],
+"Más grip adelante: gira fácil y responde rápido al volante.": [
+"data/catalog.json"
+],
+"Más grip atrás: la cola se agarra, el auto va derecho y seguro.": [
 "data/catalog.json"
 ],
 "Más potencia en todo el rango de vueltas. Los autos iniciales vienen con limitador de velocidad de fábrica: la ECU lo sube +25 km/h y el motor de competición lo quita.": [
 "data/catalog.json"
+],
+"Más potencia: acelera y llega más rápido, pero las ruedas patinan más.": [
+"ui/lab_panel.gd:12"
 ],
 "Más resistencia = menos velocidad final.": [
 "ui/lab_panel.gd:14"
@@ -2064,7 +2197,7 @@
 "data/catalog.json"
 ],
 "Más ángulo ve más cosas y da más sensación de velocidad; menos ángulo acerca.": [
-"ui/race_hud.gd:480"
+"ui/race_hud.gd:483"
 ],
 "Máxima": [
 "ui/options_ui.gd:59"
@@ -2098,7 +2231,7 @@
 "fx/lens.gd:272"
 ],
 "Neumáticos": [
-"ui/menu_garage.gd:12"
+"ui/menu_garage.gd:13"
 ],
 "Nico «Turbo» Sosa": [
 "adventure/adv_route.gd:110"
@@ -2139,15 +2272,15 @@
 "ui/menu_about.gd:134"
 ],
 "No hay autos para mostrar.": [
-"ui/menu_garage.gd:93"
+"ui/menu_garage.gd:94"
 ],
 "No se pudo guardar la captura": [
-"race.gd:1575"
+"race.gd:1578"
 ],
 "No te alcanza el dinero": [
-"ui/menu_garage.gd:218",
-"ui/menu_garage.gd:299",
-"ui/menu_garage.gd:315"
+"ui/menu_garage.gd:227",
+"ui/menu_garage.gd:308",
+"ui/menu_garage.gd:324"
 ],
 "Normal": [
 "ui/options_ui.gd:61",
@@ -2181,7 +2314,7 @@
 "data/catalog.json"
 ],
 "Oscuro": [
-"ui/menu_garage.gd:14"
+"ui/menu_garage.gd:15"
 ],
 "PAMPA": [
 "data/catalog.json"
@@ -2190,7 +2323,7 @@
 "data/catalog.json"
 ],
 "PAUSA": [
-"ui/race_hud.gd:327"
+"ui/race_hud.gd:330"
 ],
 "PERSONALIZADO": [
 "ui/menu.gd:316"
@@ -2205,21 +2338,21 @@
 "ui/menu_about.gd:123"
 ],
 "PONER": [
-"ui/menu_garage.gd:288",
-"ui/menu_garage.gd:308"
+"ui/menu_garage.gd:297",
+"ui/menu_garage.gd:317"
 ],
 "PRIVACIDAD": [
 "ui/menu_about.gd:49",
 "ui/menu_about.gd:66"
 ],
 "PRUEBA %d/%d · %s · faltan %d:%02d · NO TOQUES LA PANTALLA": [
-"race.gd:1185"
+"race.gd:1188"
 ],
 "PRUEBA %d/%d · faltan %d s · NO TOQUES LA PANTALLA": [
-"race.gd:1078"
+"race.gd:1081"
 ],
 "PRUEBA AUTOMÁTICA (cada configuración 6 s, sin contar el primer segundo y medio)": [
-"race.gd:1275"
+"race.gd:1278"
 ],
 "PRUEBA DE RENDIMIENTO": [
 "ui/menu_perf.gd:10"
@@ -2249,7 +2382,7 @@
 "data/catalog.json"
 ],
 "Pantalla: %dx%d · %s Hz": [
-"race.gd:1265"
+"race.gd:1268"
 ],
 "Para grabar video: en la pausa tocá «MODO CINE» (se esconde casi todo el HUD) y usá la grabadora de pantalla de tu teléfono.": [
 "ui/capture_ui.gd:34"
@@ -2308,7 +2441,7 @@
 "data/catalog.json"
 ],
 "Pinzas": [
-"ui/menu_garage.gd:13"
+"ui/menu_garage.gd:14"
 ],
 "Pista": [
 "ui/menu_career.gd:278"
@@ -2317,13 +2450,25 @@
 "fx/lens.gd:274"
 ],
 "Plantando el bosque…": [
-"race.gd:321"
+"race.gd:322"
 ],
 "Plata": [
 "ui/menu_career.gd:11"
 ],
 "Plaza de Trompos": [
 "data/catalog.json"
+],
+"Poca carga adelante: la trompa se afloja a alta velocidad.": [
+"data/catalog.json"
+],
+"Poco agarre general: el auto derrapa por todos lados, como sobre hielo.": [
+"ui/lab_panel.gd:15"
+],
+"Poco aire en contra: llega a más velocidad máxima.": [
+"ui/lab_panel.gd:14"
+],
+"Poco recorrido: suspensión corta y firme, toca el tope en los baches.": [
+"ui/lab_panel.gd:16"
 ],
 "Pocos": [
 "ui/options_ui.gd:53"
@@ -2341,7 +2486,7 @@
 "ui/options_ui.gd:262"
 ],
 "Posición lateral": [
-"ui/race_hud.gd:479"
+"ui/race_hud.gd:482"
 ],
 "Positiva (cerrada) = cola estable. Negativa = cola nerviosa, rota más.": [
 "data/catalog.json"
@@ -2356,7 +2501,7 @@
 "ui/menu_career.gd:213"
 ],
 "Preparando los controles…": [
-"race.gd:237"
+"race.gd:238"
 ],
 "Presión de freno": [
 "data/catalog.json"
@@ -2383,7 +2528,7 @@
 "adventure/adv_route.gd:159"
 ],
 "Procesador: %s · %d núcleos%s": [
-"race.gd:1255"
+"race.gd:1258"
 ],
 "Profundidad de campo": [
 "fx/lens.gd:275"
@@ -2407,7 +2552,7 @@
 "data/vehicles.json"
 ],
 "Prueba %s: %d pasos de %.1f s (se descarta el primer %.1f s de cada uno). Pistas: Circuito del Lago (asfalto), Drift Plaza%s.": [
-"race.gd:1201"
+"race.gd:1204"
 ],
 "Prueba de rendimiento": [
 "ui/loading.gd:153"
@@ -2446,7 +2591,7 @@
 "ui/menu_adventure.gd:76"
 ],
 "RENDER triángulos %d · llamadas %d · objetos %d": [
-"race.gd:2194"
+"race.gd:2198"
 ],
 "RENDIMIENTO": [
 "ui/menu.gd:460"
@@ -2458,7 +2603,7 @@
 "ui/menu.gd:552"
 ],
 "RESULTADOS (mandame una captura de esto)": [
-"race.gd:1029"
+"race.gd:1032"
 ],
 "RPM x1000": [
 "car/cockpit.gd:1042"
@@ -2512,7 +2657,13 @@
 "Refugio de la Sierra": [
 "adventure/adv_route.gd:91"
 ],
+"Relación corta: acelera más fuerte, pero llega antes a su velocidad máxima.": [
+"data/catalog.json"
+],
 "Relación final": [
+"data/catalog.json"
+],
+"Relación larga: más velocidad máxima, pero arranca y acelera más lento.": [
 "data/catalog.json"
 ],
 "Reparto de frenado": [
@@ -2531,9 +2682,21 @@
 "ui/options_ui.gd:52"
 ],
 "Resortes": [
-"ui/menu_garage.gd:13"
+"ui/menu_garage.gd:14"
+],
+"Resortes blandos adelante: la trompa se hunde y rebota más, copia el terreno.": [
+"data/catalog.json"
+],
+"Resortes blandos atrás: la cola sube y baja más y tracciona mejor en tierra.": [
+"data/catalog.json"
 ],
 "Resortes delanteros": [
+"data/catalog.json"
+],
+"Resortes duros adelante: la trompa queda firme y responde rápido, pero salta en los baches.": [
+"data/catalog.json"
+],
+"Resortes duros atrás: la cola se suelta más fácil en las curvas.": [
 "data/catalog.json"
 ],
 "Resortes duros y el auto bajo: menos balanceo y respuesta rápida, ideal en la montaña asfaltada. Blanda y alta: copia los pozos.\nLa subida a la sierra tiene curvas cerradas: suspensión firme (resortes 115 %) y barras 110 %.": [
@@ -2558,7 +2721,7 @@
 "ui/menu_adventure.gd:58"
 ],
 "Rival %d": [
-"race.gd:824"
+"race.gd:827"
 ],
 "Rivales": [
 "ui/menu_career.gd:193",
@@ -2577,7 +2740,19 @@
 "data/catalog.json"
 ],
 "Rotulado (usa el color de Detalles)": [
-"ui/menu_garage.gd:467"
+"ui/menu_garage.gd:479"
+],
+"Ruedas abiertas: el auto entra más rápido a la curva, pero es más nervioso en recta.": [
+"data/catalog.json"
+],
+"Ruedas cerradas: más estable en recta, entra más lento a la curva.": [
+"data/catalog.json"
+],
+"Ruedas derechas: manejo normal.": [
+"data/catalog.json"
+],
+"Ruedas muy inclinadas: queda bajo y agresivo, pero pierde agarre.": [
+"data/catalog.json"
 ],
 "Ruta de los Sueños (aventura)": [
 "ui/menu_career.gd:63"
@@ -2586,7 +2761,7 @@
 "data/catalog.json"
 ],
 "RÁPIDA": [
-"race.gd:1202",
+"race.gd:1205",
 "ui/menu.gd:453"
 ],
 "Récord": [
@@ -2759,7 +2934,7 @@
 "ui/loading.gd:178"
 ],
 "Suspensión": [
-"ui/menu_garage.gd:12",
+"ui/menu_garage.gd:13",
 "data/catalog.json"
 ],
 "Suspensión de rally (recorrido largo)": [
@@ -2775,7 +2950,7 @@
 "ui/menu_adventure.gd:208"
 ],
 "TALLER": [
-"ui/menu_garage.gd:222",
+"ui/menu_garage.gd:231",
 "ui/menu.gd:456"
 ],
 "TALLER A 500 m": [
@@ -2784,7 +2959,7 @@
 "adventure/adv_route.gd:173"
 ],
 "TALLER DE PRUEBA": [
-"ui/race_hud.gd:519"
+"ui/race_hud.gd:522"
 ],
 "TALLER MECÁNICO\n": [
 "adventure/adv_props.gd:588"
@@ -2796,7 +2971,7 @@
 "data/catalog.json"
 ],
 "TIENDA": [
-"ui/menu_garage.gd:87",
+"ui/menu_garage.gd:88",
 "ui/menu.gd:455"
 ],
 "TOTAL %s": [
@@ -2836,7 +3011,7 @@
 "data/vehicles.json"
 ],
 "Teléfono: %s · %s %s": [
-"race.gd:1246"
+"race.gd:1249"
 ],
 "Terrazas de piedra, una mina y la rampa de salida": [
 "adventure/adv_route.gd:135"
@@ -2866,7 +3041,7 @@
 "ui/capture_ui.gd:39"
 ],
 "Todavía no tenés auto. Comprá uno en la tienda.": [
-"ui/menu_garage.gd:48"
+"ui/menu_garage.gd:49"
 ],
 "Todo es virtual": [
 "ui/menu_about.gd:37"
@@ -2875,19 +3050,25 @@
 "data/catalog.json"
 ],
 "Todos los autos manejan solos; la plaza de drift usa conos con física y derrapes.": [
-"race.gd:1203"
+"race.gd:1206"
 ],
 "Tonos de cine (HDR)": [
 "fx/lens.gd:275"
 ],
+"Tracción delantera: más estable y fácil, pero cuesta derrapar.": [
+"data/catalog.json"
+],
 "Tracción trasera": [
+"data/catalog.json"
+],
+"Tracción trasera: la cola se suelta fácil, ideal para derrapar.": [
 "data/catalog.json"
 ],
 "Tramo de ruta": [
 "ui/menu_career.gd:190"
 ],
 "Transmisión": [
-"ui/menu_garage.gd:12",
+"ui/menu_garage.gd:13",
 "data/catalog.json"
 ],
 "Trasera (dos pilotos)": [
@@ -2909,7 +3090,7 @@
 "ui/menu_career.gd:223"
 ],
 "Tu lente: nivel %d · tus efectos: %s · humo/polvo (ajuste del jugador): %s": [
-"race.gd:1200"
+"race.gd:1203"
 ],
 "Tu nivel de simulación": [
 "ui/loading.gd:175"
@@ -2947,7 +3128,7 @@
 "adventure/adv_route.gd:93"
 ],
 "USAR ESTE AUTO": [
-"ui/menu_garage.gd:168"
+"ui/menu_garage.gd:169"
 ],
 "Un coupé de cola ancha, equilibrado y preciso. El mejor amigo de las curvas largas y de los derrapes controlados.": [
 "data/catalog.json"
@@ -3011,7 +3192,7 @@
 "data/catalog.json"
 ],
 "Velocidad": [
-"ui/menu_garage.gd:156"
+"ui/menu_garage.gd:157"
 ],
 "Velocidad máxima": [
 "ui/menu.gd:588",
@@ -3084,10 +3265,10 @@
 "fx/effects.gd:429"
 ],
 "autos · árboles · pilotos · sombras · hilos · resolución  →  FPS · ms/cuadro · física ms · código ms · llamadas · triángulos": [
-"race.gd:1276"
+"race.gd:1279"
 ],
 "autos · árboles · pilotos · sombras · hilos · resolución  →  FPS · ms/cuadro · física ms · llamadas · triángulos": [
-"race.gd:1029"
+"race.gd:1032"
 ],
 "botón, calidad y grabaciones": [
 "ui/options_ui.gd:48"
@@ -3099,7 +3280,7 @@
 "ui/options_ui.gd:44"
 ],
 "completo (todo adentro)": [
-"race.gd:1234"
+"race.gd:1237"
 ],
 "comprá autos": [
 "ui/menu.gd:455"
@@ -3205,7 +3386,7 @@
 "adventure/adv_hud.gd:527"
 ],
 "¡Es tuyo! %s %s": [
-"ui/menu_garage.gd:212"
+"ui/menu_garage.gd:221"
 ],
 "¡Esta fue la última estación!": [
 "adventure/adv_hud.gd:542"
@@ -3235,7 +3416,7 @@
 "data/catalog.json"
 ],
 "Ángulo de visión": [
-"ui/race_hud.gd:480"
+"ui/race_hud.gd:483"
 ],
 "Árboles": [
 "ui/options_ui.gd:53"
@@ -3265,7 +3446,7 @@
 "ui/menu_adventure.gd:164"
 ],
 "← ATRÁS": [
-"ui/race_hud.gd:433",
+"ui/race_hud.gd:436",
 "ui/menu.gd:274",
 "adventure/adv_hud.gd:435"
 ],
@@ -3279,16 +3460,16 @@
 "adventure/adv_route.gd:101"
 ],
 "↺  REINICIAR": [
-"ui/race_hud.gd:350"
+"ui/race_hud.gd:353"
 ],
 "↺  RESTABLECER ESTA CÁMARA": [
-"ui/race_hud.gd:512"
+"ui/race_hud.gd:515"
 ],
 "↺ AUTO DE FÁBRICA": [
-"ui/lab_panel.gd:129"
+"ui/lab_panel.gd:132"
 ],
 "↺ FÁBRICA": [
-"ui/menu_garage.gd:387"
+"ui/menu_garage.gd:399"
 ],
 "↺ REINTENTAR LA ETAPA": [
 "adventure/adv_hud.gd:697"
@@ -3312,7 +3493,7 @@
 "perf_bench.gd:153"
 ],
 "▶  SEGUIR": [
-"ui/race_hud.gd:328"
+"ui/race_hud.gd:331"
 ],
 "▶ %s — BASE (4 autos, 50 %%, sin filtros): %d FPS · %.1f ms por cuadro · p95 %.1f ms · tirones %d": [
 "perf_bench.gd:166"
@@ -3371,7 +3552,7 @@
 "ui/menu_career.gd:10"
 ],
 "⚙  OPCIONES": [
-"ui/race_hud.gd:345"
+"ui/race_hud.gd:348"
 ],
 "⚙ AJUSTE": [
 "adventure/adv_hud.gd:512"
@@ -3383,7 +3564,7 @@
 "adventure/adv_hud.gd:659"
 ],
 "⚙ PIEZAS": [
-"ui/menu_garage.gd:238"
+"ui/menu_garage.gd:247"
 ],
 "⚠ Pesado (boceto + oclusión + profundidad de campo)": [
 "perf_bench.gd:24"
@@ -3392,7 +3573,7 @@
 "ui/menu_perf.gd:13"
 ],
 "⚪ GOMAS": [
-"ui/menu_garage.gd:238"
+"ui/menu_garage.gd:247"
 ],
 "⛽ Las estaciones de servicio son los puntos de guardado: el auto entra solo, carga combustible y antes de salir podés leer la guía de la próxima etapa, ajustar el auto y gastar tus puntos de habilidad.": [
 "adventure/adv_hud.gd:418"
@@ -3407,16 +3588,16 @@
 "ui/perf_results.gd:43"
 ],
 "✔ EN TU GARAJE": [
-"ui/menu_garage.gd:185"
+"ui/menu_garage.gd:186"
 ],
 "✔ EN USO": [
-"ui/menu_garage.gd:168"
+"ui/menu_garage.gd:169"
 ],
 "✔ LISTO": [
 "adventure/adventure.gd:1011"
 ],
 "✕  SALIR": [
-"ui/race_hud.gd:350"
+"ui/race_hud.gd:353"
 ],
 "✕ Quitar": [
 "ui/options_ui.gd:343"
@@ -3435,7 +3616,7 @@
 "drift_session.gd:93"
 ],
 "🌀 DRIFT": [
-"ui/menu_garage.gd:197"
+"ui/menu_garage.gd:203"
 ],
 "🌄 AVENTURA": [
 "ui/menu.gd:448"
@@ -3456,25 +3637,25 @@
 "ui/menu.gd:153"
 ],
 "🎚 AJUSTE": [
-"ui/menu_garage.gd:238"
+"ui/menu_garage.gd:247"
 ],
 "🎞 Cine (tonos + granulado + destello)": [
 "perf_bench.gd:24"
 ],
 "🎥  CÁMARA": [
-"ui/race_hud.gd:339"
+"ui/race_hud.gd:342"
 ],
 "🎨 PINTURA": [
-"ui/menu_garage.gd:238"
+"ui/menu_garage.gd:247"
 ],
 "🎬  MODO CINE": [
-"ui/race_hud.gd:344",
-"ui/race_hud.gd:351",
-"ui/race_hud.gd:362"
+"ui/race_hud.gd:347",
+"ui/race_hud.gd:354",
+"ui/race_hud.gd:365"
 ],
 "🎬  SALIR DEL MODO CINE": [
-"ui/race_hud.gd:351",
-"ui/race_hud.gd:362"
+"ui/race_hud.gd:354",
+"ui/race_hud.gd:365"
 ],
 "🎬 Realista": [
 "ui/options_ui.gd:334"
@@ -3486,7 +3667,7 @@
 "adventure/adv_hud.gd:659"
 ],
 "🏁 ASFALTO": [
-"ui/menu_garage.gd:197"
+"ui/menu_garage.gd:203"
 ],
 "🏅 ¡NUEVO RÉCORD!": [
 "ui/menu.gd:576"
@@ -3507,10 +3688,10 @@
 "adventure/adv_hud.gd:701"
 ],
 "🏜 TIERRA": [
-"ui/menu_garage.gd:197"
+"ui/menu_garage.gd:203"
 ],
 "🏬 TIENDA": [
-"ui/menu_garage.gd:88"
+"ui/menu_garage.gd:89"
 ],
 "💥 Chocaste: perdiste el derrape": [
 "drift_session.gd:71"
@@ -3529,16 +3710,16 @@
 "ui/perf_results.gd:41"
 ],
 "📐  AJUSTAR CÁMARA": [
-"ui/race_hud.gd:342"
+"ui/race_hud.gd:345"
 ],
 "📐 CALIBRAR": [
 "ui/options_ui.gd:215"
 ],
 "📷 Captura guardada": [
-"race.gd:1575"
+"race.gd:1578"
 ],
 "📸 RADAR": [
-"race.gd:509"
+"race.gd:512"
 ],
 "🔒 Auto de la tienda: se prueba sin premios. En la pausa tenés el taller de prueba para ajustar todo.": [
 "ui/menu_career.gd:305"
@@ -3546,11 +3727,14 @@
 "🔒 Próximamente": [
 "ui/menu_career.gd:99"
 ],
+"🔒 SE GANA TERMINANDO LA AVENTURA": [
+"ui/menu_garage.gd:191"
+],
 "🔧  TALLER DE PRUEBA  (grip, suspensión, potencia…)": [
-"ui/race_hud.gd:347"
+"ui/race_hud.gd:350"
 ],
 "🔧 Ajuste aplicado": [
-"race.gd:1697"
+"race.gd:1700"
 ],
 "🔧 El auto tiene daño (motor %d %% · dirección %d %% · suspensión %d %%). Se arregla en los talleres del camino.": [
 "adventure/adv_hud.gd:539"
@@ -3565,7 +3749,7 @@
 "adventure/adv_hud.gd:88"
 ],
 "🔧 TALLER": [
-"ui/menu_garage.gd:176",
+"ui/menu_garage.gd:177",
 "adventure/adv_props.gd:595"
 ],
 "🔩 Suspensión": [
@@ -3584,7 +3768,7 @@
 "ui/capture_ui.gd:58"
 ],
 "🚗 MIS AUTOS": [
-"ui/menu_garage.gd:88"
+"ui/menu_garage.gd:89"
 ],
 "🚧 Completaste la primera parte. Las próximas etapas llegan con una actualización.": [
 "ui/menu_adventure.gd:62"

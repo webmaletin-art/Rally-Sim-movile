@@ -6,7 +6,7 @@ extends RefCounted
 const ADVENTURE_STAGES := 2
 ## Copas de la carrera abiertas en la versión pública
 const PUBLIC_TIERS := ["debut"]
-## Autos que solo se consiguen jugando (no están en la concesionaria hasta tenerlos)
+## Autos que solo se consiguen jugando: se ven y se prueban en la concesionaria, pero se compran recién al ganarlos
 const REWARD_CARS := ["genesis"]
 
 static func dev(profile: RefCounted) -> bool:
@@ -18,11 +18,13 @@ static func adventure_limit(profile: RefCounted) -> int:
 static func tier_allowed(profile: RefCounted, tier_id: String) -> bool:
 	return dev(profile) or PUBLIC_TIERS.has(tier_id)
 
-## ¿Está a la venta en la concesionaria? (los autos de premio solo aparecen cuando ya los tenés, o en modo desarrollador)
-static func car_for_sale(profile: RefCounted, id: String) -> bool:
-	if not REWARD_CARS.has(id):
-		return true
-	return dev(profile) or profile.owns(id)
+## ¿Aparece en la concesionaria? (todos: los autos de premio se pueden ver y probar, pero no comprar hasta ganarlos)
+static func car_for_sale(_profile: RefCounted, _id: String) -> bool:
+	return true
+
+## ¿Se puede comprar? Los autos de premio (DR Bisonte XR) se consiguen terminando la aventura; en modo desarrollador se compran
+static func can_buy(profile: RefCounted, id: String) -> bool:
+	return not REWARD_CARS.has(id) or dev(profile)
 
 ## Activa el modo desarrollador: todos los autos en el garaje y plata para probar piezas
 static func activate_dev(profile: RefCounted) -> void:
