@@ -114,6 +114,7 @@ var force_gas := false
 var force_hb := false
 var dirt_test := false
 var autobench := false
+var fx_hold := 0.0 # segundos sin partículas después de poner los autos en la largada
 var pb_active := false # prueba de rendimiento completa (cfg type = bench)
 var pb_plan: Array = []
 var pb_i := -1
@@ -326,6 +327,7 @@ func _ready() -> void:
 	load_progress.emit(0.92, "Compilando efectos…")
 	# unos cuadros con todo ya dibujado (tapados por la pantalla de carga): ahí se compilan los shaders y no hay tirones al largar
 	for i in 6:
+		fx.tick(cam.position) # precalienta los emisores de partículas mientras la pantalla de carga los tapa
 		await get_tree().process_frame
 	if OS.get_cmdline_user_args().has("--hidecars"):
 		for c in cars:
@@ -921,6 +923,7 @@ func _rebuild_cars() -> void:
 		controls.manual = manual_gearbox
 		controls.has_nitro = cars[0].phys.V.nitroCap > 0.0
 	cam_ready = false
+	fx_hold = 1.5
 	_start_session()
 
 ## Cuenta regresiva + vueltas + meta (solo con el menú; la escena de pruebas anda libre)
@@ -1288,6 +1291,9 @@ func _update_fx(dt: float) -> void:
 		return
 	var cp := cam.position
 	fx.tick(cp)
+	if fx_hold > 0.0:
+		fx_hold -= dt # el auto recién puesto en la largada se asienta: sin humo ni polvo
+		return
 	for i in cars.size():
 		var c: Car = cars[i]
 		var pos := Vector3(c.snap.px, c.snap.py, c.snap.pz)

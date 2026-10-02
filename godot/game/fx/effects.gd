@@ -249,6 +249,10 @@ func _make_debris() -> GPUParticles3D:
 func prepare(key: int) -> void:
 	_ensure_car(key)
 
+## Solo la primera vez en todo el juego: los emisores se prenden unos cuadros para compilar los shaders (la pantalla de carga los tapa)
+## y al terminar se borran las partículas que quedaron, así no aparecen manchas redondas al largar.
+static var _warmed := false
+
 func tick(cam_pos: Vector3) -> void:
 	for k in _cars:
 		var car: Dictionary = _cars[k]
@@ -258,11 +262,16 @@ func tick(cam_pos: Vector3) -> void:
 				for e in car[kind]:
 					(e as GPUParticles3D).global_position = cam_pos
 					(e as GPUParticles3D).emitting = car["warm"] > 0
+					if car["warm"] == 0:
+						(e as GPUParticles3D).restart() # borra lo que quedó en el aire
+						(e as GPUParticles3D).emitting = false
+			if car["warm"] == 0:
+				_warmed = true
 
 func _ensure_car(key: int) -> Dictionary:
 	if _cars.has(key):
 		return _cars[key]
-	var d := {"smoke": [], "dust": [], "spray": [], "debris": [], "last": [null, null, null, null], "acc": [0.0, 0.0, 0.0, 0.0], "idle": 0.0, "warm": 4}
+	var d := {"smoke": [], "dust": [], "spray": [], "debris": [], "last": [null, null, null, null], "acc": [0.0, 0.0, 0.0, 0.0], "idle": 0.0, "warm": 0 if _warmed else 4}
 	for i in 4:
 		d["smoke"].append(_make_smoke())
 		d["dust"].append(_make_dust())
