@@ -364,13 +364,15 @@ func _setup_viewport() -> void:
 	l0.add_child(view_rect)
 	lens = Lens.new()
 	add_child(lens)
-	lens.attach(view_rect)
+	lens.attach(view_rect, world)
 	get_tree().root.size_changed.connect(_on_resize)
 	_on_resize()
 
 func _on_resize() -> void:
 	var win := Vector2(DisplayServer.window_get_size())
 	world.size = Vector2i(maxi(320, int(win.x * res_scale)), maxi(180, int(win.y * res_scale)))
+	if lens != null:
+		lens.resize_to_world()
 	view_rect.position = Vector2.ZERO
 	view_rect.size = get_viewport().get_visible_rect().size
 
@@ -1219,7 +1221,7 @@ func _report_header() -> Array:
 	if mem_total <= 0:
 		mem_total = int(_proc_value("/proc/meminfo", ["MemTotal"]).to_int() / 1024)
 		mem_free = int(_proc_value("/proc/meminfo", ["MemAvailable"]).to_int() / 1024)
-	out.append("Memoria: %d MB en total · %d MB libres" % [mem_total, mem_free])
+	out.append("Memoria: %s" % (("%d MB en total · %d MB libres" % [mem_total, mem_free]) if mem_total > 0 else "(este teléfono no la informa)"))
 	out.append("GPU: %s · %s · %s" % [RenderingServer.get_video_adapter_name(), RenderingServer.get_video_adapter_vendor(), RenderingServer.get_video_adapter_api_version()])
 	var hz := DisplayServer.screen_get_refresh_rate()
 	out.append("Dibujado del mundo 3D a %d%% de la pantalla" % int(res_scale * 100.0))

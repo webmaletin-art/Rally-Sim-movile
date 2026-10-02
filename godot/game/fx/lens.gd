@@ -303,16 +303,58 @@ var enabled := true:
 		enabled = v
 		_refresh()
 
+var world_vp: SubViewport
+var proxy_vp: SubViewport # donde corre el filtro (tamaño del mundo 3D)
+var proxy_rect: TextureRect
+var _active := false # el filtro está puesto
 var _t := 0.0
 var _shake_seed := 0.0
 
-func attach(item: CanvasItem) -> void:
+## item: el TextureRect que muestra el mundo 3D a pantalla completa · world: el SubViewport del mundo 3D.
+## El filtro NO corre a pantalla completa: se dibuja en un SubViewport intermedio del tamaño del mundo 3D (la mitad por lado = 4 veces
+## menos píxeles) y recién después se estira a la pantalla. Es la misma imagen (los efectos miden en píxeles de la textura del mundo),
+## pero cuesta cuatro veces menos: en un teléfono con pantalla 2400×1080 pasaba de ~15 ms a ~4 ms por cuadro.
+func attach(item: CanvasItem, world: SubViewport = null) -> void:
 	target = item
+	world_vp = world
 	var sh := Shader.new()
 	sh.code = SHADER
 	mat = ShaderMaterial.new()
 	mat.shader = sh
+	if world != null:
+		proxy_vp = SubViewport.new()
+		proxy_vp.disable_3d = true
+		proxy_vp.gui_disable_input = true
+		proxy_vp.transparent_bg = false
+		proxy_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		proxy_vp.size = world.size
+		add_child(proxy_vp)
+		proxy_rect = TextureRect.new()
+		proxy_rect.texture = world.get_texture()
+		proxy_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		proxy_rect.stretch_mode = TextureRect.STRETCH_SCALE
+		proxy_rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		proxy_rect.position = Vector2.ZERO
+		proxy_rect.size = Vector2(world.size)
+		proxy_vp.add_child(proxy_rect)
 	_refresh()
+
+## Hay que llamarlo cada vez que cambia el tamaño del mundo 3D
+func resize_to_world() -> void:
+	if proxy_vp == null or world_vp == null:
+		return
+	proxy_vp.size = world_vp.size
+	proxy_rect.size = Vector2(world_vp.size)
+
+func _set_active(on: bool) -> void:
+	_active = on
+	if proxy_vp == null:
+		(target as CanvasItem).material = mat if on else null
+		return
+	# con filtro: mundo → (filtro en el SubViewport chico) → pantalla. Sin filtro: mundo → pantalla directo, sin pasadas de más
+	proxy_rect.material = mat if on else null
+	proxy_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS if on else SubViewport.UPDATE_DISABLED
+	(target as TextureRect).texture = proxy_vp.get_texture() if on else world_vp.get_texture()
 
 func _refresh() -> void:
 	if target == null:
@@ -321,9 +363,9 @@ func _refresh() -> void:
 	for i in 3:
 		any_fx = any_fx or (int(fx[i]) > 0 and fx_on[i] == true)
 	if not enabled or (level <= 0 and not any_fx):
-		target.material = null
+		_set_active(false)
 		return
-	target.material = mat
+	_set_active(true)
 	for i in 3:
 		mat.set_shader_parameter("fx%d" % i, int(fx[i]) if fx_on[i] == true else 0)
 		mat.set_shader_parameter("amt%d" % i, float(fx_amt[i]))
@@ -354,7 +396,7 @@ func _refresh() -> void:
 
 ## kmh: velocidad del auto; boost: 0..1 (nitro) suma efecto
 func update(dt: float, kmh: float, boost := 0.0) -> void:
-	if mat == null or target == null or target.material == null:
+	if mat == null or target == null or not _active:
 		return
 	_t += dt
 	var sp := clampf((kmh - 55.0) / 150.0 + boost * 0.5, 0.0, 1.0) if level > 0 else 0.0
