@@ -12,6 +12,8 @@ extends Control
 signal camera_pressed
 signal pause_pressed
 signal shot_pressed
+signal cam_drag(rel: Vector2) # dedo arrastrado sobre la pantalla (cámara libre)
+signal cam_zoom(factor: float) # pellizco con dos dedos
 
 # ── opciones (las carga el juego) ──
 var steer_mode := "wheel" # "wheel" | "slider"
@@ -61,6 +63,7 @@ var _gyro_raw := 0.0
 var _gyro_dt := 0.016
 var _gyro_steer := 0.0
 
+var _drags := {} # índice de dedo → posición (arrastre de cámara)
 const ITEMS := ["wheel", "slider", "pedal", "gears", "handbrake", "nitro"]
 
 func _ready() -> void:
@@ -162,7 +165,12 @@ func _taken(kind: String) -> bool:
 
 func _touch_down(idx: int, pos: Vector2) -> void:
 	var id := _hit(pos)
-	if id == "" or _taken(id):
+	if id == "":
+		# dedo sobre la imagen (no sobre un control): sirve para girar y acercar la cámara libre
+		_touch[idx] = {"kind": "camdrag", "y0": pos.y, "moved": false}
+		_drags[idx] = pos
+		return
+	if _taken(id):
 		return
 	_touch[idx] = {"kind": id, "y0": pos.y, "moved": false}
 	match id:
@@ -189,6 +197,20 @@ func _touch_move(idx: int, pos: Vector2) -> void:
 		return
 	var t: Dictionary = _touch[idx]
 	match t["kind"]:
+		"camdrag":
+			var prev: Vector2 = _drags.get(idx, pos)
+			if _drags.size() >= 2:
+				var other := Vector2.ZERO
+				for k2 in _drags:
+					if k2 != idx:
+						other = _drags[k2]
+				var d0 := prev.distance_to(other)
+				var d1 := pos.distance_to(other)
+				if d0 > 20.0:
+					cam_zoom.emit(d1 / d0)
+			else:
+				cam_drag.emit(pos - prev)
+			_drags[idx] = pos
 		"wheel":
 			var c := rect_of("wheel").get_center()
 			var a := atan2(pos.y - c.y, pos.x - c.x)
@@ -212,6 +234,7 @@ func _touch_up(idx: int) -> void:
 		return
 	var t: Dictionary = _touch[idx]
 	_touch.erase(idx)
+	_drags.erase(idx)
 	match t["kind"]:
 		"wheel":
 			wheel_target = 0.0

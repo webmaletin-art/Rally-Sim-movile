@@ -191,14 +191,20 @@ func _cars(mine: bool) -> void:
 			var bb := Kit.button("COMPRAR  " + Kit.fmt_cr(float(price)), func() -> void: _buy_car(id), m.profile.credits >= price, 20, Vector2(0, 52))
 			bb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			brow.add_child(bb)
-		for tt in [["🏁 ASFALTO", "lake"], ["🏜 TIERRA", "forest"]]:
+		# probar el auto antes de comprarlo (también los que ya tenés): sin premios y con el taller de prueba en la pausa
+		var trow := Kit.hbox(6)
+		m.body.add_child(trow)
+		for tt in [["🏁 ASFALTO", "lake"], ["🏜 TIERRA", "forest"], ["🌀 DRIFT", "drift"]]:
 			var tmap: String = tt[1]
 			var tb := Kit.button(tt[0], func() -> void:
 				m.sfx.play("click")
 				var tcfg := {"type": "free", "track": tmap, "ai": 0, "sky": "day", "car": id, "state": st.duplicate(true), "testCar": true, "back": "dealer", "seed": 7}
-				m.launch(tcfg, false), false, 16, Vector2(0, 52))
+				if tmap == "drift":
+					tcfg["type"] = "drift"
+					tcfg["time"] = 1800 # práctica larga: se corta desde la pausa
+				m.launch(tcfg, false), false, 17, Vector2(0, 48))
 			tb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			brow.add_child(tb)
+			trow.add_child(tb)
 
 func _buy_car(id: String) -> void:
 	if m.profile.buy_car(id):

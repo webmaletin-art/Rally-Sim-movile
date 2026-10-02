@@ -38,7 +38,12 @@ static func default_state() -> Dictionary:
 	return {"stage": 0, "points": 0, "skills": {"curve": 0, "launch": 0, "brake": 0, "control": 0, "armor": 0}, "tune": {}, "tires": "street",
 		"damage": {"motor": 0.0, "dir": 0.0, "susp": 0.0}, "pull": 1.0, "intro": false, "best": {}, "tries": 0, "done": false, "started": false}
 
+## Práctica (Carrera rápida → Ruta de los Sueños): un estado descartable, así no se toca el avance real de la aventura
+static var practice: Dictionary = {}
+
 static func state(profile: RefCounted) -> Dictionary:
+	if not practice.is_empty():
+		return practice
 	if not profile.d.has("adv") or not (profile.d["adv"] is Dictionary):
 		profile.d["adv"] = default_state()
 	var st: Dictionary = profile.d["adv"]

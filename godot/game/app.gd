@@ -7,6 +7,7 @@ const MenuScript := preload("res://game/ui/menu.gd")
 const Rewards := preload("res://game/data/rewards.gd")
 const Loading := preload("res://game/ui/loading.gd")
 const AdvRoute := preload("res://game/adventure/adv_route.gd")
+const AdvData := preload("res://game/adventure/adv_data.gd")
 const RACE_SCENE := preload("res://game/race.tscn")
 const Tr := preload("res://game/i18n/tr.gd")
 
@@ -31,6 +32,7 @@ func _ready() -> void:
 	show_menu()
 
 func show_menu(screen := "home") -> void:
+	AdvData.practice = {} # la práctica de la Ruta de los Sueños no deja rastro
 	if race != null:
 		race.queue_free()
 		race = null

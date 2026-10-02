@@ -62,6 +62,13 @@ static func build_params(base: Dictionary, car: Dictionary, assists := {"abs": t
 	var upg: Dictionary = car.get("upg", {})
 	var e := effects_of(upg)
 	var un := unlocks_of(upg)
+	var lab: Dictionary = car.get("lab", {}) # taller de prueba (pausa): todo desbloqueado y ajustes extra; nunca se guarda
+	if lab.get("all", false) == true:
+		for k in ["springs", "damp", "arb", "height", "camber", "toe", "final", "lsd", "split", "aero", "stance", "drift"]:
+			un[k] = true
+		e["aeroF"] = maxf(e["aeroF"], 0.7)
+		e["aeroR"] = maxf(e["aeroR"], 1.1)
+		e["drag"] = maxf(e["drag"], 0.06)
 	V["turboLvl"] = int(upg.get("turbo", 0))
 	var tu := default_tune(base)
 	var ct: Dictionary = car.get("tune", {})
@@ -145,6 +152,18 @@ static func build_params(base: Dictionary, car: Dictionary, assists := {"abs": t
 	V["tractionControl"] = float(assists.get("tc", 50.0)) > 0.0
 	V["tcSlip"] = float(base["tcSlip"]) * (1.6 - float(assists.get("tc", 50.0)) / 100.0)
 	V["stabilityAssist"] = float(assists.get("stab", 30.0)) / 100.0
+	if lab.get("all", false) == true:
+		V["powerScale"] = float(V["powerScale"]) * float(lab.get("power", 100.0)) / 100.0
+		var mk := float(lab.get("mass", 100.0)) / 100.0
+		V["mass"] = float(V["mass"]) * mk
+		V["Ixx"] = float(V["Ixx"]) * mk
+		V["Iyy"] = float(V["Iyy"]) * mk
+		V["Izz"] = float(V["Izz"]) * mk
+		V["travel"] = float(V["travel"]) * float(lab.get("travel", 100.0)) / 100.0
+		var gk := float(lab.get("grip", 100.0)) / 100.0
+		for k in V["surfGrip"]:
+			V["surfGrip"][k] = float(V["surfGrip"][k]) * gk
+		V["dragCoef"] = float(V["dragCoef"]) * float(lab.get("drag", 100.0)) / 100.0
 	return V
 
 # ─── Índice de rendimiento (PI) y clase ───
