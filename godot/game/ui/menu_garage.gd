@@ -5,6 +5,7 @@ extends RefCounted
 const Kit := preload("res://game/ui/ui_kit.gd")
 const CarVisualS := preload("res://game/car/car_visual.gd")
 const CarParts := preload("res://game/car/car_parts.gd")
+const Tr := preload("res://game/i18n/tr.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const Release := preload("res://game/data/release.gd")
 
@@ -186,6 +187,11 @@ func _cars(mine: bool) -> void:
 			ob.disabled = true
 			ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			brow.add_child(ob)
+		elif not Release.can_buy(m.profile, id):
+			var lk := Kit.button("🔒 SE GANA TERMINANDO LA AVENTURA", Callable(), false, 17, Vector2(0, 52))
+			lk.disabled = true
+			lk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			brow.add_child(lk)
 		else:
 			var price := int(cm["price"])
 			var bb := Kit.button("COMPRAR  " + Kit.fmt_cr(float(price)), func() -> void: _buy_car(id), m.profile.credits >= price, 20, Vector2(0, 52))
@@ -207,6 +213,9 @@ func _cars(mine: bool) -> void:
 			trow.add_child(tb)
 
 func _buy_car(id: String) -> void:
+	if not Release.can_buy(m.profile, id):
+		m.sfx.play("error")
+		return
 	if m.profile.buy_car(id):
 		m.sfx.play("buy")
 		m.toast(tr("¡Es tuyo! %s %s") % [_cat()["cars"][id]["brand"], _cat()["cars"][id]["model"]])
@@ -330,6 +339,7 @@ func _ws_tune(id: String, st: Dictionary) -> void:
 		tune_info = ""
 		m.sfx.play("click")
 		m.go("workshop", null, false), 14, 36.0))
+	m.body.add_child(Kit.wrap("Debajo de cada ajuste ves qué pasa si lo bajás (▼) y si lo subís (▲).", 12, Kit.GOLD, 300))
 	var info := Kit.wrap("", 13, Kit.MUTED, 200)
 	info.max_lines_visible = 3
 	info.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -360,6 +370,8 @@ func _ws_tune(id: String, st: Dictionary) -> void:
 		var vl := Kit.label("%s %s" % [_num(v0), unit], 15, Kit.GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
 		vl.custom_minimum_size.x = 74
 		row.add_child(vl)
+		if it.has("lo"):
+			m.body.add_child(Kit.wrap("▼ %s\n▲ %s" % [Tr.t(str(it["lo"])), Tr.t(str(it["hi"]))], 12, Kit.MUTED, 300)) # guía fácil: qué pasa si lo bajás y si lo subís
 		var txt := str(it.get("info", ""))
 		sl.value_changed.connect(func(nv: float) -> void:
 			tune[k] = nv

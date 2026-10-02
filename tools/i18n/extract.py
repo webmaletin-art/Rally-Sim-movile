@@ -13,7 +13,7 @@ SKIP_DIRS = {'i18n', 'models', 'audio_data'}
 SKIP_FILES = {'ui/debug_panel.gd', 'car/rig_pilot.gd', 'car/pilot.gd', 'data/ai_cars.gd', 'session.gd', 'ui/ui_selector.gd'}
 SKIP_EXACT = {'Head', 'Hips', 'Left', 'Right', 'Index', 'Middle', 'Ring', 'Pinky', 'Thumb', 'Spine', 'Neck', 'Shoulder', 'Hand', 'Foot', 'Body', 'Crew', 'Processor', 'model name', 'Hardware'}
 # claves de los JSON de datos que llevan texto para mostrar
-JSON_TEXT_KEYS = {'name', 'n', 'info', 'desc', 'tagline', 'kind', 'engine', 'brand', 'model', 'title', 'text', 'sub', 'label', 'tip', 'bio', 'req'}
+JSON_TEXT_KEYS = {'lo', 'hi', 'name', 'n', 'info', 'desc', 'tagline', 'kind', 'engine', 'brand', 'model', 'title', 'text', 'sub', 'label', 'tip', 'bio', 'req'}
 
 SPANISH_MARK = re.compile(r'[áéíóúñÁÉÍÓÚÑ¿¡]')
 

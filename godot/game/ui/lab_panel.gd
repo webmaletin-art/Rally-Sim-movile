@@ -9,11 +9,11 @@ const Tr := preload("res://game/i18n/tr.gd")
 
 ## Ajustes extra que no están en el taller normal (se guardan en st["lab"]); todos en %
 const EXTRA := {
-	"power": {"n": "Potencia del motor", "min": 40, "max": 300, "step": 5, "def": 100, "u": "%", "info": "Multiplica la potencia en todo el rango de vueltas."},
-	"mass": {"n": "Peso del auto", "min": 50, "max": 160, "step": 2, "def": 100, "u": "%", "info": "Masa total: menos peso acelera, frena y dobla mejor."},
-	"drag": {"n": "Resistencia al aire", "min": 40, "max": 250, "step": 5, "def": 100, "u": "%", "info": "Más resistencia = menos velocidad final."},
-	"grip": {"n": "Agarre de las gomas (todo)", "min": 40, "max": 180, "step": 2, "def": 100, "u": "%", "info": "Multiplica el agarre de las cuatro gomas en todas las superficies."},
-	"travel": {"n": "Recorrido de suspensión", "min": 40, "max": 220, "step": 5, "def": 100, "u": "%", "info": "Cuánto sube y baja cada rueda antes de topar."},
+	"power": {"n": "Potencia del motor", "min": 40, "max": 300, "step": 5, "def": 100, "u": "%", "info": "Multiplica la potencia en todo el rango de vueltas.", "lo": "Menos potencia: acelera más lento y es más fácil de controlar.", "hi": "Más potencia: acelera y llega más rápido, pero las ruedas patinan más."},
+	"mass": {"n": "Peso del auto", "min": 50, "max": 160, "step": 2, "def": 100, "u": "%", "info": "Masa total: menos peso acelera, frena y dobla mejor.", "lo": "Auto liviano: acelera, frena y gira mejor.", "hi": "Auto pesado: más estable en las rectas, pero más lento para todo."},
+	"drag": {"n": "Resistencia al aire", "min": 40, "max": 250, "step": 5, "def": 100, "u": "%", "info": "Más resistencia = menos velocidad final.", "lo": "Poco aire en contra: llega a más velocidad máxima.", "hi": "Mucho aire en contra: el auto se frena solo a alta velocidad."},
+	"grip": {"n": "Agarre de las gomas (todo)", "min": 40, "max": 180, "step": 2, "def": 100, "u": "%", "info": "Multiplica el agarre de las cuatro gomas en todas las superficies.", "lo": "Poco agarre general: el auto derrapa por todos lados, como sobre hielo.", "hi": "Mucho agarre: pegado al piso, curvas muy rápidas."},
+	"travel": {"n": "Recorrido de suspensión", "min": 40, "max": 220, "step": 5, "def": 100, "u": "%", "info": "Cuánto sube y baja cada rueda antes de topar.", "lo": "Poco recorrido: suspensión corta y firme, toca el tope en los baches.", "hi": "Mucho recorrido: aguanta saltos y baches grandes, pero se hamaca más."},
 }
 
 ## [título de la solapa, [claves en orden]]
@@ -67,6 +67,7 @@ static func build(body: VBoxContainer, st: Dictionary, defs: Dictionary, tab: Ar
 		tab[0] = i + 3
 		on_page.call(), 16, 44.0)
 	body.add_child(r2)
+	body.add_child(Kit.wrap("Debajo de cada ajuste ves qué pasa si lo bajás (▼) y si lo subís (▲).", 12, Kit.GOLD, 200))
 	var info := Kit.wrap("", 13, Kit.MUTED, 200)
 	info.max_lines_visible = 3
 	info.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -95,6 +96,8 @@ static func build(body: VBoxContainer, st: Dictionary, defs: Dictionary, tab: Ar
 		var vl := Kit.label("%s %s" % [_num(v0), unit], 15, Kit.GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
 		vl.custom_minimum_size.x = 76
 		row.add_child(vl)
+		if it.has("lo"):
+			body.add_child(Kit.wrap("▼ %s\n▲ %s" % [Tr.t(str(it["lo"])), Tr.t(str(it["hi"]))], 12, Kit.MUTED, 200)) # guía fácil: qué pasa si lo bajás y si lo subís
 		var txt := Tr.t(str(it.get("info", "")))
 		var extra: bool = it.has("extra")
 		var key: String = k
