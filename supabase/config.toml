@@ -1,0 +1,23 @@
+# Configuración de Supabase para Dream Racing (carpeta que lee la integración con GitHub y la CLI).
+# El ID del proyecto NO va acá: se pasa con el secreto SUPABASE_PROJECT_ID (ver docs/ONLINE_SUPABASE.md).
+project_id = "dream-racing"
+
+[api]
+enabled = true
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 200
+
+[db]
+major_version = 15
+
+[auth]
+enabled = true
+# El juego entra sin cuenta, con un usuario anónimo: hay que dejar activado «Allow anonymous sign-ins» (Authentication → Sign In / Providers).
+enable_anonymous_sign_ins = true
+enable_signup = true
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+
+[auth.email]
+enable_signup = false

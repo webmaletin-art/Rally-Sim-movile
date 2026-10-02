@@ -530,6 +530,24 @@ func _soon_screen(kind: String) -> void:
 		for t in ["🏙 Ciudades amplias para recorrer", "🌲 Biomas distintos: selva, montaña, nieve, desierto", "🛣 Rutas espectaculares y libre recorrido", "🎯 Misiones en el mundo abierto"]:
 			body.add_child(Kit.label(t, 18, Kit.GOLD))
 	body.add_child(Kit.wrap("Llegará en una actualización gratuita del juego. ¡Gracias por jugar!", 14, Kit.MUTED, 300))
+	if online and app.online != null and app.online.configured():
+		_online_options()
+
+## Conexión con Supabase ya preparada: el jugador elige si participa en los rankings (apagado de fábrica) y, en modo desarrollador, se prueba la conexión
+func _online_options() -> void:
+	body.add_child(Kit.wrap("Rankings online: se envían tu nombre de piloto y tus mejores marcas (tiempo y puntos) sin crear ninguna cuenta. No se envía nada más.", 13, Kit.MUTED, 300))
+	var on: bool = profile.setting("onlineScores") == true
+	body.add_child(Kit.button(("☑ " if on else "☐ ") + tr("Participar en los rankings online"), func() -> void:
+		sfx.play("click")
+		profile.set_setting("onlineScores", not on)
+		go("soon", "online", false), on, 16, Vector2(0, 46)))
+	if Release.dev(profile):
+		var res := Kit.wrap("", 13, Kit.GREEN, 300)
+		body.add_child(Kit.button("🛠 Probar conexión con Supabase", func() -> void:
+			res.text = tr("Probando…")
+			var r: Dictionary = await app.online.ping()
+			res.text = str(r["text"]), false, 15, Vector2(0, 44)))
+		body.add_child(res)
 
 func _done_events() -> int:
 	var n := 0

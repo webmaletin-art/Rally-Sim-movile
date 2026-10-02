@@ -77,3 +77,6 @@ If this policy changes, the new version will be published at this same address a
 
 ### Contact
 Owner: SRGamestudios · Email: **roldanhr98@gmail.com**
+
+### Rankings online (opcional, solo en las versiones que lo traen)
+Si activás «Participar en los rankings online» (viene apagado), el juego crea un **usuario anónimo** (sin correo ni contraseña) y envía a nuestro servidor (Supabase) tu **nombre de piloto** y tus **mejores marcas** (tiempo o puntos, pista y auto) para armar el ranking, que ven todos los jugadores. No se envía ningún otro dato, y lo podés apagar cuando quieras. Para borrar tus marcas, escribí al contacto del juego.

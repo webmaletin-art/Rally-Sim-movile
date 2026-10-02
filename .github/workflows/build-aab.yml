@@ -141,6 +141,22 @@ jobs:
           godot --headless --script res://tests/release_test.gd
           godot --headless --script res://tests/drag_test.gd
           godot --headless --script res://tests/dream_test.gd
+          godot --headless --script res://tests/autotune_test.gd
+          godot --headless --script res://tests/online_test.gd
+
+      - name: Configurar el modo online (Supabase)
+        working-directory: godot
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          # La dirección y la clave PÚBLICA (anon) van dentro de la app; la seguridad la dan las políticas de la base. Sin secretos queda apagado.
+          if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
+            python3 -c "import json,os; json.dump({'url': os.environ['SUPABASE_URL'].strip(), 'anon_key': os.environ['SUPABASE_ANON_KEY'].strip()}, open('game/online/online_config.json','w'))"
+            echo "Modo online configurado (${SUPABASE_URL%%.*}…)"
+          else
+            echo "Sin secretos de Supabase: el modo online queda apagado en esta compilación."
+          fi
 
       - name: Número de versión (sube con cada compilación)
         working-directory: godot

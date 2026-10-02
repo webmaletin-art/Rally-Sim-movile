@@ -54,8 +54,16 @@ const TERMS_STORE := [
 	["Contenido descargable", "El juego completo viene dentro de la app y funciona sin conexión. Las actualizaciones se instalan desde Google Play."],
 ]
 
+## Solo si esta versión trae el modo online configurado (los rankings son opcionales y están apagados de fábrica)
+const PRIVACY_ONLINE := [
+	["Rankings online (opcional)", "Si activás «Participar en los rankings online» (viene apagado), el juego crea un usuario anónimo, sin correo ni contraseña, y envía a nuestro servidor (Supabase) tu nombre de piloto y tus mejores marcas (tiempo o puntos, pista y auto) para armar el ranking, que ven todos los jugadores. No se envía ningún otro dato, y lo podés apagar cuando quieras. Para borrar tus marcas escribí al contacto del juego."],
+]
+
 func _privacy() -> Array:
-	return _merged(PRIVACY, PRIVACY_STORE) if Release.store() else PRIVACY
+	var base: Array = _merged(PRIVACY, PRIVACY_STORE) if Release.store() else PRIVACY
+	if m.app != null and m.app.online != null and m.app.online.configured():
+		return _merged(base, PRIVACY_ONLINE)
+	return base
 
 func _terms() -> Array:
 	return _merged(TERMS, TERMS_STORE) if Release.store() else TERMS

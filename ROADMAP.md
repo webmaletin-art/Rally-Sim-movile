@@ -3,6 +3,7 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
+- ✅ **Modo online cableado con Supabase** (`docs/ONLINE_SUPABASE.md`): base con RLS y funciones validadas (probada en un Postgres real), cliente del juego con sesión anónima, envío de marcas, rankings y «Probar conexión», compilación que inyecta las claves desde secretos y flujo para aplicar migraciones. Falta cargar los secretos y probar.
 - ✅ **Primer inicio lindo y sin tirones** (`game/autotune.gd`, `tests/autotune_test.gd`): los gráficos arrancan en automático según el teléfono (GPU, núcleos, memoria, pantalla → nivel bajo/medio/alto) y en el menú se miden los cuadros por segundo unos segundos y se sube o baja un nivel, así la primera carrera ya sale bien. Perfil nuevo: sin efectos de cámara ni filtros y con la cámara de adentro donde se ven piloto y copiloto. Botón «Ajuste automático para mi teléfono» en Opciones → Gráficos.
 - ✅ **Vórtice de Ensueño** (`docs/MAPA_ENSUENO.md`): mapa fantasía de 9,7 km con subida de 300 m, cresta peraltada, bajada brutal y vuelta inmensa; 61 flores/árboles/bambúes/hongos en papel, cielo con Júpiter, agujero negro en un mar de gas, reflejos de sol, pétalos flotando, arcos de globos y un rival que siempre queda a la par. Carrera rápida y Serie Continental.
 - ✅ **Arreglo del export**: las piezas `.pap` del papel no entraban al APK (la selva de Paper Race salía vacía); ahora van con `include_filter`.

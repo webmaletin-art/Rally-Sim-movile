@@ -12,11 +12,13 @@ const RACE_SCENE := preload("res://game/race.tscn")
 const Tr := preload("res://game/i18n/tr.gd")
 const Release := preload("res://game/data/release.gd")
 const Billing := preload("res://game/store/billing.gd")
+const Online := preload("res://game/online/online.gd")
 
 var autorace_used := false
 var profile: RefCounted
 var offer_shown := false # el cartel de ofertas sale una vez por sesión
 var billing: Node # compras de Google Play (sin plugin queda «no disponible»)
+var online: Node # modo online (Supabase): rankings; apagado si no hay configuración o el jugador no participa
 var menu: Node
 var race: Node
 
@@ -27,6 +29,9 @@ func _ready() -> void:
 	billing = Billing.new()
 	add_child(billing)
 	billing.setup(profile)
+	online = Online.new()
+	online.profile = profile
+	add_child(online)
 	var dbg := false
 	var menu_forced := false
 	for a in OS.get_cmdline_user_args():
@@ -94,9 +99,25 @@ var pending_result: Dictionary
 func _on_race_finished(result: Dictionary) -> void:
 	last_cfg = race.cfg
 	pending_result = Rewards.apply(profile, last_cfg, result)
+	_submit_online(last_cfg, result)
 	race.queue_free()
 	race = null
 	show_menu("results")
+
+## Manda la marca al ranking online (sin esperar la respuesta ni molestar si falla). No cuenta el modo desarrollador, las pruebas de autos ni la aventura.
+func _submit_online(cfg: Dictionary, result: Dictionary) -> void:
+	if online == null or not online.enabled() or profile.setting("dev") == true:
+		return
+	var board: String = Online.board_for(str(result.get("type", "")), cfg)
+	if board == "":
+		return
+	var v := float(result.get("value", 0.0)) if board == "drift" else float(result.get("time", 0.0))
+	if v <= 0.0:
+		return
+	var build := ""
+	if FileAccess.file_exists("res://game/build_id.txt"):
+		build = FileAccess.get_file_as_string("res://game/build_id.txt").strip_edges()
+	online.submit_score(str(cfg.get("track", "")), board, v, str(cfg.get("car", "")), int(result.get("laps", 1)), build)
 
 func _on_race_exit(back: String) -> void:
 	show_menu(back)

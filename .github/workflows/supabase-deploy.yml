@@ -1,0 +1,40 @@
+name: Supabase · aplicar migraciones
+
+# Aplica las migraciones de supabase/migrations a TU proyecto de Supabase (crea tablas, seguridad y funciones del modo online).
+# Se corre a mano: Actions → «Supabase · aplicar migraciones» → Run workflow. Es seguro repetirlo (las migraciones ya aplicadas se saltean).
+# Si en Supabase activaste la integración con GitHub que despliega sola las migraciones, NO hace falta este flujo (no los uses los dos).
+# Secretos necesarios (Settings → Secrets and variables → Actions): SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD, SUPABASE_PROJECT_ID.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['supabase/**']
+
+jobs:
+  deploy:
+    # En cada push a supabase/** solo corre si definís la variable de repositorio SUPABASE_AUTODEPLOY = true; a mano siempre corre.
+    if: github.event_name == 'workflow_dispatch' || vars.SUPABASE_AUTODEPLOY == 'true'
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Revisar que estén los secretos
+        run: |
+          for v in SUPABASE_ACCESS_TOKEN SUPABASE_DB_PASSWORD SUPABASE_PROJECT_ID; do
+            if [ -z "${!v}" ]; then echo "::error::Falta el secreto $v (ver docs/ONLINE_SUPABASE.md)"; exit 1; fi
+          done
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Conectar con el proyecto
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
+      - name: Migraciones pendientes
+        run: supabase migration list --password "$SUPABASE_DB_PASSWORD" || true
+      - name: Aplicar las migraciones
+        run: supabase db push --password "$SUPABASE_DB_PASSWORD" --yes
+      - name: Migraciones aplicadas
+        run: supabase migration list --password "$SUPABASE_DB_PASSWORD"
