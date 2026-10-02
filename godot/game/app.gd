@@ -10,10 +10,12 @@ const AdvRoute := preload("res://game/adventure/adv_route.gd")
 const AdvData := preload("res://game/adventure/adv_data.gd")
 const RACE_SCENE := preload("res://game/race.tscn")
 const Tr := preload("res://game/i18n/tr.gd")
+const Release := preload("res://game/data/release.gd")
 const Billing := preload("res://game/store/billing.gd")
 
 var autorace_used := false
 var profile: RefCounted
+var offer_shown := false # el cartel de ofertas sale una vez por sesión
 var billing: Node # compras de Google Play (sin plugin queda «no disponible»)
 var menu: Node
 var race: Node
@@ -21,6 +23,7 @@ var race: Node
 func _ready() -> void:
 	profile = Profile.new()
 	Tr.setup(profile)
+	Release.sync_cars(profile)
 	billing = Billing.new()
 	add_child(billing)
 	billing.setup(profile)

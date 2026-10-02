@@ -22,6 +22,16 @@ var up_cat := 0
 var tune_grp := 0
 var paint_target := "body"
 var tune_info := ""
+# Reglaje y pintura en borrador: se prueban gratis y cobran al aplicar (trabajo del mecánico)
+var draft_id := ""
+var draft_tune: Dictionary = {}
+var draft_paint: Dictionary = {}
+var draft_lbl: Label
+var draft_apply: Button
+const TUNE_FEE := 300
+const TUNE_FEE_EACH := 60
+const TUNE_FEE_MAX := 1500
+const PAINT_FEE := 300
 
 func build(name: String, arg) -> void:
 	match name:
@@ -187,6 +197,12 @@ func _cars(mine: bool) -> void:
 			ob.disabled = true
 			ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			brow.add_child(ob)
+		elif Release.PREMIUM_CARS.has(id) and not Release.dev(m.profile):
+			var pb := Kit.button("💎 DESBLOQUEAR EN COMPRAS", func() -> void:
+				m.sfx.play("click")
+				m.go("iap"), true, 18, Vector2(0, 52))
+			pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			brow.add_child(pb)
 		elif not Release.can_buy(m.profile, id):
 			var lk := Kit.button("🔒 SE GANA TERMINANDO LA AVENTURA", Callable(), false, 17, Vector2(0, 52))
 			lk.disabled = true
@@ -324,11 +340,119 @@ func _ws_tires(id: String, st: Dictionary) -> void:
 				m.toast(tr("No te alcanza el dinero")), eq, true, 74.0, 16)
 		g.add_child(b)
 
+func _draft_sync(id: String, st: Dictionary) -> void:
+	if draft_id != id:
+		draft_id = id
+		draft_tune = (st["tune"] as Dictionary).duplicate(true)
+		draft_paint = (st["paint"] as Dictionary).duplicate(true)
+
+func _tune_changes(id: String, st: Dictionary) -> int:
+	var defs := CarBuild.default_tune(m.vehicles[id])
+	var n := 0
+	var keys := {}
+	for k in draft_tune:
+		keys[k] = true
+	for k in (st["tune"] as Dictionary):
+		keys[k] = true
+	for k in keys:
+		var a := float(draft_tune.get(k, defs.get(k, 0.0)))
+		var b := float((st["tune"] as Dictionary).get(k, defs.get(k, 0.0)))
+		if absf(a - b) > 0.0001:
+			n += 1
+	return n
+
+func _paint_changed(st: Dictionary) -> bool:
+	return draft_paint.hash() != (st["paint"] as Dictionary).hash()
+
+func _fee(id: String, st: Dictionary) -> int:
+	var n := _tune_changes(id, st)
+	var fee := 0
+	if n > 0:
+		fee += mini(TUNE_FEE_MAX, TUNE_FEE + TUNE_FEE_EACH * n)
+	if _paint_changed(st):
+		fee += PAINT_FEE
+	return fee
+
+## El auto con el borrador puesto (para verlo en la sala y para probarlo)
+func _draft_state(st: Dictionary) -> Dictionary:
+	var d := st.duplicate(true)
+	d["tune"] = draft_tune.duplicate(true)
+	d["paint"] = draft_paint.duplicate(true)
+	return d
+
+func _draft_refresh(id: String, st: Dictionary) -> void:
+	m.refresh_car(id, _draft_state(st))
+	_draft_update_bar(id, st)
+
+func _draft_update_bar(id: String, st: Dictionary) -> void:
+	if draft_lbl == null or not is_instance_valid(draft_lbl):
+		return
+	var fee := _fee(id, st)
+	draft_lbl.text = (Tr.t("Sin cambios") if fee == 0 else Tr.t("Cambios sin aplicar · el mecánico cobra %s") % Kit.fmt_cr(float(fee)))
+	if draft_apply != null and is_instance_valid(draft_apply):
+		draft_apply.disabled = fee == 0 or m.profile.credits < fee
+		draft_apply.text = (Tr.t("✔ APLICAR") + " " + Kit.fmt_cr(float(fee))) if fee > 0 else Tr.t("✔ APLICAR")
+
+## Barra del borrador: cuánto cuesta y APLICAR / DESCARTAR; y a probarlo gratis en una pista
+func _draft_bar(id: String, st: Dictionary, with_test: bool) -> void:
+	_draft_sync(id, st)
+	var box := Kit.panel(8, Kit.PANEL2)
+	m.body.add_child(box)
+	var col := Kit.vbox(6)
+	box.add_child(col)
+	draft_lbl = Kit.label("", 15, Kit.GOLD)
+	col.add_child(draft_lbl)
+	var row := Kit.hbox(6)
+	col.add_child(row)
+	draft_apply = Kit.button("✔ APLICAR", func() -> void:
+		var fee := _fee(id, st)
+		if fee <= 0:
+			return
+		if not m.profile.spend(fee):
+			m.sfx.play("error")
+			m.toast(tr("No te alcanza el dinero"))
+			return
+		st["tune"] = draft_tune.duplicate(true)
+		st["paint"] = draft_paint.duplicate(true)
+		m.profile.save()
+		m.sfx.play("buy")
+		m.refresh_car()
+		m.update_credits()
+		m.toast(tr("🔧 Listo: el mecánico terminó el trabajo"))
+		m.go("workshop", null, false), true, 17, Vector2(0, 44))
+	draft_apply.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(draft_apply)
+	var disc := Kit.button("↺ DESCARTAR", func() -> void:
+		draft_id = ""
+		_draft_sync(id, st)
+		m.sfx.play("click")
+		m.refresh_car()
+		m.go("workshop", null, false), false, 15, Vector2(0, 44))
+	disc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(disc)
+	if with_test:
+		var trow := Kit.hbox(6)
+		col.add_child(trow)
+		for tt in [["🏁 PROBAR EN ASFALTO", "lake"], ["🏜 EN TIERRA", "forest"], ["🌀 EN DRIFT", "drift"]]:
+			var tmap: String = tt[1]
+			var tb := Kit.button(tt[0], func() -> void:
+				m.sfx.play("click")
+				var tcfg := {"type": "free", "track": tmap, "ai": 0, "sky": "day", "car": id, "state": _draft_state(st), "testCar": true, "back": "workshop", "seed": 7}
+				if tmap == "drift":
+					tcfg["type"] = "drift"
+					tcfg["time"] = 1800
+				m.launch(tcfg, false), false, 14, Vector2(0, 40))
+			tb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			trow.add_child(tb)
+		col.add_child(Kit.wrap("Probar es gratis: ajustá a gusto y volvé cuando esté listo. Solo se cobra al aplicar.", 12, Kit.MUTED, 300))
+	_draft_update_bar(id, st)
+
 # ── ajuste fino ──
 func _ws_tune(id: String, st: Dictionary) -> void:
 	var base: Dictionary = m.vehicles[id]
 	var defs := CarBuild.default_tune(base)
-	var tune: Dictionary = st["tune"]
+	_draft_sync(id, st)
+	var tune: Dictionary = draft_tune
 	var groups: Array = _cat()["tune"]
 	tune_grp = clampi(tune_grp, 0, groups.size() - 1)
 	var names: Array = []
@@ -339,6 +463,7 @@ func _ws_tune(id: String, st: Dictionary) -> void:
 		tune_info = ""
 		m.sfx.play("click")
 		m.go("workshop", null, false), 14, 36.0))
+	_draft_bar(id, st, true)
 	m.body.add_child(Kit.wrap("Debajo de cada ajuste ves qué pasa si lo bajás (▼) y si lo subís (▲).", 12, Kit.GOLD, 300))
 	var info := Kit.wrap("", 13, Kit.MUTED, 200)
 	info.max_lines_visible = 3
@@ -377,10 +502,10 @@ func _ws_tune(id: String, st: Dictionary) -> void:
 			tune[k] = nv
 			vl.text = "%s %s" % [_num(nv), unit]
 			tune_info = txt
-			info.text = txt)
+			info.text = txt
+			_draft_update_bar(id, st))
 		sl.drag_ended.connect(func(_c: bool) -> void:
-			m.profile.save()
-			m.refresh_car())
+			_draft_refresh(id, st))
 	m.body.add_child(info)
 	var prow := Kit.hbox(6)
 	m.body.add_child(prow)
@@ -388,18 +513,16 @@ func _ws_tune(id: String, st: Dictionary) -> void:
 		var key: String = pk
 		var pb := Kit.button(str(_cat()["preset_n"][pk]), func() -> void:
 			m.sfx.play("click")
-			st["tune"] = {}
+			draft_tune = {}
 			for k2 in _cat()["presets"][key]:
-				st["tune"][k2] = float(_cat()["presets"][key][k2])
-			m.profile.save()
-			m.refresh_car()
+				draft_tune[k2] = float(_cat()["presets"][key][k2])
+			_draft_refresh(id, st)
 			m.go("workshop", null, false), false, 15, Vector2(0, 40))
 		pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		prow.add_child(pb)
 	var rb := Kit.button("↺ FÁBRICA", func() -> void:
-		st["tune"] = {}
-		m.profile.save()
-		m.refresh_car()
+		draft_tune = {}
+		_draft_refresh(id, st)
 		m.go("workshop", null, false), false, 15, Vector2(0, 40))
 	rb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	prow.add_child(rb)
@@ -409,7 +532,8 @@ func _num(v: float) -> String:
 
 # ── pintura ──
 func _ws_paint(id: String, st: Dictionary) -> void:
-	var paint: Dictionary = st["paint"]
+	_draft_bar(id, st, false)
+	var paint: Dictionary = draft_paint
 	var own := CarVisualS.has_own_model(str(m.vehicles[id].get("visualType", id)))
 	var targets: Array = []
 	for t in PAINT_TARGETS:
@@ -435,9 +559,8 @@ func _ws_paint(id: String, st: Dictionary) -> void:
 			var dk: String = k
 			var db := Kit.button(str(DISC_NAMES[k]), func() -> void:
 				paint["disc"] = dk
-				m.profile.save()
 				m.sfx.play("click")
-				m.refresh_car()
+				_draft_refresh(id, st)
 				m.go("workshop", null, false), str(paint.get("disc", "steel")) == dk, 16, Vector2(0, 54))
 			db.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			dg.add_child(db)
@@ -466,9 +589,8 @@ func _ws_paint(id: String, st: Dictionary) -> void:
 			sw.add_theme_stylebox_override("pressed", Kit.box(Color(h).darkened(0.1), 10, Kit.ACCENT, 3))
 			sw.pressed.connect(func() -> void:
 				paint[paint_target] = h
-				m.profile.save()
 				m.sfx.play("click")
-				m.refresh_car()
+				_draft_refresh(id, st)
 				m.go("workshop", null, false))
 			grid.add_child(sw)
 	var sg := Kit.grid(2, 8, 8)
@@ -478,8 +600,7 @@ func _ws_paint(id: String, st: Dictionary) -> void:
 		lids.append(li)
 	sg.add_child(Kit.selector("Rotulado (usa el color de Detalles)", lids, int(paint.get("livery", 0)), func(v) -> String: return str(CarVisualS.LIVERIES[int(v)]), func(v) -> void:
 		paint["livery"] = int(v)
-		m.profile.save()
-		m.refresh_car(), m.sfx, 62.0))
+		_draft_refresh(id, st), m.sfx, 62.0))
 	var fids: Array = []
 	var fnames := {}
 	for f in _cat()["finishes"]:
@@ -487,5 +608,4 @@ func _ws_paint(id: String, st: Dictionary) -> void:
 		fnames[str(f["id"])] = str(f["n"])
 	sg.add_child(Kit.selector("Acabado", fids, str(paint.get("finish", "gloss")), func(v) -> String: return str(fnames[v]), func(v) -> void:
 		paint["finish"] = str(v)
-		m.profile.save()
-		m.refresh_car(), m.sfx, 62.0))
+		_draft_refresh(id, st), m.sfx, 62.0))

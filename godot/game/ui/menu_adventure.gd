@@ -59,7 +59,7 @@ func _main() -> void:
 	else:
 		_text("Una sola ruta larguísima, de estación en estación: ciudades, campos, montaña, túneles, una cantera y la nieve. En cada etapa hay un rival que tenés que pasar.", 15)
 	if capped:
-		_text("🚧 Completaste la primera parte. Las próximas etapas llegan con una actualización.", 14, Kit.GOLD)
+		_offer_next(limit)
 	if not done and not capped:
 		var lbl := "▶ SEGUIR · ETAPA %d" % (stage + 1) if st["started"] == true else "▶ COMENZAR LA AVENTURA"
 		m.body.add_child(m.menu_button(lbl, "%d puntos de habilidad para gastar" % int(st["points"]) if int(st["points"]) > 0 else "", func() -> void:
@@ -77,6 +77,20 @@ func _main() -> void:
 	]
 	for it in items:
 		g.add_child(m.tile(str(it[0]), str(it[1]), str(it[2]), it[3], false, 70.0))
+
+## Terminadas las etapas gratis: invitación a seguir, con fotos de lo que viene (las mismas de la pantalla de carga)
+func _offer_next(from_stage: int) -> void:
+	_text("🎉 ¡Completaste las %d etapas gratis! Seguí la Ruta de los Sueños: campos, montaña, túneles, cantera y nieve hasta la cumbre." % from_stage, 15, Kit.GOLD)
+	var row := Kit.hbox(6)
+	m.body.add_child(row)
+	for si in [from_stage + 1, from_stage + 3, from_stage + 6]:
+		var th := _thumb(mini(si, AdvRoute.STAGES.size() - 1))
+		if th != null:
+			th.custom_minimum_size = Vector2(0, 80)
+			th.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(th)
+	m.body.add_child(Kit.wrap("%s · %s · %s" % [AdvRoute.STAGES[mini(from_stage, 11)]["name"], AdvRoute.STAGES[mini(from_stage + 3, 11)]["name"], AdvRoute.STAGES[11]["name"]], 12, Kit.MUTED, 300))
+	m.body.add_child(m.menu_button("💎 DESBLOQUEAR LA AVENTURA COMPLETA", "las 12 etapas y todas las copas", func(): m.go("iap"), true))
 
 ## Miniatura de la etapa (la misma foto de la pantalla de carga)
 func _thumb(si: int) -> Control:

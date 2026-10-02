@@ -42,8 +42,16 @@ var best_run := 0.0 # el derrape más largo cobrado
 var angle_deg := 0.0 # ángulo actual (para mostrarlo)
 var drifting := false
 
+# Duelo contra un bot: no puntúa con la física sino con una curva que acompaña tu puntaje (puede ganar o perder, según el nivel)
+var duel := false
+var duel_skill := 1.0 # 0,85 fácil · 1,0 normal · 1,08 difícil
+var bot_score := 0.0
+var duel_won := false
+
 func _init(p_track, cfg: Dictionary, _n_cars: int) -> void:
 	track = p_track
+	duel = cfg.get("duel", false) == true
+	duel_skill = float(cfg.get("duelSkill", 1.0))
 	limit = maxf(20.0, float(cfg.get("time", 60)))
 	if float(cfg.get("time", 0)) <= 0.0:
 		limit = 90.0
@@ -82,6 +90,15 @@ func on_cones(k: int) -> void:
 		mult -= 1
 		combo = float(mult - 1) * 2.2
 		messages.append([tr("Cono: multiplicador x%d") % mult, "down"])
+
+## Puntaje del bot: la mitad es su ritmo propio (puntos por segundo según el nivel) y la otra mitad acompaña lo que hacés vos,
+## con una ventaja que depende del nivel (fácil: un poco abajo · normal: parejo · difícil: un poco arriba) y una onda lenta.
+func _update_bot() -> void:
+	var rate := 100.0 * duel_skill
+	var edge := (duel_skill - 1.0) * 0.9 + 0.035 * sin(time * 0.43) + 0.02 * sin(time * 1.1 + 1.3)
+	var own := 0.45 * rate * time * (1.0 + 0.1 * sin(time * 0.37))
+	var mine := (total + cur) * (1.0 + edge)
+	bot_score = maxf(bot_score, own + 0.55 * mine)
 
 func _bank() -> void:
 	if cur <= 0.0:
@@ -130,8 +147,11 @@ func update(dt: float, cars: Array) -> void:
 		idle += dt
 		if idle > 0.8 and cur > 0.0:
 			_bank()
+	if duel:
+		_update_bot()
 	if time >= limit:
 		_bank()
+		duel_won = total > bot_score
 		state = "done"
 		finished[0] = true
 		finish_time[0] = time

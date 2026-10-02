@@ -247,6 +247,9 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 		pos_l.visible = true
 		pos_l.text = "x%d" % s.mult
 		lap_l.text = tr("TOTAL %s") % _pts(s.total)
+		if s.duel:
+			var bn := str(rivals[1]["name"]) if rivals.size() > 1 else "BOT"
+			lap_l.text += "  ·  🤖 %s %s" % [bn, _pts(s.bot_score)]
 		drift_l.text = ("%s  ·  %d°" % [_pts(s.cur), int(s.angle_deg)]) if (s.cur > 0.0 and s.state == "run") else ""
 		drift_l.add_theme_color_override("font_color", [Color(0.55, 0.85, 1.0), Color(0.55, 0.85, 1.0), Color(1.0, 0.9, 0.4), Color(1.0, 0.7, 0.25), Color(1.0, 0.5, 0.2), Color(1.0, 0.35, 0.3)][clampi(s.mult, 0, 5)])
 	elif t == "free":

@@ -95,6 +95,25 @@ func _init() -> void:
 	check(cf.hits == 1, "el cono del camino se golpeó una sola vez (%d)" % cf.hits)
 	check(cf.state[0] == 2 and cf.state[1] == 0, "el golpeado quedó tirado y el otro sigue parado (%d, %d)" % [cf.state[0], cf.state[1]])
 	check(cf.pos[0].y < -3.0, "salió despedido hacia donde iba el auto (z = %.1f)" % cf.pos[0].y)
+	# 4) duelo contra el bot: acompaña tu puntaje (dentro de 55-135 %) y el nivel ordena a los bots
+	var final: Dictionary = {}
+	var fake := {"phys": {"vx": 0.0, "vz": 18.0, "vLat": 9.0, "vLong": 15.0, "contacts": 4}} # un auto derrapando parejo
+	for sk in [0.85, 1.0, 1.08]:
+		var ds := DriftSession.new(tr, {"time": 60, "duel": true, "duelSkill": sk}, 2)
+		ds.state = "run"
+		for i in 60 * 70:
+			ds.update(1.0 / 60.0, [fake])
+			if ds.state == "done":
+				break
+		final[sk] = ds.bot_score
+		var mine := ds.total + ds.cur
+		check(ds.state == "done", "duelo %.2f termina al agotarse el tiempo" % sk)
+		check(ds.bot_score > mine * 0.55 and ds.bot_score < mine * 1.35, "bot %.2f queda en 55-135 %% del jugador (bot %d · vos %d)" % [sk, int(ds.bot_score), int(mine)])
+	check(final[0.85] < final[1.0] and final[1.0] < final[1.08], "los bots son más fuertes a mayor nivel")
+	var nd := DriftSession.new(tr, {"time": 60}, 1)
+	nd.state = "run"
+	nd.update(1.0, [fake])
+	check(nd.bot_score == 0.0, "sin duelo no hay bot")
 	quit(1 if fail else 0)
 
 func HALF() -> float:

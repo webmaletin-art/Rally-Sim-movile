@@ -132,6 +132,12 @@ def reduce_to(g, want):
             best = c
     return best if len(best.faces) < len(d.faces) else d
 
+def is_wood(c):
+    """Marrones y tierra (madera, ramas, macetas, cajones): no son parte de la planta"""
+    r, g, b = c[:, 0], c[:, 1], c[:, 2]
+    mx = c.max(axis=1)
+    return (r > g * 1.08) & (g > b * 1.12) & (mx < 200)
+
 def is_green(c):
     r, g, b = c[:, 0], c[:, 1], c[:, 2]
     mx = c.max(axis=1)
@@ -271,6 +277,10 @@ def from_glb(path):
             out.append(wood)
         out += blobs_from_leaves(mesh.triangles_center[top], fc[top], int(budget * 0.7 / 80))
     elif cat in ('planta', 'flor', 'arbusto', 'bambu'):
+        keep = ~is_wood(fc) if cat in ('planta', 'flor') else np.ones(len(fc), dtype=bool)
+        if keep.sum() > 8:  # solo la planta: sin troncos, ramas de color ni macetas
+            mesh = trimesh.Trimesh(mesh.vertices, mesh.faces[keep], process=False)
+            fc = fc[keep]
         lf = flakes(trimesh.Trimesh(mesh.vertices, mesh.faces, process=False), fc, int(budget * 1.5))
         out.append(lf)
     else:  # roca, calle
@@ -428,6 +438,75 @@ def flower(color):
     parts.append(paint(blob(0.05, (0, 0.58, 0), sub=0, noise=0.0), (0.95, 0.80, 0.15), 0.02))
     return parts
 
+def blade(h, w, bend, ang, ox=0.0, oz=0.0, segs=3):
+    """Hoja larga de papel: tira que se curva"""
+    verts, faces = [], []
+    dirv = np.array([math.cos(ang), 0, math.sin(ang)])
+    side = np.array([-math.sin(ang), 0, math.cos(ang)])
+    for s_ in range(segs + 1):
+        t = s_ / segs
+        c = np.array([ox, 0, oz]) + dirv * bend * t * t * h + np.array([0, t * h, 0])
+        wd = w * (1.0 - t) ** 0.8 + 0.01
+        verts += [c - side * wd, c + side * wd]
+    for s_ in range(segs):
+        k = s_ * 2
+        faces += [[k, k + 1, k + 2], [k + 1, k + 3, k + 2]]
+    return trimesh.Trimesh(np.array(verts), np.array(faces))
+
+def fern():
+    parts = []
+    for i in range(9):
+        a = i * math.tau / 9 + RNG.uniform(-0.2, 0.2)
+        parts.append(paint(blade(1.0 + RNG.uniform(0, 0.4), 0.16, 0.9, a, segs=4), (0.18, 0.52, 0.22) if i % 2 else (0.26, 0.60, 0.26), 0.1))
+    return parts
+
+def big_leaf():
+    parts = [paint(trunk(0.05, 0.04, 0.5, 4), (0.45, 0.62, 0.25), 0.05)]
+    for i in range(5):
+        a = i * math.tau / 5
+        parts.append(paint(blade(1.6, 0.42, 1.0, a, 0.0, 0.0, 4), (0.15, 0.50, 0.20) if i % 2 else (0.22, 0.58, 0.22), 0.1))
+    return parts
+
+def tall_grass():
+    parts = []
+    for i in range(14):
+        a = RNG.uniform(0, math.tau)
+        parts.append(paint(blade(1.0 + RNG.uniform(0, 0.8), 0.05, RNG.uniform(0.2, 0.7), a, RNG.uniform(-0.15, 0.15), RNG.uniform(-0.15, 0.15), 2), (0.55, 0.70, 0.28) if i % 3 else (0.42, 0.62, 0.22), 0.14))
+    return parts
+
+def daisy():
+    parts = [paint(trunk(0.025, 0.02, 0.5, 4), (0.22, 0.52, 0.18), 0.05)]
+    for i in range(8):
+        a = i * math.tau / 8
+        v = np.array([[0, 0, 0], [0.2, 0.03, 0.045], [0.2, 0.03, -0.045]])
+        m = trimesh.Trimesh(v, [[0, 1, 2]])
+        m.apply_transform(trimesh.transformations.rotation_matrix(a, [0, 1, 0]))
+        m.apply_translation([0, 0.52, 0])
+        parts.append(paint(m, (0.98, 0.97, 0.94), 0.04))
+    parts.append(paint(blob(0.07, (0, 0.54, 0), sub=0, noise=0.0), (0.98, 0.78, 0.12), 0.02))
+    return parts
+
+def flower_shrub():
+    parts = shrub()
+    for k in range(9):
+        a = RNG.uniform(0, math.tau)
+        r = RNG.uniform(0.2, 0.9)
+        c = [(0.95, 0.40, 0.65), (0.98, 0.85, 0.2), (0.95, 0.95, 0.9), (0.9, 0.3, 0.2)][k % 4]
+        parts.append(paint(blob(0.13, (math.cos(a) * r, 0.55 + RNG.uniform(0, 0.4), math.sin(a) * r), sub=0, noise=0.0), c, 0.05))
+    return parts
+
+def mushroom():
+    parts = [paint(trunk(0.07, 0.06, 0.35, 5), (0.93, 0.9, 0.82), 0.04)]
+    cap = trimesh.creation.icosphere(subdivisions=1, radius=0.22)
+    v = cap.vertices * np.array([1, 0.55, 1])
+    v[:, 1] = np.maximum(v[:, 1], 0.0)
+    cap.vertices = v + np.array([0, 0.36, 0])
+    parts.append(paint(cap, (0.85, 0.15, 0.12), 0.06))
+    for k in range(4):
+        a = k * math.tau / 4
+        parts.append(paint(blob(0.04, (math.cos(a) * 0.12, 0.5, math.sin(a) * 0.12), sub=0, noise=0.0), (0.97, 0.96, 0.92), 0.02))
+    return parts
+
 GEN = {
     'pino': ('arbol', 12, 1.8, lambda: pine(False)), 'pino_nevado': ('arbol', 12, 0.0, lambda: pine(True)),
     'abedul': ('arbol', 9, 1.0, lambda: broadleaf('abedul')), 'alamo': ('arbol', 13, 1.0, lambda: broadleaf('alamo')),
@@ -436,6 +515,8 @@ GEN = {
     'flor_roja': ('flor', 0.62, 2.0, lambda: flower((0.85, 0.12, 0.14))), 'flor_amarilla': ('flor', 0.62, 2.0, lambda: flower((0.98, 0.80, 0.12))),
     'flor_violeta': ('flor', 0.62, 2.0, lambda: flower((0.55, 0.30, 0.80))), 'flor_blanca': ('flor', 0.62, 2.0, lambda: flower((0.96, 0.95, 0.92))),
     'flor_naranja': ('flor', 0.62, 2.0, lambda: flower((0.98, 0.50, 0.12))),
+    'helecho': ('planta', 1.0, 2.5, fern), 'hoja_grande': ('planta', 1.5, 1.8, big_leaf), 'pasto_alto': ('pasto', 1.3, 3.0, tall_grass),
+    'margarita': ('flor', 0.6, 2.5, daisy), 'arbusto_flores': ('arbusto', 1.1, 1.8, flower_shrub), 'hongo': ('planta', 0.4, 1.0, mushroom),
 }
 
 def main(src):

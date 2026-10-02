@@ -48,7 +48,7 @@ func _init() -> void:
 		if m == null or m.get_surface_count() == 0:
 			bad += 1
 			print("   sin malla: ", c["id"])
-	check(bad == 0 and PaperKit.catalog().size() >= 50, "%d piezas de papel cargan" % PaperKit.catalog().size())
+	check(bad == 0 and PaperKit.catalog().size() >= 58, "%d piezas de papel cargan" % PaperKit.catalog().size())
 	# el mundo usa todo lo que corresponde del pack
 	var w := PaperWorld.new()
 	w.setup(tr, 0.5)
@@ -56,13 +56,13 @@ func _init() -> void:
 	for ch in w.get_children():
 		if ch is MultiMeshInstance3D:
 			used[ch.multimesh.mesh] = true
-	check(w.inst_total > 3000, "la selva tiene %d plantas, árboles y rocas" % w.inst_total)
+	check(w.inst_total > 5000, "la selva tiene %d plantas, árboles y rocas" % w.inst_total)
 	var kinds := {}
 	for ch in w.get_children():
 		if ch is MultiMeshInstance3D:
 			for c in PaperKit.catalog():
 				if PaperKit.mesh(str(c["id"])) == ch.multimesh.mesh:
 					kinds[str(c["id"])] = true
-	check(kinds.size() >= 35, "se usan %d piezas distintas del pack" % kinds.size())
+	check(kinds.size() >= 38, "se usan %d piezas distintas del pack" % kinds.size())
 	w.free()
 	quit(1 if fail else 0)

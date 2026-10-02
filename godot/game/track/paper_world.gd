@@ -10,10 +10,10 @@ const CH := 48 # filas (de ~4 m) por tramo de dibujo
 const TREES := ["sc_acacia", "sc_cypress", "sc_pine", "tree_birch", "tree_black_tupelo", "tree_christmas_tree", "tree_lombardy_poplar", "tree_quaking_aspen",
 	"tree_sassafras", "tree_tree", "tree_weeping_willow", "pino", "abedul", "alamo", "arbol_hoja_ancha", "arbol_seco"]
 const PALMS := ["sc_coconut_tree", "sc_palm_tree", "tree_palm_tree", "palmera"]
-const MID := ["arbusto", "sc_bamboo", "bush_plant", "bush_plant_3", "bush_decorative_plant", "bush_plant_box", "bush_indoor_plant", "tree_fan_palm_tree"]
-const LOW := ["bush_plant_2", "bush_spider_plant", "bush_little_plant", "bush_decorative_plant_2"]
-const GRASS := ["pasto"]
-const FLOWERS := ["bush_flowers", "bush_flower_box", "sc_hydrangea", "sc_lavender_bush", "flor_roja", "flor_amarilla", "flor_violeta", "flor_blanca", "flor_naranja"]
+const MID := ["arbusto", "arbusto_flores", "hoja_grande", "sc_bamboo", "bush_plant", "bush_plant_3", "bush_decorative_plant", "bush_plant_box", "bush_indoor_plant", "tree_fan_palm_tree"]
+const LOW := ["helecho", "hongo", "bush_plant_2", "bush_spider_plant", "bush_little_plant", "bush_decorative_plant_2"]
+const GRASS := ["pasto", "pasto_alto"]
+const FLOWERS := ["margarita", "bush_flowers", "sc_hydrangea", "sc_lavender_bush", "flor_roja", "flor_amarilla", "flor_violeta", "flor_blanca", "flor_naranja"]
 const ROCKS := ["rock_rock", "rock_rock_2", "rock_rock_3", "roca"]
 
 const C_ASPH := Color(0.55, 0.56, 0.61)
@@ -188,7 +188,7 @@ func _plant() -> void:
 	var edge: float = track.half_width + track.shoulder + 0.5
 	# [tasa por fila y lado, distancia mínima, máxima, piezas, escala mín, escala máx]
 	var layers := [
-		[2.4, -1.4, 9.0, GRASS, 1.5, 2.6], [1.9, -0.8, 10.0, FLOWERS, 1.7, 3.0], [1.1, 0.0, 8.0, LOW, 1.7, 2.8], [1.3, 1.0, 14.0, MID, 1.0, 1.7],
+		[4.0, -1.4, 9.0, GRASS, 1.4, 2.4], [3.2, -0.8, 11.0, FLOWERS, 1.7, 3.0], [2.4, 0.0, 9.0, LOW, 1.7, 2.8], [2.2, 1.0, 15.0, MID, 1.0, 1.7],
 		[0.4, 0.0, 12.0, ROCKS, 0.8, 2.2], [1.0, 2.2, 14.0, TREES + PALMS, 0.7, 1.2], [1.3, 10.0, 42.0, TREES, 1.0, 1.7], [0.5, 4.0, 22.0, PALMS, 0.9, 1.3],
 	]
 	for i in range(0, track.n, 2):

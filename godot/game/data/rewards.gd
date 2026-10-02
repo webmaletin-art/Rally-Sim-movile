@@ -72,8 +72,9 @@ static func medal_for(ev: Dictionary, value: float) -> int:
 
 static func reward_for(ev: Dictionary, medal: int, tier: Dictionary) -> Dictionary:
 	var base := float(tier["base"]) * (1.6 if ev.get("final", false) else 1.0)
-	var mult: float = [0.2, 0.55, 0.75, 1.0][medal]
-	return {"cr": int(round(base * mult / 50.0)) * 50, "xp": int(round((250.0 + float(tier["base"]) * 0.12) * (0.4 + float(medal) * 0.3) * (1.5 if ev.get("final", false) else 1.0)))}
+	# premio justo: 1° 100 %, 2° 60 %, 3° 40 %, 4° o peor 20 % (carreras); en pruebas por medalla: oro 100 %, plata 60 %, bronce 40 %, sin medalla 10 %
+	var mult: float = ([0.2, 0.4, 0.6, 1.0] if str(ev.get("type", "")) == "race" else [0.1, 0.4, 0.6, 1.0])[medal]
+	return {"cr": int(round(base * mult / 10.0)) * 10, "xp": int(round((250.0 + float(tier["base"]) * 0.12) * (0.4 + float(medal) * 0.3) * (1.5 if ev.get("final", false) else 1.0)))}
 
 ## ¿Está abierto el evento? Devuelve "" si sí, o el motivo. Los eventos que todavía no se pueden jugar no traban a los siguientes.
 static func event_locked(profile: RefCounted, ev: Dictionary) -> String:
@@ -127,8 +128,11 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 		var tier: Dictionary = cfg["tier"]
 		medal = medal_for(ev, float(r["value"]))
 		var rw := reward_for(ev, medal, tier)
-		cr = int(rw["cr"])
-		xp = int(rw["xp"])
+		# repetir lo mismo paga cada vez menos (la 1ª vez 100 %, la 2ª 60 %, la 3ª 35 %, después 20 %)
+		var plays := int(profile.event_result(str(ev["id"])).get("plays", 0))
+		var decay: float = [1.0, 0.6, 0.35][plays] if plays < 3 else 0.2
+		cr = int(round(float(rw["cr"]) * decay / 10.0)) * 10
+		xp = int(round(float(rw["xp"]) * decay))
 		var rec: Dictionary = profile.record_event(str(ev["id"]), float(r["value"]), medal, lower_is_better(str(ev["type"])))
 		record = bool(rec["improved"]) and int(profile.event_result(str(ev["id"])).get("plays", 0)) > 1
 		if bool(rec["firstMedal"]) and medal == 3:
@@ -138,17 +142,22 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 		if t == "race":
 			var n := int(r["value"])
 			medal = 3 if n == 1 else (2 if n == 2 else (1 if n == 3 else 0))
+			# Carrera rápida paga poquito (es práctica): por vuelta y rivales, con tope, y por puesto como en la Copa
 			var laps := maxi(1, int(cfg.get("laps", 1)))
-			cr = int(round([150, 500, 800, 1200][medal] * laps * (1.0 + float(cfg.get("ai", 0)) / 3.0)))
-			xp = 120 * laps + medal * 60
+			var pos := int(r["value"])
+			var by_pos: float = [1.0, 0.6, 0.4, 0.2][pos - 1] if pos >= 1 and pos <= 4 else 0.08
+			cr = mini(400, int(round(50.0 * float(laps) * (1.0 + float(cfg.get("ai", 0)) / 6.0) * by_pos / 10.0)) * 10)
+			xp = int(round((40.0 * laps + medal * 30.0)))
 			show_medal = true
 		elif t == "drift":
-			cr = mini(2500, int(round(float(r["value"]) / 20.0)))
-			xp = int(round(float(r["value"]) / 60.0))
+			cr = mini(700, int(round(float(r["value"]) / 90.0 / 10.0)) * 10)
+			xp = int(round(float(r["value"]) / 120.0))
+			if r.get("duel", false) == true:
+				cr = int(round(float(cr) * (1.5 if r.get("win", false) == true else 0.7) / 10.0)) * 10 # ganarle al bot paga más
 			show_medal = false
 		else:
-			cr = 300
-			xp = 100
+			cr = 120
+			xp = 50
 	var practice: bool = cfg.get("testCar", false) == true or cfg.get("labbed", false) == true # prueba de un auto o con el taller de la pausa: no paga ni cuenta
 	if practice:
 		cr = 0
@@ -170,7 +179,7 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 				all_done = false
 		if all_done and not (d["cups"] as Dictionary).has(tier2["id"]):
 			d["cups"][tier2["id"]] = 1
-			var bonus := int(round(float(tier2["base"]) * 4.0))
+			var bonus := int(round(float(tier2["base"]) * 2.0))
 			cr += bonus
 			xp += 1500
 			cup_msg = "🏆 ¡%s completada! +%s" % [tier2["name"], "$ " + str(bonus)]
