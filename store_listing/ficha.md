@@ -31,7 +31,7 @@ Cámaras de cine, efectos de lente (ojo de pez, cine, cámara de acción) y modo
 Sin publicidad. Sin cuentas. Tu progreso se guarda en tu teléfono. Incluye compras opcionales dentro del juego.
 
 **Categoría:** Juegos → Carreras · **Etiquetas sugeridas:** carreras, rally, drift, simulación, autos
-**Contacto:** (completar: correo del desarrollador)
+**Contacto:** roldanhr98@gmail.com · **Estudio:** SRGamestudios
 **Política de privacidad:** https://webmaletin-art.github.io/Rally-Sim-movile/docs/privacidad.html
 
 ## Notas de la versión 1.0.0

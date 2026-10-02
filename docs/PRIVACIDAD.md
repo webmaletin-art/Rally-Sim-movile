@@ -2,7 +2,7 @@
 
 **Dream Racing** · Última actualización: octubre de 2026
 
-> Se publica en `https://webmaletin-art.github.io/Rally-Sim-movile/docs/privacidad.html` (GitHub Pages; ver docs/PLAY_STORE.md). Antes de publicar: completar el contacto (más abajo) en este archivo y en `docs/privacidad.html`.
+> Se publica en `https://webmaletin-art.github.io/Rally-Sim-movile/docs/privacidad.html` (GitHub Pages; ver docs/PLAY_STORE.md). El contacto ya está completo; si cambia, volver a correr `python3 tools/play/make_legal_html.py`.
 
 ## Español
 
@@ -38,7 +38,7 @@ No usamos SDK de publicidad, análisis ni redes sociales. Los modelos de persona
 Si cambiamos esta política, publicaremos la nueva versión en esta misma dirección y actualizaremos la fecha.
 
 ### Contacto
-Responsable: Dream Racing · Correo: **(completar antes de publicar)**
+Responsable: SRGamestudios · Correo: **roldanhr98@gmail.com**
 
 ---
 
@@ -76,4 +76,4 @@ We use no advertising, analytics or social SDKs. Animated character models come 
 If this policy changes, the new version will be published at this same address and the date above will be updated.
 
 ### Contact
-Owner: Dream Racing · Email: **(fill in before publishing)**
+Owner: SRGamestudios · Email: **roldanhr98@gmail.com**

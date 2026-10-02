@@ -30,7 +30,7 @@ La versión de prueba (APK liviano / completo de GitHub) **no cambia**: todo lo 
 ## 3. Qué tenés que hacer en Play Console (https://play.google.com/console)
 1. **Cuenta de desarrollador** (pago único de USD 25 y verificación de identidad). *Ojo:* las cuentas personales nuevas suelen necesitar una **prueba cerrada con al menos 12 testers durante 14 días** antes de poder publicar en producción; verificalo en la pantalla de «Acceso a producción».
 2. **Crear la app**: nombre «Dream Racing», idioma predeterminado español, tipo **Juego**, **gratis** (con compras integradas).
-3. **Nombre de paquete**: el AAB usa `com.gskorp.dreamracing`. **Es permanente** una vez publicada. Si querés otro, decímelo *antes* de la primera subida.
+3. **Nombre de paquete**: el AAB usa `com.srg.dreamracing`. **Es permanente** una vez publicada. Si querés otro, decímelo *antes* de la primera subida.
 4. **Play App Signing**: aceptá que Google guarde la clave de firma (la tuya es solo la de *subida*).
 5. **Contenido de la app** (todos son formularios cortos):
    - Política de privacidad: la URL de arriba.
@@ -88,4 +88,4 @@ Los íconos del lanzador (adaptativo + monocromo) ya están en `godot/store/icon
 - **API 36 exigida por Google** desde el 31/08/2026 (hay prórroga hasta el 1/11/2026 si se pide). El flujo compila contra la plataforma 36 aunque Godot 4.4 trae la plantilla de la 35: si Gradle se queja, hay que subir a Godot 4.5 (hay que probar el juego en esa versión).
 - **Plugin de compras**: el flujo lo baja de `godotengine/godot-google-play-billing`; si no lo encuentra el AAB sale marcado `SIN-COMPRAS`. La API del plugin se ajustará en la primera prueba interna (no se puede probar fuera de Google Play).
 - Tamaño: el AAB debe pesar menos de 200 MB (la prueba de armado dio **70 MB**).
-- **Verificado en la compilación de prueba (r1):** el AAB se arma de punta a punta, apunta a la API 36, trae el plugin y la biblioteca de compras, el nombre de paquete `com.gskorp.dreamracing` y vibración; salió con la clave de depuración (por eso se llama `PRUEBA`).
+- **Verificado en la compilación de prueba (r1):** el AAB se arma de punta a punta, apunta a la API 36, trae el plugin y la biblioteca de compras, el nombre de paquete `com.srg.dreamracing` y vibración; salió con la clave de depuración (por eso se llama `PRUEBA`).
