@@ -28,6 +28,7 @@ const ROWS := [[-460.0, -443.0], [-417.0, -305.0], [-275.0, -163.0], [-137.0, -1
 const STREETS_EW := [[-150.0, 26.0], [-290.0, 30.0], [-430.0, 26.0]]
 const STREETS_NS := [[0.0, 30.0], [-150.0, 26.0], [150.0, 26.0]]
 
+var mode := "asphalt" # (lo piden las funciones que eligen rivales según el piso)
 var n := 0 # el minimapa y la sesión miran estos dos (hay una sola "vuelta" ficticia)
 var samples: Array = []
 var length := 1000.0

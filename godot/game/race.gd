@@ -8,6 +8,9 @@ const CircuitTrack := preload("res://game/track/circuit_track.gd")
 const RouteTrack := preload("res://game/track/route_track.gd")
 const DriftTrack := preload("res://game/track/drift_track.gd")
 const DriftSession := preload("res://game/drift_session.gd")
+const DriftBot := preload("res://game/ai/drift_bot.gd")
+const PerfBench := preload("res://game/perf_bench.gd")
+const PerfResults := preload("res://game/ui/perf_results.gd")
 const AIDriver := preload("res://game/ai/ai_driver.gd")
 const Car := preload("res://game/car/car.gd")
 const VehicleParams := preload("res://game/physics/vehicle_params.gd")
@@ -110,6 +113,16 @@ var force_gas := false
 var force_hb := false
 var dirt_test := false
 var autobench := false
+var pb_active := false # prueba de rendimiento completa (cfg type = bench)
+var pb_plan: Array = []
+var pb_i := -1
+var pb_t := 0.0
+var pb_samples: Array = []
+var pb_results: Array = []
+var pb_ui: Control
+var pb_report := ""
+var pb_user_fx: Array = [0, 0, 0]
+var pb_user_level := 0
 var acc := 0.0
 var step_n := 0
 var fx_on := true
@@ -198,6 +211,7 @@ func _ready() -> void:
 	track_maps = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["maps"]
 	menu_mode = not cfg.is_empty()
 	adv_mode = str(cfg.get("type", "")) == "adventure"
+	pb_active = str(cfg.get("type", "")) == "bench"
 	if adv_mode:
 		Adventure.prepare_cfg(cfg, profile)
 	if menu_mode:
@@ -322,6 +336,8 @@ func _ready() -> void:
 			race_hud.visible = false
 	if autobench:
 		_bench_start()
+	if pb_active:
+		_pb_start()
 	is_loaded = true
 	load_progress.emit(1.0, "Listo")
 	loaded_emit_deferred()
@@ -788,7 +804,7 @@ func _car_setups() -> Array:
 	if n_ai > 0:
 		var rng := RandomNumberGenerator.new()
 		rng.seed = int(cfg.get("seed", 7)) * 7919 + 13
-		var picks := AiCars.pick(vehicles, n_ai, int(cfg.get("maxPI", 999)), str(cfg.get("aiCar", "")), (track as RouteTrack).mode, rng)
+		var picks := AiCars.pick(vehicles, n_ai, int(cfg.get("maxPI", 999)), str(cfg.get("aiCar", "")), track.mode, rng)
 		for i in picks.size():
 			var pk: Dictionary = picks[i]
 			var st: Dictionary = pk["state"]
@@ -835,6 +851,8 @@ func _rebuild_cars() -> void:
 		if i > 0:
 			if route:
 				car.driver = AIDriver.new(track.make_view(), car.phys, su["ai"])
+			elif track is DriftTrack:
+				car.driver = DriftBot.new(22.0 + float((i * 5) % 18), float(i) * 1.7)
 			else:
 				car.driver = RingDriver.new(track, 20.0 + float((i * 7) % 9), (float((i * 5) % 7) - 3.0) * 0.9)
 		# parrilla: en las carreras el jugador sale último; en contrarreloj, adelante
@@ -896,6 +914,8 @@ func _rebuild_cars() -> void:
 ## Cuenta regresiva + vueltas + meta (solo con el menú; la escena de pruebas anda libre)
 func _start_session() -> void:
 	session = null
+	if pb_active:
+		return # la prueba de rendimiento maneja sola, sin cuenta regresiva ni puestos
 	if adv_mode:
 		if adv != null:
 			adv.queue_free()
@@ -1058,8 +1078,120 @@ func _bench_tick(dt: float) -> void:
 		_bench_samples.clear()
 		_bench_next()
 
+# ───────────────────────── prueba de rendimiento completa ─────────────────────────
+## Corre la lista de PerfBench.plan(): cada paso arma una configuración (pista, autos, resolución, cámara, filtros…), espera 1,5 s,
+## mide ~4 s y pasa al siguiente. Al final arma el informe de texto y lo muestra con un botón para copiarlo.
+func _pb_start() -> void:
+	pb_user_fx = (lens.fx as Array).duplicate()
+	pb_user_level = lens.level
+	pb_plan = PerfBench.plan(str(cfg.get("bench_mode", "full")))
+	pb_results.clear()
+	pb_i = -1
+	res_auto = false
+	_pb_trees_now = trees_n
+	DisplayServer.screen_set_keep_on(true) # que no se apague la pantalla durante la prueba
+	hud.visible = true # solo dibuja el cartel de avance
+	hud.set_process_input(false)
+	race_hud.visible = false
+	_pb_next()
+
+func _pb_next() -> void:
+	pb_i += 1
+	if pb_i >= pb_plan.size():
+		_pb_finish()
+		return
+	var s: Dictionary = pb_plan[pb_i]
+	var trk := str(s["track"])
+	cfg["ai"] = int(s["cars"]) - 1
+	trees_n = int(s["trees"])
+	if track_id != trk:
+		cfg["track"] = trk
+		_change_track(trk) # arma pista, árboles y autos
+	else:
+		if trees_n != _pb_trees_now:
+			_rebuild_trees()
+		_rebuild_cars() # autos de nuevo en la línea de largada: cada paso repite el mismo recorrido y los números se pueden comparar
+	_pb_trees_now = trees_n
+	if track is DriftTrack:
+		(track as DriftTrack).cones.reset()
+	if not cars.is_empty():
+		cars[0].driver = AIDriver.new(track.make_view(), cars[0].phys, {"skill": 0.95}) if track is RouteTrack else DriftBot.new(26.0, 0.0)
+	pilots_on = bool(s["pilots"])
+	sun.shadow_enabled = bool(s["shadows"])
+	threaded = bool(s["threads"])
+	res_scale = float(s["res"])
+	_on_resize()
+	_apply_diag(str(s["flags"]))
+	# filtros de cámara: apagados salvo que el paso los pida
+	if bool(s["user_lens"]):
+		lens.apply_settings(profile)
+		lens.level = pb_user_level
+		lens.fx = pb_user_fx
+	else:
+		lens.fx_on = [true, true, true]
+		lens.fx_amt = [1.0, 1.0, 1.0]
+		lens.level = int(s["lens_level"])
+		lens.fx = s["fx"]
+	lens.enabled = bool(s["lens_on"]) and not str(s["flags"]).contains("f")
+	if cam_rig != null:
+		cam_rig.set_preset(int(s["cam"]))
+	pb_t = 0.0
+	pb_samples.clear()
+
+var _pb_trees_now := -1
+
+func _pb_tick(dt: float) -> void:
+	pb_t += dt
+	var s: Dictionary = pb_plan[pb_i]
+	var left := int(ceil(float(pb_plan.size() - pb_i) * PerfBench.step_s() - pb_t))
+	hud.banner = "PRUEBA %d/%d · %s · faltan %d:%02d · NO TOQUES LA PANTALLA" % [pb_i + 1, pb_plan.size(), str(s["name"]), maxi(left, 0) / 60, maxi(left, 0) % 60]
+	if pb_t > PerfBench.warm_s() and dt < 1.0:
+		pb_samples.append([dt, shown_phys_ms, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), script_ms, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)])
+	if pb_t >= PerfBench.step_s():
+		pb_results.append({"track": str(s["track"]), "grp": str(s["grp"]), "name": str(s["name"]), "ref": bool(s["ref"]), "stats": PerfBench.summarize(pb_samples),
+			"vmem": int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED) / 1048576.0), "tmem": int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED) / 1048576.0)})
+		_pb_next()
+
+func _pb_finish() -> void:
+	var extra: Array = []
+	extra.append("")
+	var pid := str(cfg.get("car", ""))
+	extra.append("Auto de la prueba: %s · calidad general: %s · resolución del mundo 3D en los pasos: fija (la automática se apaga)" % [pid, str(profile.setting("quality"))])
+	extra.append("Tu lente: nivel %d · tus efectos: %s · humo/polvo (ajuste del jugador): %s" % [pb_user_level, str(pb_user_fx), str(profile.setting("particles"))])
+	extra.append("Prueba %s: %d pasos de %.1f s (se descarta el primer %.1f s de cada uno). Pistas: Circuito del Lago (asfalto), Drift Plaza%s." % [
+		"COMPLETA" if str(cfg.get("bench_mode", "full")) == "full" else "RÁPIDA", pb_plan.size(), PerfBench.step_s(), PerfBench.warm_s(), " y Bosque (tierra)" if str(cfg.get("bench_mode", "full")) == "full" else ""])
+	extra.append("Todos los autos manejan solos; la plaza de drift usa conos con física y derrapes.")
+	pb_report = PerfBench.report(_report_header(), pb_results, extra)
+	DisplayServer.clipboard_set(pb_report)
+	var f := FileAccess.open("user://informe_rendimiento.txt", FileAccess.WRITE)
+	if f:
+		f.store_string(pb_report)
+		f.close()
+	print(pb_report)
+	pb_i = -1
+	hud.banner = ""
+	hud.visible = false
+	lens.enabled = true
+	lens.apply_settings(profile)
+	controls.visible = false
+	pb_ui = PerfResults.new()
+	pb_ui.report = pb_report
+	pb_ui.exit_pressed.connect(_quit)
+	pb_ui.process_mode = Node.PROCESS_MODE_ALWAYS
+	var layer := CanvasLayer.new()
+	layer.layer = 20
+	layer.add_child(pb_ui)
+	add_child(layer)
+	if autobench or shot_path != "":
+		await get_tree().create_timer(0.8).timeout
+		if shot_path != "":
+			get_viewport().get_texture().get_image().save_png(shot_path)
+		get_tree().quit()
+
 ## Informe completo: datos del teléfono + versión del juego + tabla de la prueba. Se copia al portapapeles y se guarda en un archivo.
-func _build_report() -> String:
+## Datos del teléfono y del juego (encabezado de todos los informes)
+func _report_header() -> Array:
 	var v := "completo (todo adentro)"
 	if FileAccess.file_exists("user://content_version.txt"):
 		v = FileAccess.get_file_as_string("user://content_version.txt").strip_edges()
@@ -1092,6 +1224,10 @@ func _build_report() -> String:
 	var hz := DisplayServer.screen_get_refresh_rate()
 	out.append("Dibujado del mundo 3D a %d%% de la pantalla" % int(res_scale * 100.0))
 	out.append("Pantalla: %dx%d · %s Hz" % [DisplayServer.window_get_size().x, DisplayServer.window_get_size().y, ("%.0f" % hz) if is_finite(hz) and hz > 0.0 else "?"])
+	return out
+
+func _build_report() -> String:
+	var out: Array = _report_header()
 	out.append("")
 	if bench_results.is_empty():
 		out.append("(No se corrió la prueba automática. Estado actual:)")
@@ -1788,7 +1924,7 @@ var _ar_n := 0
 var _ar_cool := 0.0
 var _ar_cap := 0.8
 func _auto_res(dt: float) -> void:
-	if bench_i >= 0 or dt > 0.25:
+	if bench_i >= 0 or pb_active or dt > 0.25:
 		return
 	_ar_t += dt
 	_ar_sum += dt
@@ -1831,6 +1967,10 @@ func _frame(dt: float) -> void:
 		_step_physics(dt)
 	if bench_i >= 0:
 		_bench_tick(dt)
+	if pb_active and pb_i >= 0:
+		_pb_tick(dt)
+		if track is DriftTrack:
+			(track as DriftTrack).cones.update(dt, cars) # sin sesión nadie mueve los conos: se hace acá para medir su costo
 	if cars.is_empty():
 		return
 	if adv != null and not paused:

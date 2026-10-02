@@ -15,6 +15,7 @@ const Lens := preload("res://game/fx/lens.gd")
 const OptionsUi := preload("res://game/ui/options_ui.gd")
 const MenuAdventure := preload("res://game/ui/menu_adventure.gd")
 const MenuAbout := preload("res://game/ui/menu_about.gd")
+const MenuPerf := preload("res://game/ui/menu_perf.gd")
 const Release := preload("res://game/data/release.gd")
 const AdvData := preload("res://game/adventure/adv_data.gd")
 const AdvRoute := preload("res://game/adventure/adv_route.gd")
@@ -42,8 +43,10 @@ var career: RefCounted
 var garage: RefCounted
 var adventure: RefCounted
 var about: RefCounted
+var perf: RefCounted
 var frames := 0
 var showcar := "" # prueba: muestra este auto en la sala
+var perf_arg := ""
 var autotest := "" # prueba: arranca directo una prueba libre de este auto
 var sky_arg := "" # prueba: fuerza el clima de la carrera (day, overcast, sunset, dusk, rain)
 var no_consent := false # prueba: salta la pantalla de aceptación del primer inicio
@@ -75,6 +78,8 @@ func _ready() -> void:
 			showcar = a.substr(10)
 		elif a.begins_with("--autotest="):
 			autotest = a.substr(11)
+		elif a.begins_with("--perf="): # prueba: arranca directo la prueba de rendimiento (quick | full)
+			perf_arg = a.substr(7)
 		elif a.begins_with("--sky="):
 			sky_arg = a.substr(6)
 		elif a.begins_with("--autorace="):
@@ -105,6 +110,8 @@ func _ready() -> void:
 	adventure.m = self
 	about = MenuAbout.new()
 	about.m = self
+	perf = MenuPerf.new()
+	perf.m = self
 	_build_world()
 	_build_ui()
 	if showcar != "":
@@ -114,6 +121,10 @@ func _ready() -> void:
 	if autotest != "" and not app.autorace_used:
 		app.autorace_used = true
 		launch({"type": "free", "track": "lake", "ai": 0, "sky": "day", "car": autotest, "state": profile.new_car_state(autotest), "testCar": true, "back": "dealer", "seed": 7}, false)
+		return
+	if perf_arg != "" and not app.autorace_used:
+		app.autorace_used = true
+		perf._start(perf_arg)
 		return
 	if autorace != "" and not app.autorace_used:
 		app.autorace_used = true
@@ -281,6 +292,7 @@ func go(name: String, arg = null, push := true) -> void:
 		"garage", "dealer", "workshop", "tune", "paint": garage.build(name, arg)
 		"about", "privacy", "terms", "credits": about.build(name, arg)
 		"consent": about.consent_screen()
+		"perf": perf.build(name, arg)
 		"adventure", "adv_skills", "adv_help", "adv_stages", "adv_start": adventure.build(name, arg)
 		_: _home()
 
@@ -439,9 +451,8 @@ func _home() -> void:
 		["⭐", "LOGROS", ("%d para cobrar" % Rewards.ach_ready(profile)) if Rewards.ach_ready(profile) > 0 else "objetivos", func(): go("goals"), false],
 		["⚙", "OPCIONES", "manejo · sonido", func(): go("options"), false],
 		["ℹ", "ACERCA DE", "créditos · legales", func(): go("about"), false],
+		["📊", "RENDIMIENTO", "probá tu teléfono", func(): go("perf"), false],
 	]
-	if Release.dev(profile):
-		tiles.append(["🔬", "PRUEBAS", "rendimiento", func(): app.start_race({}), false])
 	for tl in tiles:
 		g.add_child(tile(str(tl[0]), str(tl[1]), str(tl[2]), tl[3], bool(tl[4])))
 
