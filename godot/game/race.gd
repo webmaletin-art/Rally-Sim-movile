@@ -9,6 +9,7 @@ const RouteTrack := preload("res://game/track/route_track.gd")
 const DriftTrack := preload("res://game/track/drift_track.gd")
 const DriftSession := preload("res://game/drift_session.gd")
 const DriftBot := preload("res://game/ai/drift_bot.gd")
+const MeshChunks := preload("res://game/track/mesh_chunks.gd")
 const PerfBench := preload("res://game/perf_bench.gd")
 const PerfResults := preload("res://game/ui/perf_results.gd")
 const AIDriver := preload("res://game/ai/ai_driver.gd")
@@ -479,7 +480,7 @@ func _build_track_nodes() -> void:
 		road.material_override = road_mat
 		var sh := MeshInstance3D.new()
 		sh.mesh = track.build_shoulder_mesh()
-		track_root.add_child(sh)
+		track_root.add_child(_chunked(sh))
 		var g0 := 0
 		var g1 := -1
 		if menu_mode and cfg.get("seg") is Array:
@@ -489,7 +490,9 @@ func _build_track_nodes() -> void:
 		if g1 >= 0:
 			track_root.add_child(track.build_start_gate(g1, "📸 RADAR" if str(cfg.get("type")) == "trap" else "META", Color(1.0, 0.35, 0.3)))
 		if wall_on:
-			track_root.add_child(track.build_guardrail(rail_off(), track.mode == "dirt"))
+			var gr: Node3D = track.build_guardrail(rail_off(), track.mode == "dirt")
+			MeshChunks.chunk_children(gr)
+			track_root.add_child(gr)
 			var tn := 1500 if (menu_mode and str(profile.setting("quality")) == "low") else (6000 if (menu_mode and str(profile.setting("quality")) == "high") else 3500)
 			track_root.add_child(track.build_tufts(tn, rail_off() + 0.6, 4242))
 		var dims: Dictionary = track.terrain_dims()
@@ -504,7 +507,14 @@ func _build_track_nodes() -> void:
 		rm.cull_mode = BaseMaterial3D.CULL_DISABLED
 		road.material_override = rm
 		road_mat = rm
-	track_root.add_child(road)
+	track_root.add_child(_chunked(road) if track is RouteTrack else road)
+
+## Un objeto largo de la pista partido en tramos (el motor descarta los que no se ven): ver MeshChunks
+func _chunked(mi: MeshInstance3D) -> Node3D:
+	var holder := Node3D.new()
+	holder.add_child(mi)
+	MeshChunks.chunk_children(holder)
+	return holder
 
 func _terrain_row_job(iz: int) -> void:
 	terrain_rows[iz] = track.terrain_row(iz, terrain_r)
@@ -1091,6 +1101,7 @@ func _pb_start() -> void:
 	pb_i = -1
 	res_auto = false
 	_pb_trees_now = trees_n
+	RenderingServer.viewport_set_measure_render_time(world.get_viewport_rid(), true)
 	DisplayServer.screen_set_keep_on(true) # que no se apague la pantalla durante la prueba
 	hud.visible = true # solo dibuja el cartel de avance
 	hud.set_process_input(false)
@@ -1149,7 +1160,8 @@ func _pb_tick(dt: float) -> void:
 	hud.banner = "PRUEBA %d/%d · %s · faltan %d:%02d · NO TOQUES LA PANTALLA" % [pb_i + 1, pb_plan.size(), str(s["name"]), maxi(left, 0) / 60, maxi(left, 0) % 60]
 	if pb_t > PerfBench.warm_s() and dt < 1.0:
 		pb_samples.append([dt, shown_phys_ms, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
-			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), script_ms, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME)])
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), script_ms, RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
+			RenderingServer.viewport_get_measured_render_time_cpu(world.get_viewport_rid()), RenderingServer.viewport_get_measured_render_time_gpu(world.get_viewport_rid())])
 	if pb_t >= PerfBench.step_s():
 		pb_results.append({"track": str(s["track"]), "grp": str(s["grp"]), "name": str(s["name"]), "ref": bool(s["ref"]), "stats": PerfBench.summarize(pb_samples),
 			"vmem": int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_VIDEO_MEM_USED) / 1048576.0), "tmem": int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED) / 1048576.0)})

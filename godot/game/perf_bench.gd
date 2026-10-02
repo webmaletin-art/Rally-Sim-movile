@@ -107,6 +107,8 @@ static func summarize(samples: Array) -> Dictionary:
 	var stri := 0.0
 	var sscr := 0.0
 	var sob := 0.0
+	var scpu := 0.0
+	var sgpu := 0.0
 	for s in samples:
 		dts.append(float(s[0]))
 		sdt += float(s[0])
@@ -115,6 +117,8 @@ static func summarize(samples: Array) -> Dictionary:
 		stri += float(s[3])
 		sscr += float(s[4])
 		sob += float(s[5])
+		scpu += float(s[6]) if s.size() > 6 else 0.0
+		sgpu += float(s[7]) if s.size() > 7 else 0.0
 	dts.sort()
 	var slow20 := 0
 	var slow33 := 0
@@ -125,15 +129,15 @@ static func summarize(samples: Array) -> Dictionary:
 			slow33 += 1
 	return {"n": n, "fps": float(n) / sdt, "ms": sdt / float(n) * 1000.0, "p50": float(dts[n / 2]) * 1000.0, "p95": float(dts[int(n * 0.95)]) * 1000.0,
 		"p99": float(dts[mini(n - 1, int(n * 0.99))]) * 1000.0, "worst": float(dts[n - 1]) * 1000.0, "s20": 100.0 * float(slow20) / float(n), "s33": slow33,
-		"phys": sph / float(n), "script": sscr / float(n), "draws": sdc / float(n), "tris": stri / float(n), "objs": sob / float(n)}
+		"phys": sph / float(n), "script": sscr / float(n), "draws": sdc / float(n), "tris": stri / float(n), "objs": sob / float(n), "rcpu": scpu / float(n), "rgpu": sgpu / float(n)}
 
 static func _line(r: Dictionary) -> String:
 	var st: Dictionary = r["stats"]
 	if st.is_empty():
 		return "%s → (sin datos)" % str(r["name"])
-	return "%-52s → %3d FPS · %5.1f ms · p95 %5.1f · p99 %5.1f · peor %5.1f · >20ms %4.1f%% · tirones(>33ms) %3d · fís %4.1f · código %4.1f · %3d llam · %3dk tri" % [
+	return "%-52s → %3d FPS · %5.1f ms · p95 %5.1f · p99 %5.1f · peor %5.1f · >20ms %4.1f%% · tirones(>33ms) %3d · fís %4.1f · código %4.1f · render CPU %4.1f / GPU %4.1f · %3d llam · %3dk tri" % [
 		str(r["name"]), int(round(float(st["fps"]))), float(st["ms"]), float(st["p95"]), float(st["p99"]), float(st["worst"]), float(st["s20"]), int(st["s33"]),
-		float(st["phys"]), float(st["script"]), int(st["draws"]), int(float(st["tris"]) / 1000.0)]
+		float(st["phys"]), float(st["script"]), float(st["rcpu"]), float(st["rgpu"]), int(st["draws"]), int(float(st["tris"]) / 1000.0)]
 
 ## El informe completo. header: líneas del teléfono/juego. results: [{track, grp, name, ref, stats, vmem, tmem}]
 static func report(header: Array, results: Array, extra: Array) -> String:
@@ -192,7 +196,7 @@ static func report(header: Array, results: Array, extra: Array) -> String:
 		out.append("▶ Calentamiento: la base al principio %d FPS y al final %d FPS (%s)" % [int(round(f0)), int(round(f1)), "el teléfono se calentó y se frena solo" if f1 < f0 * 0.88 else "estable, sin frenarse por calor"])
 	out.append("")
 	out.append("════════ DETALLE DE CADA PASO ════════")
-	out.append("(FPS = cuadros por segundo promedio · p95/p99 = tiempo de cuadro del 95/99 % de los cuadros · fís = ms que el hilo principal espera a la física · código = ms de script por cuadro · llam = llamadas de dibujo · tri = triángulos)")
+	out.append("(render CPU/GPU = ms que tarda el motor en preparar/dibujar el mundo 3D según el propio motor; 0.0 = este teléfono no lo mide · FPS = cuadros por segundo promedio · p95/p99 = tiempo de cuadro del 95/99 % de los cuadros · fís = ms que el hilo principal espera a la física · código = ms de script por cuadro · llam = llamadas de dibujo · tri = triángulos)")
 	var cur := ""
 	for r in results:
 		var gk := str(r["grp"])
