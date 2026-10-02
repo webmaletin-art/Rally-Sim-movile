@@ -45,7 +45,7 @@ const OPTION_CATS := [["graficos", "🖥", "Gráficos", "calidad, resolución, �
 	["sonido", "🔊", "Sonido", "volúmenes y voz del copiloto"], ["manejo", "🎮", "Manejo", "caja, dirección, vibración"],
 	["inclinacion", "📱", "Inclinación", "volante con el acelerómetro"], ["controles", "🕹", "Controles", "volante y pedal en pantalla"],
 	["camara", "🎥", "Cámara", "cámara al empezar"], ["efectos", "✨", "Efectos", "Lente Rally y efectos 2.0"],
-	["idioma", "🌐", "Idioma", "español, English, português"], ["captura", "📷", "Captura", "botón, calidad y grabaciones"]]
+	["idioma", "🌐", "Idioma", "español, English, português, français, italiano, Deutsch"], ["captura", "📷", "Captura", "botón, calidad y grabaciones"]]
 ## [categoría, clave, título, valores, etiquetas]
 const OPTION_LIST := [
 	["graficos", "quality", "Calidad general", ["auto", "low", "mid", "high"], ["Automática", "Baja", "Media", "Alta"]],

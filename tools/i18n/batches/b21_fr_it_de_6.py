@@ -1,0 +1,21 @@
+# Francés, italiano y alemán (lote 6)
+T = {
+"Pilotos": ["", "", "Pilotes", "Piloti", "Fahrer"],
+"Resolución": ["", "", "Résolution", "Risoluzione", "Auflösung"],
+"Trasera: distancia (m)": ["", "", "Arrière : distance (m)", "Posteriore: distanza (m)", "Hinten: Abstand (m)"],
+"Trasera: ángulo (° menos = zoom)": ["", "", "Arrière : angle (° en moins = zoom)", "Posteriore: angolo (° in meno = zoom)", "Hinten: Winkel (weniger ° = Zoom)"],
+"Valija de créditos": ["", "", "Valise de crédits", "Valigia di crediti", "Guthaben-Koffer"],
+"Vibración (opcional) y el servicio de compras de Google Play. No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono.": ["", "", "Vibration (facultative) et service d'achat Google Play. Nous ne demandons ni la position, ni la caméra, ni le microphone, ni les contacts, ni les fichiers personnels. Les capteurs de mouvement servent uniquement à diriger en inclinant le téléphone.", "Vibrazione (facoltativa) e servizio di acquisto di Google Play. Non chiediamo posizione, fotocamera, microfono, contatti né file personali. I sensori di movimento servono solo per sterzare inclinando il telefono.", "Vibration (optional) und der Google-Play-Kaufdienst. Wir fragen weder nach Standort, Kamera, Mikrofon, Kontakten noch nach persönlichen Dateien. Bewegungssensoren dienen nur zum Lenken durch Neigen des Handys."],
+"recomendada": ["", "", "recommandé", "consigliato", "empfohlen"],
+"ÚLTIMA VUELTA": ["", "", "DERNIER TOUR", "ULTIMO GIRO", "LETZTE RUNDE"],
+"← MENÚ": ["", "", "← MENU", "← MENU", "← MENÜ"],
+"⚙  OPCIONES (gráficos, sonido, efectos…)": ["", "", "⚙  OPTIONS (graphismes, son, effets…)", "⚙  OPZIONI (grafica, suono, effetti…)", "⚙  OPTIONEN (Grafik, Ton, Effekte …)"],
+"⬆ ¡Pasaste! Vas %d°": ["", "", "⬆ Dépassement ! Vous êtes %d°", "⬆ Sorpasso! Sei %d°", "⬆ Überholt! Platz %d"],
+"⬇ Te pasaron · %d°": ["", "", "⬇ Vous avez été dépassé · %d°", "⬇ Ti hanno superato · %d°", "⬇ Du wurdest überholt · Platz %d"],
+"🎬  MODO CINE (para grabar)": ["", "", "🎬  MODE CINÉMA (pour enregistrer)", "🎬  MODALITÀ CINEMA (per registrare)", "🎬  KINOMODUS (zum Aufnehmen)"],
+"🏜 PROBAR EN TIERRA": ["", "", "🏜 TESTER SUR TERRE", "🏜 PROVA SULLO STERRATO", "🏜 AUF SCHOTTER TESTEN"],
+"🔒 Auto de la tienda: se prueba sin premios. En la pausa tenés el taller de prueba para ajustar todo.": ["", "", "🔒 Voiture de la boutique : testée sans récompenses. Dans le menu pause, vous avez l'atelier d'essai pour tout régler.", "🔒 Auto del negozio: provata senza premi. Nel menu di pausa hai l'officina di prova per regolare tutto.", "🔒 Shop-Auto: wird ohne Belohnungen getestet. Im Pausenmenü findest du die Testwerkstatt, um alles einzustellen."],
+"🔧  PRUEBAS Y AJUSTES": ["", "", "🔧  TESTS ET RÉGLAGES", "🔧  PROVE E IMPOSTAZIONI", "🔧  TESTS UND EINSTELLUNGEN"],
+"🚧 Completaste la primera parte. Las próximas etapas llegan con una actualización.": ["", "", "🚧 Vous avez terminé la première partie. Les étapes suivantes arrivent avec une mise à jour.", "🚧 Hai completato la prima parte. Le prossime tappe arriveranno con un aggiornamento.", "🚧 Du hast den ersten Teil abgeschlossen. Die nächsten Etappen kommen mit einem Update."],
+"🚧 Hasta acá llega la primera parte de la aventura. Las próximas etapas llegan con una actualización; tu avance queda guardado.": ["", "", "🚧 C'est ici que se termine la première partie de l'aventure. Les étapes suivantes arrivent avec une mise à jour ; votre progression est sauvegardée.", "🚧 Qui finisce la prima parte dell'avventura. Le prossime tappe arriveranno con un aggiornamento; i tuoi progressi sono salvati.", "🚧 Hier endet der erste Teil des Abenteuers. Die nächsten Etappen kommen mit einem Update; dein Fortschritt ist gespeichert."],
+}

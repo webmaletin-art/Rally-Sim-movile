@@ -235,6 +235,8 @@ func _start_event(ev: Dictionary, tier: Dictionary, ask := true) -> void:
 		"seed": int(str(ev["id"]).unicode_at(1)), "car": pid, "state": m.profile.car(), "back": "events:" + str(tier["id"])}
 	if ev.has("seg"):
 		cfg["seg"] = ev["seg"]
+	if ev.get("drag", false) == true:
+		cfg["drag"] = true # picada: caja manual obligatoria
 	m.launch(cfg, ask)
 
 # ───────────────────────── carrera rápida ─────────────────────────

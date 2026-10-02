@@ -401,7 +401,7 @@
 "data/catalog.json"
 ],
 "Auto": [
-"ui/menu_career.gd:286"
+"ui/menu_career.gd:288"
 ],
 "Auto alto: pasa baches y saltos, pero se inclina más hacia los costados en las curvas.": [
 "data/catalog.json"
@@ -624,7 +624,7 @@
 "ui/menu.gd:481"
 ],
 "CARRERA RÁPIDA": [
-"ui/menu_career.gd:249"
+"ui/menu_career.gd:251"
 ],
 "CHAKAL": [
 "data/catalog.json"
@@ -813,7 +813,7 @@
 "Carrera": [
 "ui/loading.gd:153",
 "ui/loading.gd:153",
-"ui/menu_career.gd:284"
+"ui/menu_career.gd:286"
 ],
 "Carrera rápida": [
 "data/rewards.gd:196"
@@ -886,7 +886,7 @@
 ],
 "Clima": [
 "ui/menu_career.gd:194",
-"ui/menu_career.gd:288"
+"ui/menu_career.gd:290"
 ],
 "Clima y efectos…": [
 "race.gd:287"
@@ -970,7 +970,7 @@
 ],
 "Contrarreloj": [
 "ui/loading.gd:153",
-"ui/menu_career.gd:284",
+"ui/menu_career.gd:286",
 "data/catalog.json"
 ],
 "Control": [
@@ -1138,9 +1138,9 @@
 "data/catalog.json"
 ],
 "Difícil": [
-"ui/menu_career.gd:292",
 "ui/menu_career.gd:294",
-"ui/menu_career.gd:298"
+"ui/menu_career.gd:296",
+"ui/menu_career.gd:300"
 ],
 "Dirección": [
 "ui/options_ui.gd:68"
@@ -1195,7 +1195,7 @@
 ],
 "Drift": [
 "ui/loading.gd:153",
-"ui/menu_career.gd:290",
+"ui/menu_career.gd:292",
 "data/catalog.json"
 ],
 "Drift Coupé": [
@@ -1211,7 +1211,7 @@
 "data/catalog.json"
 ],
 "Duelo contra un bot": [
-"ui/menu_career.gd:290"
+"ui/menu_career.gd:292"
 ],
 "Duelo de Titanes": [
 "data/catalog.json"
@@ -1430,7 +1430,7 @@
 ],
 "Etapa": [
 "ui/menu_adventure.gd:52",
-"ui/menu_career.gd:282"
+"ui/menu_career.gd:284"
 ],
 "Etapa %d · %s": [
 "app.gd:68"
@@ -1525,9 +1525,9 @@
 "data/catalog.json"
 ],
 "Fácil": [
-"ui/menu_career.gd:292",
 "ui/menu_career.gd:294",
-"ui/menu_career.gd:298"
+"ui/menu_career.gd:296",
+"ui/menu_career.gd:300"
 ],
 "Física y ayudas": [
 "ui/options_ui.gd:44"
@@ -1855,6 +1855,9 @@
 "La nieve pisada agarra mucho menos que la tierra. Tracción repartida (50 %), gomas blandas con poca presión y acelerá con suavidad: si patinan, levantá un poco el pie.": [
 "adventure/adv_data.gd:32"
 ],
+"La picada de noche contra un rival más duro: cada cambio cuenta.": [
+"data/catalog.json"
+],
 "La rampa de la cantera": [
 "adventure/adv_data.gd:30"
 ],
@@ -1929,7 +1932,7 @@
 "data/catalog.json"
 ],
 "Libre (por puntos)": [
-"ui/menu_career.gd:290"
+"ui/menu_career.gd:292"
 ],
 "Lienzo de tiza": [
 "fx/lens.gd:274"
@@ -2122,7 +2125,7 @@
 "adventure/adv_route.gd:73"
 ],
 "Modo": [
-"ui/menu_career.gd:284"
+"ui/menu_career.gd:286"
 ],
 "Modo aventura · simulación total con un poco de ayuda": [
 "ui/loading.gd:151"
@@ -2352,16 +2355,16 @@
 "data/catalog.json"
 ],
 "Nivel de los rivales": [
-"ui/menu_career.gd:298"
+"ui/menu_career.gd:300"
 ],
 "Nivel de simulación: ": [
 "ui/loading.gd:163"
 ],
 "Nivel del bot": [
-"ui/menu_career.gd:292"
+"ui/menu_career.gd:294"
 ],
 "Nivel del rival": [
-"ui/menu_career.gd:294"
+"ui/menu_career.gd:296"
 ],
 "Niños": [
 "ui/menu_about.gd:32"
@@ -2539,6 +2542,12 @@
 "Picada (400 m)": [
 "data/routes.json"
 ],
+"Picada Nocturna": [
+"data/catalog.json"
+],
+"Picada del Domingo": [
+"data/catalog.json"
+],
 "Pick-up 4x4": [
 "data/catalog.json"
 ],
@@ -2559,7 +2568,7 @@
 "ui/menu_garage.gd:14"
 ],
 "Pista": [
-"ui/menu_career.gd:280"
+"ui/menu_career.gd:282"
 ],
 "Pizarra (contorno blanco)": [
 "fx/lens.gd:274"
@@ -2682,7 +2691,7 @@
 "ui/loading.gd:153"
 ],
 "Práctica: corrés la etapa con el DR Bisonte de la aventura; no cuenta para tu avance ni da premios.": [
-"ui/menu_career.gd:315"
+"ui/menu_career.gd:317"
 ],
 "Próxima etapa: %s — %s": [
 "adventure/adv_hud.gd:548"
@@ -2846,7 +2855,7 @@
 ],
 "Rivales": [
 "ui/menu_career.gd:193",
-"ui/menu_career.gd:297"
+"ui/menu_career.gd:299"
 ],
 "Rivales serios · autos clase A": [
 "data/catalog.json"
@@ -3263,6 +3272,9 @@
 "Un coupé de cola ancha, equilibrado y preciso. El mejor amigo de las curvas largas y de los derrapes controlados.": [
 "data/catalog.json"
 ],
+"Un cuarto de milla, caja manual y un rival a la par. Cambiá en la zona verde para ganarle.": [
+"data/catalog.json"
+],
 "Un juego de rally y carreras de simulación hecho para jugar desde el celular, con pilotos y copilotos que viven cada curva.": [
 "ui/menu_about.gd:18"
 ],
@@ -3381,7 +3393,7 @@
 "data/catalog.json"
 ],
 "Vueltas": [
-"ui/menu_career.gd:296"
+"ui/menu_career.gd:298"
 ],
 "XIII (historieta)": [
 "fx/lens.gd:274"
@@ -3437,7 +3449,7 @@
 "el teléfono se calentó y se frena solo": [
 "perf_bench.gd:196"
 ],
-"español, English, português": [
+"español, English, português, français, italiano, Deutsch": [
 "ui/options_ui.gd:48"
 ],
 "estable, sin frenarse por calor": [
@@ -3523,7 +3535,7 @@
 ],
 "¡CORRER!": [
 "ui/menu_career.gd:227",
-"ui/menu_career.gd:316"
+"ui/menu_career.gd:318"
 ],
 "¡DE VUELTA A LA RUTA!": [
 "adventure/adventure.gd:730"
