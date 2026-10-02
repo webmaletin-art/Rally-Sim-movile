@@ -21,7 +21,7 @@ Dream Racing es un juego sin cuentas, sin publicidad y sin análisis (analytics)
 **Versión de prueba descargable (APK):** la app se conecta a internet únicamente para **descargar contenido del juego** (modelos, pistas, música y actualizaciones) desde el repositorio público del proyecto en GitHub (`github.com/webmaletin-art/Rally-Sim-movile`). Al descargar, GitHub puede registrar tu dirección IP como en cualquier descarga web, según su propia política de privacidad. El juego no envía ninguna información tuya en esas descargas.
 
 ### Permisos de Android
-- `INTERNET` (solo en la versión de prueba descargable): descargar el contenido del juego. La versión de Google Play no lo pide.
+- `INTERNET` y `ACCESS_NETWORK_STATE`: en la versión de prueba descargable sirven para descargar el contenido del juego; en la versión de Google Play los agrega el servicio de compras de Google Play y el juego no los usa para nada más.
 - `VIBRATE`: vibración del dispositivo (opcional).
 No pedimos acceso a contactos, ubicación, cámara, micrófono ni archivos personales.
 
@@ -59,7 +59,7 @@ Dream Racing has no accounts, no ads and no analytics. **We do not collect, sell
 **Downloadable test version (APK):** the app connects to the internet only to **download game content** (models, tracks, music and updates) from the project's public GitHub repository (`github.com/webmaletin-art/Rally-Sim-movile`). As with any web download, GitHub may log your IP address under its own privacy policy. The game sends no information about you in these downloads.
 
 ### Android permissions
-- `INTERNET` (only in the downloadable test version): download game content. The Google Play version does not request it.
+- `INTERNET` and `ACCESS_NETWORK_STATE`: in the downloadable test version they are used to download game content; in the Google Play version they are added by the Google Play purchase service and the game uses them for nothing else.
 - `VIBRATE`: device vibration (optional).
 We do not request contacts, location, camera, microphone or personal files.
 

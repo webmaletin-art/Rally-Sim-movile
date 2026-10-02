@@ -21,7 +21,7 @@ h1{color:#d9560a}h2{margin-top:2em;border-bottom:2px solid #f2f2f2;padding-botto
 <p><b>Versión de prueba descargable (APK):</b> la app se conecta a internet únicamente para <b>descargar contenido del juego</b> (modelos, pistas, música y actualizaciones) desde el repositorio público del proyecto en GitHub (<code>github.com/webmaletin-art/Rally-Sim-movile</code>). Al descargar, GitHub puede registrar tu dirección IP como en cualquier descarga web, según su propia política de privacidad. El juego no envía ninguna información tuya en esas descargas.</p>
 <h3>Permisos de Android</h3>
 <ul>
-<li><code>INTERNET</code> (solo en la versión de prueba descargable): descargar el contenido del juego. La versión de Google Play no lo pide.</li>
+<li><code>INTERNET</code> y <code>ACCESS_NETWORK_STATE</code>: en la versión de prueba descargable sirven para descargar el contenido del juego; en la versión de Google Play los agrega el servicio de compras de Google Play y el juego no los usa para nada más.</li>
 <li><code>VIBRATE</code>: vibración del dispositivo (opcional).</li>
 </ul>
 <p>No pedimos acceso a contactos, ubicación, cámara, micrófono ni archivos personales.</p>
@@ -51,7 +51,7 @@ h1{color:#d9560a}h2{margin-top:2em;border-bottom:2px solid #f2f2f2;padding-botto
 <p><b>Downloadable test version (APK):</b> the app connects to the internet only to <b>download game content</b> (models, tracks, music and updates) from the project&#x27;s public GitHub repository (<code>github.com/webmaletin-art/Rally-Sim-movile</code>). As with any web download, GitHub may log your IP address under its own privacy policy. The game sends no information about you in these downloads.</p>
 <h3>Android permissions</h3>
 <ul>
-<li><code>INTERNET</code> (only in the downloadable test version): download game content. The Google Play version does not request it.</li>
+<li><code>INTERNET</code> and <code>ACCESS_NETWORK_STATE</code>: in the downloadable test version they are used to download game content; in the Google Play version they are added by the Google Play purchase service and the game uses them for nothing else.</li>
 <li><code>VIBRATE</code>: device vibration (optional).</li>
 </ul>
 <p>We do not request contacts, location, camera, microphone or personal files.</p>

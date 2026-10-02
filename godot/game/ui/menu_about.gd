@@ -35,7 +35,7 @@ const PRIVACY := [
 ## Versión de Google Play: funciona sin internet; solo las compras pasan por Google Play
 const PRIVACY_STORE := [
 	["Internet", "El juego funciona sin conexión: todo viene dentro de la app. Solo se usa internet, a través de Google Play, cuando hacés una compra dentro del juego. Los datos de pago los maneja Google y nunca llegan a nosotros."],
-	["Permisos", "Vibración (opcional) y el servicio de compras de Google Play. No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono."],
+	["Permisos", "Vibración (opcional) y los permisos de red que necesita el servicio de compras de Google Play (el juego no los usa para nada más). No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono."],
 ]
 
 const TERMS := [

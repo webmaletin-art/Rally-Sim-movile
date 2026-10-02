@@ -613,7 +613,7 @@
 "data/vehicles.json"
 ],
 "Buscando tus compras…": [
-"store/billing.gd:79"
+"store/billing.gd:80"
 ],
 "Bóxer 4.0 · 560 cv · 9000 rpm": [
 "data/catalog.json"
@@ -1871,7 +1871,7 @@
 "ui/menu_store.gd:36"
 ],
 "Las compras no están disponibles ahora. Probá de nuevo en un momento.": [
-"store/billing.gd:65"
+"store/billing.gd:66"
 ],
 "Las esquinas de 90° se toman lento: frená fuerte en línea recta, doblá cuando ya bajaste la velocidad y acelerá a la salida. Más agarre adelante ayuda: barra delantera más blanda (90 %).": [
 "adventure/adv_data.gd:28"
@@ -2329,13 +2329,13 @@
 "ui/menu_garage.gd:94"
 ],
 "No se pudo completar la compra.": [
-"store/billing.gd:119"
+"store/billing.gd:120"
 ],
 "No se pudo guardar la captura": [
 "race.gd:1578"
 ],
 "No se pudo iniciar la compra.": [
-"store/billing.gd:72"
+"store/billing.gd:73"
 ],
 "No te alcanza el dinero": [
 "ui/menu_garage.gd:227",
@@ -3271,7 +3271,7 @@
 "Versión %s": [
 "ui/menu_about.gd:96"
 ],
-"Vibración (opcional) y el servicio de compras de Google Play. No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono.": [
+"Vibración (opcional) y los permisos de red que necesita el servicio de compras de Google Play (el juego no los usa para nada más). No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono.": [
 "ui/menu_about.gd:38"
 ],
 "Vibración tipo volante (peso y baches)": [
@@ -3465,10 +3465,10 @@
 "adventure/adv_hud.gd:542"
 ],
 "¡Gracias! Compra lista.": [
-"store/billing.gd:146"
+"store/billing.gd:147"
 ],
 "¡Gracias! Te acreditamos $ %d.": [
-"store/billing.gd:162"
+"store/billing.gd:163"
 ],
 "¡LLEGASTE PRIMERO!": [
 "adventure/adventure.gd:329"
