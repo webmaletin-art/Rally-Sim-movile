@@ -1413,6 +1413,10 @@ func _make_result() -> Dictionary:
 			r["value"] = roundf(session.trap_kmh)
 		"drift":
 			r["value"] = roundf(session.total)
+			if session.duel:
+				r["duel"] = true
+				r["bot"] = roundf(session.bot_score)
+				r["win"] = session.duel_won
 		_:
 			r["value"] = session.finish_time[0]
 	for id in session.standings(n):

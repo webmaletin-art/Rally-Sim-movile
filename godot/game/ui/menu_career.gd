@@ -12,7 +12,7 @@ const MEDAL_N := ["Sin medalla", "Bronce", "Plata", "Oro"]
 
 var m # menu.gd
 var maps: Dictionary
-var quick := {"map": "lake", "mode": "race", "laps": 2, "ai": 3, "sky": "day", "skill": 1.0, "car": "cur", "stage": 0}
+var quick := {"dmode": "free", "map": "lake", "mode": "race", "laps": 2, "ai": 3, "sky": "day", "skill": 1.0, "car": "cur", "stage": 0}
 
 func _maps() -> Dictionary:
 	if maps.is_empty():
@@ -286,6 +286,10 @@ func _quick() -> void:
 		defs.append(["Auto", "car", car_ids, func(v): return _quick_car_name(v)])
 	if not adv:
 		defs.append(["Clima", "sky", ["day", "overcast", "sunset", "dusk", "rain"], func(v): return tr(SKY_N[v])])
+		if str(quick["map"]) == "drift":
+			defs.append(["Drift", "dmode", ["free", "duel"], func(v): return tr("Libre (por puntos)") if v == "free" else tr("Duelo contra un bot")])
+			if str(quick["dmode"]) == "duel":
+				defs.append(["Nivel del bot", "skill", [0.85, 1.0, 1.08], func(v): return {0.85: tr("Fácil"), 1.0: tr("Normal"), 1.08: tr("Difícil")}[v]])
 		if str(quick["map"]) != "drift":
 			defs.append(["Vueltas", "laps", [1, 2, 3, 5], func(v): return str(v)])
 			defs.append(["Rivales", "ai", [0, 1, 3, 5, 7], func(v): return str(v)])
@@ -297,6 +301,8 @@ func _quick() -> void:
 			quick[key] = v
 			if key == "car":
 				m.refresh_car(str(v), m.profile.d["owned"][str(v)]) # el auto elegido aparece en la escena, junto a los pilotos
+			if key == "dmode":
+				m.go("quick", null, false)
 			if key == "map":
 				if (str(v) == "adventure") != (str(prev) == "adventure") or (str(v) == "drift") != (str(prev) == "drift"):
 					m.go("quick", null, false) # cambian los ajustes que se muestran
@@ -327,4 +333,8 @@ func _start_quick() -> void:
 		cfg["testCar"] = true
 	if is_drift:
 		cfg["time"] = 90
+		if str(q.get("dmode", "free")) == "duel":
+			cfg["duel"] = true
+			cfg["ai"] = 1
+			cfg["duelSkill"] = float(q["skill"])
 	m.launch(cfg)

@@ -152,6 +152,8 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 		elif t == "drift":
 			cr = mini(700, int(round(float(r["value"]) / 90.0 / 10.0)) * 10)
 			xp = int(round(float(r["value"]) / 120.0))
+			if r.get("duel", false) == true:
+				cr = int(round(float(cr) * (1.5 if r.get("win", false) == true else 0.7) / 10.0)) * 10 # ganarle al bot paga más
 			show_medal = false
 		else:
 			cr = 120

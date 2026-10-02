@@ -129,10 +129,15 @@ func _ready() -> void:
 		if at.size() > 1 and at[1] == "paper":
 			tc["type"] = "timetrial"
 			tc["track"] = "paperRace"
-		if at.size() > 1 and at[1] == "drift":
+		if at.size() > 1 and (at[1] == "drift" or at[1] == "duel"):
 			tc["type"] = "drift"
 			tc["track"] = "drift"
 			tc["time"] = 1800
+			if at[1] == "duel": # duelo contra el bot (prueba)
+				tc["time"] = 20
+				tc["duel"] = true
+				tc["ai"] = 1
+				tc["duelSkill"] = 1.0
 		launch(tc, false)
 		return
 	if perf_arg != "" and not app.autorace_used and not Release.store():
@@ -600,7 +605,10 @@ func _results() -> void:
 	match t:
 		"race": big = "%d° %s" % [int(r["pos"]), tr("puesto")]
 		"trap": big = "%d km/h" % int(r["value"])
-		"drift": big = "%d pts" % int(r["value"])
+		"drift":
+			big = "%d pts" % int(r["value"])
+			if r.get("duel", false) == true:
+				big += "\n" + (tr("🏆 ¡Le ganaste al bot! (%d pts)") if r.get("win", false) == true else tr("😅 Ganó el bot (%d pts)")) % int(r["bot"])
 		_: big = Kit.fmt_time(float(r["time"]))
 	l0.add_child(Kit.label(big, 44, Kit.GOLD))
 	if bool(r.get("show_medal", false)):
