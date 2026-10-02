@@ -290,7 +290,9 @@ func _quick() -> void:
 			defs.append(["Drift", "dmode", ["free", "duel"], func(v): return tr("Libre (por puntos)") if v == "free" else tr("Duelo contra un bot")])
 			if str(quick["dmode"]) == "duel":
 				defs.append(["Nivel del bot", "skill", [0.85, 1.0, 1.08], func(v): return {0.85: tr("Fácil"), 1.0: tr("Normal"), 1.08: tr("Difícil")}[v]])
-		if str(quick["map"]) != "drift":
+		if str(quick["map"]) == "picada":
+			defs.append(["Nivel del rival", "skill", [0.85, 1.0, 1.08], func(v): return {0.85: tr("Fácil"), 1.0: tr("Normal"), 1.08: tr("Difícil")}[v]]) # un solo rival, a la par
+		elif str(quick["map"]) != "drift":
 			defs.append(["Vueltas", "laps", [1, 2, 3, 5], func(v): return str(v)])
 			defs.append(["Rivales", "ai", [0, 1, 3, 5, 7], func(v): return str(v)])
 			defs.append(["Nivel de los rivales", "skill", [0.85, 1.0, 1.08], func(v): return {0.85: tr("Fácil"), 1.0: tr("Normal"), 1.08: tr("Difícil")}[v]])
@@ -327,10 +329,13 @@ func _start_quick() -> void:
 		m.app.start_race(ac)
 		return
 	var is_drift := str(q["map"]) == "drift"
-	var cfg := {"type": "drift" if is_drift else q["mode"], "track": q["map"], "laps": int(q["laps"]), "ai": int(q["ai"]) if (q["mode"] == "race" and not is_drift) else 0, "sky": q["sky"], "maxPI": maxi(560, pi + 20),
+	var is_drag := str(q["map"]) == "picada"
+	var cfg := {"type": "drift" if is_drift else q["mode"], "track": q["map"], "laps": 1 if is_drag else int(q["laps"]), "ai": (1 if is_drag else int(q["ai"])) if (q["mode"] == "race" and not is_drift) else 0, "sky": q["sky"], "maxPI": maxi(560, pi + 20),
 		"skill": 0.9 * float(q["skill"]), "quick": true, "seed": 7, "car": pid, "state": st, "back": "quick"}
 	if test_car:
 		cfg["testCar"] = true
+	if is_drag:
+		cfg["drag"] = true # caja manual obligatoria y ventana de cambio perfecto
 	if is_drift:
 		cfg["time"] = 90
 		if str(q.get("dmode", "free")) == "duel":

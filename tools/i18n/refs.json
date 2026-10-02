@@ -9,10 +9,10 @@
 "perf_bench.gd:175"
 ],
 " km/h · marcha ": [
-"race.gd:2228"
+"race.gd:2265"
 ],
 " y Bosque (tierra)": [
-"race.gd:1232"
+"race.gd:1241"
 ],
 " · %d rivales": [
 "ui/loading.gd:158"
@@ -38,10 +38,10 @@
 "ui/menu_career.gd:154"
 ],
 " · MHz máx.: ": [
-"race.gd:1285"
+"race.gd:1294"
 ],
 " · SIN ": [
-"race.gd:1133"
+"race.gd:1142"
 ],
 "%-52s → %3d FPS · %5.1f ms · p95 %5.1f · p99 %5.1f · peor %5.1f · >20ms %4.1f%% · tirones(>33ms) %3d · fís %4.1f · código %4.1f · render CPU %4.1f / GPU %4.1f · %3d llam · %3dk tri": [
 "perf_bench.gd:138"
@@ -56,10 +56,10 @@
 "adventure/adv_hud.gd:497"
 ],
 "%2d autos · %5d árb · pil %s · som %s · hilos %s · res %3d%%%s  →  %3d FPS · %5.1f ms · fis %4.1f · código %4.1f ms · %4d llam · %dk tri": [
-"race.gd:1131"
+"race.gd:1140"
 ],
 "%d MB en total · %d MB libres": [
-"race.gd:1291"
+"race.gd:1300"
 ],
 "%d autos + sombras": [
 "perf_bench.gd:63"
@@ -74,12 +74,12 @@
 "ui/race_hud.gd:263"
 ],
 "%d para cobrar": [
-"ui/menu.gd:480"
+"ui/menu.gd:486"
 ],
 "%d pts": [
 "ui/menu_adventure.gd:73",
 "ui/menu_career.gd:173",
-"ui/menu.gd:609"
+"ui/menu.gd:616"
 ],
 "%d puntos de habilidad para gastar": [
 "ui/menu_adventure.gd:65"
@@ -103,19 +103,19 @@
 "perf_bench.gd:137"
 ],
 "(No se corrió la prueba automática. Estado actual:)": [
-"race.gd:1302"
-],
-"(SIN e=efectos c=cielo n=niebla f=filtro de cámara h=controles m=mundo 3D: se apaga a propósito para medir cuánto cuesta; código = tiempo del script por cuadro)": [
-"race.gd:1310"
-],
-"(este teléfono no la informa)": [
-"race.gd:1291"
-],
-"(fís = milisegundos por cuadro que el hilo principal pierde esperando a la física; con hilos debería ser ~0)": [
 "race.gd:1311"
 ],
+"(SIN e=efectos c=cielo n=niebla f=filtro de cámara h=controles m=mundo 3D: se apaga a propósito para medir cuánto cuesta; código = tiempo del script por cuadro)": [
+"race.gd:1319"
+],
+"(este teléfono no la informa)": [
+"race.gd:1300"
+],
+"(fís = milisegundos por cuadro que el hilo principal pierde esperando a la física; con hilos debería ser ~0)": [
+"race.gd:1320"
+],
 "(no informa)": [
-"race.gd:1285"
+"race.gd:1294"
 ],
 "(render CPU/GPU = ms que tarda el motor en preparar/dibujar el mundo 3D según el propio motor; 0.0 = este teléfono no lo mide · FPS = cuadros por segundo promedio · p95/p99 = tiempo de cuadro del 95/99 % de los cuadros · fís = ms que el hilo principal espera a la física · código = ms de script por cuadro · llam = llamadas de dibujo · tri = triángulos)": [
 "perf_bench.gd:199"
@@ -142,7 +142,7 @@
 "perf_bench.gd:54"
 ],
 "1 hilo": [
-"race.gd:2212"
+"race.gd:2249"
 ],
 "1-Bit tramado": [
 "fx/lens.gd:274"
@@ -190,13 +190,13 @@
 "perf_bench.gd:210"
 ],
 "=== INFORME DREAM RACING (Godot) ===": [
-"race.gd:1269"
+"race.gd:1278"
 ],
 "A quienes probaron el juego, mandaron ideas y ayudaron a que cada versión salga mejor.": [
 "ui/menu_about.gd:23"
 ],
 "ABS, tracción y estabilidad altas y ayuda de trazada fuerte: el auto perdona casi todo.": [
-"ui/menu.gd:331"
+"ui/menu.gd:337"
 ],
 "ABS, tracción, estabilidad": [
 "ui/options_ui.gd:44"
@@ -208,14 +208,14 @@
 "ui/loading.gd:232"
 ],
 "ACELERÓMETRO ACTIVADO": [
-"ui/controls.gd:378"
+"ui/controls.gd:382"
 ],
 "ACEPTO": [
 "ui/menu_about.gd:173"
 ],
 "ACERCA DE": [
 "ui/menu_about.gd:93",
-"ui/menu.gd:482"
+"ui/menu.gd:488"
 ],
 "AERO": [
 "ui/lab_panel.gd:26"
@@ -242,7 +242,7 @@
 "ui/menu_about.gd:108"
 ],
 "ARCADE": [
-"ui/menu.gd:331"
+"ui/menu.gd:337"
 ],
 "ARCADE: ABS, control de tracción y estabilidad altos, y el auto te ayuda a doblar. Ideal para aprender la pista.": [
 "ui/loading.gd:169"
@@ -270,8 +270,8 @@
 "adventure/adv_data.gd:15"
 ],
 "Acelerómetro calibrado: sostené el teléfono como para jugar": [
-"race.gd:1475",
-"race.gd:1848"
+"race.gd:1488",
+"race.gd:1861"
 ],
 "Acero": [
 "ui/menu_garage.gd:15"
@@ -374,16 +374,16 @@
 "ui/loading.gd:162"
 ],
 "Armando el recorrido…": [
-"race.gd:233"
+"race.gd:240"
 ],
 "Armando el terreno…": [
-"race.gd:342"
+"race.gd:349"
 ],
 "Armando la ruta… %d m": [
-"race.gd:335"
+"race.gd:342"
 ],
 "Armando los autos y los rivales…": [
-"race.gd:339"
+"race.gd:346"
 ],
 "Arrancás en el pueblo: esquinas a 90° y calles angostas. Frená antes de cada esquina y acelerá a la salida. Afuera del pueblo el asfalto es rápido.": [
 "adventure/adv_route.gd:47"
@@ -416,7 +416,7 @@
 "store/products.gd:14"
 ],
 "Auto de la prueba: %s · calidad general: %s · resolución del mundo 3D en los pasos: fija (la automática se apaga)": [
-"race.gd:1229"
+"race.gd:1238"
 ],
 "Auto liviano: acelera, frena y gira mejor.": [
 "ui/lab_panel.gd:13"
@@ -454,20 +454,20 @@
 "ui/options_ui.gd:59"
 ],
 "Ayudas medias y ayuda de trazada suave: un manejo equilibrado.": [
-"ui/menu.gd:332"
+"ui/menu.gd:338"
 ],
 "Aérea": [
 "ui/options_ui.gd:78",
 "car/camera_rig.gd:12"
 ],
 "BAJAR": [
-"ui/controls.gd:484"
+"ui/controls.gd:494"
 ],
 "BASE otra vez (para ver si el teléfono se calentó)": [
 "perf_bench.gd:46"
 ],
 "BENCH fps medio %.1f · %s": [
-"race.gd:2233"
+"race.gd:2270"
 ],
 "BIENVENIDO": [
 "ui/menu_about.gd:154"
@@ -621,7 +621,7 @@
 ],
 "CARRERA": [
 "ui/menu_career.gd:85",
-"ui/menu.gd:475"
+"ui/menu.gd:481"
 ],
 "CARRERA RÁPIDA": [
 "ui/menu_career.gd:249"
@@ -633,10 +633,10 @@
 "adventure/adv_route.gd:114"
 ],
 "COBRADO ✔": [
-"ui/menu.gd:558"
+"ui/menu.gd:564"
 ],
 "COBRAR ": [
-"ui/menu.gd:560"
+"ui/menu.gd:566"
 ],
 "COLONIA ESPERANZA": [
 "adventure/adv_route.gd:66"
@@ -645,7 +645,7 @@
 "data/catalog.json"
 ],
 "COMPLETA": [
-"race.gd:1232"
+"race.gd:1241"
 ],
 "COMPONENTES": [
 "perf_bench.gd:172"
@@ -655,7 +655,7 @@
 ],
 "COMPRAS": [
 "ui/menu_store.gd:13",
-"ui/menu.gd:483"
+"ui/menu.gd:489"
 ],
 "CON FILTROS": [
 "perf_bench.gd:172",
@@ -665,7 +665,7 @@
 "perf_bench.gd:181"
 ],
 "CONTINUAR": [
-"ui/menu.gd:626"
+"ui/menu.gd:637"
 ],
 "CRÉDITOS": [
 "ui/menu_about.gd:84",
@@ -697,7 +697,7 @@
 "data/catalog.json"
 ],
 "Calidad automática: partículas al %d/10": [
-"race.gd:1597"
+"race.gd:1610"
 ],
 "Calidad de la captura": [
 "ui/capture_ui.gd:16"
@@ -713,6 +713,12 @@
 ],
 "Camber extremo (stance)": [
 "data/catalog.json"
+],
+"Cambio tarde: tocaste el limitador": [
+"race.gd:1896"
+],
+"Cambio temprano: esperá a la zona verde": [
+"race.gd:1894"
 ],
 "Cambios": [
 "ui/menu_about.gd:48"
@@ -746,7 +752,7 @@
 ],
 "Cancelar": [
 "ui/menu_adventure.gd:225",
-"ui/menu.gd:587"
+"ui/menu.gd:593"
 ],
 "Cantera (inversa)": [
 "data/routes.json"
@@ -870,7 +876,7 @@
 "adventure/adv_route.gd:112"
 ],
 "Clase": [
-"ui/menu.gd:453"
+"ui/menu.gd:459"
 ],
 "Clase libre · solo para leyendas": [
 "data/catalog.json"
@@ -883,7 +889,7 @@
 "ui/menu_career.gd:288"
 ],
 "Clima y efectos…": [
-"race.gd:280"
+"race.gd:287"
 ],
 "Clásico 4x4 ’85": [
 "data/catalog.json"
@@ -911,7 +917,7 @@
 "store/products.gd:13"
 ],
 "Compilando efectos…": [
-"race.gd:348"
+"race.gd:355"
 ],
 "Completaste la Ruta de los Sueños": [
 "adventure/adv_hud.gd:702"
@@ -956,7 +962,7 @@
 "data/catalog.json"
 ],
 "Construyendo camino, banquinas y guardarraíl…": [
-"race.gd:236"
+"race.gd:243"
 ],
 "Contenido descargable": [
 "ui/menu_about.gd:45",
@@ -1055,7 +1061,7 @@
 "ui/loading.gd:177"
 ],
 "DETALLE (p50/p95/p99 = tiempo de cuadro del 50%, 95% y 99% de los cuadros; cuadros lentos = tirones)": [
-"race.gd:1312"
+"race.gd:1321"
 ],
 "DR Bisonte XR": [
 "data/vehicles.json"
@@ -1069,8 +1075,8 @@
 "car/cockpit.gd:691"
 ],
 "DREAM RACING": [
-"race.gd:508",
-"race.gd:537",
+"race.gd:517",
+"race.gd:546",
 "ui/menu_about.gd:94"
 ],
 "DREAM SHOP · 24 h": [
@@ -1108,7 +1114,7 @@
 "ui/menu_garage.gd:14"
 ],
 "Dibujado del mundo 3D a %d%% de la pantalla": [
-"race.gd:1294"
+"race.gd:1303"
 ],
 "Diez banderas repartidas por todo el valle.": [
 "data/catalog.json"
@@ -1133,7 +1139,8 @@
 ],
 "Difícil": [
 "ui/menu_career.gd:292",
-"ui/menu_career.gd:296"
+"ui/menu_career.gd:294",
+"ui/menu_career.gd:298"
 ],
 "Dirección": [
 "ui/options_ui.gd:68"
@@ -1148,7 +1155,7 @@
 "data/catalog.json"
 ],
 "Distancia": [
-"ui/menu.gd:631"
+"ui/menu.gd:642"
 ],
 "Distancia (largo)": [
 "ui/race_hud.gd:483"
@@ -1350,7 +1357,7 @@
 "data/catalog.json"
 ],
 "Elegís cada ayuda a gusto.": [
-"ui/menu.gd:334"
+"ui/menu.gd:340"
 ],
 "Embrague reforzado": [
 "data/catalog.json"
@@ -1429,7 +1436,7 @@
 "app.gd:68"
 ],
 "Experiencia": [
-"ui/menu.gd:631"
+"ui/menu.gd:642"
 ],
 "Extras": [
 "ui/menu_garage.gd:13"
@@ -1449,14 +1456,14 @@
 "perf_bench.gd:169"
 ],
 "FPS %d · cuadro %.1f ms · física %.2f ms/cuadro (%s)\nAutos %d · pilotos %s · árboles %d · sombras %s\nLlamadas %d · objetos %d · triángulos %dk": [
-"race.gd:2211"
+"race.gd:2248"
 ],
 "FRENADA: el peso va adelante": [
 "ui/loading.gd:218"
 ],
 "FRENO": [
 "ui/loading.gd:231",
-"ui/controls.gd:472"
+"ui/controls.gd:482"
 ],
 "FRENOS": [
 "ui/lab_panel.gd:24"
@@ -1519,7 +1526,8 @@
 ],
 "Fácil": [
 "ui/menu_career.gd:292",
-"ui/menu_career.gd:296"
+"ui/menu_career.gd:294",
+"ui/menu_career.gd:298"
 ],
 "Física y ayudas": [
 "ui/options_ui.gd:44"
@@ -1529,7 +1537,7 @@
 ],
 "GARAJE": [
 "ui/menu_garage.gd:98",
-"ui/menu.gd:477"
+"ui/menu.gd:483"
 ],
 "GIRO": [
 "ui/loading.gd:233",
@@ -1539,7 +1547,7 @@
 "adventure/adv_route.gd:131"
 ],
 "GPU: %s · %s · %s": [
-"race.gd:1292"
+"race.gd:1301"
 ],
 "GT3 de pista": [
 "data/catalog.json"
@@ -1659,7 +1667,7 @@
 "data/catalog.json"
 ],
 "INTERMEDIO": [
-"ui/menu.gd:332"
+"ui/menu.gd:338"
 ],
 "INTERMEDIO: ayudas medias y una ayuda de trazada suave: manejo equilibrado.": [
 "ui/loading.gd:170"
@@ -1683,7 +1691,7 @@
 "data/catalog.json"
 ],
 "Informe copiado ✔  Pegalo en el chat": [
-"race.gd:1336"
+"race.gd:1345"
 ],
 "Infrarrojo con brillo": [
 "fx/lens.gd:273"
@@ -1723,7 +1731,7 @@
 "store/products.gd:7"
 ],
 "Juego: versión %s": [
-"race.gd:1271"
+"race.gd:1280"
 ],
 "KAZE": [
 "data/catalog.json"
@@ -1753,26 +1761,26 @@
 "adventure/adv_route.gd:184"
 ],
 "LAB reset: potencia %.2f": [
-"race.gd:2141"
+"race.gd:2174"
 ],
 "LAB: potencia %.2f resortes %.0f%% pose %s → %s · cars %d": [
-"race.gd:2133"
+"race.gd:2166"
 ],
 "LABTEST: carga lista, sesión ": [
-"race.gd:367"
+"race.gd:374"
 ],
 "LARGADA": [
-"race.gd:537"
+"race.gd:546"
 ],
 "LISTO. El informe ya quedó copiado (pegalo en el chat). INFORME lo vuelve a copiar.": [
-"race.gd:1062"
+"race.gd:1071"
 ],
 "LLEGÓ PRIMERO": [
 "adventure/adv_hud.gd:694"
 ],
 "LOGROS": [
-"ui/menu.gd:480",
-"ui/menu.gd:527"
+"ui/menu.gd:486",
+"ui/menu.gd:533"
 ],
 "LOS GIRASOLES 9 km": [
 "adventure/adv_route.gd:53"
@@ -1791,7 +1799,7 @@
 "adventure/adv_hud.gd:407"
 ],
 "La Ruta de los Sueños · ": [
-"ui/menu.gd:466"
+"ui/menu.gd:472"
 ],
 "La Sombra": [
 "adventure/adv_route.gd:179"
@@ -1933,7 +1941,7 @@
 "car/car_visual.gd:194"
 ],
 "Listo": [
-"race.gd:368"
+"race.gd:375"
 ],
 "Llantas": [
 "ui/menu_garage.gd:14"
@@ -1942,13 +1950,13 @@
 "adventure/adv_route.gd:59"
 ],
 "Llega el mundo abierto: ciudades amplias, diversos biomas, rutas espectaculares y libre recorrido, con misiones por todo el mapa.": [
-"ui/menu.gd:500"
+"ui/menu.gd:506"
 ],
 "Llega en una próxima actualización": [
 "data/release.gd:84"
 ],
 "Llegará en una actualización gratuita del juego. ¡Gracias por jugar!": [
-"ui/menu.gd:503"
+"ui/menu.gd:509"
 ],
 "Lleva 30 años manejando el camión de la cantera. Diez toneladas que no frenan por nadie.": [
 "adventure/adv_route.gd:136"
@@ -1990,23 +1998,23 @@
 "adventure/adv_route.gd:147"
 ],
 "META": [
-"race.gd:539",
-"race.gd:1036"
+"race.gd:548",
+"race.gd:1045"
 ],
 "MINA SANTA BÁRBARA": [
 "adventure/adv_route.gd:141",
 "adventure/adv_route.gd:141"
 ],
 "MODO ONLINE": [
-"ui/menu.gd:470",
-"ui/menu.gd:493"
+"ui/menu.gd:476",
+"ui/menu.gd:499"
 ],
 "MOTOR": [
 "ui/lab_panel.gd:21"
 ],
 "MUNDO ABIERTO": [
-"ui/menu.gd:471",
-"ui/menu.gd:493"
+"ui/menu.gd:477",
+"ui/menu.gd:499"
 ],
 "Mamut 6x6": [
 "data/catalog.json"
@@ -2075,7 +2083,7 @@
 "perf_bench.gd:209"
 ],
 "Memoria: %s": [
-"race.gd:1291"
+"race.gd:1300"
 ],
 "Menos agarre en las curvas": [
 "adventure/adv_hud.gd:659"
@@ -2152,7 +2160,7 @@
 "data/catalog.json"
 ],
 "Motor: Godot %s · renderizador %s": [
-"race.gd:1272"
+"race.gd:1281"
 ],
 "Mucha carga adelante: la trompa se pega al piso en curvas rápidas, pero gasta velocidad.": [
 "data/catalog.json"
@@ -2296,8 +2304,8 @@
 "adventure/adv_hud.gd:568"
 ],
 "NIVEL DE SIMULACIÓN": [
-"ui/menu.gd:337",
-"ui/menu.gd:376"
+"ui/menu.gd:343",
+"ui/menu.gd:382"
 ],
 "Nadie sabe quién es. Gana todas las carreras de nieve desde hace diez años.": [
 "adventure/adv_route.gd:169"
@@ -2344,13 +2352,16 @@
 "data/catalog.json"
 ],
 "Nivel de los rivales": [
-"ui/menu_career.gd:296"
+"ui/menu_career.gd:298"
 ],
 "Nivel de simulación: ": [
 "ui/loading.gd:163"
 ],
 "Nivel del bot": [
 "ui/menu_career.gd:292"
+],
+"Nivel del rival": [
+"ui/menu_career.gd:294"
 ],
 "Niños": [
 "ui/menu_about.gd:32"
@@ -2365,7 +2376,7 @@
 "store/billing.gd:120"
 ],
 "No se pudo guardar la captura": [
-"race.gd:1609"
+"race.gd:1622"
 ],
 "No se pudo iniciar la compra.": [
 "store/billing.gd:73"
@@ -2385,7 +2396,7 @@
 ],
 "OPCIONES": [
 "ui/options_ui.gd:83",
-"ui/menu.gd:481"
+"ui/menu.gd:487"
 ],
 "Oclusión ambiental": [
 "fx/lens.gd:275"
@@ -2419,7 +2430,7 @@
 "ui/race_hud.gd:333"
 ],
 "PERSONALIZADO": [
-"ui/menu.gd:334"
+"ui/menu.gd:340"
 ],
 "PERSONALIZADO: usás las ayudas que elegiste. Podés cambiarlas desde Opciones en la pausa.": [
 "ui/loading.gd:172"
@@ -2439,17 +2450,17 @@
 "ui/menu_about.gd:102"
 ],
 "PRONTO": [
-"ui/menu.gd:470",
-"ui/menu.gd:471"
+"ui/menu.gd:476",
+"ui/menu.gd:477"
 ],
 "PRUEBA %d/%d · %s · faltan %d:%02d · NO TOQUES LA PANTALLA": [
-"race.gd:1215"
+"race.gd:1224"
 ],
 "PRUEBA %d/%d · faltan %d s · NO TOQUES LA PANTALLA": [
-"race.gd:1108"
+"race.gd:1117"
 ],
 "PRUEBA AUTOMÁTICA (cada configuración 6 s, sin contar el primer segundo y medio)": [
-"race.gd:1305"
+"race.gd:1314"
 ],
 "PRUEBA DE RENDIMIENTO": [
 "ui/menu_perf.gd:10"
@@ -2479,7 +2490,7 @@
 "data/catalog.json"
 ],
 "Pantalla: %dx%d · %s Hz": [
-"race.gd:1295"
+"race.gd:1304"
 ],
 "Paper Race (selva de papel)": [
 "data/routes.json"
@@ -2525,6 +2536,9 @@
 "Peso del auto": [
 "ui/lab_panel.gd:13"
 ],
+"Picada (400 m)": [
+"data/routes.json"
+],
 "Pick-up 4x4": [
 "data/catalog.json"
 ],
@@ -2551,7 +2565,7 @@
 "fx/lens.gd:274"
 ],
 "Plantando el bosque…": [
-"race.gd:326"
+"race.gd:333"
 ],
 "Plata": [
 "ui/menu_career.gd:11"
@@ -2605,7 +2619,7 @@
 "ui/menu_career.gd:213"
 ],
 "Preparando los controles…": [
-"race.gd:240"
+"race.gd:247"
 ],
 "Presión de freno": [
 "data/catalog.json"
@@ -2635,7 +2649,7 @@
 "ui/menu_garage.gd:447"
 ],
 "Procesador: %s · %d núcleos%s": [
-"race.gd:1285"
+"race.gd:1294"
 ],
 "Profundidad de campo": [
 "fx/lens.gd:275"
@@ -2659,7 +2673,7 @@
 "data/vehicles.json"
 ],
 "Prueba %s: %d pasos de %.1f s (se descarta el primer %.1f s de cada uno). Pistas: Circuito del Lago (asfalto), Drift Plaza%s.": [
-"race.gd:1231"
+"race.gd:1240"
 ],
 "Prueba de rendimiento": [
 "ui/loading.gd:153"
@@ -2668,7 +2682,7 @@
 "ui/loading.gd:153"
 ],
 "Práctica: corrés la etapa con el DR Bisonte de la aventura; no cuenta para tu avance ni da premios.": [
-"ui/menu_career.gd:313"
+"ui/menu_career.gd:315"
 ],
 "Próxima etapa: %s — %s": [
 "adventure/adv_hud.gd:548"
@@ -2698,19 +2712,19 @@
 "ui/menu_adventure.gd:76"
 ],
 "RENDER triángulos %d · llamadas %d · objetos %d": [
-"race.gd:2229"
+"race.gd:2266"
 ],
 "RENDIMIENTO": [
-"ui/menu.gd:486"
+"ui/menu.gd:492"
 ],
 "REPARAR (%d s)": [
 "adventure/adv_hud.gd:683"
 ],
 "RESULTADO": [
-"ui/menu.gd:592"
+"ui/menu.gd:598"
 ],
 "RESULTADOS (mandame una captura de esto)": [
-"race.gd:1059"
+"race.gd:1068"
 ],
 "RPM x1000": [
 "car/cockpit.gd:1042"
@@ -2747,7 +2761,7 @@
 "adventure/adv_route.gd:138"
 ],
 "Recompensa": [
-"ui/menu.gd:631"
+"ui/menu.gd:642"
 ],
 "Recorrido de suspensión": [
 "ui/lab_panel.gd:16"
@@ -2828,11 +2842,11 @@
 "ui/menu_adventure.gd:58"
 ],
 "Rival %d": [
-"race.gd:854"
+"race.gd:863"
 ],
 "Rivales": [
 "ui/menu_career.gd:193",
-"ui/menu_career.gd:295"
+"ui/menu_career.gd:297"
 ],
 "Rivales serios · autos clase A": [
 "data/catalog.json"
@@ -2868,8 +2882,8 @@
 "data/catalog.json"
 ],
 "RÁPIDA": [
-"race.gd:1232",
-"ui/menu.gd:476"
+"race.gd:1241",
+"ui/menu.gd:482"
 ],
 "Récord": [
 "ui/menu_career.gd:194"
@@ -2891,13 +2905,13 @@
 "ui/menu_adventure.gd:110"
 ],
 "SIMULADOR TOTAL": [
-"ui/menu.gd:333"
+"ui/menu.gd:339"
 ],
 "SIMULADOR TOTAL: sin ayudas. Cada frenada y cada acelerada cuentan: manejá fino.": [
 "ui/loading.gd:171"
 ],
 "SUBIR": [
-"ui/controls.gd:484"
+"ui/controls.gd:494"
 ],
 "SUSPENSIÓN": [
 "ui/lab_panel.gd:23"
@@ -2915,7 +2929,7 @@
 "ui/menu_adventure.gd:221"
 ],
 "Se pierden autos, dinero y medallas. No se puede deshacer.": [
-"ui/menu.gd:580"
+"ui/menu.gd:586"
 ],
 "Se termina el asfalto. En la tierra el auto desliza: tracción repartida (45 %), gomas de grava (Rally) y menos presión (25 psi). La suspensión alta (+40 mm) y blanda copia los pozos.\nMirá la guía del mapa: después del taller la tierra sigue por el bosque.": [
 "adventure/adv_data.gd:29"
@@ -2924,7 +2938,7 @@
 "adventure/adv_route.gd:127"
 ],
 "Se viene el modo online: carreras de jugador contra jugador, un ranking mundial y eventos mensuales con premios.": [
-"ui/menu.gd:496"
+"ui/menu.gd:502"
 ],
 "Secuencial de competición": [
 "data/catalog.json"
@@ -2978,7 +2992,7 @@
 "ui/options_ui.gd:59"
 ],
 "Sin ayudas: sin ABS, sin control de tracción, sin estabilidad ni ayuda de trazada. Manejás vos.": [
-"ui/menu.gd:333"
+"ui/menu.gd:339"
 ],
 "Sin cambios": [
 "ui/menu_garage.gd:391"
@@ -2994,7 +3008,7 @@
 ],
 "Sin medalla": [
 "ui/menu_career.gd:11",
-"ui/menu.gd:616"
+"ui/menu.gd:627"
 ],
 "Sin nitro": [
 "data/catalog.json"
@@ -3057,14 +3071,14 @@
 "adventure/adv_props.gd:498"
 ],
 "Sí, borrar todo": [
-"ui/menu.gd:581"
+"ui/menu.gd:587"
 ],
 "Sí, empezar de cero": [
 "ui/menu_adventure.gd:222"
 ],
 "TALLER": [
 "ui/menu_garage.gd:247",
-"ui/menu.gd:479"
+"ui/menu.gd:485"
 ],
 "TALLER A 500 m": [
 "adventure/adv_route.gd:88",
@@ -3085,7 +3099,7 @@
 ],
 "TIENDA": [
 "ui/menu_garage.gd:98",
-"ui/menu.gd:478"
+"ui/menu.gd:484"
 ],
 "TODO: la aventura completa (12 etapas), todas las copas, el camión Mamut, el GT3 RS y el Aerion. El mejor precio.": [
 "store/products.gd:8"
@@ -3127,7 +3141,7 @@
 "data/vehicles.json"
 ],
 "Teléfono: %s · %s %s": [
-"race.gd:1276"
+"race.gd:1285"
 ],
 "Terrazas de piedra, una mina y la rampa de salida": [
 "adventure/adv_route.gd:135"
@@ -3166,7 +3180,7 @@
 "data/catalog.json"
 ],
 "Todos los autos manejan solos; la plaza de drift usa conos con física y derrapes.": [
-"race.gd:1233"
+"race.gd:1242"
 ],
 "Tonos de cine (HDR)": [
 "fx/lens.gd:275"
@@ -3206,7 +3220,7 @@
 "ui/menu_career.gd:223"
 ],
 "Tu lente: nivel %d · tus efectos: %s · humo/polvo (ajuste del jugador): %s": [
-"race.gd:1230"
+"race.gd:1239"
 ],
 "Tu nivel de simulación": [
 "ui/loading.gd:175"
@@ -3314,7 +3328,7 @@
 "ui/menu_garage.gd:167"
 ],
 "Velocidad máxima": [
-"ui/menu.gd:631",
+"ui/menu.gd:642",
 "adventure/adv_hud.gd:533"
 ],
 "Ventaja sobre el rival": [
@@ -3367,7 +3381,7 @@
 "data/catalog.json"
 ],
 "Vueltas": [
-"ui/menu_career.gd:294"
+"ui/menu_career.gd:296"
 ],
 "XIII (historieta)": [
 "fx/lens.gd:274"
@@ -3391,10 +3405,10 @@
 "fx/effects.gd:429"
 ],
 "autos · árboles · pilotos · sombras · hilos · resolución  →  FPS · ms/cuadro · física ms · código ms · llamadas · triángulos": [
-"race.gd:1306"
+"race.gd:1315"
 ],
 "autos · árboles · pilotos · sombras · hilos · resolución  →  FPS · ms/cuadro · física ms · llamadas · triángulos": [
-"race.gd:1059"
+"race.gd:1068"
 ],
 "botón, calidad y grabaciones": [
 "ui/options_ui.gd:48"
@@ -3406,16 +3420,16 @@
 "ui/options_ui.gd:44"
 ],
 "completo (todo adentro)": [
-"race.gd:1264"
+"race.gd:1273"
 ],
 "comprá autos": [
-"ui/menu.gd:478"
+"ui/menu.gd:484"
 ],
 "cresta  ¡ojo!": [
 "car/cockpit.gd:1211"
 ],
 "créditos · legales": [
-"ui/menu.gd:482"
+"ui/menu.gd:488"
 ],
 "cámara al empezar": [
 "ui/options_ui.gd:47"
@@ -3430,10 +3444,10 @@
 "perf_bench.gd:196"
 ],
 "etapa %d/%d": [
-"ui/menu.gd:465"
+"ui/menu.gd:471"
 ],
 "juego completo · créditos": [
-"ui/menu.gd:483"
+"ui/menu.gd:489"
 ],
 "las 12 etapas y todas las copas": [
 "ui/menu_adventure.gd:93"
@@ -3442,16 +3456,16 @@
 "ui/menu_perf.gd:13"
 ],
 "manejo · sonido": [
-"ui/menu.gd:481"
+"ui/menu.gd:487"
 ],
 "physics NaN → recover": [
 "physics/vehicle_physics.gd:241"
 ],
 "piezas · pintura": [
-"ui/menu.gd:479"
+"ui/menu.gd:485"
 ],
 "pista y rivales": [
-"ui/menu.gd:476"
+"ui/menu.gd:482"
 ],
 "por etapa ganada": [
 "ui/menu_adventure.gd:130"
@@ -3460,7 +3474,7 @@
 "ui/menu_adventure.gd:114"
 ],
 "probá tu teléfono": [
-"ui/menu.gd:486"
+"ui/menu.gd:492"
 ],
 "recta 300": [
 "car/cockpit.gd:1211"
@@ -3487,7 +3501,7 @@
 "adventure/adv_world.gd:306"
 ],
 "tus autos": [
-"ui/menu.gd:477"
+"ui/menu.gd:483"
 ],
 "volante con el acelerómetro": [
 "ui/options_ui.gd:46"
@@ -3509,7 +3523,7 @@
 ],
 "¡CORRER!": [
 "ui/menu_career.gd:227",
-"ui/menu_career.gd:314"
+"ui/menu_career.gd:316"
 ],
 "¡DE VUELTA A LA RUTA!": [
 "adventure/adventure.gd:730"
@@ -3539,10 +3553,10 @@
 "adventure/adv_hud.gd:282"
 ],
 "¡nuevo! · %d etapas": [
-"ui/menu.gd:461"
+"ui/menu.gd:467"
 ],
 "¿Borrar todo el progreso?": [
-"ui/menu.gd:579"
+"ui/menu.gd:585"
 ],
 "¿Cuánto da tu auto de verdad?": [
 "data/catalog.json"
@@ -3585,7 +3599,7 @@
 ],
 "← ATRÁS": [
 "ui/race_hud.gd:439",
-"ui/menu.gd:288",
+"ui/menu.gd:294",
 "adventure/adv_hud.gd:435"
 ],
 "↑ ATAJO DEL BARRO\n↗ CAMINO DEL BOSQUE": [
@@ -3616,7 +3630,7 @@
 "adventure/adv_hud.gd:697"
 ],
 "↺ REPETIR": [
-"ui/menu.gd:622"
+"ui/menu.gd:633"
 ],
 "↺ VOLVER AL AJUSTE DE FÁBRICA": [
 "adventure/adv_hud.gd:617"
@@ -3635,6 +3649,9 @@
 ],
 "════════ RESUMEN ════════": [
 "perf_bench.gd:153"
+],
+"▲ ¡CAMBIÁ!": [
+"ui/controls.gd:425"
 ],
 "▶  SEGUIR": [
 "ui/race_hud.gd:334"
@@ -3658,7 +3675,7 @@
 "ui/menu_adventure.gd:114"
 ],
 "▶ JUGAR": [
-"ui/menu.gd:339"
+"ui/menu.gd:345"
 ],
 "▶ SALIR DE LA ESTACIÓN": [
 "adventure/adv_hud.gd:512"
@@ -3667,7 +3684,7 @@
 "adventure/adv_hud.gd:688"
 ],
 "▶ SEGUIR CARRERA": [
-"ui/menu.gd:459"
+"ui/menu.gd:465"
 ],
 "▶ SEGUIR · ETAPA %d": [
 "ui/menu_adventure.gd:64"
@@ -3713,8 +3730,14 @@
 "⚠ Pesado (boceto + oclusión + profundidad de campo)": [
 "perf_bench.gd:24"
 ],
+"⚡ Cambios perfectos: %d de %d": [
+"ui/menu.gd:621"
+],
 "⚡ RÁPIDA": [
 "ui/menu_perf.gd:13"
+],
+"⚡ ¡CAMBIO PERFECTO!": [
+"race.gd:1892"
 ],
 "⚪ GOMAS": [
 "ui/menu_garage.gd:263"
@@ -3759,7 +3782,7 @@
 "adventure/adv_hud.gd:697"
 ],
 "⬆ ¡NIVEL %d! +%s": [
-"ui/menu.gd:642"
+"ui/menu.gd:653"
 ],
 "⭐ %d estrellas ganadas · cada medalla suma 1 a 3 estrellas y abre copas nuevas": [
 "ui/menu_career.gd:86"
@@ -3774,7 +3797,7 @@
 "ui/menu_garage.gd:436"
 ],
 "🌄 AVENTURA": [
-"ui/menu.gd:466"
+"ui/menu.gd:472"
 ],
 "🌆 Anochecer": [
 "ui/loading.gd:160",
@@ -3785,17 +3808,17 @@
 "ui/menu_career.gd:10"
 ],
 "🌍 Mundo abierto compartido": [
-"ui/menu.gd:497"
+"ui/menu.gd:503"
 ],
 "🌧 Lluvia": [
 "ui/loading.gd:160",
 "ui/menu_career.gd:10"
 ],
 "🌲 Biomas distintos: selva, montaña, nieve, desierto": [
-"ui/menu.gd:501"
+"ui/menu.gd:507"
 ],
 "🎁 Premio diario: +%s (racha %d)": [
-"ui/menu.gd:167"
+"ui/menu.gd:173"
 ],
 "🎉 ¡Completaste las %d etapas gratis! Seguí la Ruta de los Sueños: campos, montaña, túneles, cantera y nieve hasta la cumbre.": [
 "ui/menu_adventure.gd:83"
@@ -3834,28 +3857,28 @@
 "adventure/adv_hud.gd:659"
 ],
 "🎯 Misiones en el mundo abierto": [
-"ui/menu.gd:501"
+"ui/menu.gd:507"
 ],
 "🏁 ASFALTO": [
 "ui/menu_garage.gd:219"
 ],
 "🏁 Carreras JcJ contra otros pilotos": [
-"ui/menu.gd:497"
+"ui/menu.gd:503"
 ],
 "🏁 PROBAR EN ASFALTO": [
 "ui/menu_garage.gd:436"
 ],
 "🏅 ¡NUEVO RÉCORD!": [
-"ui/menu.gd:619"
+"ui/menu.gd:630"
 ],
 "🏆 Ranking de tiempos y puntos": [
-"ui/menu.gd:497"
+"ui/menu.gd:503"
 ],
 "🏆 TERMINAR LA AVENTURA": [
 "adventure/adv_hud.gd:560"
 ],
 "🏆 completada": [
-"ui/menu.gd:463"
+"ui/menu.gd:469"
 ],
 "🏆 ¡%s completada! +%s": [
 "data/rewards.gd:185"
@@ -3867,10 +3890,10 @@
 "adventure/adv_hud.gd:701"
 ],
 "🏆 ¡Le ganaste al bot! (%d pts)": [
-"ui/menu.gd:611"
+"ui/menu.gd:618"
 ],
 "🏙 Ciudades amplias para recorrer": [
-"ui/menu.gd:501"
+"ui/menu.gd:507"
 ],
 "🏜 EN TIERRA": [
 "ui/menu_garage.gd:436"
@@ -3904,7 +3927,7 @@
 "adventure/adv_hud.gd:562"
 ],
 "📅 Eventos mensuales": [
-"ui/menu.gd:497"
+"ui/menu.gd:503"
 ],
 "📋 COPIAR TODO": [
 "ui/perf_results.gd:41"
@@ -3916,10 +3939,10 @@
 "ui/options_ui.gd:215"
 ],
 "📷 Captura guardada": [
-"race.gd:1609"
+"race.gd:1622"
 ],
 "📸 RADAR": [
-"race.gd:539"
+"race.gd:548"
 ],
 "🔒 Completo": [
 "ui/menu_career.gd:99"
@@ -3934,7 +3957,7 @@
 "ui/race_hud.gd:353"
 ],
 "🔧 Ajuste aplicado": [
-"race.gd:1731"
+"race.gd:1744"
 ],
 "🔧 El auto tiene daño (motor %d %% · dirección %d %% · suspensión %d %%). Se arregla en los talleres del camino.": [
 "adventure/adv_hud.gd:539"
@@ -3971,7 +3994,7 @@
 "ui/capture_ui.gd:58"
 ],
 "😅 Ganó el bot (%d pts)": [
-"ui/menu.gd:611"
+"ui/menu.gd:618"
 ],
 "🚗 MIS AUTOS": [
 "ui/menu_garage.gd:99"
@@ -3980,7 +4003,7 @@
 "ui/menu_career.gd:217"
 ],
 "🚧 PRONTO": [
-"ui/menu.gd:494"
+"ui/menu.gd:500"
 ],
 "🚧 pronto": [
 "ui/menu_career.gd:150"
@@ -3992,18 +4015,18 @@
 "ui/menu_about.gd:125"
 ],
 "🛣 Rutas espectaculares y libre recorrido": [
-"ui/menu.gd:501"
+"ui/menu.gd:507"
 ],
 "🥇 1° puesto · 🥈 2° · 🥉 3°": [
 "ui/menu_career.gd:206"
 ],
 "🥇 ORO": [
-"ui/menu.gd:616"
+"ui/menu.gd:627"
 ],
 "🥈 Plata": [
-"ui/menu.gd:616"
+"ui/menu.gd:627"
 ],
 "🥉 Bronce": [
-"ui/menu.gd:616"
+"ui/menu.gd:627"
 ]
 }

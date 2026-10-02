@@ -9,6 +9,7 @@ const RouteTrack := preload("res://game/track/route_track.gd")
 const DriftTrack := preload("res://game/track/drift_track.gd")
 const DriftSession := preload("res://game/drift_session.gd")
 const PaperTrack := preload("res://game/track/paper_track.gd")
+const Drag := preload("res://game/data/drag.gd")
 const PaperWorld := preload("res://game/track/paper_world.gd")
 const DriftBot := preload("res://game/ai/drift_bot.gd")
 const MeshChunks := preload("res://game/track/mesh_chunks.gd")
@@ -102,6 +103,10 @@ var hi_model := true
 var cam_mode := ""
 var threaded := true
 var manual_gearbox := false
+var drag_mode := false # picada: caja manual obligatoria, ventana de cambio en la barra de vueltas y calidad de cada cambio
+var drag_rpm := 0.0 # vueltas del cuadro anterior (antes de que el cambio las baje)
+var drag_shifts := 0
+var drag_perfect := 0
 var nitro_test := false
 var world: SubViewport # el mundo 3D se dibuja acá, a menor resolución que la pantalla (el HUD queda nítido)
 var view_rect: TextureRect
@@ -230,6 +235,8 @@ func _ready() -> void:
 		if cam_mode == "":
 			cam_index = int(profile.setting("camera")) if profile != null else 1
 		manual_gearbox = profile != null and str(profile.setting("gearbox")) == "manual"
+		drag_mode = cfg.get("drag", false) == true
+		manual_gearbox = manual_gearbox or drag_mode
 	load_progress.emit(0.04, "Armando el recorrido…")
 	await get_tree().process_frame
 	_make_track()
@@ -468,7 +475,9 @@ func _make_track() -> void:
 	if str(m.get("kind", "")) == "paper":
 		track = PaperTrack.new(str(m["route"]), str(m["mode"]), false, 0.6) # Paper Race: selva de papel, ruta y tierra
 		return
-	track = RouteTrack.new(str(m["route"]), str(m["mode"]), m.get("reverse", false) == true, 1.0 if menu_mode else 0.0)
+	track = RouteTrack.new(str(m["route"]), str(m["mode"]), m.get("reverse", false) == true, float(m.get("hills", 1.0)) if menu_mode else 0.0)
+	if m.has("strip"):
+		cfg["seg"] = track.seg_between_x(float(m["strip"][0]), float(m["strip"][1])) # picada: el tramo recto de la ruta, de una marca a otra (x en metros)
 
 ## Suelo, camino, banquina y terreno de la pista (el terreno se calcula en hilos y aparece cuando está listo)
 func _build_track_nodes() -> void:
@@ -1419,6 +1428,10 @@ func _make_result() -> Dictionary:
 				r["win"] = session.duel_won
 		_:
 			r["value"] = session.finish_time[0]
+	if drag_mode:
+		r["drag"] = true
+		r["shifts"] = drag_shifts
+		r["perfect"] = drag_perfect
 	for id in session.standings(n):
 		r["standings"].append({"name": session.names[id], "time": session.finish_time[id] if session.finished[id] else -1.0, "player": id == 0, "color": rival_info[id]["color"].to_html(false)})
 	return r
@@ -1506,7 +1519,7 @@ func _apply_assists() -> void:
 	V.stabilityAssist = float(sa["stab"]) / 100.0
 
 func _apply_controls_settings() -> void:
-	manual_gearbox = str(profile.setting("gearbox")) == "manual"
+	manual_gearbox = str(profile.setting("gearbox")) == "manual" or drag_mode
 	if not cars.is_empty():
 		_finish_physics()
 		cars[0].phys.manual = manual_gearbox
@@ -1828,7 +1841,7 @@ func _on_option(key: String, value) -> void:
 		"steer":
 			controls.steer_mode = "wheel" if str(value) == "volante" else "slider"
 		"gearbox":
-			manual_gearbox = str(value) == "manual"
+			manual_gearbox = str(value) == "manual" or drag_mode
 			if not cars.is_empty():
 				cars[0].phys.manual = manual_gearbox
 			controls.manual = manual_gearbox
@@ -1865,6 +1878,24 @@ func _finish_physics() -> void:
 		phys_wait_us += Time.get_ticks_usec() - t0
 		phys_task = -1
 
+## Picada: cuánto acertaste el momento del cambio (por las vueltas justo antes de subir la marcha).
+## Perfecto = ventana verde de la barra: el cambio es el doble de rápido. Tarde = rebote contra el limitador: se pierde tracción un rato.
+func _drag_shift_quality() -> void:
+	var ph = cars[0].phys
+	for e in pl_events:
+		if e["type"] == "shift" and e["up"] == true and session != null and session.state == "run":
+			var q: int = Drag.quality(drag_rpm, float(ph.V.shiftUpRpm))
+			drag_shifts += 1
+			ph.shiftT *= Drag.shift_scale(q)
+			if q == Drag.Q.PERFECT:
+				drag_perfect += 1
+				race_hud.toast("⚡ ¡CAMBIO PERFECTO!", "up")
+			elif q == Drag.Q.EARLY:
+				race_hud.toast("Cambio temprano: esperá a la zona verde", "down")
+			else:
+				race_hud.toast("Cambio tarde: tocaste el limitador", "down")
+	drag_rpm = float(ph.rpm)
+
 func _step_physics(dt: float) -> void:
 	_finish_physics()
 	# eventos de la física (cambios, limitador, aterrizajes, golpes): se toman ahora, con los hilos parados
@@ -1872,6 +1903,8 @@ func _step_physics(dt: float) -> void:
 		var sn = cars[i].snap
 		if i == 0:
 			pl_events = sn.take_events()
+			if drag_mode:
+				_drag_shift_quality()
 			pl_impact = maxf(pl_impact, sn.take_impact())
 		else:
 			sn.pending_events.clear()
@@ -2186,6 +2219,10 @@ func _frame(dt: float) -> void:
 	controls.speed_kmh = absf(p.vLong) * 3.6
 	controls.gear_text = "R" if p.gear < 0 else ("N" if p.gear == 0 else str(p.gear))
 	controls.rpm_frac = p.rpm / cars[0].phys.V.maxRpm
+	if drag_mode:
+		var vv = cars[0].phys.V
+		controls.shift_lo = Drag.LO * float(vv.shiftUpRpm) / float(vv.maxRpm)
+		controls.shift_hi = minf(1.0, Drag.HI * float(vv.shiftUpRpm) / float(vv.maxRpm))
 	lens.update(dt, controls.speed_kmh, 1.0 if controls.nitro else 0.0)
 	if menu_mode and not paused:
 		_haptics(dt, p, pl_impact)

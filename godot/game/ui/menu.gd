@@ -129,6 +129,12 @@ func _ready() -> void:
 		if at.size() > 1 and at[1] == "paper":
 			tc["type"] = "timetrial"
 			tc["track"] = "paperRace"
+		if at.size() > 1 and at[1] == "picada": # picada contra un rival (prueba)
+			tc["type"] = "race"
+			tc["track"] = "picada"
+			tc["drag"] = true
+			tc["ai"] = 1
+			tc["skill"] = 0.9
 		if at.size() > 1 and (at[1] == "drift" or at[1] == "duel"):
 			tc["type"] = "drift"
 			tc["track"] = "drift"
@@ -602,15 +608,20 @@ func _results() -> void:
 	l0.add_child(en)
 	var t := str(r.get("type", "race"))
 	var big := ""
+	var sub := "" # línea de abajo (duelo de drift, cambios de la picada)
 	match t:
 		"race": big = "%d° %s" % [int(r["pos"]), tr("puesto")]
 		"trap": big = "%d km/h" % int(r["value"])
 		"drift":
 			big = "%d pts" % int(r["value"])
 			if r.get("duel", false) == true:
-				big += "\n" + (tr("🏆 ¡Le ganaste al bot! (%d pts)") if r.get("win", false) == true else tr("😅 Ganó el bot (%d pts)")) % int(r["bot"])
+				sub = (tr("🏆 ¡Le ganaste al bot! (%d pts)") if r.get("win", false) == true else tr("😅 Ganó el bot (%d pts)")) % int(r["bot"])
 		_: big = Kit.fmt_time(float(r["time"]))
+	if r.get("drag", false) == true and int(r.get("shifts", 0)) > 0:
+		sub = tr("⚡ Cambios perfectos: %d de %d") % [int(r["perfect"]), int(r["shifts"])]
 	l0.add_child(Kit.label(big, 44, Kit.GOLD))
+	if sub != "":
+		l0.add_child(Kit.label(sub, 18, Kit.GREEN))
 	if bool(r.get("show_medal", false)):
 		var med := int(r["medal"])
 		var names := ["Sin medalla", "🥉 Bronce", "🥈 Plata", "🥇 ORO"]

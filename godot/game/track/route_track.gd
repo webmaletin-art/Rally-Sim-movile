@@ -10,6 +10,7 @@ const BUMP_AMP := [0.005, 0.03, 0.035, 0.045, 0.05, 0.03] # por superficie: asfa
 
 var hills := 0.0 # subidas y bajadas suaves del recorrido (0 = las de la versión HTML; 1 = las de las carreras de Dream Racing)
 var center_line := false # línea amarilla del medio (solo para el modo aventura)
+var flat := false # sin ondulación del asfalto (la picada)
 var open := false # ruta abierta (modo aventura): la última muestra no se une con la primera
 var road_surf := PackedByteArray() # superficie del camino por muestra (0 asfalto · 1 tierra); vacío = la del modo de la pista
 var surf_mu := PackedFloat32Array() # agarre relativo de cada muestra para la IA (vacío = igual en toda la pista)
@@ -60,6 +61,7 @@ func _init(p_route := "", p_mode := "asphalt", reverse := false, p_hills := 0.0)
 	half_width = float(r["halfWidth"])
 	shoulder = float(r["shoulder"])
 	dips = r.get("dips", [])
+	flat = r.get("flat", false) == true
 	var pts: Array = r["points"]
 	if reverse:
 		var tail: Array = pts.slice(1)
@@ -169,7 +171,7 @@ func _build() -> void:
 		var u2 := fposmod(t * lc, 1.0)
 		var a := ctrl[ii].y
 		var b2 := ctrl[(ii + 1) % lc].y
-		y[i] = a + (b2 - a) * u2 + 0.20 * sin(t * PI * 6.0) + 0.10 * sin(t * PI * 15.0)
+		y[i] = a + (b2 - a) * u2 + (0.0 if flat else 0.20 * sin(t * PI * 6.0) + 0.10 * sin(t * PI * 15.0))
 		if hills > 0.0:
 			# frecuencias enteras: el recorrido cerrado empalma sin escalón
 			y[i] += hills * (7.0 * sin(t * TAU * 2.0 + 0.7) + 3.5 * sin(t * TAU * 5.0 + 2.0) + 1.2 * sin(t * TAU * 11.0 + 0.3))
@@ -381,6 +383,20 @@ func start_pose(slot: int, from_idx := 0) -> Array:
 	var l := laterals[i]
 	var t := tangents[i]
 	return [s.x + l.x * side * 2.0, s.z + l.z * side * 2.0, atan2(t.x, t.z), i]
+
+## Fracciones [desde, hasta] de la ruta cuyas muestras caen en x0 y x1 sobre la recta de salida (z = 0); para pistas con un tramo recto (picada)
+func seg_between_x(x0: float, x1: float) -> Array:
+	var out: Array = []
+	for xv in [x0, x1]:
+		var bi := 0
+		var bd := 1e18
+		for i in n:
+			var d := absf(samples[i].x - xv) + absf(samples[i].z) * 2.0
+			if d < bd:
+				bd = d
+				bi = i
+		out.append(float(bi) / float(n))
+	return out
 
 ## distancia recorrida sobre la ruta (m) del punto más cercano, para posiciones y vueltas
 func arc_pos(x: float, z: float) -> float:

@@ -9,6 +9,8 @@ extends Control
 ## Todo se dimensiona en "unidades HTML" (u = alto de pantalla / 393): así el tamaño relativo es el mismo que en la versión web.
 ## Multitáctil: cada dedo queda asignado al control que tocó primero.
 
+const Tr := preload("res://game/i18n/tr.gd")
+
 signal camera_pressed
 signal pause_pressed
 signal shot_pressed
@@ -44,6 +46,8 @@ var shift := 0 # -1 / 0 / +1: cambio pedido este cuadro (ya consumido de la cola
 var speed_kmh := 0.0
 var gear_text := "N"
 var rpm_frac := 0.0
+var shift_lo := 0.0 # picada: ventana verde del cambio perfecto en la barra de vueltas (0 = apagada)
+var shift_hi := 0.0
 var nitro_frac := 1.0
 var limited := false # limitador de vueltas (para la luz del tablero)
 
@@ -412,7 +416,13 @@ func _draw_speed_panel(font: Font, u: float, vs: Vector2) -> void:
 	draw_string(font, Vector2(gr.position.x, gr.position.y + 12.5 * u), gear_text, HORIZONTAL_ALIGNMENT_CENTER, gr.size.x, int(11.0 * u), Color(1, 1, 1))
 	# barra de vueltas
 	var bar := Rect2(x0 + 10.0 * u, y0 + 64.0 * u, w - 20.0 * u, 4.0 * u)
+	if shift_hi > 0.0:
+		bar = Rect2(x0 + 4.0 * u, y0 + 62.0 * u, w - 8.0 * u, 9.0 * u) # picada: barra más gruesa con la zona de cambio
 	draw_rect(bar, Color(1, 1, 1, 0.12), true)
+	if shift_hi > 0.0:
+		draw_rect(Rect2(bar.position.x + bar.size.x * shift_lo, bar.position.y - 2.0 * u, bar.size.x * (shift_hi - shift_lo), bar.size.y + 4.0 * u), Color(0.2, 1.0, 0.45, 0.55), true)
+		if rpm_frac >= shift_lo and rpm_frac <= shift_hi:
+			draw_string(font, Vector2(x0, y0 + 90.0 * u), Tr.t("▲ ¡CAMBIÁ!"), HORIZONTAL_ALIGNMENT_CENTER, w, int(16.0 * u), Color(0.2, 1.0, 0.45))
 	var f := clampf(rpm_frac, 0.0, 1.0)
 	var col := Color(0.4, 0.71, 1.0).lerp(Color(1.0, 0.82, 0.4), clampf(f / 0.75, 0.0, 1.0))
 	if f > 0.75:
