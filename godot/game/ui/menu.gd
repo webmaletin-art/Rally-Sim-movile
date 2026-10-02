@@ -129,6 +129,13 @@ func _ready() -> void:
 		if at.size() > 1 and at[1] == "paper":
 			tc["type"] = "timetrial"
 			tc["track"] = "paperRace"
+		if at.size() > 1 and at[1] == "dream": # Vórtice de Ensueño contra un rival a la par (prueba)
+			tc["type"] = "race"
+			tc["track"] = "dream"
+			tc["ai"] = 1
+			tc["skill"] = 0.9
+			tc["testCar"] = false
+			tc["quick"] = true
 		if at.size() > 1 and at[1] == "picada": # picada contra un rival (prueba)
 			tc["type"] = "race"
 			tc["track"] = "picada"

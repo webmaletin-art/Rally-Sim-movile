@@ -3,6 +3,8 @@
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Hecho recientemente
+- ✅ **Vórtice de Ensueño** (`docs/MAPA_ENSUENO.md`): mapa fantasía de 9,7 km con subida de 300 m, cresta peraltada, bajada brutal y vuelta inmensa; 61 flores/árboles/bambúes/hongos en papel, cielo con Júpiter, agujero negro en un mar de gas, reflejos de sol, pétalos flotando, arcos de globos y un rival que siempre queda a la par. Carrera rápida y Serie Continental.
+- ✅ **Arreglo del export**: las piezas `.pap` del papel no entraban al APK (la selva de Paper Race salía vacía); ahora van con `include_filter`.
 - ✅ **Picada de 400 m** (`game/data/drag.gd`, mapa «Picada» en `data/routes.json`): caja manual obligatoria, zona verde de cambio perfecto en la barra de vueltas, rival a la par, dos eventos de copa. Prueba `tests/drag_test.gd`.
 - ✅ **Duelo de drift** contra un bot adaptativo (`drift_session.gd`: la mitad del puntaje del bot sigue tu ritmo, con ventaja según el nivel).
 - ✅ **Idiomas francés, italiano y alemán** (todos los textos del juego; `tools/i18n/batches/b15…b21`).

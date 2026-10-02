@@ -154,6 +154,45 @@ static func atmosphere(env: Environment, sun: DirectionalLight3D, cam: Camera3D,
 	fl.cam = cam
 	fl.sun_dir = SUN
 	host.add_child(fl)
+	cam.add_child(_petals())
+
+## Pétalos y motitas de luz que flotan a la deriva alrededor de la cámara
+static func _petals() -> GPUParticles3D:
+	var pt := GPUParticles3D.new()
+	pt.amount = 140
+	pt.lifetime = 9.0
+	pt.preprocess = 9.0
+	pt.local_coords = false
+	pt.visibility_aabb = AABB(Vector3(-40, -20, -60), Vector3(80, 40, 80))
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(22, 7, 30)
+	pm.direction = Vector3(0.3, -1.0, 0.2)
+	pm.spread = 40.0
+	pm.initial_velocity_min = 0.3
+	pm.initial_velocity_max = 1.4
+	pm.gravity = Vector3(0.2, -0.25, 0.1)
+	pm.scale_min = 0.5
+	pm.scale_max = 1.4
+	var g := Gradient.new()
+	g.colors = PackedColorArray([Color(1.0, 0.62, 0.78), Color(1.0, 0.85, 0.5), Color(0.8, 0.7, 1.0), Color(0.7, 0.95, 0.9), Color(1.0, 1.0, 1.0)])
+	g.offsets = PackedFloat32Array([0.0, 0.25, 0.5, 0.75, 1.0])
+	var gt := GradientTexture1D.new()
+	gt.gradient = g
+	pm.color_initial_ramp = gt
+	pt.process_material = pm
+	var qm := QuadMesh.new()
+	qm.size = Vector2(0.22, 0.22)
+	var sm := StandardMaterial3D.new()
+	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	sm.vertex_color_use_as_albedo = true
+	sm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	qm.material = sm
+	pt.draw_pass_1 = qm
+	pt.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	pt.position = Vector3(0, 1.0, -22.0) # delante de la cámara
+	return pt
 
 func _jit(c: Color, a: float) -> Color:
 	var k := 1.0 + (rng.randf() - 0.5) * a
