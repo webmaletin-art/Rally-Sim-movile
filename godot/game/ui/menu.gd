@@ -126,6 +126,9 @@ func _ready() -> void:
 		app.autorace_used = true
 		var at := autotest.split("@") # prueba: --autotest=gt (lago) o --autotest=gt@drift (plaza de drift)
 		var tc := {"type": "free", "track": "lake", "ai": 0, "sky": "day", "car": at[0], "state": profile.new_car_state(at[0]), "testCar": true, "back": "dealer", "seed": 7}
+		if at.size() > 1 and at[1] == "paper":
+			tc["type"] = "timetrial"
+			tc["track"] = "paperRace"
 		if at.size() > 1 and at[1] == "drift":
 			tc["type"] = "drift"
 			tc["track"] = "drift"

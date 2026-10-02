@@ -255,6 +255,7 @@ func _quick() -> void:
 	for k in _maps():
 		if str(_maps()[k].get("kind", "")) == "route" and not _maps()[k].get("hidden", false) and not _maps()[k].get("trench", false):
 			route_maps.append(k)
+	route_maps.append("paperRace") # selva de papel: ruta y tierra, angosta y tupida
 	route_maps.append("drift") # la plaza de drift
 	route_maps.append("adventure") # la Ruta de los Sueños del modo aventura, para recorrerla completa
 	var adv: bool = str(quick["map"]) == "adventure"
