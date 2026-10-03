@@ -1,0 +1,73 @@
+## Capturas de Puerto Aurelia desde varios puntos (xvfb + OpenGL): arma la pista de la ciudad, el mundo por cuadras y un cielo de día.
+## Uso: xvfb-run -a godot --path godot --rendering-driver opengl3 --resolution 1280x720 --script res://tests/city_shots.gd -- /carpeta [vista 0.6..1]
+extends SceneTree
+
+const CityTrack := preload("res://game/track/city_track.gd")
+const CityWorld := preload("res://game/city/city_world.gd")
+
+func _init() -> void:
+	var args := OS.get_cmdline_user_args()
+	var out := args[0] if args.size() > 0 else "/tmp/city_shots"
+	var view := float(args[1]) if args.size() > 1 else 1.0
+	DirAccess.make_dir_recursive_absolute(out)
+	var t0 := Time.get_ticks_msec()
+	var track := CityTrack.new()
+	print("ciudad en %d ms" % (Time.get_ticks_msec() - t0))
+	var vp := SubViewport.new()
+	vp.size = Vector2i(1280, 720)
+	vp.msaa_3d = Viewport.MSAA_2X
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	root.add_child(vp)
+	var env := Environment.new()
+	var sky := Sky.new()
+	var psm := ProceduralSkyMaterial.new()
+	psm.sky_top_color = Color(0.40, 0.62, 0.90)
+	psm.sky_horizon_color = Color(0.86, 0.90, 0.95)
+	psm.ground_horizon_color = Color(0.80, 0.84, 0.86)
+	sky.sky_material = psm
+	env.sky = sky
+	env.background_mode = Environment.BG_SKY
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	env.ambient_light_energy = 1.0
+	env.fog_enabled = true
+	env.fog_light_color = Color(0.82, 0.87, 0.92)
+	env.fog_mode = Environment.FOG_MODE_DEPTH
+	env.fog_depth_begin = 220.0 * view
+	env.fog_depth_end = 780.0 * view
+	var we := WorldEnvironment.new()
+	we.environment = env
+	vp.add_child(we)
+	var sun := DirectionalLight3D.new()
+	sun.rotation_degrees = Vector3(-48, -40, 0)
+	sun.light_energy = 1.2
+	sun.light_color = Color(1.0, 0.96, 0.88)
+	vp.add_child(sun)
+	var cam := Camera3D.new()
+	cam.fov = 66.0
+	cam.near = 0.15
+	cam.far = 3000.0
+	vp.add_child(cam)
+	cam.make_current()
+	var world: CityWorld = track.build_world()
+	world.view_k = view
+	vp.add_child(world)
+	# [nombre, x, z, yaw (grados: 0 = mirando al sur, +z), alto sobre el suelo, cabeceo]
+	var shots: Array = [["00_plaza", 0.0, 30.0, 0.0, 3.0, -4.0], ["01_avenida3_sur", 0.0, 180.0, 0.0, 3.0, -4.0], ["02_avenida7_norte", 0.0, -220.0, 180.0, 3.0, -4.0],
+		["03_avenida1_este", 330.0, 0.0, -90.0, 3.2, -4.0], ["04_centro_alto", 40.0, -80.0, 0.0, 60.0, -28.0], ["05_anillo", 400.0, 160.0, 140.0, 3.0, -4.0],
+		["06_costanera", 0.0, 1100.0, 90.0, 3.0, -3.0], ["07_colina_sube", -860.0, -780.0, 200.0, 3.0, -4.0], ["08_colina_alto", -900.0, -900.0, 45.0, 30.0, -10.0],
+		["09_ruta_este", 1500.0, 0.0, -90.0, 3.0, -3.0], ["10_barrio", -520.0, 380.0, 60.0, 3.0, -4.0], ["11_plaza_alto", 0.0, 120.0, 0.0, 120.0, -45.0]]
+	for sh in shots:
+		var x := float(sh[1])
+		var z := float(sh[2])
+		var gy: float = track.ground_info(x, z).x
+		cam.position = Vector3(x, gy + float(sh[4]), z)
+		cam.rotation = Vector3(deg_to_rad(float(sh[5])), deg_to_rad(float(sh[3])) + PI, 0)
+		world.warm(cam.position)
+		for k in 6:
+			await process_frame
+		var info := world.stats()
+		var img := vp.get_texture().get_image()
+		img.save_png("%s/%s.png" % [out, str(sh[0])])
+		print("%s · cuadras %d · triángulos en memoria %dk · llamadas %d · triángulos dibujados %dk" % [str(sh[0]), info["chunks"], int(info["tris"]) / 1000,
+			int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)), int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)) / 1000])
+	quit()
