@@ -89,8 +89,7 @@ func build() -> void:
 	_index()
 	_mark_junction_samples()
 	_place_pois()
-	_place_buildings()
-	_fill_blocks()
+	_place_facades()
 	_place_props()
 
 func _sample_road(id: int, name_s: String, num: int, kind: String, hw: float, sw: float, plan: PackedVector2Array) -> void:
@@ -419,54 +418,10 @@ func _style_for(zone: int, rd: Dictionary) -> Dictionary:
 			return {"h": [5.5, 9.0], "w": [9.0, 15.0], "d": [8.0, 13.0], "hip": 1.0}
 	return {"h": [4.5, 6.5], "w": [8.0, 12.0], "d": [8.0, 11.0], "hip": 1.0}
 
-func _clear_of_roads(px: float, pz: float, rad: float, own: int) -> bool:
-	# ¿ningún corredor de otra calle toca un círculo de radio rad en (px, pz)?
-	var kx := int(floor(px / HC))
-	var kz := int(floor(pz / HC))
-	for dx in range(-1, 2): # el mayor retiro (≈26 m) es menor que la celda (32 m): alcanzan las 9 de alrededor
-		for dz in range(-1, 2):
-			var k2 := Vector2i(kx + dx, kz + dz)
-			if not _hash.has(k2):
-				continue
-			for si in (_hash[k2] as PackedInt32Array):
-				var rid := int(s_road[si])
-				var rd: Dictionary = roads[rid]
-				var need := float(rd["hw"]) + float(rd["sw"]) + rad + (0.4 if rid == own else 1.2)
-				var ddx := s_x[si] - px
-				var ddz := s_z[si] - pz
-				if ddx * ddx + ddz * ddz < need * need:
-					# más cerca que el corredor: sirve solo si es la propia calle (la vereda de esa calle ya está contada en el retiro)
-					if rid != own:
-						return false
-					if ddx * ddx + ddz * ddz < (float(rd["hw"]) + rad * 0.2) * (float(rd["hw"]) + rad * 0.2):
-						return false
-	return true
+const OCC := 40.0 # celda de la tabla de huellas de los edificios especiales
+var _occ: Dictionary = {} # Vector2i(40 m) -> Array de huellas [x, z, yaw, w, d] (lugares especiales)
 
-const OCC := 40.0 # celda de la tabla de huellas: mayor que la diagonal del edificio más grande, así alcanzan las 9 de alrededor
-var _occ: Dictionary = {} # Vector2i(40 m) -> Array de huellas [x, z, yaw, w, d] de lo ya construido
-
-static func _rects_overlap(ax: float, az: float, ayaw: float, aw: float, ad: float, bx: float, bz: float, byaw: float, bw: float, bd: float) -> bool:
-	# separación de ejes (SAT) entre dos rectángulos orientados, con 0,6 m de aire
-	var axes := [Vector2(sin(ayaw), cos(ayaw)), Vector2(cos(ayaw), -sin(ayaw)), Vector2(sin(byaw), cos(byaw)), Vector2(cos(byaw), -sin(byaw))]
-	var d := Vector2(bx - ax, bz - az)
-	for ax_v in axes:
-		var ra := absf(ax_v.dot(Vector2(sin(ayaw), cos(ayaw)))) * aw * 0.5 + absf(ax_v.dot(Vector2(cos(ayaw), -sin(ayaw)))) * ad * 0.5
-		var rb := absf(ax_v.dot(Vector2(sin(byaw), cos(byaw)))) * bw * 0.5 + absf(ax_v.dot(Vector2(cos(byaw), -sin(byaw)))) * bd * 0.5
-		if absf(ax_v.dot(d)) > ra + rb + 0.6:
-			return false
-	return true
-
-func _spot_free(cen: Vector2, w: float, d: float, yaw: float) -> bool:
-	var ok_key := Vector2i(int(floor(cen.x / OCC)), int(floor(cen.y / OCC)))
-	for ox in range(-1, 2):
-		for oz in range(-1, 2):
-			var kk := Vector2i(ok_key.x + ox, ok_key.y + oz)
-			if _occ.has(kk):
-				for c in (_occ[kk] as Array):
-					if _rects_overlap(cen.x, cen.y, yaw, w, d, float(c[0]), float(c[1]), float(c[2]), float(c[3]), float(c[4])):
-						return false
-	return true
-
+## Edificio especial (concesionario, taller): una caja cerrada pegada a la calle
 func _add_building(cen: Vector2, w: float, d: float, h: float, yaw: float, wall: Color, roof: Color, zone: int, hip: bool, road: int, extra: Dictionary = {}) -> void:
 	var ok_key := Vector2i(int(floor(cen.x / OCC)), int(floor(cen.y / OCC)))
 	if not _occ.has(ok_key):
@@ -481,89 +436,249 @@ func _add_building(cen: Vector2, w: float, d: float, h: float, yaw: float, wall:
 	(buildings[key] as Array).append(b)
 	building_count += 1
 
-## ¿Las cuatro esquinas del edificio quedan afuera de todo corredor de calle? (el borde de la propia vereda está a 0,8 m)
-func _corners_clear(cen: Vector2, w: float, d: float, yaw: float) -> bool:
-	var tg := Vector2(sin(yaw), cos(yaw))
-	var nm := Vector2(cos(yaw), -sin(yaw))
-	for sx in [-0.5, 0.5]:
-		for sz in [-0.5, 0.5]:
-			var wp := cen + tg * (float(sx) * w) + nm * (float(sz) * d)
-			if probe(wp.x, wp.y)[0] > -0.3:
-				return false
-	return true
+## ¿Algún edificio especial cubre este punto (con margen)?
+func _point_covered(x: float, z: float, margin := 0.3) -> bool:
+	var ok_key := Vector2i(int(floor(x / OCC)), int(floor(z / OCC)))
+	for ox in range(-1, 2):
+		for oz in range(-1, 2):
+			var kk := Vector2i(ok_key.x + ox, ok_key.y + oz)
+			if not _occ.has(kk):
+				continue
+			for c in (_occ[kk] as Array):
+				var yw := float(c[2])
+				var dx := x - float(c[0])
+				var dz := z - float(c[1])
+				if absf(dx * sin(yw) + dz * cos(yw)) < float(c[3]) * 0.5 + margin and absf(dx * cos(yw) - dz * sin(yw)) < float(c[4]) * 0.5 + margin:
+					return true
+	return false
 
-func _place_buildings() -> void:
+## Zonas abiertas donde no se construye (plazas y parques)
+var open_areas: Array = [] # {pos: Vector2, r: float, name: String}
+func _no_build(p: Vector2) -> bool:
+	for oa in open_areas:
+		if p.distance_to(oa["pos"]) < float(oa["r"]):
+			return true
+	return false
+
+# ───────────────────────── frentes de edificios ─────────────────────────
+## Las calles no tienen banquina: tienen frentes de edificios, pegados uno al otro y sin huecos, así el jugador nunca ve qué hay detrás (las paredes de la calle son un
+## laberinto). Cada frente es una «losa»: una tira de pared sobre la línea de edificación (a 0,15 m de la vereda), con su altura, su color y un techo de poca profundidad.
+## Donde cruza otra calle la pared termina justo sobre la línea de edificación de esa calle, así las esquinas quedan cerradas. Las losas vecinas de distinta altura
+## muestran su costado. Detrás de la losa no hay nada: nadie lo puede ver.
+const LINE_GAP := 0.15
+var slabs: Dictionary = {} # Vector2i (cuadra) -> Array de losas {pts: PackedVector3Array, away: PackedVector2Array, h, wall, roof, seed, depth, house, hp, hn}
+var slab_count := 0
+
+## ¿El punto cae dentro del corredor (calzada + vereda + margen) de alguna calle que no sea own, o de un lugar especial o zona abierta?
+func _blocked_line(x: float, z: float, own: int) -> bool:
+	var kx := int(floor(x / HC))
+	var kz := int(floor(z / HC))
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			var k2 := Vector2i(kx + dx, kz + dz)
+			if not _hash.has(k2):
+				continue
+			for si in (_hash[k2] as PackedInt32Array):
+				var rid := int(s_road[si])
+				if rid == own:
+					continue
+				var ni := s_next[si]
+				if ni < 0:
+					continue
+				var ax := s_x[si]
+				var az := s_z[si]
+				var ex := s_x[ni] - ax
+				var ez := s_z[ni] - az
+				var l2 := ex * ex + ez * ez
+				var t := 0.0
+				if l2 > 1e-6:
+					t = clampf(((x - ax) * ex + (z - az) * ez) / l2, 0.0, 1.0)
+				var ddx := ax + ex * t - x
+				var ddz := az + ez * t - z
+				var rd: Dictionary = roads[rid]
+				var need := float(rd["hw"]) + float(rd["sw"]) + LINE_GAP
+				if ddx * ddx + ddz * ddz < need * need:
+					return true
+	return _point_covered(x, z, 0.5) or _no_build(Vector2(x, z))
+
+## ¿Hay una losa (o una pared de un lugar especial) justo en este punto de la línea de edificación? (para las pruebas)
+func slab_covers(p: Vector2) -> bool:
+	var key := chunk_of(p.x, p.y)
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			var kk := Vector2i(key.x + dx, key.y + dz)
+			if not slabs.has(kk):
+				continue
+			for sl in (slabs[kk] as Array):
+				var sp: PackedVector3Array = sl["pts"]
+				for i in sp.size() - 1:
+					var a := Vector2(sp[i].x, sp[i].z)
+					var b := Vector2(sp[i + 1].x, sp[i + 1].z)
+					if Geometry2D.get_closest_point_to_segment(p, a, b).distance_to(p) < 0.6:
+						return true
+	return false
+
+func _facade_style(zone: int, kind: String, r: float) -> Dictionary:
+	if kind == "alley":
+		return {"h": [12.8, 22.4], "w": [8.0, 14.0], "depth": 7.0, "house": 0.3}
+	if kind == "hill":
+		return {"h": [4.5, 7.0], "w": [9.0, 14.0], "depth": 9.0, "house": 1.0}
+	match zone:
+		0:
+			return {"h": [24.0, 62.0], "w": [14.0, 28.0], "depth": 14.0, "house": 0.0}
+		1:
+			return {"h": [13.0, 32.0], "w": [12.0, 24.0], "depth": 12.0, "house": 0.0}
+	# afuera del centro los edificios bajan hasta ser casas bajas con techo a dos aguas
+	var t := clampf((r - 700.0) / 400.0, 0.0, 1.0)
+	return {"h": [lerpf(10.0, 4.0, t), lerpf(18.0, 7.0, t)], "w": [lerpf(11.0, 8.0, t), lerpf(20.0, 13.0, t)], "depth": lerpf(11.0, 9.0, t), "house": clampf(0.2 + t, 0.0, 1.0)}
+
+func _line_pt(pts: PackedVector3Array, away: PackedVector2Array, off: float, t: float) -> Array:
+	var i := clampi(int(floor(t)), 0, pts.size() - 2)
+	var f := t - float(i)
+	var p := Vector3(lerpf(pts[i].x, pts[i + 1].x, f), lerpf(pts[i].y, pts[i + 1].y, f), lerpf(pts[i].z, pts[i + 1].z, f))
+	var a := away[i].lerp(away[i + 1], f).normalized()
+	return [Vector2(p.x, p.z) + a * off, p.y, a]
+
+func _place_facades() -> void:
 	for ri in roads.size():
 		var rd: Dictionary = roads[ri]
 		var kind := str(rd["kind"])
-		if kind == "plaza":
+		if kind == "rural" or kind == "shortcut":
 			continue
 		var pts: PackedVector3Array = rd["pts"]
+		var hw := float(rd["hw"])
+		var sw := float(rd["sw"])
+		var off := hw + sw + LINE_GAP
+		var n := pts.size()
 		for side in [-1.0, 1.0]:
 			var sdv: float = side
-			var i := int(_rng.randf_range(0.0, 3.0))
-			while i < pts.size() - 1:
-				var p := pts[i]
-				var zone := zone_of(p.x, p.z)
-				if kind == "rural" or kind == "shortcut" or (kind == "coast" and sdv > 0.0):
-					i += int(40.0 / STEP) # las rutas no tienen edificios y la costanera no se edifica del lado del mar
+			var away := PackedVector2Array()
+			for i in n:
+				var a := pts[maxi(i - 1, 0)]
+				var b := pts[mini(i + 1, n - 1)]
+				var tn := Vector2(b.x - a.x, b.z - a.z)
+				if tn.length() < 0.001:
+					tn = Vector2(1, 0)
+				tn = tn.normalized()
+				away.append(Vector2(-tn.y, tn.x) * sdv)
+			if kind == "coast" and sdv > 0.0:
+				continue # del lado del mar no se edifica
+			if kind == "plaza":
+				# solo el lado de afuera: la plaza es un parque abierto y la rodean los edificios
+				var p0 := Vector2(pts[0].x, pts[0].z)
+				if away[0].dot(p0) < 0.0:
 					continue
-				var st := _style_for(zone, rd)
-				if kind == "alley":
-					st = {"h": [12.8, 22.4], "w": [8.0, 14.0], "d": [10.0, 14.0], "hip": 0.35}
-				var w := _rng.randf_range(float(st["w"][0]), float(st["w"][1]))
-				var d := _rng.randf_range(float(st["d"][0]), float(st["d"][1]))
-				var steps := maxi(1, int(ceil((w + _rng.randf_range(0.5, 3.5)) / STEP)))
-				var j := mini(i + steps, pts.size() - 1)
-				var a := pts[i]
-				var b := pts[j]
-				var t2 := Vector2(b.x - a.x, b.z - a.z)
-				if t2.length() < 4.0:
-					break
-				var tn := t2.normalized()
-				var nrm := Vector2(-tn.y, tn.x) * sdv
-				var setback := float(rd["hw"]) + float(rd["sw"]) + 0.8
-				var cen := Vector2((a.x + b.x) * 0.5, (a.z + b.z) * 0.5) + nrm * (setback + d * 0.5)
-				var rad := Vector2(w, d).length() * 0.5
-				if _clear_of_roads(cen.x, cen.y, rad * 0.78, ri) and _spot_free(cen, w, d, atan2(tn.x, tn.y)) and _corners_clear(cen, w, d, atan2(tn.x, tn.y)):
-					var hh := _rng.randf_range(float(st["h"][0]), float(st["h"][1]))
-					hh = maxf(3.2, roundf(hh / 3.2) * 3.2) # la altura se redondea a pisos de 3,2 m
-					_add_building(cen, w, d, hh, atan2(tn.x, tn.y), (OLD_WALLS if kind == "alley" else WALLS)[_rng.randi() % (OLD_WALLS if kind == "alley" else WALLS).size()], ROOFS[_rng.randi() % ROOFS.size()], zone, _rng.randf() < float(st["hip"]), ri)
-				i = j
+			var blocked: Array = []
+			var line: Array = []
+			for i in n:
+				var lp := Vector2(pts[i].x, pts[i].z) + away[i] * off
+				line.append(lp)
+				blocked.append(_blocked_line(lp.x, lp.y, ri))
+			# tramos libres, en parámetro continuo (índice + fracción), con los extremos exactos sobre el borde de la calle que cruza
+			var runs: Array = []
+			var cur_a := -1.0
+			if not blocked[0]:
+				cur_a = 0.0
+			for i in range(n - 1):
+				var b0: bool = blocked[i]
+				var b1: bool = blocked[i + 1]
+				if b0 and not b1:
+					cur_a = float(i) + _edge_t(pts, away, off, i, true, ri)
+				elif (not b0) and b1:
+					runs.append([cur_a, float(i) + _edge_t(pts, away, off, i, false, ri)])
+					cur_a = -1.0
+			if cur_a >= 0.0:
+				runs.append([cur_a, float(n - 1)])
+			for r in runs:
+				_slabs_in_run(kind, pts, away, off, float(r[0]), float(r[1]), sdv)
 
-## Rellena el interior de las manzanas (lo que quedó entre los edificios de frente de calle) para que la ciudad se vea cerrada: una grilla de 15 m con desvío, cada
-## edificio alineado con la calle más cercana (o con los anillos si no hay ninguna a mano). Va después de los de frente de calle y de los lugares especiales.
-func _fill_blocks() -> void:
-	var step := 15.0
-	var gx := -1180.0
-	while gx < 1180.0:
-		var gz := -1180.0
-		while gz < 1280.0:
-			var jx := _rng.randf_range(-3.0, 3.0)
-			var jz := _rng.randf_range(-3.0, 3.0)
-			var cen := Vector2(gx + jx, gz + jz)
-			gz += step
-			var zone := zone_of(cen.x, cen.y)
-			if zone >= 4 or cen.length() < PLAZA_R + 20.0 or cen.y > SEA_Z - 150.0:
-				continue
-			var pr := probe(cen.x, cen.y)
-			if pr[0] > -1.0:
-				continue # adentro de una calle (o pegado a una vereda)
-			var yaw: float
-			if pr[6] >= 0.0:
-				yaw = atan2(-float(pr[3]), float(pr[2])) # tangente de la calle más cercana
+## Parámetro (0..1) dentro del tramo i→i+1 donde la línea de edificación entra (to_free = true: pasa de bloqueada a libre) o sale de una calle que cruza
+func _edge_t(pts: PackedVector3Array, away: PackedVector2Array, off: float, i: int, to_free: bool, own: int) -> float:
+	var lo := 0.0
+	var hi := 1.0
+	for it in 10:
+		var mid := (lo + hi) * 0.5
+		var lp: Array = _line_pt(pts, away, off, float(i) + mid)
+		var bl := _blocked_line((lp[0] as Vector2).x, (lp[0] as Vector2).y, own)
+		if to_free:
+			if bl:
+				lo = mid
 			else:
-				yaw = atan2(-cen.y, cen.x) # tangente del anillo
-			var st := _style_for(zone, roads[0])
-			var w := _rng.randf_range(float(st["w"][0]) * 0.8, float(st["w"][1]) * 0.8)
-			var d := _rng.randf_range(float(st["d"][0]) * 0.8, float(st["d"][1]) * 0.8)
-			var rad := Vector2(w, d).length() * 0.5
-			if not (_spot_free(cen, w, d, yaw) and _clear_of_roads(cen.x, cen.y, rad, -1)): # el círculo que rodea al edificio no toca ninguna calle
-				continue
-			var hh := _rng.randf_range(float(st["h"][0]), float(st["h"][1]))
-			hh = maxf(3.2, roundf(hh / 3.2) * 3.2)
-			_add_building(cen, w, d, hh, yaw, WALLS[_rng.randi() % WALLS.size()], ROOFS[_rng.randi() % ROOFS.size()], zone, _rng.randf() < float(st["hip"]), int(maxf(pr[6], 0.0)))
-		gx += step
+				hi = mid
+		else:
+			if bl:
+				hi = mid
+			else:
+				lo = mid
+	return hi if to_free else lo
+
+func _slabs_in_run(kind: String, pts: PackedVector3Array, away: PackedVector2Array, off: float, ta: float, tb: float, sdv: float) -> void:
+	if tb - ta < 0.05:
+		return
+	var cur := ta
+	var run_slabs: Array = []
+	var last_h := 0.0
+	while cur < tb - 0.001:
+		var mid_pt: Array = _line_pt(pts, away, off, minf(cur + 1.0, tb))
+		var mp: Vector2 = mid_pt[0]
+		var zone := zone_of(mp.x, mp.y)
+		var st := _facade_style(zone, kind, mp.length())
+		var w := _rng.randf_range(float(st["w"][0]), float(st["w"][1]))
+		# el tramo avanza hasta juntar el ancho (por puntos de la calle) o hasta el final
+		var spts := PackedVector3Array()
+		var saway := PackedVector2Array()
+		var first: Array = _line_pt(pts, away, off, cur)
+		spts.append(Vector3((first[0] as Vector2).x, first[1], (first[0] as Vector2).y))
+		saway.append(first[2])
+		var acc := 0.0
+		var t := cur
+		while t < tb - 0.001 and acc < w:
+			var nt := minf(floorf(t + 0.0001) + 1.0, tb)
+			var np: Array = _line_pt(pts, away, off, nt)
+			var prev := Vector2(spts[spts.size() - 1].x, spts[spts.size() - 1].z)
+			acc += prev.distance_to(np[0])
+			spts.append(Vector3((np[0] as Vector2).x, np[1], (np[0] as Vector2).y))
+			saway.append(np[2])
+			t = nt
+		if tb - t < 5.0 / STEP and t < tb - 0.001: # no dejar un resto chico: se lo come este
+			var nt2 := tb
+			var np2: Array = _line_pt(pts, away, off, nt2)
+			spts.append(Vector3((np2[0] as Vector2).x, np2[1], (np2[0] as Vector2).y))
+			saway.append(np2[2])
+			t = nt2
+		cur = t
+		if spts.size() < 2 or acc < 1.0:
+			continue
+		var skip := kind == "hill" and _rng.randf() < 0.45 # en la colina hay huecos de jardín
+		var hh := _rng.randf_range(float(st["h"][0]), float(st["h"][1]))
+		if last_h > 0.0 and _rng.randf() < 0.75:
+			hh = clampf(last_h * _rng.randf_range(0.75, 1.3), float(st["h"][0]), float(st["h"][1])) # los vecinos se parecen: no hay paredones ciegos enormes
+		hh = maxf(3.2, roundf(hh / 3.2) * 3.2)
+		last_h = hh
+		var house := _rng.randf() < float(st["house"])
+		if house:
+			hh = clampf(hh, 3.2, 9.6)
+		var slab := {"pts": spts, "away": saway, "h": hh, "wall": (OLD_WALLS if kind == "alley" else WALLS)[_rng.randi() % (OLD_WALLS if kind == "alley" else WALLS).size()],
+			"roof": ROOFS[_rng.randi() % ROOFS.size()], "seed": _rng.randf(), "depth": float(st["depth"]), "house": house, "hp": 0.0, "hn": 0.0, "zone": zone}
+		if skip:
+			run_slabs.append(null)
+			continue
+		run_slabs.append(slab)
+	# alturas de los vecinos (para mostrar el costado de la losa más alta)
+	for i in run_slabs.size():
+		var sl = run_slabs[i]
+		if sl == null:
+			continue
+		if i > 0 and run_slabs[i - 1] != null:
+			sl["hp"] = float(run_slabs[i - 1]["h"])
+		if i + 1 < run_slabs.size() and run_slabs[i + 1] != null:
+			sl["hn"] = float(run_slabs[i + 1]["h"])
+		var p0: Vector3 = sl["pts"][0]
+		var key := chunk_of(p0.x, p0.z)
+		var arr: Array = slabs.get(key, [])
+		arr.append(sl)
+		slabs[key] = arr
+		slab_count += 1
 
 # ───────────────────────── objetos de la calle ─────────────────────────
 func _add_prop(t: int, x: float, z: float, to_road: Vector2) -> void:
@@ -700,7 +815,7 @@ func _place_pois() -> void:
 		tn = tn.normalized()
 		var side := float(sp[5])
 		var nrm := Vector2(-tn.y, tn.x) * side
-		var cen := Vector2(a.x, a.z) + nrm * (float(rd["hw"]) + float(rd["sw"]) + 0.8 + float(sp[7]) * 0.5)
+		var cen := Vector2(a.x, a.z) + nrm * (float(rd["hw"]) + float(rd["sw"]) + LINE_GAP + float(sp[7]) * 0.5)
 		if str(sp[1]) == "view":
 			cen = Vector2(a.x, a.z) # el mirador es la plazoleta del final del camino
 		var yaw := atan2(tn.x, tn.y)

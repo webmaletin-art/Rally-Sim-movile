@@ -43,12 +43,13 @@ class Soup:
 		tri(a, b, cc, col, ua, ub, uc, u2)
 		tri(a, cc, d, col, ua, uc, ud, u2)
 	func tri(a: Vector3, b: Vector3, cc: Vector3, col: Color, ua := Vector2.ZERO, ub := Vector2.ZERO, uc := Vector2.ZERO, u2 := Vector2.ZERO) -> void:
+		# la normal (a×b×c) apunta hacia afuera de la cara; Godot toma como frente el sentido horario, así que los vértices van en orden a, c, b
 		var nr := (b - a).cross(cc - a).normalized()
-		v.append_array(PackedVector3Array([a, b, cc]))
+		v.append_array(PackedVector3Array([a, cc, b]))
 		n.append_array(PackedVector3Array([nr, nr, nr]))
 		for i in 3:
 			c.append(col)
-		uv.append_array(PackedVector2Array([ua, ub, uc]))
+		uv.append_array(PackedVector2Array([ua, uc, ub]))
 		uv2.append_array(PackedVector2Array([u2, u2, u2]))
 
 func setup(p_track) -> void:
@@ -448,6 +449,7 @@ func _jit(c: Color, k: float) -> Color:
 # ───────────────────────── edificios ─────────────────────────
 func _buildings(s: Soup, key: Vector2i) -> Array:
 	var specials: Array = []
+	_slabs(s, key)
 	if not city.buildings.has(key):
 		return specials
 	for b in city.buildings[key]:
@@ -526,6 +528,89 @@ func _box_building(s: Soup, b: Dictionary) -> void:
 				var mid2 := Vector2((e0.x + e1.x) * 0.5, (e0.z + e1.z) * 0.5) - bcv
 				s.quad_out(e0, e0 + up, e1 + up, e1, cw, mid2, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO)
 			s.quad_up(q0 + up, q1 + up, q2 + up, q3 + up, cw.darkened(0.12))
+
+## Frentes de la cuadra: las losas de pared pegadas a la calle (ver CityLayout._place_facades)
+func _slabs(s: Soup, key: Vector2i) -> void:
+	if not city.slabs.has(key):
+		return
+	for sl in (city.slabs[key] as Array):
+		var pts: PackedVector3Array = sl["pts"]
+		var away: PackedVector2Array = sl["away"]
+		var h: float = sl["h"]
+		var depth: float = sl["depth"]
+		var wall: Color = sl["wall"]
+		wall.a = float(sl["seed"])
+		var side_col := Color(wall.r * 0.9, wall.g * 0.9, wall.b * 0.9, wall.a)
+		var roof: Color = sl["roof"]
+		var house: bool = sl["house"]
+		var rise := minf(depth * 0.34, 3.0)
+		# ancho total (para repartir las ventanas)
+		var total := 0.0
+		for i in pts.size() - 1:
+			total += Vector2(pts[i + 1].x - pts[i].x, pts[i + 1].z - pts[i].z).length()
+		var u0 := 0.0
+		for i in pts.size() - 1:
+			var p := pts[i]
+			var q := pts[i + 1]
+			var ap := away[i]
+			var aq := away[i + 1]
+			var ln := Vector2(q.x - p.x, q.z - p.z).length()
+			if ln < 0.02:
+				continue
+			var u1 := u0 + ln
+			var outv := -(ap + aq) * 0.5
+			var f0 := Vector3(p.x, p.y - 3.2, p.z)
+			var f1 := Vector3(q.x, q.y - 3.2, q.z)
+			var t1 := Vector3(q.x, q.y + h, q.z)
+			var t0 := Vector3(p.x, p.y + h, p.z)
+			s.quad_out(f0, t0, t1, f1, wall, outv, Vector2(u0, -3.2), Vector2(u0, h), Vector2(u1, h), Vector2(u1, -3.2), Vector2(total, h))
+			var bp := Vector3(p.x + ap.x * depth, p.y + h, p.z + ap.y * depth)
+			var bq := Vector3(q.x + aq.x * depth, q.y + h, q.z + aq.y * depth)
+			var bp0 := Vector3(bp.x, p.y - 3.2, bp.z)
+			var bq0 := Vector3(bq.x, q.y - 3.2, bq.z)
+			# pared de atrás (lisa): solo se ve desde una cámara alta
+			s.quad_out(bp0, bp, bq, bq0, side_col, -outv, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO)
+			if house:
+				var rp := Vector3((p.x + bp.x) * 0.5, p.y + h + rise, (p.z + bp.z) * 0.5)
+				var rq := Vector3((q.x + bq.x) * 0.5, q.y + h + rise, (q.z + bq.z) * 0.5)
+				s.quad_up(t0, t1, rq, rp, roof)
+				s.quad_up(rp, rq, bq, bp, roof.darkened(0.12))
+			else:
+				s.quad_up(t0, t1, bq, bp, roof.darkened(0.15))
+			u0 = u1
+		# costados donde el vecino es más bajo (o no hay vecino y es una casa: el hastial)
+		var p0 := pts[0]
+		var pe := pts[pts.size() - 1]
+		var tg0 := Vector2(pts[1].x - p0.x, pts[1].z - p0.z).normalized()
+		var tge := Vector2(pe.x - pts[pts.size() - 2].x, pe.z - pts[pts.size() - 2].z).normalized()
+		var hp: float = sl["hp"]
+		var hn: float = sl["hn"]
+		if hp > 0.0 and hp < h - 0.1:
+			_side_wall(s, p0, away[0], depth, hp, h, -tg0, side_col)
+		if hn > 0.0 and hn < h - 0.1:
+			_side_wall(s, pe, away[away.size() - 1], depth, hn, h, tge, side_col)
+		if house:
+			if hp < h + rise:
+				_gable(s, p0, away[0], depth, h, rise, -tg0, side_col)
+			if hn < h + rise:
+				_gable(s, pe, away[away.size() - 1], depth, h, rise, tge, side_col)
+
+## Costado de una losa entre la altura del vecino (y0) y la propia (y1): un rectángulo que mira hacia out
+func _side_wall(s: Soup, p: Vector3, a: Vector2, depth: float, h0: float, h1: float, out: Vector2, col: Color) -> void:
+	var b := Vector3(p.x + a.x * depth, p.y, p.z + a.y * depth)
+	# el costado también lleva ventanas (el shader las dibuja con la altura sobre la calle: v de h0 a h1)
+	s.quad_out(Vector3(p.x, p.y + h0, p.z), Vector3(p.x, p.y + h1, p.z), Vector3(b.x, p.y + h1, b.z), Vector3(b.x, p.y + h0, b.z), col, out, Vector2(0, h0), Vector2(0, h1), Vector2(depth, h1), Vector2(depth, h0), Vector2(depth, h1))
+
+## Triángulo de hastial de una casa (el costado del techo a dos aguas)
+func _gable(s: Soup, p: Vector3, a: Vector2, depth: float, h: float, rise: float, out: Vector2, col: Color) -> void:
+	var t0 := Vector3(p.x, p.y + h, p.z)
+	var tb := Vector3(p.x + a.x * depth, p.y + h, p.z + a.y * depth)
+	var rg := Vector3(p.x + a.x * depth * 0.5, p.y + h + rise, p.z + a.y * depth * 0.5)
+	var nr := (tb - t0).cross(rg - t0)
+	if nr.x * out.x + nr.z * out.y < 0.0:
+		s.tri(t0, rg, tb, col)
+	else:
+		s.tri(t0, tb, rg, col)
 
 ## Cartel de un edificio especial (concesionario, taller)
 func _sign(b: Dictionary) -> Node3D:
