@@ -58,6 +58,7 @@ func setup(p_track) -> void:
 	city = track.city
 	_facade_mat = ShaderMaterial.new()
 	_facade_mat.shader = FACADE
+	_facade_mat.set_shader_parameter("grain", PaperKit.grain())
 	_ground_plane()
 
 ## Un plano enorme y plano bajo todo el mundo (el color de la lejanía): lo que todavía no se armó no deja un hueco

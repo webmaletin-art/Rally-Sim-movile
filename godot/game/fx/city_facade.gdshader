@@ -1,8 +1,16 @@
 shader_type spatial;
+render_mode diffuse_lambert, specular_disabled, cull_disabled;
 // Fachadas de papel de la ciudad: las ventanas, los postigos, los balcones y las persianas de los negocios no son geometría ni imágenes grandes: las dibuja este shader
 // a partir de las medidas de la pared. Cada edificio es una caja de pocas caras. COLOR = color de la pared (rgb) y una semilla (a) · UV = metros sobre la pared
 // (u a lo ancho, v hacia arriba desde la planta baja) · UV2 = (ancho, alto) de esa pared (alto 0 = techo, sin ventanas).
 
+// Papercraft: igual que el resto del mundo (paper.gdshader): sombreado plano, grano de papel, hojas de distinto lote y los dobleces marcados con un borde claro.
+uniform sampler2D grain : source_color, repeat_enable, filter_linear_mipmap;
+uniform vec3 edge_col : source_color = vec3(0.96, 0.93, 0.85);
+uniform float grain_amt : hint_range(0.0, 0.5) = 0.10;
+uniform float tint_var : hint_range(0.0, 0.3) = 0.10;
+
+varying vec3 v_wpos;
 varying vec3 wcol;
 varying flat float seed; // sin interpolar: un error de 1 bit en la semilla cambiaría el hash en cada píxel
 
@@ -16,13 +24,22 @@ float box(vec2 f, vec2 lo, vec2 hi, vec2 pw) {
 	return a.x * a.y;
 }
 
+vec3 to_lin(vec3 c) {
+	return mix(pow((c + 0.055) / 1.055, vec3(2.4)), c / 12.92, step(c, vec3(0.04045)));
+}
+
 void vertex() {
+	v_wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	wcol = COLOR.rgb;
 	seed = floor(COLOR.a * 255.0 + 0.5) / 255.0;
 }
 
 void fragment() {
+	vec3 fn = normalize(cross(dFdx(VERTEX), dFdy(VERTEX)));
+	if (fn.z < 0.0) fn = -fn;
+	NORMAL = fn;
 	vec3 col = wcol;
+	float crease = 0.0; // 1 = hay un doblez o un borde de papel en este píxel
 	vec2 sz = UV2;
 	vec2 uv = UV;
 	if (sz.y > 0.5 && uv.y > 0.0) {
@@ -55,6 +72,7 @@ void fragment() {
 				float dr = box(f, vec2(0.30, 0.0), vec2(0.70, 0.74), pw) * door;
 				col = mix(col, vec3(0.20, 0.27, 0.34) * (0.8 + 0.4 * hv2), shop);
 				col = mix(col, vec3(0.42, 0.26, 0.15), dr);
+				crease = max(crease, clamp(box(f, vec2(0.10, 0.08), vec2(0.90, 0.78), pw) - shop - dr, 0.0, 1.0) * 0.5);
 				float awn = box(f, vec2(0.05, 0.78), vec2(0.95, 0.92), pw) * step(0.45, hv2);
 				col = mix(col, mix(vec3(0.85, 0.28, 0.20), vec3(0.20, 0.45, 0.30), step(0.5, fract(hv * 7.0))), awn);
 			} else {
@@ -63,7 +81,11 @@ void fragment() {
 				float frame = box(f, vec2(0.25, 0.23), vec2(0.75, 0.85), pw) - win;
 				vec3 glass = vec3(0.34, 0.44, 0.56) * (0.75 + 0.5 * hv2);
 				col = mix(col, col * 1.15, frame);
-				col = mix(col, glass, win);
+				col = mix(col, glass * (0.88 + 0.24 * f.y), win);
+				// el hueco es un recorte: sombra del papel en el borde de arriba y de la izquierda, y un filo claro alrededor
+				float shadow = win - box(f, vec2(0.34, 0.28), vec2(0.70, 0.76), pw);
+				col = mix(col, col * 0.72, clamp(shadow, 0.0, 1.0));
+				crease = max(crease, clamp(frame, 0.0, 1.0) * 0.55);
 				// postigos de color a los costados
 				float shut = box(f, vec2(0.12, 0.26), vec2(0.28, 0.82), pw) + box(f, vec2(0.72, 0.26), vec2(0.88, 0.82), pw);
 				vec3 sc = mix(vec3(0.28, 0.45, 0.30), vec3(0.45, 0.30, 0.20), step(0.5, fract(seed * 3.0)));
@@ -77,6 +99,21 @@ void fragment() {
 	} else if (sz.y > 0.5) {
 		col *= 0.80; // el faldón bajo la planta baja
 	}
-	ALBEDO = col;
-	ROUGHNESS = 0.95;
+	if (sz.y > 0.5) {
+		// bordes de la hoja de pared (costados, cornisa) y un doblez suave en cada piso
+		vec2 px = max(fwidth(uv), vec2(0.0001));
+		float dl = min(uv.x, sz.x - uv.x) / px.x;
+		float dt = (sz.y - uv.y) / px.y;
+		float edge = 1.0 - smoothstep(0.6, 1.6, min(dl, dt));
+		float fl = abs(fract(uv.y / 3.2 + 0.0) - 0.0) * 3.2 / px.y;
+		float fold = (1.0 - smoothstep(0.4, 1.2, fl)) * step(0.5, uv.y) * 0.25;
+		crease = max(crease, max(edge * (1.0 - smoothstep(0.1, 0.4, max(px.x, px.y))), fold));
+	}
+	vec3 base = col * 0.96; // los colores ya están pensados para este brillo (no pasan por to_lin)
+	float t = fract(sin(dot(floor(v_wpos.xz * 0.5), vec2(12.9898, 78.233))) * 43758.5453);
+	base *= 1.0 + (t - 0.5) * tint_var;
+	float g = texture(grain, v_wpos.xz * 0.45 + v_wpos.y * 0.31).r;
+	base *= 1.0 + (g - 0.5) * grain_amt * 2.0;
+	ALBEDO = mix(base, edge_col, clamp(crease, 0.0, 1.0) * 0.5);
+	ROUGHNESS = 1.0;
 }
