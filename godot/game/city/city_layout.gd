@@ -32,6 +32,14 @@ var pois: Array = [] # {id, kind, name, pos, yaw, size, color}
 var exits: Array = [] # {num, name, pos, yaw, road}
 var buildings: Dictionary = {} # Vector2i (cuadra) -> Array de {x, z, y, yaw, w, d, h, wall: Color, roof: Color, kind, seed, hip}
 var building_count := 0
+# objetos de la calle (farolas, árboles, semáforos, bolardos): el id es el índice; salen igual en todos los teléfonos
+var prop_type := PackedByteArray()
+var prop_x := PackedFloat32Array()
+var prop_z := PackedFloat32Array()
+var prop_y := PackedFloat32Array()
+var prop_yaw := PackedFloat32Array()
+var prop_seed := PackedFloat32Array()
+var props_in: Dictionary = {} # Vector2i (cuadra) -> PackedInt32Array de ids
 
 # índice espacial de los puntos de las calles
 var s_x := PackedFloat32Array()
@@ -83,6 +91,7 @@ func build() -> void:
 	_place_pois()
 	_place_buildings()
 	_fill_blocks()
+	_place_props()
 
 func _sample_road(id: int, name_s: String, num: int, kind: String, hw: float, sw: float, plan: PackedVector2Array) -> void:
 	var pts := PackedVector3Array()
@@ -555,6 +564,104 @@ func _fill_blocks() -> void:
 			hh = maxf(3.2, roundf(hh / 3.2) * 3.2)
 			_add_building(cen, w, d, hh, yaw, WALLS[_rng.randi() % WALLS.size()], ROOFS[_rng.randi() % ROOFS.size()], zone, _rng.randf() < float(st["hip"]), int(maxf(pr[6], 0.0)))
 		gx += step
+
+# ───────────────────────── objetos de la calle ─────────────────────────
+func _add_prop(t: int, x: float, z: float, to_road: Vector2) -> void:
+	# nunca sobre el asfalto de ninguna calle
+	var pr := probe(x, z)
+	if pr[6] >= 0.0 and float(pr[1]) <= float(pr[5]) + 0.2:
+		return
+	var id := prop_type.size()
+	prop_type.append(t)
+	prop_x.append(x)
+	prop_z.append(z)
+	prop_y.append(height(x, z) if pr[0] < 0.0 else float(pr[4]) + 0.16) # sobre la vereda (el cordón sube 16 cm)
+	prop_yaw.append(atan2(to_road.x, to_road.y) if t != 1 else _rng.randf() * TAU)
+	prop_seed.append(_rng.randf())
+	var key := chunk_of(x, z)
+	var arr: PackedInt32Array = props_in.get(key, PackedInt32Array())
+	arr.append(id)
+	props_in[key] = arr
+
+## Farolas, árboles y bolardos a lo largo de las calles; semáforos en los cruces grandes
+func _place_props() -> void:
+	for ri in roads.size():
+		var rd: Dictionary = roads[ri]
+		var kind := str(rd["kind"])
+		if kind == "rural" or kind == "shortcut":
+			continue
+		var pts: PackedVector3Array = rd["pts"]
+		var nj: PackedByteArray = rd["nj"]
+		var hw := float(rd["hw"])
+		var sw := float(rd["sw"])
+		var lamp_gap: float = {"plaza": 22.0, "alley": 26.0, "minor": 46.0, "coast": 30.0, "hill": 60.0}.get(kind, 40.0)
+		var tree_gap := 22.0
+		var acc_l := _rng.randf() * lamp_gap
+		var acc_t := _rng.randf() * tree_gap
+		var acc_b := 0.0
+		var flip := 1.0
+		var flip_t := -1.0
+		for i in range(1, pts.size() - 1):
+			var tn := Vector2(pts[i + 1].x - pts[i - 1].x, pts[i + 1].z - pts[i - 1].z)
+			if tn.length() < 0.1:
+				continue
+			tn = tn.normalized()
+			var nrm := Vector2(-tn.y, tn.x)
+			var p := Vector2(pts[i].x, pts[i].z)
+			var step := Vector2(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z).length()
+			acc_l += step
+			acc_t += step
+			acc_b += step
+			var off := hw + sw * 0.5
+			var near_j := nj.size() > i and nj[i] != 0
+			if acc_l >= lamp_gap and not near_j:
+				acc_l = 0.0
+				var sd := flip
+				if kind != "alley":
+					flip = -flip
+				_add_prop(0, p.x + nrm.x * sd * off, p.y + nrm.y * sd * off, -nrm * sd)
+				if kind == "alley":
+					_add_prop(0, p.x - nrm.x * sd * off, p.y - nrm.y * sd * off, nrm * sd) # callejón: faroles de los dos lados
+			if acc_t >= tree_gap and not near_j and kind in ["major", "ring", "coast", "minor", "hill", "plaza"] and sw >= 2.0:
+				acc_t = 0.0
+				if _rng.randf() < 0.8:
+					var st := flip_t
+					flip_t = -flip_t
+					if not (kind == "coast" and st > 0.0):
+						_add_prop(1, p.x + nrm.x * st * off, p.y + nrm.y * st * off, -nrm * st)
+			if kind == "alley" and acc_b >= 6.0 and not near_j:
+				acc_b = 0.0
+				for sd in [-1.0, 1.0]:
+					var bo := hw + 0.5
+					_add_prop(3, p.x + nrm.x * sd * bo, p.y + nrm.y * sd * bo, -nrm * sd)
+			elif kind == "coast" and acc_b >= 10.0 and not near_j:
+				acc_b = 0.0
+				_add_prop(3, p.x + nrm.x * (hw + sw - 0.4), p.y + nrm.y * (hw + sw - 0.4), -nrm)
+	# semáforos: cuatro por cruce grande (dos por cada calle, en esquinas opuestas)
+	for j in junctions:
+		if not bool(j["major"]):
+			continue
+		var jp: Vector2 = j["pos"]
+		var rids: Array = j["roads"]
+		for k in 2:
+			var ra: Dictionary = roads[rids[k]]
+			var rb: Dictionary = roads[rids[1 - k]]
+			var pa: PackedVector3Array = ra["pts"]
+			var bi := 0
+			var bd := 1e18
+			for i in pa.size():
+				var dd := Vector2(pa[i].x, pa[i].z).distance_squared_to(jp)
+				if dd < bd:
+					bd = dd
+					bi = i
+			var a := pa[maxi(bi - 1, 0)]
+			var b := pa[mini(bi + 1, pa.size() - 1)]
+			var ta := Vector2(b.x - a.x, b.z - a.z).normalized()
+			var na := Vector2(-ta.y, ta.x)
+			var along := float(rb["hw"]) + float(rb["sw"]) + 1.6
+			var offs := float(ra["hw"]) + float(ra["sw"]) * 0.5
+			for sg in [1.0, -1.0]:
+				_add_prop(2, jp.x + (ta.x * along + na.x * offs) * sg, jp.y + (ta.y * along + na.y * offs) * sg, -na * sg)
 
 # ───────────────────────── puntos de interés ─────────────────────────
 ## Cada uno es un edificio especial pegado a una calle: [id, tipo, nombre, calle, distancia sobre la calle (m), lado, ancho, fondo, alto, color]

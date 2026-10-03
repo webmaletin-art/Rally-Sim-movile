@@ -139,7 +139,10 @@ func _ready() -> void:
 			tc["track"] = "aurelia"
 			tc["testCar"] = false
 			if at.size() > 2:
-				tc["gpsdrive"] = at[2] # --autotest=gt@aurelia@concesionario: el auto va solo hasta ahí
+				if at[2] == "map":
+					tc["bigmap"] = true # prueba: abre el mapa grande con el GPS puesto al concesionario
+				else:
+					tc["gpsdrive"] = at[2] # --autotest=gt@aurelia@concesionario: el auto va solo hasta ahí
 		if at.size() > 1 and at[1] == "paper":
 			tc["type"] = "timetrial"
 			tc["track"] = "paperRace"

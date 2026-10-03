@@ -1083,6 +1083,9 @@ func _start_session() -> void:
 			race_hud.setup(session, cfg, rival_info)
 			if cfg.has("gpsdrive") and race_hud.city_hud != null: # prueba: el auto va solo por el GPS hasta ese lugar
 				_city_drive_test(str(cfg["gpsdrive"]))
+			if cfg.has("bigmap") and race_hud.city_hud != null:
+				race_hud.city_hud.set_dest(race_hud.city_hud.city.pois[0]["front"], str(race_hud.city_hud.city.pois[0]["name"]))
+				race_hud.city_hud.call_deferred("_set_big", true)
 		return
 	if menu_mode and track is DriftTrack:
 		session = DriftSession.new(track, cfg, cars.size())

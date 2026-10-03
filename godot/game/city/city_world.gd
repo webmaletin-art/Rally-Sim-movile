@@ -5,6 +5,7 @@ extends Node3D
 
 const PaperKit := preload("res://game/fx/paper_kit.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
+const CityProps := preload("res://game/city/city_props.gd")
 const FACADE := preload("res://game/fx/city_facade.gdshader")
 const TEX := "res://game/models/paper/tex/"
 
@@ -90,6 +91,62 @@ func _process(_dt: float) -> void:
 	if cam == null:
 		return
 	update_around(cam.global_position, 1)
+	_redraw_broken()
+
+## Los objetos que acaban de romperse: se arma de nuevo la malla de objetos de su cuadra (lo roto queda tirado)
+func _redraw_broken() -> void:
+	var fresh: PackedInt32Array = track.take_broken()
+	if fresh.is_empty():
+		return
+	var keys := {}
+	for id in fresh:
+		keys[city.chunk_of(city.prop_x[id], city.prop_z[id])] = true
+	for k in keys:
+		var kk: Vector2i = k
+		if not chunks.has(kk):
+			continue
+		var root: Node3D = chunks[kk]
+		var old := root.get_node_or_null("props")
+		if old != null:
+			old.queue_free()
+			root.remove_child(old)
+		var pi := _props_instance(kk)
+		if pi != null:
+			root.add_child(pi)
+
+## Malla de los objetos de la calle de una cuadra (una sola llamada de dibujo; se ve a ~150 m) y sus círculos de choque
+func _props_instance(key: Vector2i) -> MeshInstance3D:
+	if not city.props_in.has(key):
+		return null
+	var v := PackedVector3Array()
+	var c := PackedColorArray()
+	for id in (city.props_in[key] as PackedInt32Array):
+		var fallen: Vector2 = track.broken.get(id, Vector2.ZERO)
+		CityProps.emit(int(city.prop_type[id]), city.prop_x[id], city.prop_y[id], city.prop_z[id], city.prop_yaw[id], city.prop_seed[id], fallen, v, c)
+	if v.is_empty():
+		return null
+	var m := ArrayMesh.new()
+	PaperKit.add_surface(m, v, c, PaperKit.material(null, 0.0, 0.2, 0.3))
+	var mi := MeshInstance3D.new()
+	mi.name = "props"
+	mi.mesh = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.visibility_range_end = 170.0 * maxf(view_k, 0.6)
+	return mi
+
+func _register_props(key: Vector2i) -> void:
+	if not city.props_in.has(key):
+		return
+	for id in (city.props_in[key] as PackedInt32Array):
+		if not track.broken.has(id):
+			track.add_prop(id, city.prop_x[id], city.prop_z[id], CityProps.RADIUS[int(city.prop_type[id])])
+
+func _unregister_props(key: Vector2i) -> void:
+	if not city.props_in.has(key):
+		return
+	for id in (city.props_in[key] as PackedInt32Array):
+		if not track.broken.has(id):
+			track.remove_prop(id, city.prop_x[id], city.prop_z[id])
 
 ## Arma las cuadras de alrededor de p (hasta max_new por llamada) y borra las lejanas
 func update_around(p: Vector3, max_new: int, budget_ms := -1.0) -> void:
@@ -117,6 +174,7 @@ func update_around(p: Vector3, max_new: int, budget_ms := -1.0) -> void:
 	for k in chunks.keys():
 		var kk: Vector2i = k
 		if maxi(absi(kk.x - ck.x), absi(kk.y - ck.y)) > rad + 1:
+			_unregister_props(kk)
 			(chunks[kk] as Node3D).queue_free()
 			chunks.erase(kk)
 
@@ -164,6 +222,10 @@ func _build_chunk(key: Vector2i) -> Node3D:
 		root.add_child(bi)
 	for sp in specials:
 		root.add_child(sp)
+	var pi := _props_instance(key)
+	if pi != null:
+		root.add_child(pi)
+	_register_props(key)
 	return root
 
 func _surface(m: ArrayMesh, s: Soup, mat: Material) -> void:

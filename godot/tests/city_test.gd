@@ -4,6 +4,7 @@
 extends SceneTree
 
 const CityLayout := preload("res://game/city/city_layout.gd")
+const CityTrack := preload("res://game/track/city_track.gd")
 const CityGps := preload("res://game/city/city_gps.gd")
 
 var fail := false
@@ -82,6 +83,26 @@ func _init() -> void:
 			if (j["roads"] as Array).has(int(rd["id"])):
 				nj += 1
 		check(mg < 0.12 and nj >= 2, "%s: pendiente máxima %.1f %%, %d cruces, %d m" % [nm, mg * 100.0, nj, int(rd["cum"][rd["cum"].size() - 1])])
+	# objetos de la calle: hay de cada tipo y ninguno sobre el asfalto
+	var cnt := [0, 0, 0, 0]
+	var on_road := 0
+	for i in c.prop_type.size():
+		cnt[c.prop_type[i]] += 1
+		var pr2 := c.probe(c.prop_x[i], c.prop_z[i])
+		if pr2[6] >= 0.0 and float(pr2[1]) < float(pr2[5]) - 0.01:
+			on_road += 1
+	print("     objetos: %d farolas, %d árboles, %d semáforos, %d bolardos" % [cnt[0], cnt[1], cnt[2], cnt[3]])
+	check(cnt[0] > 300 and cnt[1] > 300 and cnt[2] > 60 and cnt[3] > 100 and on_road == 0, "farolas, árboles, semáforos y bolardos, ninguno sobre el asfalto (%d)" % on_road)
+	# golpear un objeto lo rompe una sola vez: el primer choque empuja, el segundo ya no
+	var tr := CityTrack.new()
+	var pid := 40
+	tr.add_prop(pid, tr.city.prop_x[pid], tr.city.prop_z[pid], 0.3)
+	var hit1 := tr.push(tr.city.prop_x[pid] + 0.5, tr.city.prop_z[pid], 1.0)
+	var hit2 := tr.push(tr.city.prop_x[pid] + 0.5, tr.city.prop_z[pid], 1.0)
+	var brk := tr.take_broken()
+	check(hit1.z > 0.0 and brk.size() == 1 and brk[0] == pid and tr.broken.has(pid), "un golpe rompe el objeto (y avisa una vez)")
+	check(tr.push(tr.city.prop_x[pid], tr.city.prop_z[pid], 0.3).z <= 0.0 or tr.city.probe(tr.city.prop_x[pid], tr.city.prop_z[pid])[6] >= 0.0, "lo roto ya no choca")
+	hit2 = hit2
 	# consulta de calle
 	var lc := c.locate(0.0, -150.0)
 	check(str(lc["name"]) == "Avenida 7" and int(lc["cuadra"]) == 2, "locate: en (0, -150) estás en %s, cuadra %d" % [lc["name"], lc["cuadra"]])

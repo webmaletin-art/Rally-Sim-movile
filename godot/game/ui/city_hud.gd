@@ -124,6 +124,9 @@ func _layout_big() -> void:
 func _set_big(on: bool) -> void:
 	big = on
 	_big.visible = on
+	_mini.visible = not on
+	street_l.visible = not on
+	gps_l.visible = not on
 	if on:
 		_layout_big()
 		(_big.get_node("map") as Control).queue_redraw()
