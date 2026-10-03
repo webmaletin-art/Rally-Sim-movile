@@ -30,9 +30,18 @@ func load_config() -> bool:
 	if FileAccess.file_exists(CONFIG_PATH):
 		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(CONFIG_PATH))
 		if d is Dictionary:
-			url = str((d as Dictionary).get("url", "")).strip_edges().rstrip("/")
+			url = origin_of(str((d as Dictionary).get("url", "")))
 			anon_key = str((d as Dictionary).get("anon_key", "")).strip_edges()
 	return configured()
+
+## Sólo «https://proyecto.supabase.co»: si al cargar el secreto se pegó la dirección con un camino (por ejemplo «/rest/v1/»), el servidor contesta «Invalid path specified in request URL»
+static func origin_of(u: String) -> String:
+	u = u.strip_edges()
+	var i := u.find("://")
+	if i < 0:
+		return u.rstrip("/")
+	var j := u.find("/", i + 3)
+	return u if j < 0 else u.substr(0, j)
 
 func configured() -> bool:
 	return (url.begins_with("https://") or url.begins_with("http://127.0.0.1")) and anon_key.length() > 20 # http solo para el servidor de prueba local

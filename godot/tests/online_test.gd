@@ -71,6 +71,7 @@ var pid2 := -1
 
 ## Cuenta con correo: se le suma al usuario anónimo (mismas marcas), inicio de sesión desde otro «teléfono», errores y cierre de sesión
 func _account_tests(on: Node) -> void:
+	check(Online.origin_of("https://abc.supabase.co/rest/v1/") == "https://abc.supabase.co" and Online.origin_of(" https://abc.supabase.co/ ") == "https://abc.supabase.co" and Online.origin_of("http://127.0.0.1:8000") == "http://127.0.0.1:8000", "la dirección de Supabase se deja sin camino (evita «Invalid path specified in request URL»)")
 	check(Online.valid_email("ana@correo.com") and not Online.valid_email("ana@correo") and not Online.valid_email("ana correo@x.com") and not Online.valid_email("@x.com"), "valida los correos")
 	check(Online.valid_password("12345678") and not Online.valid_password("1234567"), "la contraseña pide 8 caracteres")
 	check("ya tiene una cuenta" in Online.friendly_error("User already registered") and "incorrectos" in Online.friendly_error("Invalid login credentials"), "traduce los errores del servidor")

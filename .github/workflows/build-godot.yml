@@ -104,7 +104,7 @@ jobs:
         run: |
           # La dirección y la clave PÚBLICA (anon) van dentro de la app; la seguridad la dan las políticas de la base. Sin secretos queda apagado.
           if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ]; then
-            python3 -c "import json,os; json.dump({'url': os.environ['SUPABASE_URL'].strip(), 'anon_key': os.environ['SUPABASE_ANON_KEY'].strip()}, open('game/online/online_config.json','w'))"
+            python3 -c "import json,os,urllib.parse as u; p=u.urlparse(os.environ['SUPABASE_URL'].strip()); json.dump({'url': p.scheme+'://'+p.netloc, 'anon_key': os.environ['SUPABASE_ANON_KEY'].strip()}, open('game/online/online_config.json','w'))"
             echo "Modo online configurado (${SUPABASE_URL%%.*}…)"
           else
             echo "Sin secretos de Supabase: el modo online queda apagado en esta compilación."
