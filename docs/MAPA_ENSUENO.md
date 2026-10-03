@@ -1,5 +1,7 @@
 # Vórtice de Ensueño — mapa fantasía
 
+> Es un **mapa suelto** (Carrera rápida → «Vórtice de Ensueño»): no está en ninguna copa ni en la aventura, y no suma estrellas. Se corre contra un rival a la par.
+
 Circuito de **9,7 km** (una vuelta inmensa) hecho todo en papel (papercraft) alrededor de un **agujero negro** que se ve muy abajo, en un mar de gas con
 las bandas de color de Júpiter. Está en **Carrera rápida** (carrera con rivales o contrarreloj, 1 a 3 vueltas) y como evento de la Serie Continental.
 

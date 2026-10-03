@@ -2180,6 +2180,9 @@
 "Manual": [
 "ui/options_ui.gd:67"
 ],
+"Mapa fantasía suelto: una vuelta inmensa entre flores gigantes, con subida, bajada y un rival a tu ritmo. No pertenece a ninguna copa.": [
+"ui/menu_career.gd:319"
+],
 "Masa total: menos peso acelera, frena y dobla mejor.": [
 "ui/lab_panel.gd:13"
 ],
@@ -2850,7 +2853,7 @@
 "ui/loading.gd:153"
 ],
 "Práctica: corrés la etapa con el DR Bisonte de la aventura; no cuenta para tu avance ni da premios.": [
-"ui/menu_career.gd:319"
+"ui/menu_career.gd:321"
 ],
 "Próxima etapa: %s — %s": [
 "adventure/adv_hud.gd:548"
@@ -3485,9 +3488,6 @@
 "Una sola ruta larguísima, de estación en estación: ciudades, campos, montaña, túneles, una cantera y la nieve. En cada etapa hay un rival que tenés que pasar.": [
 "ui/menu_adventure.gd:60"
 ],
-"Una vuelta inmensa de casi 10 km entre flores gigantes: una subida de 300 m, una cresta peraltada, una bajada brutal y un rival que siempre te pisa los talones.": [
-"data/catalog.json"
-],
 "Unidades": [
 "ui/options_ui.gd:69"
 ],
@@ -3603,7 +3603,6 @@
 "race.gd:531"
 ],
 "Vórtice de Ensueño": [
-"data/catalog.json",
 "data/routes.json"
 ],
 "XIII (historieta)": [
@@ -3795,7 +3794,7 @@
 ],
 "¡CORRER!": [
 "ui/menu_career.gd:227",
-"ui/menu_career.gd:320"
+"ui/menu_career.gd:322"
 ],
 "¡Cuenta creada! Ya podés entrar con este correo desde cualquier teléfono.": [
 "online/online.gd:196"

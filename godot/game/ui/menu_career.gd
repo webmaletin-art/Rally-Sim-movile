@@ -315,6 +315,8 @@ func _quick() -> void:
 				else:
 					refresh_pv.call(), m.sfx, 60.0)
 		g.add_child(sel)
+	if str(quick["map"]) == "dream":
+		m.body.add_child(Kit.wrap(tr("Mapa fantasía suelto: una vuelta inmensa entre flores gigantes, con subida, bajada y un rival a tu ritmo. No pertenece a ninguna copa."), 13, Kit.MUTED, 300))
 	if adv:
 		m.body.add_child(Kit.wrap(tr("Práctica: corrés la etapa con el DR Bisonte de la aventura; no cuenta para tu avance ni da premios."), 13, Kit.MUTED, 300))
 	m.body.add_child(Kit.button("¡CORRER!", func(): _start_quick(), true, 26, Vector2(0, 58)))
