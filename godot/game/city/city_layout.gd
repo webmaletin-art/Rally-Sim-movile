@@ -1,5 +1,5 @@
 extends RefCounted
-## Puerto Aurelia, el mundo abierto: la ciudad se genera igual en todos los teléfonos a partir de una semilla (el online depende de eso: todos ven las mismas
+## Dream City, el mundo abierto: la ciudad se genera igual en todos los teléfonos a partir de una semilla (el online depende de eso: todos ven las mismas
 ## calles, edificios y salidas en las mismas coordenadas). Es un laberinto de calles: una plaza redonda en el centro, ocho avenidas que salen de ella, anillos
 ## que las cruzan, calles secundarias entre medio, una costanera sobre el mar, un camino con curvas que sube a una colina y cuatro rutas rurales que salen de
 ## la ciudad y terminan en una «Salida» numerada (para conectar con otras ciudades).
@@ -12,6 +12,10 @@ extends RefCounted
 const CELL := 160.0 # lado de una cuadra de carga (la unidad de la carga por trozos)
 const STEP := 8.0 # distancia entre puntos de una calle
 const PLAZA_R := 48.0
+const PARK_R := 44.0 # radio de la calle que rodea al Parque del Drift
+const AVE := [[12.0, 1.0], [30.0, 1.0], [9.0, 2.0], [36.0, 1.0], [14.0, 2.0], [26.0, 1.0], [10.0, 2.0], [32.0, 1.0]] # por avenida: [desvío máximo (m), vueltas de curva cada 260 m]: no todas salen igual
+const GRID_A0 := 135.0 # el barrio de manzanas cuadradas ocupa el sector entre la avenida 4 (135°) y la 5 (180°)
+const GRID_A1 := 180.0
 const RINGS := [130.0, 260.0, 390.0, 520.0, 650.0, 780.0, 910.0, 1040.0]
 const COAST_R := 1120.0
 const RURAL_END := 2300.0
@@ -104,14 +108,14 @@ func _sample_road(id: int, name_s: String, num: int, kind: String, hw: float, sw
 		cum.append(acc)
 	roads.append({"id": id, "name": name_s, "num": num, "kind": kind, "hw": hw, "sw": sw, "pts": pts, "cum": cum, "nj": PackedByteArray()})
 
-func _radial(r0: float, r1: float, ang: float, amp: float, phase: float) -> PackedVector2Array:
+func _radial(r0: float, r1: float, ang: float, amp: float, phase: float, mul := 1.0) -> PackedVector2Array:
 	var out := PackedVector2Array()
 	var dirv := Vector2(cos(ang), sin(ang))
 	var per := Vector2(-sin(ang), cos(ang))
 	var r := r0
 	while r < r1 + 0.01:
 		# el desvío es cero en cada múltiplo de 130 m (donde cruzan los anillos): los cruces caen justo en los puntos previstos
-		var off := amp * sin(PI * r / 130.0 + phase)
+		var off := amp * sin(mul * PI * r / 130.0 + phase)
 		out.append(dirv * r + per * off)
 		r += STEP
 	return out
@@ -151,10 +155,93 @@ func _wavy(a: Vector2, b: Vector2, amp: float, wl: float, phase: float) -> Packe
 	out[out.size() - 1] += dn * 2.5
 	return out
 
+func _in_grid_sector(deg: float) -> bool:
+	return deg > GRID_A0 and deg < GRID_A1
+
+## Posición del eje de la avenida k (0..7) a r metros de la plaza (el mismo cálculo de _radial)
+func _avenue_pos(k: int, r: float) -> Vector2:
+	var ang := float(k) * PI / 4.0
+	var off := float(AVE[k][0]) * sin(float(AVE[k][1]) * PI * r / 130.0)
+	return Vector2(cos(ang), sin(ang)) * r + Vector2(-sin(ang), cos(ang)) * off
+
+## ¿El punto está entre la avenida 4 y la 5? (con margen: negativo = hasta el eje de la avenida, así la calle la cruza)
+func _in_grid(p: Vector2, margin_m: float) -> bool:
+	var r := p.length()
+	if r < 230.0 or r > 1030.0:
+		return false
+	var a := rad_to_deg(atan2(p.y, p.x))
+	if a < 0.0:
+		a += 360.0
+	var a0 := rad_to_deg(atan2(_avenue_pos(3, r).y, _avenue_pos(3, r).x)) + rad_to_deg(margin_m / r)
+	var a1 := rad_to_deg(atan2(_avenue_pos(4, r).y, _avenue_pos(4, r).x)) - rad_to_deg(margin_m / r)
+	if a1 < 0.0:
+		a1 += 360.0
+	return a > a0 and a < a1
+
+## Barrio de manzanas cuadradas (calles en grilla): otro estilo de ciudad, distinto de los anillos y las avenidas
+func _make_grid(id: int) -> int:
+	var ang := deg_to_rad((GRID_A0 + GRID_A1) * 0.5)
+	var u := Vector2(cos(ang), sin(ang))
+	var v := Vector2(-sin(ang), cos(ang))
+	var num := 301
+	var lines: Array = []
+	for i in range(-5, 6): # paralelas al eje del sector
+		var pts := PackedVector2Array()
+		var runs: Array = []
+		var s_ := 230.0
+		while s_ < 1040.0:
+			var p := u * s_ + v * (float(i) * 96.0)
+			if _in_grid(p, -1.0):
+				pts.append(p)
+			elif pts.size() > 0:
+				runs.append(pts)
+				pts = PackedVector2Array()
+			s_ += STEP
+		if pts.size() > 0:
+			runs.append(pts)
+		lines.append_array(runs)
+	for j in range(0, 9): # transversales
+		var pts := PackedVector2Array()
+		var runs: Array = []
+		var t := -620.0
+		while t < 620.0:
+			var p := u * (300.0 + float(j) * 88.0) + v * t
+			if _in_grid(p, -1.0):
+				pts.append(p)
+			elif pts.size() > 0:
+				runs.append(pts)
+				pts = PackedVector2Array()
+			t += STEP
+		if pts.size() > 0:
+			runs.append(pts)
+		lines.append_array(runs)
+	for ln in lines:
+		if (ln as PackedVector2Array).size() < 8:
+			continue
+		_sample_road(id, "Calle %d" % num, num, "minor", 3.8, 2.2, ln)
+		id += 1
+		num += 1
+	return id
+
+## Parque del Drift: una plaza redonda abierta (se maneja por adentro) con una calle alrededor y edificios que la cierran
+func _make_park(id: int) -> int:
+	var cen := Vector2(cos(deg_to_rad(22.5)), sin(deg_to_rad(22.5))) * 195.0
+	var pl := PackedVector2Array()
+	var n := int(ceil(TAU * PARK_R / STEP))
+	for i in n + 1:
+		var a := TAU * float(i) / float(n)
+		pl.append(cen + Vector2(cos(a), sin(a)) * PARK_R)
+	_sample_road(id, "Parque del Drift", 0, "plaza", 5.0, 2.5, pl)
+	roads[roads.size() - 1]["center"] = cen
+	open_areas.append({"pos": cen, "r": PARK_R, "name": "Parque del Drift", "paving": true})
+	return id + 1
+
 func _make_roads() -> void:
 	var id := 0
 	# plaza: la rotonda del centro
 	_sample_road(id, "Plaza Aurora", 0, "plaza", 6.0, 3.0, _ring(PLAZA_R, 0.0, TAU, 0.0))
+	roads[0]["center"] = Vector2.ZERO
+	open_areas.append({"pos": Vector2.ZERO, "r": PLAZA_R, "name": "Plaza Aurora", "paving": false})
 	id += 1
 	# anillos
 	for i in RINGS.size():
@@ -166,7 +253,7 @@ func _make_roads() -> void:
 		var ang := float(k) * PI / 4.0
 		var rural := k in [0, 4, 6, 7]
 		var r1 := RURAL_END if rural else (COAST_R if k in [1, 2, 3] else 1040.0)
-		_sample_road(id, "Avenida %d" % (k + 1), k + 1, "major", 7.0, 3.6, _radial(PLAZA_R, minf(r1, 1040.0 if rural else r1), ang, 12.0, 0.0))
+		_sample_road(id, "Avenida %d" % (k + 1), k + 1, "major", 7.0, 3.6, _radial(PLAZA_R, minf(r1, 1040.0 if rural else r1), ang, float(AVE[k][0]), 0.0, float(AVE[k][1])))
 		id += 1
 	# rutas rurales: continúan las avenidas 1, 5, 7 y 8 hacia afuera, con curvas largas, hasta una Salida numerada
 	var rural_ids := {}
@@ -187,12 +274,18 @@ func _make_roads() -> void:
 	# secundarias B (a 22,5°) desde el anillo 260 y C (a 11,25°) desde el 650
 	for k in 8:
 		var ang := PI / 8.0 + float(k) * PI / 4.0
-		_sample_road(id, "Calle %d" % (101 + k), 101 + k, "minor", 4.2, 2.4, _radial(260.0, 1040.0, ang, 9.0, 0.0))
+		if _in_grid_sector(rad_to_deg(ang)):
+			continue
+		_sample_road(id, "Calle %d" % (101 + k), 101 + k, "minor", 4.2, 2.4, _radial(260.0, 1040.0, ang, 9.0 + 3.0 * float(k % 3), 0.0))
 		id += 1
 	for k in 16:
 		var ang := PI / 16.0 + float(k) * PI / 8.0
+		if _in_grid_sector(rad_to_deg(ang)) or k in [2, 11]:
+			continue # el sector de la grilla las reemplaza; dos más se sacan para dejar manzanas grandes
 		_sample_road(id, "Calle %d" % (201 + k), 201 + k, "minor", 3.8, 2.2, _radial(650.0, 1040.0, ang, 6.0, 0.0))
 		id += 1
+	id = _make_grid(id)
+	id = _make_park(id)
 	# atajos: caminos con curvas que unen una ruta con la de al lado (vas por una a otra ciudad y, si querés, doblás y salís por la otra)
 	var sc := 1
 	for sp in [[0, 1300.0, 7, 1350.0, 46.0, 210.0, 0.0], [0, 1760.0, 7, 1810.0, 40.0, 180.0, 1.3], [7, 1560.0, 6, 1610.0, 44.0, 200.0, 2.1], [7, 2020.0, 6, 2070.0, 38.0, 170.0, 0.7]]:
@@ -376,11 +469,28 @@ func probe(x: float, z: float) -> PackedFloat64Array:
 					out[4] = ay + ey * t
 					out[5] = float(rd["hw"])
 					out[6] = float(s_road[si])
+	# plazas y parques abiertos: se maneja por adentro (adentro de una zona abierta siempre hay suelo)
+	for oi in open_areas.size():
+		var oa: Dictionary = open_areas[oi]
+		var oc: Vector2 = oa["pos"]
+		var od := Vector2(x - oc.x, z - oc.y).length()
+		var orr: float = oa["r"]
+		if od < orr and orr - od > best:
+			best = orr - od
+			out[0] = best
+			out[1] = 0.0
+			out[2] = 0.0
+			out[3] = 0.0
+			out[4] = height(x, z)
+			out[5] = orr
+			out[6] = -2.0 - float(oi)
 	return out
 
 ## Calle y cuadra de un punto: {road, name, num, cuadra, kind, dist}
 func locate(x: float, z: float) -> Dictionary:
 	var pr := probe(x, z)
+	if pr[6] <= -2.0:
+		return {"road": -1, "name": str(open_areas[int(-pr[6]) - 2]["name"]), "num": 0, "cuadra": 1, "kind": "plaza", "dist": 0.0}
 	if pr[6] < 0.0 or pr[0] < -12.0:
 		return {"road": -1, "name": "", "num": -1, "cuadra": 0, "kind": "", "dist": 1e9}
 	var ri := int(pr[6])
@@ -565,7 +675,7 @@ func _place_facades() -> void:
 				continue # del lado del mar no se edifica
 			if kind == "plaza":
 				# solo el lado de afuera: la plaza es un parque abierto y la rodean los edificios
-				var p0 := Vector2(pts[0].x, pts[0].z)
+				var p0 := Vector2(pts[0].x, pts[0].z) - (rd["center"] as Vector2)
 				if away[0].dot(p0) < 0.0:
 					continue
 			var blocked: Array = []
@@ -752,6 +862,11 @@ func _place_props() -> void:
 			elif kind == "coast" and acc_b >= 10.0 and not near_j:
 				acc_b = 0.0
 				_add_prop(3, p.x + nrm.x * (hw + sw - 0.4), p.y + nrm.y * (hw + sw - 0.4), -nrm)
+	# plaza Aurora: el monumento del centro y un anillo de árboles; el parque del drift queda libre (solo faroles en su calle)
+	_add_prop(4, 0.0, 0.0, Vector2(0, 1))
+	for i in 10:
+		var a := TAU * (float(i) + 0.5) / 10.0
+		_add_prop(1, cos(a) * 30.0, sin(a) * 30.0, Vector2(0, 1))
 	# semáforos: cuatro por cruce grande (dos por cada calle, en esquinas opuestas)
 	for j in junctions:
 		if not bool(j["major"]):
@@ -781,7 +896,7 @@ func _place_props() -> void:
 # ───────────────────────── puntos de interés ─────────────────────────
 ## Cada uno es un edificio especial pegado a una calle: [id, tipo, nombre, calle, distancia sobre la calle (m), lado, ancho, fondo, alto, color]
 const POI_SPECS := [
-	["concesionario", "dealer", "Concesionario Aurelia", "Avenida 7", 150.0, 1.0, 34.0, 22.0, 9.6, Color(0.20, 0.45, 0.85)],
+	["concesionario", "dealer", "Concesionario Dream City", "Avenida 7", 150.0, 1.0, 34.0, 22.0, 9.6, Color(0.20, 0.45, 0.85)],
 	["taller_centro", "garage", "Taller Central", "Avenida 1", 170.0, -1.0, 26.0, 18.0, 8.0, Color(0.95, 0.45, 0.10)],
 	["taller_puerto", "garage", "Taller del Puerto", "Costanera 90", 420.0, -1.0, 26.0, 18.0, 8.0, Color(0.95, 0.45, 0.10)],
 	["mirador", "view", "Mirador de la Colina", "Camino de la Colina 300", -1.0, 1.0, 18.0, 14.0, 6.4, Color(0.95, 0.80, 0.25)],

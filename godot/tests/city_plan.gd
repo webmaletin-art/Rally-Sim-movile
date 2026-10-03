@@ -1,4 +1,4 @@
-## Plano de Puerto Aurelia visto desde arriba (para ver huecos): rojo = calle/vereda, gris = edificio, blanco = vacío.
+## Plano de Dream City visto desde arriba (para ver huecos): rojo = calle/vereda, gris = edificio, blanco = vacío.
 ## Uso: godot --headless --script res://tests/city_plan.gd -- /tmp/plano.png [x0 z0 lado_m]
 extends SceneTree
 const CityLayout := preload("res://game/city/city_layout.gd")

@@ -1,5 +1,5 @@
 extends RefCounted
-## Piloto automático de Puerto Aurelia: sigue un camino de puntos (el del GPS) mirando un poco adelante y baja la velocidad en las curvas. Sirve de prueba (¿se puede
+## Piloto automático de Dream City: sigue un camino de puntos (el del GPS) mirando un poco adelante y baja la velocidad en las curvas. Sirve de prueba (¿se puede
 ## llegar por las calles sin trabarse?) y después para el tránsito de papel.
 
 var hb := false

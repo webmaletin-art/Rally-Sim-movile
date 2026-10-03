@@ -1,5 +1,5 @@
 extends "res://game/track/drift_track.gd"
-## La pista de Puerto Aurelia (mundo abierto): las calles son un laberinto. Todo lo que no es calle o vereda son edificios: ahí hay una pared invisible. El suelo de cada
+## La pista de Dream City (mundo abierto): las calles son un laberinto. Todo lo que no es calle o vereda son edificios: ahí hay una pared invisible. El suelo de cada
 ## calle sale de la capa de la ciudad (city_layout.gd). Hereda de la pista de drift (comparten cómo chocan los autos: track.push) pero no tiene playón ni conos de slalom.
 ## Las consultas son puras, así que los hilos de la física pueden llamarlas a la vez.
 
@@ -84,7 +84,7 @@ func _push_locked(x: float, z: float, r: float) -> Vector3:
 					best = Vector3(ox / e if e > 0.001 else 1.0, oz / e if e > 0.001 else 0.0, rs - e)
 					hit_id = pid
 					hit_pos = Vector2(px, pz)
-	if hit_id >= 0 and best.z > 0.0:
+	if hit_id >= 0 and best.z > 0.0 and hit_id < city.prop_type.size() and int(city.prop_type[hit_id]) != 4: # el monumento y los portones de las salidas no se rompen
 		# el primer golpe lo tira (el auto lo siente una vez) y deja de ser obstáculo
 		_break_locked(hit_id, hit_pos, Vector2(-best.x, -best.y))
 	return best

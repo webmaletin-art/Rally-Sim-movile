@@ -1,11 +1,12 @@
 extends Node3D
-## El mundo de Puerto Aurelia, todo en papel y cargado por cuadras: solo existen las cuadras (de 160 m) que están cerca de la cámara; cuando te alejás se borran y cuando te
+## El mundo de Dream City, todo en papel y cargado por cuadras: solo existen las cuadras (de 160 m) que están cerca de la cámara; cuando te alejás se borran y cuando te
 ## acercás se arman (como mucho una por cuadro, para que no haya tirones). Cada cuadra es un puñado de mallas: el terreno, las calles con sus veredas y rayas, y los edificios
 ## (cajas de pocas caras; las ventanas las dibuja el shader fx/city_facade.gdshader). Nada lejano se dibuja: hay niebla y un horizonte pintado.
 
 const PaperKit := preload("res://game/fx/paper_kit.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityProps := preload("res://game/city/city_props.gd")
+const Tr := preload("res://game/i18n/tr.gd")
 const FACADE := preload("res://game/fx/city_facade.gdshader")
 const TEX := "res://game/models/paper/tex/"
 
@@ -176,6 +177,9 @@ func update_around(p: Vector3, max_new: int, budget_ms := -1.0) -> void:
 		var kk: Vector2i = k
 		if maxi(absi(kk.x - ck.x), absi(kk.y - ck.y)) > rad + 1:
 			_unregister_props(kk)
+			for ex in city.exits:
+				if city.chunk_of((ex["pos"] as Vector2).x, (ex["pos"] as Vector2).y) == kk:
+					_gate_circles(ex, false)
 			(chunks[kk] as Node3D).queue_free()
 			chunks.erase(kk)
 
@@ -227,6 +231,13 @@ func _build_chunk(key: Vector2i) -> Node3D:
 	if pi != null:
 		root.add_child(pi)
 	_register_props(key)
+	var tl := _treelines(key)
+	if tl != null:
+		root.add_child(tl)
+	for ex in city.exits:
+		if city.chunk_of((ex["pos"] as Vector2).x, (ex["pos"] as Vector2).y) == key:
+			root.add_child(_gate(ex))
+			_gate_circles(ex, true)
 	return root
 
 func _surface(m: ArrayMesh, s: Soup, mat: Material) -> void:
@@ -246,6 +257,9 @@ func _surface(m: ArrayMesh, s: Soup, mat: Material) -> void:
 const TC := 16.0 # lado de una celda del terreno
 
 func _ground_color(x: float, z: float, y: float) -> Color:
+	for oa in city.open_areas:
+		if Vector2(x, z).distance_to(oa["pos"]) < float(oa["r"]) + 6.0:
+			return Color(0.66, 0.68, 0.72) if bool(oa["paving"]) else Color(0.46, 0.64, 0.36) # parque del drift: pavimento · plaza: pasto
 	var zone := city.zone_of(x, z)
 	var jit := 0.012 * sin(x * 0.011) * cos(z * 0.009)
 	match zone:
@@ -528,6 +542,138 @@ func _box_building(s: Soup, b: Dictionary) -> void:
 				var mid2 := Vector2((e0.x + e1.x) * 0.5, (e0.z + e1.z) * 0.5) - bcv
 				s.quad_out(e0, e0 + up, e1 + up, e1, cw, mid2, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO)
 			s.quad_up(q0 + up, q1 + up, q2 + up, q3 + up, cw.darkened(0.12))
+
+## Bordes de las rutas rurales: dos filas de árboles de papel recortados, parados a lo largo del camino, para que nunca se vea qué hay más allá (el jugador no puede salir)
+func _treelines(key: Vector2i) -> MeshInstance3D:
+	var x0 := float(key.x) * CityLayout.CELL
+	var z0 := float(key.y) * CityLayout.CELL
+	var v := PackedVector3Array()
+	var c := PackedColorArray()
+	var kx0 := int(floor((x0 - 12.0) / CityLayout.HC))
+	var kx1 := int(floor((x0 + CityLayout.CELL + 12.0) / CityLayout.HC))
+	var kz0 := int(floor((z0 - 12.0) / CityLayout.HC))
+	var kz1 := int(floor((z0 + CityLayout.CELL + 12.0) / CityLayout.HC))
+	for kx in range(kx0, kx1 + 1):
+		for kz in range(kz0, kz1 + 1):
+			var k2 := Vector2i(kx, kz)
+			if not city._hash.has(k2):
+				continue
+			for si in (city._hash[k2] as PackedInt32Array):
+				var px: float = city.s_x[si]
+				var pz: float = city.s_z[si]
+				if px < x0 or px >= x0 + CityLayout.CELL or pz < z0 or pz >= z0 + CityLayout.CELL:
+					continue
+				var ni: int = city.s_next[si]
+				if ni < 0:
+					continue
+				var road: Dictionary = city.roads[city.s_road[si]]
+				var kind: String = road["kind"]
+				if kind != "rural" and kind != "shortcut":
+					continue
+				var a := Vector2(px, pz)
+				var b := Vector2(city.s_x[ni], city.s_z[ni])
+				var tn := (b - a).normalized()
+				var nrm := Vector2(-tn.y, tn.x)
+				for sd in [-1.0, 1.0]:
+					for row in 2:
+						var off := float(road["hw"]) + float(road["sw"]) + 1.4 + float(row) * 1.9
+						for tk in 2:
+							var cen := a.lerp(b, 0.25 + 0.5 * float(tk)) + nrm * (float(sd) * off)
+							var hsh := fposmod(sin(cen.x * 12.9898 + cen.y * 78.233) * 43758.5453, 1.0)
+							_paper_tree(v, c, cen, tn, 6.0 + 4.0 * hsh, hsh, row)
+	if v.is_empty():
+		return null
+	var m := ArrayMesh.new()
+	PaperKit.add_surface(m, v, c, PaperKit.material(null, 0.0, 0.2, 0.3))
+	var mi := MeshInstance3D.new()
+	mi.name = "treelines"
+	mi.mesh = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.visibility_range_end = 190.0 * maxf(view_k, 0.6)
+	return mi
+
+## Un árbol recortado (dos triángulos de copa y un tronco) parado en el plano del camino
+func _paper_tree(v: PackedVector3Array, c: PackedColorArray, cen: Vector2, tn: Vector2, h: float, hsh: float, row: int) -> void:
+	var y := city.height(cen.x, cen.y)
+	var g := 0.30 + 0.12 * hsh - 0.05 * float(row)
+	var col := Color(g * 0.8, 0.50 + 0.14 * hsh - 0.06 * float(row), 0.24 + 0.05 * hsh)
+	var t3 := Vector3(tn.x, 0.0, tn.y)
+	var base := Vector3(cen.x, y - 0.3, cen.y)
+	var up := Vector3(0, 1, 0)
+	# tronco
+	var tr_col := Color(0.38, 0.27, 0.18)
+	v.append_array(PackedVector3Array([base - t3 * 0.18, base + t3 * 0.18, base + t3 * 0.18 + up * 1.4, base - t3 * 0.18, base + t3 * 0.18 + up * 1.4, base - t3 * 0.18 + up * 1.4]))
+	for i in 6:
+		c.append(tr_col)
+	# copa baja y copa alta
+	var w1 := 2.7 + 0.8 * hsh
+	var low := PackedVector3Array([base - t3 * w1 + up * 1.1, base + t3 * w1 + up * 1.1, base + up * (h * 0.7)])
+	var high := PackedVector3Array([base - t3 * (w1 * 0.7) + up * (h * 0.45), base + t3 * (w1 * 0.7) + up * (h * 0.45), base + up * h])
+	v.append_array(low)
+	v.append_array(high)
+	for i in 3:
+		c.append(col)
+	for i in 3:
+		c.append(col.lightened(0.12))
+
+## Portón cerrado al final de una ruta rural: la salida a otra ciudad todavía no abrió (próxima actualización)
+func _gate(ex: Dictionary) -> Node3D:
+	var root := Node3D.new()
+	var pos: Vector2 = ex["pos"]
+	var yaw: float = ex["yaw"]
+	var rd: Dictionary = city.roads[int(ex["road"])]
+	var half := float(rd["hw"]) + float(rd["sw"]) - 0.4
+	var y := city.height(pos.x, pos.y) + 0.05
+	# a 1 m del final: el auto choca antes (los círculos de choque están en _gate_circles)
+	var xf := Transform3D(Basis(Vector3.UP, yaw), Vector3(pos.x, y, pos.y))
+	var v := PackedVector3Array()
+	var c := PackedColorArray()
+	CityProps.box(v, c, xf, Vector3(-half, 1.6, 0), Vector3(0.45, 3.2, 0.45), Color(0.9, 0.9, 0.9))
+	CityProps.box(v, c, xf, Vector3(half, 1.6, 0), Vector3(0.45, 3.2, 0.45), Color(0.9, 0.9, 0.9))
+	var n := int(ceil(half * 2.0 / 1.6))
+	for i in n:
+		var cx := -half + (float(i) + 0.5) * (half * 2.0 / float(n))
+		CityProps.box(v, c, xf, Vector3(cx, 1.1, 0), Vector3(half * 2.0 / float(n) + 0.02, 0.5, 0.2), Color(0.92, 0.2, 0.15) if i % 2 == 0 else Color(0.97, 0.97, 0.97))
+	CityProps.box(v, c, xf, Vector3(0, 4.6, 0), Vector3(half * 2.0 + 1.2, 2.6, 0.3), Color(0.12, 0.28, 0.52))
+	var m := ArrayMesh.new()
+	PaperKit.add_surface(m, v, c, PaperKit.material(null, 0.0, 0.2, 0.3))
+	var mi := MeshInstance3D.new()
+	mi.mesh = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	var lab := Label3D.new()
+	lab.text = "%s\n%s" % [Tr.t("SALIDA %d") % int(ex["num"]), Tr.t("PRÓXIMAMENTE")]
+	lab.font_size = 80
+	lab.pixel_size = 0.012
+	lab.modulate = Color(1, 1, 1)
+	lab.outline_size = 14
+	lab.outline_modulate = Color(0.05, 0.1, 0.2)
+	lab.position = Vector3(pos.x - sin(yaw) * 0.25, y + 4.6, pos.y - cos(yaw) * 0.25)
+	lab.rotation = Vector3(0, yaw + PI, 0)
+	root.add_child(lab)
+	return root
+
+var _gate_ids := {}
+
+## Círculos de choque que cierran la ruta (no se rompen): se agregan al armarse la cuadra y se sacan al borrarse
+func _gate_circles(ex: Dictionary, add: bool) -> void:
+	var pos: Vector2 = ex["pos"]
+	var yaw: float = ex["yaw"]
+	var rd: Dictionary = city.roads[int(ex["road"])]
+	var half := float(rd["hw"]) + float(rd["sw"])
+	var tn := Vector2(sin(yaw), cos(yaw))
+	var lat := Vector2(-tn.y, tn.x)
+	var base_id := 100000 + int(ex["num"]) * 100
+	var j := 0
+	var d := -half
+	while d <= half + 0.01:
+		var p := pos - tn * 1.0 + lat * d
+		if add:
+			track.add_prop(base_id + j, p.x, p.y, 1.3)
+		else:
+			track.remove_prop(base_id + j, p.x, p.y)
+		d += 2.0
+		j += 1
 
 ## Frentes de la cuadra: las losas de pared pegadas a la calle (ver CityLayout._place_facades)
 func _slabs(s: Soup, key: Vector2i) -> void:

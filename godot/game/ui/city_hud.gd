@@ -1,5 +1,5 @@
 extends Control
-## HUD de Puerto Aurelia: minimapa que gira con el auto (arriba siempre es hacia donde mirás), mapa grande fijo (norte arriba) que se abre tocando el minimapa,
+## HUD de Dream City: minimapa que gira con el auto (arriba siempre es hacia donde mirás), mapa grande fijo (norte arriba) que se abre tocando el minimapa,
 ## nombre de la calle y cuadra, y el GPS hasta un lugar (se elige tocando el mapa grande). Todo se dibuja con líneas a partir de las calles de CityLayout (nada de imágenes).
 
 const Kit := preload("res://game/ui/ui_kit.gd")
@@ -30,6 +30,7 @@ var _off_t := 0.0
 var _mini: Control
 var _big: Control
 var _toast_cb: Callable
+var _exit_warned := {}
 
 func setup(p_track, toast_cb: Callable) -> void:
 	track = p_track
@@ -194,6 +195,11 @@ func update_hud(dt: float, car) -> void:
 		street_l.text = "%s · %s %d" % [str(loc["name"]), Tr.t("cuadra"), int(loc["cuadra"])]
 	else:
 		street_l.text = Tr.t("Fuera de calle")
+	for ex in city.exits:
+		if not _exit_warned.has(ex["num"]) and car_pos.distance_to(ex["pos"]) < 140.0:
+			_exit_warned[ex["num"]] = true
+			if _toast_cb.is_valid():
+				_toast_cb.call(Tr.t("%s: esa ciudad abre en la próxima actualización") % str(ex["name"]))
 	if has_dest:
 		_off_t += step
 		_gps_text()

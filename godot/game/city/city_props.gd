@@ -1,11 +1,11 @@
 extends RefCounted
-## Objetos de la calle de Puerto Aurelia en papel: farolas, árboles, semáforos y bolardos. Cada uno es un puñado de cajas y prismas de color liso (de 12 a 60 triángulos);
+## Objetos de la calle de Dream City en papel: farolas, árboles, semáforos y bolardos. Cada uno es un puñado de cajas y prismas de color liso (de 12 a 60 triángulos);
 ## todos los de una cuadra se juntan en una sola malla (una llamada de dibujo) y se rearma cuando uno se rompe: el objeto queda tirado en el piso.
 ## Espacio local del objeto: +y arriba y +z hacia la calle (hacia donde apunta el brazo de la farola o del semáforo).
 
-enum { LAMP, TREE, LIGHT, BOLLARD }
-const RADIUS := [0.30, 0.45, 0.30, 0.20] # radio de choque de cada tipo (m)
-const TYPE_NAMES := ["farola", "árbol", "semáforo", "bolardo"]
+enum { LAMP, TREE, LIGHT, BOLLARD, MONUMENT }
+const RADIUS := [0.30, 0.45, 0.30, 0.20, 3.6] # radio de choque de cada tipo (m)
+const TYPE_NAMES := ["farola", "árbol", "semáforo", "bolardo", "monumento"]
 
 static func _tri(v: PackedVector3Array, c: PackedColorArray, a: Vector3, b: Vector3, d: Vector3, center: Vector3, col: Color) -> void:
 	# la cara mira hacia afuera del cuerpo (lejos de center)
@@ -77,6 +77,12 @@ static func emit(kind: int, x: float, y: float, z: float, yaw: float, seed_v: fl
 			var lights := [[4.15, Color(0.92, 0.16, 0.12)], [3.8, Color(0.97, 0.74, 0.12)], [3.45, Color(0.22, 0.82, 0.32)]]
 			for l in lights:
 				box(v, c, xf, Vector3(0, float(l[0]), 2.4), Vector3(0.42, 0.22, 0.2), l[1])
+		MONUMENT:
+			var stone := Color(0.80, 0.77, 0.70)
+			box(v, c, xf, Vector3(0, 0.3, 0), Vector3(8.0, 0.6, 8.0), stone.darkened(0.12))
+			box(v, c, xf, Vector3(0, 0.9, 0), Vector3(5.6, 0.6, 5.6), stone)
+			frustum(v, c, xf, Vector3(0, 1.2, 0), 1.5, 0.7, 11.0, 4, stone.lightened(0.05), PI * 0.25)
+			frustum(v, c, xf, Vector3(0, 12.2, 0), 0.7, 0.0, 1.6, 4, Color(0.95, 0.78, 0.25), PI * 0.25)
 		BOLLARD:
 			box(v, c, xf, Vector3(0, 0.4, 0), Vector3(0.18, 0.8, 0.18), Color(0.16, 0.18, 0.22))
 			box(v, c, xf, Vector3(0, 0.86, 0), Vector3(0.25, 0.12, 0.25), Color(0.30, 0.33, 0.38))

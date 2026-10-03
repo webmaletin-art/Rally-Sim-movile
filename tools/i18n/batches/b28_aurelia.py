@@ -1,7 +1,9 @@
-# Mundo abierto: Puerto Aurelia (menú, minimapa, GPS)
+# Mundo abierto: Dream City (menú, minimapa, GPS)
 T = {
-"Puerto Aurelia": ("Puerto Aurelia", "Puerto Aurelia", "Puerto Aurelia", "Puerto Aurelia", "Puerto Aurelia"),
-"PUERTO AURELIA": ("PUERTO AURELIA", "PUERTO AURELIA", "PUERTO AURELIA", "PUERTO AURELIA", "PUERTO AURELIA"),
+"DREAM CITY": ("DREAM CITY", "DREAM CITY", "DREAM CITY", "DREAM CITY", "DREAM CITY"),
+"SALIDA %d": ("EXIT %d", "SAÍDA %d", "SORTIE %d", "USCITA %d", "AUSFAHRT %d"),
+"PRÓXIMAMENTE": ("COMING SOON", "EM BREVE", "BIENTÔT", "PROSSIMAMENTE", "DEMNÄCHST"),
+"%s: esa ciudad abre en la próxima actualización": ("%s: that city opens in the next update", "%s: essa cidade abre na próxima atualização", "%s : cette ville ouvre à la prochaine mise à jour", "%s: quella città apre al prossimo aggiornamento", "%s: diese Stadt öffnet mit dem nächsten Update"),
 "✕ CERRAR": ("✕ CLOSE", "✕ FECHAR", "✕ FERMER", "✕ CHIUDI", "✕ SCHLIESSEN"),
 "QUITAR GPS": ("CLEAR GPS", "REMOVER GPS", "EFFACER GPS", "RIMUOVI GPS", "GPS LÖSCHEN"),
 "Tocá un lugar del mapa para ir con el GPS": ("Tap a place on the map to go there with the GPS", "Toque em um lugar do mapa para ir com o GPS", "Touchez un lieu sur la carte pour y aller avec le GPS", "Tocca un luogo sulla mappa per andarci con il GPS", "Tippe auf einen Ort der Karte, um mit dem GPS hinzufahren"),

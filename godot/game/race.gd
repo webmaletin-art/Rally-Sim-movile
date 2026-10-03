@@ -465,7 +465,7 @@ func _dream_atmosphere() -> void:
 	else:
 		FantasyWorld.atmosphere_of(th, env, sun, cam, world, _view_k()) # Marte, la Luna o el anillo de Júpiter
 
-## Puerto Aurelia: cielo de día y niebla que cierra las calles a la distancia en que se arman las cuadras (más cerca en teléfonos flojos)
+## Dream City: cielo de día y niebla que cierra las calles a la distancia en que se arman las cuadras (más cerca en teléfonos flojos)
 func _city_atmosphere() -> void:
 	var vk := _view_k()
 	var sky := Sky.new()
@@ -482,8 +482,8 @@ func _city_atmosphere() -> void:
 	env.fog_enabled = true
 	env.fog_mode = Environment.FOG_MODE_DEPTH
 	env.fog_light_color = Color(0.82, 0.87, 0.92)
-	env.fog_depth_begin = 220.0 * vk
-	env.fog_depth_end = 780.0 * vk
+	env.fog_depth_begin = 160.0 * vk
+	env.fog_depth_end = 560.0 * vk
 	cam.far = 1600.0
 
 ## Paper Race: cielo y niebla de papel (la selva se cierra a lo lejos), luz suave y pareja
@@ -510,7 +510,7 @@ func _make_track() -> void:
 			adv_alt.cross_clear(track)
 		return
 	if track_id == "aurelia":
-		track = CityTrack.new() # el mundo abierto: Puerto Aurelia (no figura en routes.json: no es una pista de carrera)
+		track = CityTrack.new() # el mundo abierto: Dream City (no figura en routes.json: no es una pista de carrera)
 		return
 	if track_id == "prueba" or not track_maps.has(track_id):
 		track_id = "prueba"
@@ -1482,12 +1482,15 @@ func _pace_rivals(dt: float) -> void:
 			cars[i].phys.powerMul = lerpf(cars[i].phys.powerMul, AIDriver.power_target(gap, want), clampf(dt * 1.0, 0.0, 1.0))
 
 ## Sesión: cuenta regresiva, vueltas, posiciones y fin. Después de la meta el auto frena solo y a los 2,5 s sale el resultado.
-## Prueba de manejo de Puerto Aurelia: el auto sigue el GPS hasta un lugar y se informa si llegó o se trabó
+## Prueba de manejo de Dream City: el auto sigue el GPS hasta un lugar y se informa si llegó o se trabó
 func _city_drive_test(poi_id: String) -> void:
 	var ch = race_hud.city_hud
 	for p in ch.city.pois:
 		if str(p["id"]) == poi_id:
 			ch.set_dest(p["front"], str(p["name"]))
+	for ex in ch.city.exits:
+		if "salida_%d" % int(ex["num"]) == poi_id:
+			ch.set_dest(ex["pos"], str(ex["name"]))
 	var d := CityDriver.new()
 	d.hud = ch
 	cars[0].driver = d

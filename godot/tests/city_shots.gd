@@ -1,4 +1,4 @@
-## Capturas de Puerto Aurelia desde varios puntos (xvfb + OpenGL): arma la pista de la ciudad, el mundo por cuadras y un cielo de día.
+## Capturas de Dream City desde varios puntos (xvfb + OpenGL): arma la pista de la ciudad, el mundo por cuadras y un cielo de día.
 ## Uso: xvfb-run -a godot --path godot --rendering-driver opengl3 --resolution 1280x720 --script res://tests/city_shots.gd -- /carpeta [vista 0.6..1]
 extends SceneTree
 
@@ -32,8 +32,8 @@ func _init() -> void:
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.82, 0.87, 0.92)
 	env.fog_mode = Environment.FOG_MODE_DEPTH
-	env.fog_depth_begin = 220.0 * view
-	env.fog_depth_end = 780.0 * view
+	env.fog_depth_begin = 160.0 * view
+	env.fog_depth_end = 560.0 * view
 	var we := WorldEnvironment.new()
 	we.environment = env
 	vp.add_child(we)
@@ -56,7 +56,7 @@ func _init() -> void:
 		["03_avenida1_este", 330.0, 0.0, -90.0, 3.2, -4.0], ["04_centro_alto", 40.0, -80.0, 0.0, 60.0, -28.0], ["05_anillo", 400.0, 160.0, 140.0, 3.0, -4.0],
 		["06_costanera", 0.0, 1100.0, 90.0, 3.0, -3.0], ["07_colina_sube", -860.0, -780.0, 200.0, 3.0, -4.0], ["08_colina_alto", -900.0, -900.0, 45.0, 30.0, -10.0],
 		["09_ruta_este", 1500.0, 0.0, -90.0, 3.0, -3.0], ["10_barrio", -520.0, 380.0, 60.0, 3.0, -4.0], ["11_plaza_alto", 0.0, 120.0, 0.0, 120.0, -45.0],
-		["12_casco_viejo", 305.0, 563.0, 64.0, 2.6, -3.0], ["13_casco_viejo_b", 198.0, 609.0, 23.0, 2.6, -3.0], ["14_casco_alto", 330.0, 600.0, 28.0, 45.0, -30.0], ["15_atajo", 1330.0, 100.0, 80.0, 3.0, -3.0], ["16_vacio_a", 109.0, -330.0, 180.0, 70.0, -55.0], ["17_vacio_b", -56.0, 290.0, 180.0, 70.0, -55.0], ["18_barrio_alto", -520.0, 380.0, 60.0, 60.0, -40.0], ["19_zenit", -520.0, 380.0, 0.0, 160.0, -89.0]]
+		["12_casco_viejo", 305.0, 563.0, 64.0, 2.6, -3.0], ["13_casco_viejo_b", 198.0, 609.0, 23.0, 2.6, -3.0], ["14_casco_alto", 330.0, 600.0, 28.0, 45.0, -30.0], ["15_atajo", 1330.0, 100.0, 80.0, 3.0, -3.0], ["16_vacio_a", 109.0, -330.0, 180.0, 70.0, -55.0], ["17_vacio_b", -56.0, 290.0, 180.0, 70.0, -55.0], ["18_barrio_alto", -520.0, 380.0, 60.0, 60.0, -40.0], ["19_zenit", -520.0, 380.0, 0.0, 160.0, -89.0], ["20_grilla", -540.0, 200.0, 60.0, 3.0, -3.0], ["21_parque", 178.0, 128.0, 180.0, 3.0, -3.0], ["22_afueras", 0.0, 940.0, 180.0, 3.0, -3.0], ["23_parque_alto", 178.0, 150.0, 180.0, 70.0, -50.0], ["24_plaza_alto", 0.0, 100.0, 180.0, 60.0, -45.0], ["25_ruta_borde", 1600.0, 56.0, 87.0, 2.6, -2.0], ["26_salida", 2255.0, -37.0, 93.0, 2.6, -2.0], ["27_atajo_borde", 1330.0, 100.0, 80.0, 3.0, -2.0]]
 	for sh in shots:
 		var x := float(sh[1])
 		var z := float(sh[2])

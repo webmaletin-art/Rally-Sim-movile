@@ -366,7 +366,7 @@ func go(name: String, arg = null, push := true) -> void:
 		_: _home()
 
 ## Antes de largar una carrera se elige el nivel de simulación (arcade / intermedio / simulador total / personalizado)
-## Mundo abierto: Puerto Aurelia, a recorrer libre con el auto elegido (antes se elige el nivel de simulación)
+## Mundo abierto: Dream City, a recorrer libre con el auto elegido (antes se elige el nivel de simulación)
 func _start_city() -> void:
 	var pid: String = profile.current_id()
 	profile.select(pid)
@@ -520,7 +520,7 @@ func _home() -> void:
 	body.add_child(soon)
 	soon.add_child(tile("🌌", "FANTASÍA", "mapas de ensueño", func(): go("fantasy"), false, 70.0))
 	soon.add_child(tile("🌐", "MODO ONLINE", "PRONTO", func(): go("soon", "online"), false, 70.0))
-	soon.add_child(tile("🗺", "MUNDO ABIERTO", "Puerto Aurelia", func(): _start_city(), false, 70.0))
+	soon.add_child(tile("🗺", "MUNDO ABIERTO", "Dream City", func(): _start_city(), false, 70.0))
 	var g := Kit.grid(3, 8, 8)
 	body.add_child(g)
 	var tiles := [

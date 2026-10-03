@@ -266,7 +266,7 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 		drift_l.text = ("%s  ·  %d°" % [_pts(s.cur), int(s.angle_deg)]) if (s.cur > 0.0 and s.state == "run") else ""
 		drift_l.add_theme_color_override("font_color", [Color(0.55, 0.85, 1.0), Color(0.55, 0.85, 1.0), Color(1.0, 0.9, 0.4), Color(1.0, 0.7, 0.25), Color(1.0, 0.5, 0.2), Color(1.0, 0.35, 0.3)][clampi(s.mult, 0, 5)])
 	elif t == "city":
-		lap_l.text = "%s · %.1f km" % [Tr.t("PUERTO AURELIA"), s.odo / 1000.0]
+		lap_l.text = "%s · %.1f km" % [Tr.t("DREAM CITY"), s.odo / 1000.0]
 	elif t == "free":
 		lap_l.text = "PRUEBA LIBRE · salí desde la pausa"
 	elif t == "drift":

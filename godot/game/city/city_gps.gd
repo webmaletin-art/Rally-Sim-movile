@@ -1,5 +1,5 @@
 extends RefCounted
-## GPS de Puerto Aurelia: el camino más corto por las calles hasta un punto. Las calles son listas de puntos (cada 8 m); acá cada punto es un nodo unido al anterior
+## GPS de Dream City: el camino más corto por las calles hasta un punto. Las calles son listas de puntos (cada 8 m); acá cada punto es un nodo unido al anterior
 ## y al siguiente de su calle, y los cruces unen un punto de cada calle. Dijkstra con una pila de prioridad hecha a mano (una vez por destino: unos pocos ms).
 
 const CityLayout := preload("res://game/city/city_layout.gd")

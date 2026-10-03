@@ -1,4 +1,4 @@
-## Prueba de la ciudad de Puerto Aurelia: que se genere igual siempre, que las calles tengan pendientes manejables, que los frentes cierren las calles sin huecos y que
+## Prueba de la ciudad de Dream City: que se genere igual siempre, que las calles tengan pendientes manejables, que los frentes cierren las calles sin huecos y que
 ## los números de calle y las salidas existan.
 ## Uso: godot --headless --path godot --script res://tests/city_test.gd
 extends SceneTree
@@ -106,7 +106,7 @@ func _init() -> void:
 	print("     frentes: %d losas, %d puntos de línea de edificación, %d sin pared" % [c.slab_count, tested, gaps])
 	check(gaps < tested / 50, "los frentes de las calles no tienen huecos (%d de %d)" % [gaps, tested])
 	# objetos de la calle: hay de cada tipo y ninguno sobre el asfalto
-	var cnt := [0, 0, 0, 0]
+	var cnt := [0, 0, 0, 0, 0]
 	var on_road := 0
 	for i in c.prop_type.size():
 		cnt[c.prop_type[i]] += 1
