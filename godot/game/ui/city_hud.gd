@@ -9,8 +9,8 @@ const CityNames := preload("res://game/city/city_names.gd")
 
 const MINI := 176.0 # lado del minimapa (px)
 const MINI_R := 230.0 # metros que muestra de radio
-const KIND_COL := {"dealer": Color(0.35, 0.65, 1.0), "garage": Color(1.0, 0.6, 0.15), "view": Color(1.0, 0.88, 0.3), "fuel": Color(0.95, 0.32, 0.28)}
-const KIND_ICON := {"dealer": "🚗", "garage": "🔧", "view": "⛰", "fuel": "⛽"}
+const KIND_COL := {"dealer": Color(0.35, 0.65, 1.0), "garage": Color(1.0, 0.6, 0.15), "view": Color(1.0, 0.88, 0.3), "fuel": Color(0.95, 0.32, 0.28), "toll": Color(0.95, 0.95, 0.95)}
+const KIND_ICON := {"dealer": "🚗", "garage": "🔧", "view": "⛰", "fuel": "⛽", "toll": "🛣"}
 
 var city
 var track
@@ -208,7 +208,7 @@ func _big_input(e: InputEvent) -> void:
 			bd = d
 			best = i
 	if best >= 0:
-		set_dest(city.pois[best]["front"], Tr.t(str(city.pois[best]["name"])))
+		set_dest(city.pois[best]["front"], CityNames.t(str(city.pois[best]["name"])))
 	else:
 		set_dest(w, Tr.t("el punto elegido"))
 	_set_big(false)
@@ -383,7 +383,7 @@ class MapView extends Control:
 			draw_circle(sp, 9.0 if big else 6.5, Color(0, 0, 0, 0.7))
 			draw_circle(sp, 7.0 if big else 5.0, col)
 			if big:
-				draw_string(f, sp + Vector2(12.0, 6.0), Tr.t(str(p["name"])), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color.WHITE)
+				draw_string(f, sp + Vector2(12.0, 6.0), CityNames.t(str(p["name"])), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color.WHITE)
 		for ex in hud.city.exits:
 			var sp: Vector2 = xf * (ex["pos"] as Vector2)
 			if Rect2(Vector2.ZERO, sz).grow(12.0).has_point(sp):

@@ -295,6 +295,9 @@ func _build_chunk(key: Vector2i) -> Node3D:
 	for st in city.stations:
 		if city.chunk_of((st["center"] as Vector2).x, (st["center"] as Vector2).y) == key:
 			root.add_child(_station(st))
+	for tl in city.tolls:
+		if city.chunk_of((tl["pos"] as Vector2).x, (tl["pos"] as Vector2).y) == key:
+			root.add_child(_toll(tl))
 	for h in city.halls:
 		if city.chunk_of((h["pos"] as Vector2).x, (h["pos"] as Vector2).y) == key:
 			root.add_child(_hall(h))
@@ -803,57 +806,178 @@ func _tunnel_segment(tn: Soup, si: int, ni: int) -> void:
 	if city.s_next[ni] < 0:
 		tn.quad(b - nb * wx, b - nb * wx + up, b + nb * wx + up, b + nb * wx, Color(0.18, 0.62, 0.34))
 
-## Una gasolinera: techo con franjas sobre los surtidores, kiosco al fondo con cartel, poste de precios y los círculos verdes donde se frena (los surtidores y las columnas son objetos)
+## Una gasolinera: playón con techo sobre las islas de surtidores, carriles con círculos verdes (3 a 6 puntos de carga), kiosco al fondo con vidriera, poste de precios y carteles.
+## Las medidas salen de CityLayout.STATION_KINDS (grande de carga rápida, mediana y chica). Los surtidores, las columnas y los bloques del kiosco son objetos (no se rompen).
 func _station(st: Dictionary) -> Node3D:
 	var root := Node3D.new()
 	root.name = "station_" + str(st["id"])
+	var kd: Dictionary = CityLayout.STATION_KINDS[str(st["kind"])]
 	var c: Vector2 = st["center"]
 	var nr: Vector2 = st["dir"]
 	var col: Color = st["color"]
+	var fast: bool = bool(st["fast"])
 	var y := city.height(c.x, c.y)
 	var xf := Transform3D(Basis(Vector3.UP, atan2(nr.x, nr.y)), Vector3(c.x, y, c.y)) # +z local = hacia el fondo del lote, +x = a lo largo de la calle
 	var v := PackedVector3Array()
 	var cl := PackedColorArray()
-	CityProps.box(v, cl, xf, Vector3(0, 5.2, 1.5), Vector3(18.0, 0.6, 10.0), col)
-	CityProps.box(v, cl, xf, Vector3(0, 5.2, -3.6), Vector3(18.2, 0.8, 0.5), Color(0.97, 0.97, 0.97))
-	CityProps.box(v, cl, xf, Vector3(0, 4.85, 1.5), Vector3(17.6, 0.1, 9.6), Color(0.92, 0.92, 0.9))
-	# kiosco
-	CityProps.box(v, cl, xf, Vector3(0, 2.1, 14.5), Vector3(15.0, 4.2, 6.0), Color(0.93, 0.92, 0.88))
-	CityProps.box(v, cl, xf, Vector3(0, 4.45, 14.5), Vector3(16.0, 0.5, 7.0), col)
-	CityProps.box(v, cl, xf, Vector3(0, 1.9, 11.45), Vector3(10.0, 2.2, 0.12), Color(0.16, 0.30, 0.45))
-	CityProps.box(v, cl, xf, Vector3(5.2, 1.3, 11.45), Vector3(1.4, 2.6, 0.14), col.darkened(0.2))
-	# poste de precios en el borde del lote, junto a la calle
-	CityProps.box(v, cl, xf, Vector3(-11.0, 4.0, -9.0), Vector3(0.5, 8.0, 0.5), Color(0.25, 0.27, 0.30))
-	CityProps.box(v, cl, xf, Vector3(-11.0, 7.6, -9.0), Vector3(3.2, 2.2, 0.35), col)
-	CityProps.box(v, cl, xf, Vector3(-11.0, 7.6, -9.2), Vector3(2.8, 1.8, 0.1), Color(0.97, 0.97, 0.97))
+	var white := Color(0.97, 0.97, 0.96)
+	var dark := Color(0.25, 0.27, 0.30)
+	var cw: float = kd["canopy"][0]
+	var cd: float = kd["canopy"][1]
+	# techo: losa del color de la marca con cantos blancos (a rayas amarillas y negras en la de carga rápida) y la cara de abajo clara
+	CityProps.box(v, cl, xf, Vector3(0, 5.25, 0), Vector3(cw, 0.55, cd), col)
+	CityProps.box(v, cl, xf, Vector3(0, 4.9, 0), Vector3(cw - 0.4, 0.1, cd - 0.4), Color(0.92, 0.92, 0.9))
+	CityProps.box(v, cl, xf, Vector3(0, 5.2, -cd * 0.5 - 0.02), Vector3(cw + 0.2, 0.9, 0.3), white)
+	CityProps.box(v, cl, xf, Vector3(0, 5.2, cd * 0.5 + 0.02), Vector3(cw + 0.2, 0.9, 0.3), white)
+	if fast:
+		var nst := int(cw / 2.0)
+		for k in nst:
+			if k % 2 == 0:
+				CityProps.box(v, cl, xf, Vector3(-cw * 0.5 + 1.0 + float(k) * 2.0, 5.2, -cd * 0.5 - 0.06), Vector3(1.0, 0.92, 0.1), Color(0.12, 0.12, 0.14))
+	# islas de surtidores (con cordón amarillo) y base de las columnas
+	var pz: Array = [0.0] if float(kd["isle"][1]) == 0.0 else [-float(kd["isle"][1]), float(kd["isle"][1])]
+	for iz in pz:
+		CityProps.box(v, cl, xf, Vector3(0, 0.1, float(iz)), Vector3(float(kd["isle"][0]), 0.2, 1.7), Color(0.78, 0.78, 0.75))
+		CityProps.box(v, cl, xf, Vector3(0, 0.21, float(iz)), Vector3(float(kd["isle"][0]) + 0.1, 0.03, 0.4), Color(0.96, 0.82, 0.12))
+	for pc in st["pillars"]:
+		var lp: Vector2 = pc
+		var rel := lp - c
+		var lxw: Vector2 = st["lx"]
+		var lxz := rel.dot(lxw)
+		var lzz := rel.dot(nr)
+		if absf(lxz) < cw * 0.5 and absf(lzz) < cd * 0.5:
+			CityProps.box(v, cl, xf, Vector3(lxz, 2.6, lzz), Vector3(0.9, 5.2, 0.9), white)
+			CityProps.box(v, cl, xf, Vector3(lxz, 0.7, lzz), Vector3(1.0, 1.4, 1.0), col.darkened(0.15))
+	# kiosco al fondo: vidriera iluminada, puerta y techo del color de la marca
+	var kw: float = kd["kiosk"][0]
+	var kdp: float = kd["kiosk"][1]
+	var kz: float = kd["kiosk"][2]
+	CityProps.box(v, cl, xf, Vector3(0, 2.1, kz), Vector3(kw, 4.2, kdp), Color(0.93, 0.92, 0.88))
+	CityProps.box(v, cl, xf, Vector3(0, 4.45, kz), Vector3(kw + 1.0, 0.5, kdp + 1.0), col)
+	CityProps.box(v, cl, xf, Vector3(-kw * 0.12, 1.9, kz - kdp * 0.5 - 0.04), Vector3(kw * 0.62, 2.2, 0.12), Color(0.16, 0.30, 0.45))
+	CityProps.box(v, cl, xf, Vector3(kw * 0.36, 1.3, kz - kdp * 0.5 - 0.04), Vector3(1.4, 2.6, 0.14), col.darkened(0.2))
+	# poste de precios junto a la calle (en el último «pilar» de la lista)
+	var tp: Vector2 = (st["pillars"] as Array)[(st["pillars"] as Array).size() - 1]
+	var trel := tp - c
+	var tx := trel.dot(st["lx"] as Vector2)
+	var tz := trel.dot(nr)
+	CityProps.box(v, cl, xf, Vector3(tx, 4.0, tz), Vector3(0.5, 8.0, 0.5), dark)
+	CityProps.box(v, cl, xf, Vector3(tx, 7.6, tz), Vector3(3.4, 2.4, 0.4), col)
+	CityProps.box(v, cl, xf, Vector3(tx, 7.6, tz - 0.22), Vector3(3.0, 2.0, 0.1), white)
 	var m := ArrayMesh.new()
 	PaperKit.add_surface(m, v, cl, PaperKit.material(null, 0.0, 0.2, 0.3))
 	var mi := MeshInstance3D.new()
 	mi.mesh = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
-	# de noche: luces del techo y un charco de luz bajo la marquesina
+	# de noche: luces del techo, vidriera y un charco de luz bajo la marquesina
 	var gv := PackedVector3Array()
 	var gc := PackedColorArray()
-	CityProps.box(gv, gc, xf, Vector3(0, 4.78, 1.5), Vector3(17.0, 0.08, 9.0), Color(1.0, 0.96, 0.82, 1.0))
-	CityProps.box(gv, gc, xf, Vector3(0, 1.9, 11.4), Vector3(9.6, 2.0, 0.1), Color(1.0, 0.85, 0.5, 0.8))
-	CityProps.halo(gv, gc, xf, Vector3(0, 0.07, 1.5), 12.0, Color(1.0, 0.92, 0.7, 0.55), 14)
+	CityProps.box(gv, gc, xf, Vector3(0, 4.82, 0), Vector3(cw - 1.0, 0.08, cd - 1.0), Color(1.0, 0.96, 0.82, 1.0))
+	CityProps.box(gv, gc, xf, Vector3(-kw * 0.12, 1.9, kz - kdp * 0.5 - 0.1), Vector3(kw * 0.6, 2.0, 0.1), Color(1.0, 0.85, 0.5, 0.8))
+	CityProps.halo(gv, gc, xf, Vector3(0, 0.07, 0), maxf(cw, cd) * 0.62, Color(1.0, 0.92, 0.7, 0.55), 16)
 	root.add_child(_glow_instance(gv, gc, 260.0))
 	for fp in st["fuel_points"]:
 		var ring := _circle_mesh(1.9, 2.3, Color(0.20, 0.85, 0.35), Color(0.97, 0.97, 0.97))
 		ring.position = Vector3((fp as Vector2).x, city.height((fp as Vector2).x, (fp as Vector2).y) + 0.1, (fp as Vector2).y)
 		root.add_child(ring)
+	# carteles: en el frente del techo (hacia la calle) y en el poste de precios
+	var face := atan2(-nr.x, -nr.y)
+	var fp0 := c - nr * (cd * 0.5 + 0.2)
+	var title := Tr.t("CARGA RÁPIDA") if fast else Tr.t("GASOLINERA")
+	root.add_child(_label3d(title, Vector3(fp0.x, y + 5.2, fp0.y), face, 0.016 if cw > 30.0 else 0.012, Color(0.1, 0.1, 0.12) if fast else Color(1, 1, 1), 72))
+	var tw := c + (st["lx"] as Vector2) * tx + nr * (tz - 0.3)
+	root.add_child(_label3d(Tr.t("GASOLINERA") if not fast else Tr.t("CARGA RÁPIDA"), Vector3(tw.x, y + 7.6, tw.y), face, 0.0075, Color(0.1, 0.1, 0.12), 60))
+	return root
+
+func _label3d(text: String, pos: Vector3, yaw: float, px: float, col: Color, fsize: int) -> Label3D:
 	var lab := Label3D.new()
-	lab.text = Tr.t("GASOLINERA")
-	lab.font_size = 72
-	lab.pixel_size = 0.012
-	lab.modulate = Color(1, 1, 1)
-	lab.outline_size = 14
-	lab.outline_modulate = Color(0.1, 0.1, 0.12)
-	var tp := c + nr * 11.0
-	lab.position = Vector3(tp.x - nr.x * 0.5, y + 5.4, tp.y - nr.y * 0.5)
-	lab.rotation = Vector3(0, atan2(-nr.x, -nr.y), 0)
-	root.add_child(lab)
+	lab.text = text
+	lab.font_size = fsize
+	lab.pixel_size = px
+	lab.modulate = col
+	lab.outline_size = 10
+	lab.outline_modulate = Color(0.97, 0.97, 0.95) if col.v < 0.4 else Color(0.1, 0.1, 0.12)
+	lab.position = pos
+	lab.rotation = Vector3(0, yaw, 0)
+	return lab
+
+## Un peaje: pórtico sobre la ruta, isla central con la cabina y una barrera por carril (las barreras las mueve CityToll). Marco local: +z = hacia afuera de la ciudad.
+func _toll(t: Dictionary) -> Node3D:
+	var root := Node3D.new()
+	root.name = "toll_" + str(t["id"])
+	var pos: Vector2 = t["pos"]
+	var tn: Vector2 = t["tn"]
+	var hw: float = t["hw"]
+	var y := city.height(pos.x, pos.y)
+	var xf := Transform3D(Basis(Vector3.UP, atan2(tn.x, tn.y)), Vector3(pos.x, y, pos.y))
+	var v := PackedVector3Array()
+	var cl := PackedColorArray()
+	var white := Color(0.97, 0.97, 0.96)
+	var red := Color(0.85, 0.18, 0.15)
+	var gray := Color(0.30, 0.32, 0.36)
+	# pórtico: dos postes junto a la banquina y una viga con franja roja
+	for sx in [-1.0, 1.0]:
+		CityProps.box(v, cl, xf, Vector3(float(sx) * (hw + 1.0), 3.3, 0), Vector3(0.7, 6.6, 0.7), white)
+		CityProps.box(v, cl, xf, Vector3(float(sx) * (hw + 1.0), 0.5, 0), Vector3(0.9, 1.0, 0.9), red)
+	CityProps.box(v, cl, xf, Vector3(0, 6.3, 0), Vector3(hw * 2.0 + 3.2, 1.1, 4.0), white)
+	CityProps.box(v, cl, xf, Vector3(0, 6.05, -2.02), Vector3(hw * 2.0 + 3.3, 0.4, 0.1), red)
+	CityProps.box(v, cl, xf, Vector3(0, 6.05, 2.02), Vector3(hw * 2.0 + 3.3, 0.4, 0.1), red)
+	# isla central con la cabina (se ve desde los dos carriles)
+	CityProps.box(v, cl, xf, Vector3(0, 0.12, 0), Vector3(2.2, 0.24, 12.0), Color(0.78, 0.78, 0.75))
+	CityProps.box(v, cl, xf, Vector3(0, 0.25, 0), Vector3(2.3, 0.04, 12.1), Color(0.96, 0.82, 0.12))
+	CityProps.box(v, cl, xf, Vector3(0, 1.8, 0.0), Vector3(1.7, 3.2, 3.6), white)
+	CityProps.box(v, cl, xf, Vector3(0, 2.2, 0.0), Vector3(1.78, 1.2, 2.8), Color(0.16, 0.30, 0.45))
+	CityProps.box(v, cl, xf, Vector3(0, 3.55, 0.0), Vector3(2.4, 0.3, 4.4), red)
+	# postes de las barreras
+	for sx in [-1.0, 1.0]:
+		CityProps.box(v, cl, xf, Vector3(float(sx) * 1.3, 0.55, 3.2), Vector3(0.35, 1.1, 0.35), gray)
+	# conos y marcas
+	for sx in [-1.0, 1.0]:
+		for k in 3:
+			CityProps.box(v, cl, xf, Vector3(float(sx) * (hw - 0.6), 0.3, -5.0 - float(k) * 3.0), Vector3(0.4, 0.6, 0.4), Color(1.0, 0.45, 0.1))
+	var m := ArrayMesh.new()
+	PaperKit.add_surface(m, v, cl, PaperKit.material(null, 0.0, 0.2, 0.3))
+	var mi := MeshInstance3D.new()
+	mi.mesh = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	# las barreras: una barra a rayas rojas y blancas que gira sobre su poste (arm0 a la derecha, arm1 a la izquierda); viven en un marco con la orientación del peaje
+	var frame := Node3D.new()
+	frame.name = "frame"
+	frame.transform = xf
+	root.add_child(frame)
+	for lane in 2:
+		var sg := 1.0 if lane == 0 else -1.0
+		var pivot := Node3D.new()
+		pivot.name = "arm%d" % lane
+		pivot.position = Vector3(sg * 1.3, 1.0, 3.2)
+		var av := PackedVector3Array()
+		var ac := PackedColorArray()
+		var seg := 6
+		var len := hw - 1.3 + 0.3
+		for k in seg:
+			CityProps.box(av, ac, Transform3D(), Vector3(sg * (len / float(seg)) * (float(k) + 0.5), 0.0, 0.0), Vector3(len / float(seg), 0.16, 0.16), red if k % 2 == 0 else white)
+		var am := ArrayMesh.new()
+		PaperKit.add_surface(am, av, ac, PaperKit.material(null, 0.0, 0.2, 0.3))
+		var ami := MeshInstance3D.new()
+		ami.mesh = am
+		ami.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pivot.add_child(ami)
+		frame.add_child(pivot)
+	# cartel del pórtico, a los dos lados
+	var face_in := atan2(-tn.x, -tn.y)
+	var sign_pos := pos - tn * 2.15
+	root.add_child(_label3d("%s · %d" % [Tr.t("PEAJE"), int(t["price"])], Vector3(sign_pos.x, y + 6.3, sign_pos.y), face_in, 0.014, Color(0.1, 0.1, 0.12), 72))
+	var sign_pos2 := pos + tn * 2.15
+	root.add_child(_label3d(Tr.t("PEAJE"), Vector3(sign_pos2.x, y + 6.3, sign_pos2.y), face_in + PI, 0.014, Color(0.1, 0.1, 0.12), 72))
+	# de noche: luz bajo el pórtico y charco sobre la calzada
+	var gv := PackedVector3Array()
+	var gc := PackedColorArray()
+	CityProps.box(gv, gc, xf, Vector3(0, 5.7, 0), Vector3(hw * 2.0 + 1.0, 0.08, 3.0), Color(1.0, 0.96, 0.82, 1.0))
+	CityProps.box(gv, gc, xf, Vector3(0, 2.2, -0.92), Vector3(1.4, 1.0, 0.08), Color(1.0, 0.85, 0.5, 0.8))
+	CityProps.halo(gv, gc, xf, Vector3(0, 0.08, 0), 11.0, Color(1.0, 0.9, 0.65, 0.5), 14)
+	root.add_child(_glow_instance(gv, gc, 260.0))
 	return root
 
 ## Marca circular del suelo (el círculo verde de los locales y de las salidas)

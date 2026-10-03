@@ -78,6 +78,29 @@ func _init() -> void:
 		var cam_p := fr - Vector2(sin(ty), cos(ty)) * 13.0
 		var dv: Vector2 = (pp["door"] as Vector2) - cam_p
 		shots.append(["30_local_%s" % str(pp["id"]), cam_p.x, cam_p.y, rad_to_deg(atan2(dv.x, dv.y)), 2.8, -3.0])
+	for stn in track.city.stations:
+		var sc: Vector2 = stn["center"]
+		var snr: Vector2 = stn["dir"]
+		var sfr: Vector2 = stn["front"]
+		var cam_s := sfr - snr * 4.0 - (stn["lx"] as Vector2) * 22.0 # desde la calle, de costado, mirando al centro
+		var dvs := sc - cam_s
+		shots.append(["60_%s_calle" % str(stn["id"]), cam_s.x, cam_s.y, rad_to_deg(atan2(dvs.x, dvs.y)), 2.6, -3.0])
+		var cam_h := sc - snr * 40.0
+		var dvh := sc - cam_h
+		shots.append(["61_%s_alto" % str(stn["id"]), cam_h.x, cam_h.y, rad_to_deg(atan2(dvh.x, dvh.y)), 34.0, -34.0])
+	for tl in track.city.tolls:
+		var tp: Vector2 = tl["pos"]
+		var ttn: Vector2 = tl["tn"]
+		var cam_t := tp - ttn * 26.0
+		shots.append(["62_%s" % str(tl["id"]), cam_t.x, cam_t.y, rad_to_deg(atan2(ttn.x, ttn.y)), 2.4, -2.0])
+		var cam_t2 := tp - ttn * 22.0
+		shots.append(["63_%s_alto" % str(tl["id"]), cam_t2.x, cam_t2.y, rad_to_deg(atan2(ttn.x, ttn.y)), 14.0, -22.0])
+	if args.size() > 2:
+		var keep: Array = []
+		for sh in shots:
+			if str(sh[0]).begins_with(args[2]):
+				keep.append(sh)
+		shots = keep
 	for sh in shots:
 		var x := float(sh[1])
 		var z := float(sh[2])

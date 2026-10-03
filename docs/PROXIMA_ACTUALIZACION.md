@@ -17,8 +17,8 @@ Dream City sale en la versión 1 con la ciudad base y las rutas hacia otras ciud
 - Pendiente: menú del taller visto de costado (suspensión y pintura con el auto de perfil) y las piezas de carrocería (alerón, paragolpes…), que las trae el dueño.
 
 ## 3b. Nafta y día/noche
-- ✅ Hecho: nafta con 4 gasolineras (se paga con créditos), reloj de día y noche con ventanas y lámparas prendidas.
-- Pendiente: gasolineras en las otras ciudades; precio que cambie con la hora; tanque más grande como mejora del auto; clima (lluvia/niebla) combinado con el reloj; estrellas en el cielo.
+- ✅ Hecho: nafta con 4 gasolineras de playón (una de carga rápida), peajes con barrera en las 4 rutas (con pase de descuento), reloj de día y noche con ventanas y lámparas prendidas.
+- Pendiente: gasolineras en las otras ciudades; carteles de peaje a lo largo de la ruta y peajes que cambien de precio según la ruta; precio de la nafta que cambie con la hora; tanque más grande como mejora del auto; clima (lluvia/niebla) combinado con el reloj; estrellas en el cielo.
 
 ## 4. Obras grandes
 - ✅ Hecho: túnel subterráneo en cruz (oculto) con cuatro bocas.

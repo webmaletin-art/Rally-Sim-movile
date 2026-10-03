@@ -105,6 +105,7 @@ func build() -> void:
 	_mark_junction_samples()
 	_place_pois()
 	_place_stations()
+	_place_tolls()
 	_place_facades()
 	_place_props()
 	_place_roadside()
@@ -882,16 +883,53 @@ func _slabs_in_run(kind: String, pts: PackedVector3Array, away: PackedVector2Arr
 		slabs[key] = arr
 		slab_count += 1
 
-# ───────────────────────── gasolineras ─────────────────────────
-## Las gasolineras: un lote redondo abierto (se maneja por adentro) pegado a una avenida, con techo sobre los surtidores, un kiosco al fondo y un círculo verde donde se frena
-## para cargar. El resto del lote lo cierra una pared de edificios por detrás (para que nunca se vea el fondo).
+# ───────────────────────── gasolineras y peajes ─────────────────────────
+## Las gasolineras ocupan el lugar de un edificio: un playón abierto (varios círculos que se pisan, así se maneja por adentro) pegado a la calle, con techo sobre las islas de surtidores,
+## carriles con 3 a 6 puntos de carga (círculo verde), un kiosco al fondo y un poste de precios. Hay tres tamaños: la grande de carga rápida en la avenida principal, dos medianas en
+## los barrios y una chica que sale de la ciudad, sobre el camino de la Ruta 20. Marco local de cada una: x = a lo largo de la calle, z = hacia el fondo del lote (el frente da a la calle).
 const STATION_SPECS := [
-	["gas_norte", "Gasolinera Norte", "Avenida 7", 380.0, 1.0, Color(0.88, 0.20, 0.15)],
-	["gas_este", "Gasolinera Este", "Avenida 1", 560.0, -1.0, Color(0.16, 0.52, 0.86)],
-	["gas_sur", "Gasolinera Sur", "Avenida 3", 700.0, 1.0, Color(0.96, 0.70, 0.12)],
-	["gas_oeste", "Gasolinera Oeste", "Avenida 6", 560.0, -1.0, Color(0.20, 0.68, 0.36)],
+	["gas_central", "Carga Rápida Central", "Avenida 3", 235.0, 1.0, Color(0.95, 0.72, 0.10), "big", true],
+	["gas_norte", "Gasolinera Norte", "Avenida 7", 520.0, -1.0, Color(0.88, 0.20, 0.15), "mid", false],
+	["gas_oeste", "Gasolinera Oeste", "Avenida 6", 560.0, 1.0, Color(0.20, 0.68, 0.36), "mid", false],
+	["gas_ruta", "Gasolinera Ruta 20", "Avenida 1", 930.0, -1.0, Color(0.16, 0.52, 0.86), "small", false],
 ]
-const LOT_R := 22.0
+# R: radio de cada círculo del playón · cu: posición (x) de cada círculo · pumps/pillars/blocks/bays: [x, z] locales · canopy: [ancho, fondo] · kiosk: [ancho, fondo, z]
+const STATION_KINDS := {
+	"big": {"R": 22.0, "cu": [-22.0, 0.0, 22.0], "canopy": [40.0, 26.0], "kiosk": [16.0, 4.5, 18.5],
+		"pumps": [[-8.0, -4.5], [8.0, -4.5], [-8.0, 4.5], [8.0, 4.5]], "pillars": [[-16.0, -4.5], [16.0, -4.5], [-16.0, 4.5], [16.0, 4.5], [-28.0, -14.0]],
+		"bays": [[-8.0, -8.0], [8.0, -8.0], [-8.0, 0.0], [8.0, 0.0], [-8.0, 8.0], [8.0, 8.0]], "blocks": [[-5.5, 18.5], [0.0, 18.5], [5.5, 18.5]], "isle": [24.0, 4.5]},
+	"mid": {"R": 19.0, "cu": [-9.0, 9.0], "canopy": [26.0, 15.0], "kiosk": [14.0, 4.0, 13.0],
+		"pumps": [[-5.0, 0.0], [5.0, 0.0]], "pillars": [[-10.5, 0.0], [10.5, 0.0], [-18.0, -11.0]],
+		"bays": [[-6.0, -4.4], [6.0, -4.4], [-6.0, 4.4], [6.0, 4.4]], "blocks": [[-4.0, 13.0], [4.0, 13.0]], "isle": [18.0, 0.0]},
+	"small": {"R": 16.0, "cu": [-6.0, 6.0], "canopy": [18.0, 12.0], "kiosk": [10.0, 3.6, 11.0],
+		"pumps": [[-4.0, 0.0], [4.0, 0.0]], "pillars": [[-7.5, 0.0], [7.5, 0.0], [-14.0, -8.5]],
+		"bays": [[-5.0, -4.4], [5.0, -4.4], [0.0, 4.4]], "blocks": [[-3.0, 11.0], [3.0, 11.0]], "isle": [12.0, 0.0]},
+}
+
+## ¿El playón de una gasolinera cabe ahí? No toca el asfalto de ninguna calle, ni un lugar especial, ni una zona abierta, ni otra gasolinera.
+func _lot_ok(circles: Array, r: float) -> bool:
+	for cc in circles:
+		var q: Vector2 = cc
+		var c := int(ceil((r + 9.0) / HC))
+		var kx := int(floor(q.x / HC))
+		var kz := int(floor(q.y / HC))
+		for dx in range(-c, c + 1):
+			for dz in range(-c, c + 1):
+				var k := Vector2i(kx + dx, kz + dz)
+				if not _hash.has(k):
+					continue
+				for si in (_hash[k] as PackedInt32Array):
+					var hw := float(roads[s_road[si]]["hw"])
+					if Vector2(s_x[si], s_z[si]).distance_to(q) < r + hw + 0.4:
+						return false
+		for p in pois:
+			var half := Vector2(p["size"]).length() * 0.5
+			if q.distance_to(p["pos"]) < r + half + 3.0:
+				return false
+		for oa in open_areas:
+			if q.distance_to(oa["pos"]) < r + float(oa["r"]) + 2.0:
+				return false
+	return true
 
 func _place_stations() -> void:
 	stations.clear()
@@ -899,56 +937,151 @@ func _place_stations() -> void:
 		var ri := road_named(str(sp[2]))
 		if ri < 0:
 			continue
+		var kd: Dictionary = STATION_KINDS[str(sp[6])]
+		var R := float(kd["R"])
+		var rd: Dictionary = roads[ri]
+		var pts: PackedVector3Array = rd["pts"]
+		var cum: PackedFloat32Array = rd["cum"]
+		var ov := minf(3.0, float(rd["sw"]) - 0.1)
+		var found := false
+		var tn := Vector2.ZERO
+		var nrm := Vector2.ZERO
+		var lx := Vector2.ZERO
+		var center := Vector2.ZERO
+		var foot := Vector2.ZERO
+		var circles: Array = []
+		# se busca un lugar libre cerca del pedido: primero del lado elegido, después del otro, corriendo de a 12 m
+		for step_i in 60:
+			for sd in [1.0, -1.0]:
+				var shift := float(((step_i + 1) / 2) * 12) * (1.0 if step_i % 2 == 0 else -1.0)
+				var side: float = float(sp[4]) * sd
+				var bi := 0
+				for i in pts.size():
+					if cum[i] <= float(sp[3]) + shift:
+						bi = i
+				var a := pts[bi]
+				var b := pts[mini(bi + 1, pts.size() - 1)]
+				var tn2 := Vector2(b.x - a.x, b.z - a.z)
+				if tn2.length() < 0.1:
+					continue
+				tn2 = tn2.normalized()
+				var nrm2 := Vector2(-tn2.y, tn2.x) * side
+				var lx2 := Vector2(nrm2.y, -nrm2.x) # el eje x local (ver CityWorld._station)
+				var c2 := Vector2(a.x, a.z) + nrm2 * (float(rd["hw"]) + float(rd["sw"]) + R - ov)
+				var cl: Array = []
+				for u in kd["cu"]:
+					cl.append(c2 + lx2 * float(u))
+				if _lot_ok(cl, R):
+					found = true
+					tn = tn2
+					nrm = nrm2
+					lx = lx2
+					center = c2
+					foot = Vector2(a.x, a.z)
+					circles = cl
+					break
+			if found:
+				break
+		if not found:
+			push_warning("gasolinera sin lugar: " + str(sp[0]))
+			continue
+		var wpos := func(u: float, v: float) -> Vector2: return center + lx * u + nrm * v
+		var pumps: Array = []
+		for pp in kd["pumps"]:
+			pumps.append(wpos.call(float(pp[0]), float(pp[1])))
+		var bays: Array = []
+		for bp in kd["bays"]:
+			bays.append(wpos.call(float(bp[0]), float(bp[1])))
+		var pillars: Array = []
+		for pl in kd["pillars"]:
+			pillars.append(wpos.call(float(pl[0]), float(pl[1])))
+		var blocks: Array = []
+		for bl in kd["blocks"]:
+			blocks.append(wpos.call(float(bl[0]), float(bl[1])))
+		var yaw := atan2(tn.x, tn.y)
+		var rural := str(rd["kind"]) == "rural" or float(rd["sw"]) < 3.0
+		var st := {"id": str(sp[0]), "name": str(sp[1]), "center": center, "yaw": yaw, "dir": nrm, "tn": tn, "lx": lx, "color": sp[5], "kind": str(sp[6]), "fast": bool(sp[7]), "rural": rural,
+			"fuel_points": bays, "pumps": pumps, "pillars": pillars, "blocks": blocks, "circles": circles, "r": R, "front": foot + nrm * (float(rd["hw"]) * 0.5)}
+		stations.append(st)
+		for cc in circles:
+			open_areas.append({"pos": cc, "r": R, "name": str(sp[1]), "paving": true, "nb": R + 3.0, "station": true})
+		pois.append({"id": str(sp[0]), "kind": "fuel", "name": str(sp[1]), "pos": center, "yaw": yaw, "size": Vector2(2, 2), "color": sp[5], "y": height(center.x, center.y), "road": ri,
+			"front": st["front"], "shop": "", "door": center, "dir": nrm, "road_yaw": yaw})
+		# la pared de atrás: un arco de losas alrededor de cada círculo, salvo donde pasa la calle o donde el playón sigue en el círculo vecino (en la ruta no hay pared: se ve el campo)
+		if rural:
+			continue
+		var steps := 20
+		for cc in circles:
+			var q: Vector2 = cc
+			for k in steps:
+				var a0 := TAU * float(k) / float(steps)
+				var a1 := TAU * float(k + 1) / float(steps)
+				var am := (a0 + a1) * 0.5
+				var mp := q + Vector2(cos(am), sin(am)) * (R + 1.5)
+				var pr := probe(mp.x, mp.y)
+				if pr[6] >= 0.0 and pr[0] > -0.4:
+					continue # ahí pasa la calle (el frente del lote)
+				var inside_other := false
+				for c2 in circles:
+					if (c2 as Vector2) != q and mp.distance_to(c2) < R + 0.6:
+						inside_other = true
+				if inside_other:
+					continue
+				var p0 := q + Vector2(cos(a0), sin(a0)) * (R + 1.5)
+				var p1 := q + Vector2(cos(a1), sin(a1)) * (R + 1.5)
+				var sl := {"pts": PackedVector3Array([Vector3(p0.x, height(p0.x, p0.y), p0.y), Vector3(p1.x, height(p1.x, p1.y), p1.y)]),
+					"away": PackedVector2Array([Vector2(cos(a0), sin(a0)), Vector2(cos(a1), sin(a1))]), "h": 9.6, "wall": WALLS[(k * 3 + int(sp[3])) % WALLS.size()], "roof": ROOFS[k % ROOFS.size()],
+					"seed": _rng.randf(), "depth": 6.0, "house": false, "hp": 0.0, "hn": 0.0, "zone": 1}
+				var key := chunk_of(p0.x, p0.y)
+				var arr: Array = slabs.get(key, [])
+				arr.append(sl)
+				slabs[key] = arr
+				slab_count += 1
+
+## Peajes: un retén sobre cada ruta rural, justo al salir de la ciudad (antes de la ruta de alta velocidad). Dos carriles con barrera, una isla con la cabina en el medio y un pórtico.
+## Se frena en un carril, se paga y la barrera se abre; la barrera cerrada es sólida (CityToll).
+const TOLL_S := 95.0 # metros desde el comienzo de la ruta
+const TOLL_PRICE := 30
+var tolls: Array = [] # {id, name, pos, tn, nrm, hw, road, price}
+
+func _place_tolls() -> void:
+	tolls.clear()
+	for rn in [20, 40, 60, 80]:
+		var ri := road_named("Ruta %d" % rn)
+		if ri < 0:
+			continue
 		var rd: Dictionary = roads[ri]
 		var pts: PackedVector3Array = rd["pts"]
 		var cum: PackedFloat32Array = rd["cum"]
 		var bi := 0
 		for i in pts.size():
-			if cum[i] <= float(sp[3]):
+			if cum[i] <= TOLL_S:
 				bi = i
 		var a := pts[bi]
 		var b := pts[mini(bi + 1, pts.size() - 1)]
 		var tn := Vector2(b.x - a.x, b.z - a.z).normalized()
-		var nrm := Vector2(-tn.y, tn.x) * float(sp[4])
-		var center := Vector2(a.x, a.z) + nrm * (float(rd["hw"]) + float(rd["sw"]) + LOT_R - 3.0)
-		var yaw := atan2(tn.x, tn.y)
-		var pumps: Array = []
-		for lat in [-6.0, -2.0, 2.0, 6.0]:
-			pumps.append(center + nrm * 1.5 + tn * float(lat))
-		var fpts: Array = [center + nrm * -1.9 + tn * -4.0, center + nrm * -1.9 + tn * 4.0]
-		var st := {"id": str(sp[0]), "name": str(sp[1]), "center": center, "yaw": yaw, "dir": nrm, "tn": tn, "color": sp[5], "fuel_points": fpts, "pumps": pumps,
-			"front": Vector2(a.x, a.z) + nrm * (float(rd["hw"]) * 0.5)}
-		stations.append(st)
-		open_areas.append({"pos": center, "r": LOT_R, "name": str(sp[1]), "paving": true, "nb": 24.0, "station": true})
-		pois.append({"id": str(sp[0]), "kind": "fuel", "name": str(sp[1]), "pos": center, "yaw": yaw, "size": Vector2(2, 2), "color": sp[5], "y": height(center.x, center.y), "road": ri,
-			"front": st["front"], "shop": "", "door": center, "dir": nrm, "road_yaw": yaw})
-		# la pared de atrás: un arco de losas alrededor del lote, salvo donde pasa la calle
-		var steps := 18
-		for k in steps:
-			var a0 := TAU * float(k) / float(steps)
-			var a1 := TAU * float(k + 1) / float(steps)
-			var am := (a0 + a1) * 0.5
-			var mp := center + Vector2(cos(am), sin(am)) * (LOT_R + 1.5)
-			var pr := probe(mp.x, mp.y)
-			if pr[6] >= 0.0 and pr[0] > -0.4:
-				continue # ahí pasa la calle (el frente del lote)
-			var p0 := center + Vector2(cos(a0), sin(a0)) * (LOT_R + 1.5)
-			var p1 := center + Vector2(cos(a1), sin(a1)) * (LOT_R + 1.5)
-			var sl := {"pts": PackedVector3Array([Vector3(p0.x, height(p0.x, p0.y), p0.y), Vector3(p1.x, height(p1.x, p1.y), p1.y)]),
-				"away": PackedVector2Array([Vector2(cos(a0), sin(a0)), Vector2(cos(a1), sin(a1))]), "h": 9.6, "wall": WALLS[(k * 3 + int(sp[3])) % WALLS.size()], "roof": ROOFS[k % ROOFS.size()],
-				"seed": _rng.randf(), "depth": 6.0, "house": false, "hp": 0.0, "hn": 0.0, "zone": 1}
-			var key := chunk_of(p0.x, p0.y)
-			var arr: Array = slabs.get(key, [])
-			arr.append(sl)
-			slabs[key] = arr
-			slab_count += 1
+		var pos := Vector2(a.x, a.z)
+		var t := {"id": "peaje_%d" % rn, "name": "Peaje Ruta %d" % rn, "pos": pos, "tn": tn, "nrm": Vector2(-tn.y, tn.x), "hw": float(rd["hw"]), "road": ri, "price": TOLL_PRICE}
+		tolls.append(t)
+		pois.append({"id": str(t["id"]), "kind": "toll", "name": str(t["name"]), "pos": pos, "yaw": atan2(tn.x, tn.y), "size": Vector2(2, 2), "color": Color(0.9, 0.3, 0.2), "y": height(pos.x, pos.y), "road": ri,
+			"front": pos, "shop": "", "door": pos, "dir": Vector2(-tn.y, tn.x), "road_yaw": atan2(tn.x, tn.y)})
 
 # ───────────────────────── objetos de la calle ─────────────────────────
+var _lot_props := false # se están poniendo los objetos de una gasolinera (los demás no pueden caer dentro de un playón ni de un peaje)
+
 func _add_prop(t: int, x: float, z: float, to_road: Vector2) -> void:
 	# nunca sobre el asfalto de ninguna calle
 	var pr := probe(x, z)
 	if pr[6] >= 0.0 and float(pr[1]) <= float(pr[5]) + 0.2:
 		return
+	if not _lot_props:
+		for st in stations:
+			for cc in st["circles"]:
+				if Vector2(x, z).distance_to(cc) < float(st["r"]) + 1.0:
+					return
+		for tl in tolls:
+			if Vector2(x, z).distance_to(tl["pos"]) < 16.0:
+				return
 	var id := prop_type.size()
 	prop_type.append(t)
 	prop_x.append(x)
@@ -1029,19 +1162,25 @@ func _place_props() -> void:
 		if i % 2 == 0:
 			_add_prop(8, cos(a + 0.2) * 22.0, sin(a + 0.2) * 22.0, Vector2(0, 1))
 			_add_prop(9, cos(a + 0.1) * 36.0, sin(a + 0.1) * 36.0, Vector2(0, 1))
-	# gasolineras: surtidores, columnas del techo y bloques que cierran el kiosco (nada de esto se rompe)
+	# gasolineras: surtidores, columnas del techo, poste de precios y bloques que cierran el kiosco (nada de esto se rompe)
+	_lot_props = true
 	for st in stations:
-		var c: Vector2 = st["center"]
 		var nr: Vector2 = st["dir"]
-		var tg: Vector2 = st["tn"]
 		for pp in st["pumps"]:
 			_add_prop(11, (pp as Vector2).x, (pp as Vector2).y, -nr)
-		for cl in [[-7.0, -3.0], [7.0, -3.0], [-7.0, 6.0], [7.0, 6.0]]:
-			var q: Vector2 = c + tg * float(cl[0]) + nr * (float(cl[1]) + 0.5)
-			_add_prop(5, q.x, q.y, nr)
-		for bl in [-5.0, 0.0, 5.0]:
-			var q2: Vector2 = c + nr * 14.0 + tg * float(bl)
-			_add_prop(12, q2.x, q2.y, nr)
+		for cl in st["pillars"]:
+			_add_prop(5, (cl as Vector2).x, (cl as Vector2).y, nr)
+		for bl in st["blocks"]:
+			_add_prop(12, (bl as Vector2).x, (bl as Vector2).y, nr)
+		if bool(st["rural"]):
+			# el fondo del lote en la ruta: una tirada de árboles detrás del playón
+			var c0: Vector2 = st["center"]
+			for k in 14:
+				var ang := TAU * float(k) / 14.0
+				var qq := c0 + Vector2(cos(ang), sin(ang)) * (float(st["r"]) + 7.0)
+				if (qq - c0).dot(nr) > 0.0:
+					_add_prop(10, qq.x, qq.y, nr)
+	_lot_props = false
 	# boca del estacionamiento: dos postes a cada lado (que no se rompen)
 	for mo in mouths:
 		if str(mo["kind"]) == "park":

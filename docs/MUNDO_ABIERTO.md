@@ -41,11 +41,18 @@ Se definen en `godot/game/data/shops.gd` (qué pestañas, mejoras y grupos de aj
 - Las puntas de los brazos todavía salen a la ciudad; en la próxima actualización pueden conectar con otras ciudades.
 
 ## Nafta y gasolineras
-- **4 gasolineras de papel** (Norte, Este, Sur y Oeste, sobre las avenidas 7, 1, 3 y 6): lote redondo abierto con techo de color, surtidores, kiosco, poste de precios y un **círculo verde** por cada punto de carga (`_place_stations` en `city_layout.gd`, `_station` en `city_world.gd`).
+- **4 gasolineras de papel**, cada una un **playón** que ocupa el lugar de una manzana (varios círculos que se pisan, con una pared de edificios por detrás), con techo sobre islas de surtidores, carriles con **3 a 6 puntos de carga** (círculo verde), kiosco con vidriera, poste de precios y carteles (`_place_stations`/`STATION_KINDS` en `city_layout.gd`, `_station` en `city_world.gd`). El generador busca un lugar libre cerca del pedido (sin pisar calles, locales ni zonas abiertas):
+  - **Carga Rápida Central** (grande, 6 puntos) en la Avenida 3, cerca del centro, donde pasa la mayoría. Carga en ~2 s y cuesta un 30 % más, pero regala un **pase de peaje** (los dos próximos peajes a mitad de precio).
+  - **Gasolinera Norte** y **Oeste** (medianas, 4 puntos) en los barrios.
+  - **Gasolinera Ruta 20** (chica, 3 puntos) saliendo de la ciudad por la Avenida 1, antes del peaje.
 - **El tanque dura unos 80 km** (`city_fuel.gd`): consume más con el acelerador a fondo y casi nada al soltarlo. Se guarda en el perfil (`fuel`) y no gasta bajo tierra.
 - **Sin estar pendiente:** al bajar del 15 % aparece un aviso y el **GPS marca solo la gasolinera más cercana**; con el tanque vacío el auto no acelera (hay que llegar a una gasolinera, o usar el último trecho en bajada). Barra de nafta bajo el minimapa.
 - **Cargar:** frenás sobre un círculo verde, tarda 1,5 s + 3 s por tanque entero que falte, y se **paga con créditos** (120 por tanque lleno). Si no alcanzan se carga lo que se pueda pagar; con tanque vacío y 0 créditos regalan un 8 % para seguir. En modo desarrollador es gratis.
 - Es una buena razón para vender créditos (Coins) en la tienda: la nafta es el gasto fijo del mundo abierto.
+
+## Peajes
+- **Un peaje por cada ruta rural** (Ruta 20, 40, 60 y 80), a ~95 m de donde empieza la ruta (antes de la ruta de alta velocidad). Pórtico, isla central con cabina y **una barrera por carril** (`_toll` en `city_world.gd`, lógica en `city_toll.gd`).
+- La barrera cerrada es **sólida** (círculos de choque): hay que frenar (menos de ~30 km/h) en un carril, se **cobra 30 créditos** (15 con pase), la barrera se levanta y se pasa. Sin créditos no abre. Para volver a la ciudad las barreras se abren solas y no se cobra. En modo desarrollador pasa gratis.
 
 ## Día y noche
 - **Un día entero dura 16 minutos** (`city_clock.gd`): amanecer, mañana, mediodía, tarde, atardecer y noche. El reloj se ve bajo la barra de nafta y la hora se guarda en el perfil.

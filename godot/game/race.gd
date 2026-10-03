@@ -14,6 +14,7 @@ const CityShops := preload("res://game/city/city_shops.gd")
 const CityLinks := preload("res://game/city/city_links.gd")
 const CityFuel := preload("res://game/city/city_fuel.gd")
 const CityClock := preload("res://game/city/city_clock.gd")
+const CityToll := preload("res://game/city/city_toll.gd")
 const DriftSession := preload("res://game/drift_session.gd")
 const PaperTrack := preload("res://game/track/paper_track.gd")
 const Drag := preload("res://game/data/drag.gd")
@@ -1103,6 +1104,8 @@ func _start_session() -> void:
 			links.setup(self, track.world_node, track.city)
 			fuel = CityFuel.new()
 			fuel.setup(self, track.city)
+			tolls = CityToll.new()
+			tolls.setup(self, track.world_node, track.city)
 			if cfg.has("bigmap") and race_hud.city_hud != null:
 				race_hud.city_hud.set_dest(race_hud.city_hud.city.pois[0]["front"], str(race_hud.city_hud.city.pois[0]["name"]))
 				race_hud.city_hud.call_deferred("_set_big", true)
@@ -1541,6 +1544,7 @@ var _link_stage := 0
 var shops # CityShops (solo en Dream City)
 var links # CityLinks: bocas de túnel y estacionamiento
 var fuel # CityFuel: nafta y gasolineras
+var tolls # CityToll: peajes de las rutas
 var clock # CityClock: ciclo de día y noche
 var _ug := 0.0 # 0 = afuera · 1 = bajo tierra (el sol y el cielo se apagan)
 var _ug_base: Array = [] # luz del sol, luz ambiente, niebla (color, inicio, fin) de afuera
@@ -1581,6 +1585,7 @@ func _tick_session(dt: float) -> void:
 		shops.update(dt)
 		links.update(dt)
 		fuel.update(dt)
+		tolls.update(dt)
 		if clock != null:
 			clock.update(dt)
 		_underground_light(dt)

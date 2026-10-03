@@ -44,15 +44,34 @@ func _init() -> void:
 	check(rural_n == 4 and c.exits.size() == 4, "4 rutas rurales con su Salida numerada (%s)" % str(c.exits.map(func(e): return e["num"])))
 	check(c.junctions.size() > 140, "%d cruces" % c.junctions.size())
 	check(c.slab_count > 3000 and c.building_count == 8, "%d frentes de edificios y %d lugares especiales (el concesionario y siete talleres)" % [c.slab_count, c.building_count])
-	# gasolineras: cuatro, cada una con puntos de carga que no caen sobre ninguna calle
+	# gasolineras: cuatro, con 3 a 6 puntos de carga; ningún punto de carga sobre una calle y ningún punto del playón sobre el asfalto
 	check(c.stations.size() == 4, "hay %d gasolineras" % c.stations.size())
+	var fast_n := 0
 	for st in c.stations:
 		var fp0: Vector2 = st["fuel_points"][0]
-		var dr: Vector2 = st["dir"]
-		print("     %s en (%d, %d), círculo en (%d, %d), rumbo %d°" % [st["id"], int(st["center"].x), int(st["center"].y), int(fp0.x), int(fp0.y), int(rad_to_deg(atan2(dr.x, dr.y)))])
+		print("     %s (%s%s) en (%d, %d): %d puntos de carga (el primero en (%d, %d), carriles hacia %d°), %d círculos de playón" % [st["id"], st["kind"], ", carga rápida" if st["fast"] else "", int(st["center"].x), int(st["center"].y), st["fuel_points"].size(), int(fp0.x), int(fp0.y), int(rad_to_deg(atan2(st["lx"].x, st["lx"].y))), st["circles"].size()])
+		fast_n += 1 if st["fast"] else 0
+		check(st["fuel_points"].size() >= 3, "%s tiene 3 o más puntos de carga" % st["id"])
+		var bad := 0
 		for fp in st["fuel_points"]:
-			var prf := c.probe(fp.x, fp.y)
-			check(int(prf[6]) < -1, "el círculo de %s está dentro del lote (no sobre una calle)" % st["id"])
+			if int(c.probe(fp.x, fp.y)[6]) >= -1:
+				bad += 1
+		for cc in st["circles"]:
+			for k in 24:
+				var ang := TAU * float(k) / 24.0
+				for rr in [0.0, 0.5, 0.9]:
+					var q: Vector2 = (cc as Vector2) + Vector2(cos(ang), sin(ang)) * float(st["r"]) * float(rr)
+					var pq := c.probe(q.x, q.y)
+					if int(pq[6]) >= 0 and float(pq[1]) < float(pq[5]):
+						bad += 1
+		check(bad == 0, "el playón de %s no pisa ninguna calle (%d puntos mal)" % [st["id"], bad])
+	check(fast_n == 1, "hay una sola gasolinera de carga rápida")
+	# peajes: uno por ruta rural, sobre la calzada
+	check(c.tolls.size() == 4, "hay %d peajes (uno por ruta)" % c.tolls.size())
+	for tl in c.tolls:
+		print("     %s en (%d, %d), hacia afuera %d°" % [tl["id"], int(tl["pos"].x), int(tl["pos"].y), int(rad_to_deg(atan2(tl["tn"].x, tl["tn"].y)))])
+		var pt := c.probe(tl["pos"].x, tl["pos"].y)
+		check(int(pt[6]) == int(tl["road"]) and float(pt[1]) < 0.5, "el %s está sobre el eje de su ruta" % tl["id"])
 	check(worst_up > 0.03 and worst_up < 0.2, "el camino de la colina sube como máximo %.1f %%" % (worst_up * 100.0))
 	check(worst_dn > -0.22, "y baja como máximo %.1f %%" % (worst_dn * 100.0))
 	# los números de calle
