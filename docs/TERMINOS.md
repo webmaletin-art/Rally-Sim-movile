@@ -12,6 +12,8 @@
 6. **Grabaciones y capturas.** Podés compartir capturas del juego libremente, incluso en redes y videos, citando «Dream Racing».
 7. **Cambios.** Podemos actualizar estos términos y el juego. Seguir usando la app después de un cambio implica aceptarlo.
 8. **Datos.** El tratamiento de datos se describe en la Política de privacidad.
+9. **Cuenta y rankings online (opcional).** Si usás el modo online, tu nombre de piloto y tus mejores marcas se muestran a otros jugadores. Elegí un nombre que no sea ofensivo ni se haga pasar por otra persona: podemos cambiarlo, o quitar marcas conseguidas con trampas o programas externos. La cuenta con correo es personal y solo para mayores de 13 años: cuidá tu contraseña. Podés borrar tu cuenta cuando quieras desde el juego. El servicio online puede cambiar o detenerse, y no afecta lo que jugás sin conexión.
+10. **Contacto.** Dudas o pedidos sobre tus datos o tu cuenta: **roldanhr98@gmail.com** (SRGamestudios).
 
 ## English
 1. **Personal use.** Dream Racing is a simulation racing game for entertainment, provided "as is" with no warranty.
@@ -23,3 +25,5 @@
 6. **Recordings and screenshots.** You may freely share screenshots and videos of the game, crediting "Dream Racing".
 7. **Changes.** We may update these terms and the game. Continuing to use the app after a change means you accept it.
 8. **Data.** Data handling is described in the Privacy policy.
+9. **Online account and rankings (optional).** If you use online mode, your driver name and best marks are shown to other players. Pick a name that is not offensive and does not impersonate anyone: we may change it, or remove marks obtained by cheating or with external tools. The email account is personal and only for people aged 13 or older: keep your password safe. You can delete your account at any time from the game. The online service may change or stop, and does not affect what you play offline.
+10. **Contact.** Questions or requests about your data or account: **roldanhr98@gmail.com** (SRGamestudios).

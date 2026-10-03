@@ -8,7 +8,7 @@
 Dream Racing es un juego de rally y carreras de simulación hecho para jugar desde el celular, con pilotos y copilotos que viven cada curva.
 
 🏁 CARRERAS Y RALLY
-Asfalto, tierra, lluvia y atardecer. Competí contra rivales con inteligencia artificial en el lago, el bosque, la cantera y la montaña.
+Asfalto, tierra, lluvia y atardecer. Competí contra rivales en el lago, el bosque, la cantera y la montaña.
 
 🌄 AVENTURA: LA RUTA DE LOS SUEÑOS
 Una sola ruta larguísima, de estación en estación: 12 etapas con ciudades, campos, montaña, túneles, una cantera y nieve. En cada etapa hay un rival que tenés que pasar. Mejorá tus habilidades y cuidá el daño del auto.
@@ -28,7 +28,7 @@ Volante en pantalla, pedales, manejo inclinando el teléfono, caja automática o
 🎬 PARA LUCIRSE
 Cámaras de cine, efectos de lente (ojo de pez, cine, cámara de acción) y modo captura para sacar tus mejores fotos.
 
-Sin publicidad. Sin cuentas. Tu progreso se guarda en tu teléfono. Incluye compras opcionales dentro del juego.
+Sin publicidad. Tu progreso se guarda en tu teléfono. Rankings online y cuenta con correo, opcionales. Incluye compras opcionales dentro del juego.
 
 **Categoría:** Juegos → Carreras · **Etiquetas sugeridas:** carreras, rally, drift, simulación, autos
 **Contacto:** roldanhr98@gmail.com · **Estudio:** SRGamestudios

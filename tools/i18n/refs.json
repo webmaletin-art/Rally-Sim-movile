@@ -211,10 +211,10 @@
 "ui/controls.gd:382"
 ],
 "ACEPTO": [
-"ui/menu_about.gd:188"
+"ui/menu_about.gd:201"
 ],
 "ACERCA DE": [
-"ui/menu_about.gd:105",
+"ui/menu_about.gd:118",
 "ui/menu.gd:518"
 ],
 "AERO": [
@@ -239,7 +239,7 @@
 "ui/menu_adventure.gd:109"
 ],
 "APAGAR MODO DEV": [
-"ui/menu_about.gd:120"
+"ui/menu_about.gd:133"
 ],
 "ARCADE": [
 "ui/menu.gd:367"
@@ -314,7 +314,7 @@
 "adventure/adv_data.gd:30"
 ],
 "Al tocar «Acepto» confirmás que leíste y aceptás la política de privacidad y los términos de uso.": [
-"ui/menu_about.gd:182"
+"ui/menu_about.gd:195"
 ],
 "Alerón alto: la cola queda pegada y estable, pero baja la velocidad máxima.": [
 "data/catalog.json"
@@ -366,7 +366,7 @@
 "data/catalog.json"
 ],
 "Antes de empezar": [
-"ui/menu_about.gd:167"
+"ui/menu_about.gd:180"
 ],
 "Apagada": [
 "ui/options_ui.gd:58",
@@ -479,7 +479,7 @@
 "race.gd:2307"
 ],
 "BIENVENIDO": [
-"ui/menu_about.gd:166"
+"ui/menu_about.gd:179"
 ],
 "BIENVENIDOS A\n": [
 "adventure/adv_world.gd:1181"
@@ -686,8 +686,8 @@
 "ui/menu_account.gd:120"
 ],
 "CRÉDITOS": [
-"ui/menu_about.gd:96",
-"ui/menu_about.gd:114"
+"ui/menu_about.gd:109",
+"ui/menu_about.gd:127"
 ],
 "Cada estación de servicio guarda tu avance. Antes de salir podés ajustar el auto para lo que viene: el camino cambia (asfalto, tierra, nieve) y el auto se maneja distinto.\n\nEn la pestaña AJUSTE tenés lo más importante: tracción, presión de gomas, altura y dureza de la suspensión y frenos.": [
 "adventure/adv_data.gd:23"
@@ -742,7 +742,7 @@
 "race.gd:1931"
 ],
 "Cambios": [
-"ui/menu_about.gd:49"
+"ui/menu_about.gd:50"
 ],
 "Cambios más rápidos. Nivel 2 habilita ajustar la relación final.": [
 "data/catalog.json"
@@ -800,7 +800,7 @@
 "ui/menu_about.gd:30"
 ],
 "Capturas y videos": [
-"ui/menu_about.gd:48"
+"ui/menu_about.gd:49"
 ],
 "Capó": [
 "perf_bench.gd:21",
@@ -947,7 +947,7 @@
 "adventure/adv_hud.gd:702"
 ],
 "Compras": [
-"ui/menu_about.gd:54"
+"ui/menu_about.gd:56"
 ],
 "Compuesto duro y progresivo: desliza largo y controlable.": [
 "data/catalog.json"
@@ -991,9 +991,13 @@
 "Construyendo camino, banquinas y guardarraíl…": [
 "race.gd:245"
 ],
+"Contacto": [
+"ui/menu_about.gd:34",
+"ui/menu_about.gd:51"
+],
 "Contenido descargable": [
-"ui/menu_about.gd:46",
-"ui/menu_about.gd:55"
+"ui/menu_about.gd:47",
+"ui/menu_about.gd:57"
 ],
 "Content-Type: application/json": [
 "online/online.gd:46"
@@ -1068,8 +1072,11 @@
 "data/catalog.json"
 ],
 "Cuenta con correo (opcional)": [
-"ui/menu_about.gd:63",
+"ui/menu_about.gd:68",
 "ui/menu.gd:552"
+],
+"Cuenta y rankings online": [
+"ui/menu_about.gd:79"
 ],
 "Curvas": [
 "adventure/adv_data.gd:14"
@@ -1124,7 +1131,7 @@
 "DREAM RACING": [
 "race.gd:540",
 "race.gd:569",
-"ui/menu_about.gd:106"
+"ui/menu_about.gd:119"
 ],
 "DREAM SHOP · 24 h": [
 "adventure/adv_props.gd:494"
@@ -1229,25 +1236,25 @@
 "ui/menu_about.gd:19"
 ],
 "Dream Racing es un juego de simulación para entretenimiento, ofrecido «tal cual», sin garantías.": [
-"ui/menu_about.gd:43"
+"ui/menu_about.gd:44"
 ],
 "Dream Racing guarda tu progreso solo en tu teléfono y no tiene publicidad. Los rankings online y la cuenta con correo son opcionales: si los usás, se envían tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo. Descarga contenido del juego desde internet.": [
-"ui/menu_about.gd:170"
+"ui/menu_about.gd:183"
 ],
 "Dream Racing guarda tu progreso solo en tu teléfono y no tiene publicidad. Los rankings online y la cuenta con correo son opcionales: si los usás, se envían tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo. Funciona sin internet; las compras dentro del juego pasan por Google Play.": [
-"ui/menu_about.gd:170"
+"ui/menu_about.gd:183"
 ],
 "Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Descarga contenido del juego desde internet.": [
-"ui/menu_about.gd:168"
+"ui/menu_about.gd:181"
 ],
 "Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Funciona sin internet; las compras dentro del juego pasan por Google Play.": [
-"ui/menu_about.gd:168"
+"ui/menu_about.gd:181"
 ],
 "Dream Racing no tiene cuentas, ni publicidad, ni análisis. No recopilamos, vendemos ni compartimos datos personales. Tu progreso se guarda solo en tu teléfono.": [
 "ui/menu_about.gd:28"
 ],
 "Dream Racing no tiene publicidad ni análisis. No vendemos ni compartimos datos personales. Tu progreso se guarda en tu teléfono. Solo si lo elegís, el modo online guarda en nuestro servidor tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo.": [
-"ui/menu_about.gd:60"
+"ui/menu_about.gd:62"
 ],
 "Drift": [
 "ui/loading.gd:153",
@@ -1266,6 +1273,10 @@
 "Drift en la Plaza (Pro)": [
 "data/catalog.json"
 ],
+"Dudas o pedidos sobre tus datos o tu cuenta: roldanhr98@gmail.com (SRGamestudios).": [
+"ui/menu_about.gd:34",
+"ui/menu_about.gd:51"
+],
 "Duelo contra un bot": [
 "ui/menu_career.gd:294"
 ],
@@ -1280,6 +1291,9 @@
 ],
 "Duro al volver: la rueda vuelve rápido, pero puede despegarse en pozos seguidos.": [
 "data/catalog.json"
+],
+"Dónde se guardan los datos online": [
+"ui/menu_about.gd:66"
 ],
 "ECU reprogramada + árboles de levas": [
 "data/catalog.json"
@@ -1380,7 +1394,7 @@
 "store/products.gd:13"
 ],
 "El dinero, los autos, las estrellas y los logros son virtuales: no tienen valor real, no se canjean por dinero ni se venden.": [
-"ui/menu_about.gd:44"
+"ui/menu_about.gd:45"
 ],
 "El disco de freno se ve por entre los rayos de la llanta. Las pinzas llevan el color de «Pinzas».": [
 "ui/menu_garage.gd:567"
@@ -1389,22 +1403,25 @@
 "ui/perf_results.gd:27"
 ],
 "El juego completo viene dentro de la app y funciona sin conexión. Las actualizaciones se instalan desde Google Play.": [
-"ui/menu_about.gd:55"
+"ui/menu_about.gd:57"
 ],
 "El juego descarga contenido adicional de internet; la primera vez hace falta conexión. El contenido puede cambiar con las actualizaciones.": [
-"ui/menu_about.gd:46"
+"ui/menu_about.gd:47"
+],
+"El juego funciona sin conexión. Se usa internet para las compras (a través de Google Play), para descargar contenido en la versión de prueba y, solo si participás, para el modo online (rankings y cuenta).": [
+"ui/menu_about.gd:65"
 ],
 "El juego funciona sin conexión: todo viene dentro de la app. Solo se usa internet, a través de Google Play, cuando hacés una compra dentro del juego. Los datos de pago los maneja Google y nunca llegan a nosotros.": [
-"ui/menu_about.gd:38"
+"ui/menu_about.gd:39"
 ],
 "El juego no tiene publicidad ni chat, y no recopila datos de nadie, incluidos los menores. Las compras dentro del juego se hacen con la cuenta de Google Play de un adulto.": [
 "ui/menu_about.gd:33"
 ],
 "El juego no tiene publicidad ni chat. El modo online es opcional y la cuenta con correo es solo para mayores de 13 años (o con permiso de un adulto); sin cuenta no se pide ningún dato personal. Las compras dentro del juego se hacen con la cuenta de Google Play de un adulto.": [
-"ui/menu_about.gd:61"
+"ui/menu_about.gd:63"
 ],
 "El juego, sus autos, pistas y diseños pertenecen a sus autores. Los modelos de Mixamo y de Sweet Home 3D se usan según sus licencias (ver Créditos).": [
-"ui/menu_about.gd:47"
+"ui/menu_about.gd:48"
 ],
 "El más rápido del pueblo. Maneja la camioneta del corralón.": [
 "adventure/adv_route.gd:46"
@@ -1455,7 +1472,7 @@
 "ui/menu_account.gd:151"
 ],
 "Es un juego: no imites lo que ves en la vida real y no uses el teléfono mientras manejás un vehículo.": [
-"ui/menu_about.gd:45"
+"ui/menu_about.gd:46"
 ],
 "Escenarios y objetos": [
 "ui/menu_about.gd:22"
@@ -1569,7 +1586,7 @@
 "online/online.gd:155"
 ],
 "Faltan %d toques…": [
-"ui/menu_about.gd:140"
+"ui/menu_about.gd:153"
 ],
 "Fin del Asfalto": [
 "adventure/adv_route.gd:125"
@@ -1825,7 +1842,8 @@
 ],
 "Internet": [
 "ui/menu_about.gd:31",
-"ui/menu_about.gd:38"
+"ui/menu_about.gd:39",
+"ui/menu_about.gd:65"
 ],
 "Internet (descargar contenido) y vibración (opcional). No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono.": [
 "ui/menu_about.gd:32"
@@ -2103,6 +2121,9 @@
 "Los cambios se aplican al salir de la estación.": [
 "adventure/adventure.gd:1011"
 ],
+"Los datos del modo online (nombre de piloto, marcas y, si creás una cuenta, tu correo) se guardan en servidores de Supabase, que los procesa por nuestra cuenta. Los conservamos hasta que borres tu cuenta o nos pidas borrarlos. Los registros técnicos de envíos solo sirven para frenar abusos.": [
+"ui/menu_about.gd:66"
+],
 "Los mejores de la región · clase S": [
 "data/catalog.json"
 ],
@@ -2113,7 +2134,7 @@
 "ui/options_ui.gd:153"
 ],
 "Los textos legales completos están en el repositorio del juego (docs/PRIVACIDAD.md y docs/TERMINOS.md).": [
-"ui/menu_about.gd:124"
+"ui/menu_about.gd:137"
 ],
 "Lucía Ferreyra": [
 "adventure/adv_route.gd:147"
@@ -2249,7 +2270,7 @@
 "ui/loading.gd:151"
 ],
 "Modo desarrollador apagado": [
-"ui/menu_about.gd:122"
+"ui/menu_about.gd:135"
 ],
 "Montaña (inversa)": [
 "data/routes.json"
@@ -2486,10 +2507,10 @@
 ],
 "Niños": [
 "ui/menu_about.gd:33",
-"ui/menu_about.gd:61"
+"ui/menu_about.gd:63"
 ],
 "No acepto": [
-"ui/menu_about.gd:185"
+"ui/menu_about.gd:198"
 ],
 "No hay autos para mostrar.": [
 "ui/menu_garage.gd:104"
@@ -2573,15 +2594,15 @@
 "ui/capture_ui.gd:17"
 ],
 "POLÍTICA DE PRIVACIDAD": [
-"ui/menu_about.gd:174"
+"ui/menu_about.gd:187"
 ],
 "PONER": [
 "ui/menu_garage.gd:313",
 "ui/menu_garage.gd:333"
 ],
 "PRIVACIDAD": [
-"ui/menu_about.gd:97",
-"ui/menu_about.gd:114"
+"ui/menu_about.gd:110",
+"ui/menu_about.gd:127"
 ],
 "PRONTO": [
 "ui/menu.gd:506",
@@ -2662,7 +2683,7 @@
 ],
 "Permisos": [
 "ui/menu_about.gd:32",
-"ui/menu_about.gd:39"
+"ui/menu_about.gd:40"
 ],
 "Personajes y animaciones": [
 "ui/menu_about.gd:21"
@@ -2733,13 +2754,13 @@
 "ui/options_ui.gd:53"
 ],
 "Podemos actualizar estos términos y el juego. Seguir usando la app después de un cambio implica aceptarlo.": [
-"ui/menu_about.gd:49"
+"ui/menu_about.gd:50"
 ],
 "Podés compartir capturas y videos del juego libremente, citando «Dream Racing».": [
-"ui/menu_about.gd:48"
+"ui/menu_about.gd:49"
 ],
 "Podés comprar con dinero real el juego completo y bolsas de créditos a través de Google Play. Las cobra y las administra Google: los reembolsos y reclamos se piden en Google Play, según sus políticas. Los créditos y el juego completo son para usar en el juego y no se pueden transferir ni canjear por dinero.": [
-"ui/menu_about.gd:54"
+"ui/menu_about.gd:56"
 ],
 "Podés crearla cuando quieras desde Modo online.": [
 "ui/menu_account.gd:49"
@@ -2805,7 +2826,7 @@
 "ui/options_ui.gd:74"
 ],
 "Propiedad intelectual": [
-"ui/menu_about.gd:47"
+"ui/menu_about.gd:48"
 ],
 "Prototipo T1+": [
 "data/catalog.json"
@@ -2841,7 +2862,8 @@
 "fx/lens.gd:272"
 ],
 "Qué se guarda": [
-"ui/menu_about.gd:29"
+"ui/menu_about.gd:29",
+"ui/menu_about.gd:64"
 ],
 "R2 Turbo": [
 "data/catalog.json"
@@ -2908,7 +2930,7 @@
 "adventure/adv_route.gd:138"
 ],
 "Rankings online (opcional)": [
-"ui/menu_about.gd:62"
+"ui/menu_about.gd:67"
 ],
 "Rankings online: se envían tu nombre de piloto y tus mejores marcas (tiempo y puntos). La cuenta con correo es opcional. No se envía nada más.": [
 "ui/menu.gd:545"
@@ -2984,7 +3006,7 @@
 ],
 "Resumen": [
 "ui/menu_about.gd:28",
-"ui/menu_about.gd:60"
+"ui/menu_about.gd:62"
 ],
 "Rey de la Plaza": [
 "data/catalog.json"
@@ -3101,7 +3123,7 @@
 "ui/options_ui.gd:78"
 ],
 "Seguridad": [
-"ui/menu_about.gd:45"
+"ui/menu_about.gd:46"
 ],
 "Según la calidad": [
 "ui/options_ui.gd:53",
@@ -3123,10 +3145,10 @@
 "ui/menu_account.gd:67"
 ],
 "Si activás «Participar en los rankings online» (viene apagado), el juego crea un usuario anónimo y envía a nuestro servidor (Supabase) tu nombre de piloto y tus mejores marcas (tiempo o puntos, pista y auto) para armar el ranking, que ven todos los jugadores. No se envía ningún otro dato, y lo podés apagar cuando quieras. Para borrar tus marcas escribí al contacto del juego.": [
-"ui/menu_about.gd:62"
+"ui/menu_about.gd:67"
 ],
 "Si creás una cuenta, guardamos tu correo electrónico y una contraseña (que nunca vemos: se guarda cifrada) en Supabase, solo para que puedas recuperar tus marcas del ranking en otro teléfono. Tu correo no se muestra a otros jugadores ni se usa para publicidad. Es solo para mayores de 13 años. Podés cerrar sesión cuando quieras y borrar tu cuenta y tus marcas desde el juego (Modo online → Cuenta) o escribiendo al contacto del juego.": [
-"ui/menu_about.gd:63"
+"ui/menu_about.gd:68"
 ],
 "Si entrás muy rápido, el auto se abre (subviraje): soltá el acelerador y enderezá un poco el volante. Si la cola se va (sobreviraje), contravolanteá suave.": [
 "ui/loading.gd:178"
@@ -3136,6 +3158,9 @@
 ],
 "Si rozás la chapa del costado, el auto se frena; un golpe fuerte te hace perder tiempo. Y no se puede pasar: vas a volver a la pista.": [
 "ui/loading.gd:181"
+],
+"Si usás el modo online, tu nombre de piloto y tus mejores marcas se muestran a otros jugadores. Elegí un nombre que no sea ofensivo ni se haga pasar por otra persona: podemos cambiarlo, o quitar marcas conseguidas con trampas o programas externos. La cuenta con correo es personal y solo para mayores de 13 años: cuidá tu contraseña. Podés borrar tu cuenta cuando quieras desde el juego. El servicio online puede cambiar o detenerse, y no afecta lo que jugás sin conexión.": [
+"ui/menu_about.gd:79"
 ],
 "Siempre en el podio": [
 "data/catalog.json"
@@ -3350,7 +3375,7 @@
 "ui/menu_garage.gd:59"
 ],
 "Todo es virtual": [
-"ui/menu_about.gd:44"
+"ui/menu_about.gd:45"
 ],
 "Todo terreno moderado. Correcto en todos lados.": [
 "data/catalog.json"
@@ -3401,6 +3426,9 @@
 "Tu nivel de simulación": [
 "ui/loading.gd:175"
 ],
+"Tu perfil de juego (autos, mejoras, pintura, dinero del juego, estrellas, tiempos y opciones) queda en el almacenamiento privado de la app, en tu teléfono. Solo si participás en el modo online se envían tu nombre de piloto y tus mejores marcas, y tu correo si creás una cuenta. Si desinstalás la app, se pierde lo que está en el teléfono.": [
+"ui/menu_about.gd:64"
+],
 "Tu perfil de juego (nombre de piloto, autos, mejoras, pintura, dinero del juego, estrellas, tiempos y opciones) queda en el almacenamiento privado de la app. No se envía a ningún servidor. Si desinstalás la app, se pierde.": [
 "ui/menu_about.gd:29"
 ],
@@ -3423,9 +3451,9 @@
 "data/catalog.json"
 ],
 "TÉRMINOS DE USO": [
-"ui/menu_about.gd:98",
-"ui/menu_about.gd:114",
-"ui/menu_about.gd:178"
+"ui/menu_about.gd:111",
+"ui/menu_about.gd:127",
+"ui/menu_about.gd:191"
 ],
 "TÚNEL DEL CÓNDOR": [
 "adventure/adv_route.gd:101"
@@ -3464,7 +3492,7 @@
 "ui/options_ui.gd:69"
 ],
 "Uso personal": [
-"ui/menu_about.gd:43"
+"ui/menu_about.gd:44"
 ],
 "V6 3.0 biturbo 480 cv": [
 "data/catalog.json"
@@ -3523,10 +3551,10 @@
 "adventure/adv_hud.gd:533"
 ],
 "Versión %s": [
-"ui/menu_about.gd:108"
+"ui/menu_about.gd:121"
 ],
 "Vibración (opcional) y los permisos de red que necesita el servicio de compras de Google Play (el juego no los usa para nada más). No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono.": [
-"ui/menu_about.gd:39"
+"ui/menu_about.gd:40"
 ],
 "Vibración tipo volante (peso y baches)": [
 "ui/options_ui.gd:70"
@@ -4280,10 +4308,10 @@
 "ui/menu_career.gd:150"
 ],
 "🛠 Modo desarrollador activo": [
-"ui/menu_about.gd:111"
+"ui/menu_about.gd:124"
 ],
 "🛠 Modo desarrollador: todo desbloqueado": [
-"ui/menu_about.gd:137"
+"ui/menu_about.gd:150"
 ],
 "🛠 Probar conexión con Supabase": [
 "ui/menu.gd:557"

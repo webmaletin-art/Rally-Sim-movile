@@ -31,6 +31,7 @@ const PRIVACY := [
 	["Internet", "La app se conecta solo para descargar contenido del juego (modelos, pistas, música y actualizaciones) desde el repositorio público del proyecto en GitHub. Como en cualquier descarga, GitHub puede registrar tu dirección IP según su propia política."],
 	["Permisos", "Internet (descargar contenido) y vibración (opcional). No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono."],
 	["Niños", "El juego no tiene publicidad ni chat, y no recopila datos de nadie, incluidos los menores. Las compras dentro del juego se hacen con la cuenta de Google Play de un adulto."],
+	["Contacto", "Dudas o pedidos sobre tus datos o tu cuenta: roldanhr98@gmail.com (SRGamestudios)."],
 ]
 
 ## Versión de Google Play: funciona sin internet; solo las compras pasan por Google Play
@@ -47,6 +48,7 @@ const TERMS := [
 	["Propiedad intelectual", "El juego, sus autos, pistas y diseños pertenecen a sus autores. Los modelos de Mixamo y de Sweet Home 3D se usan según sus licencias (ver Créditos)."],
 	["Capturas y videos", "Podés compartir capturas y videos del juego libremente, citando «Dream Racing»."],
 	["Cambios", "Podemos actualizar estos términos y el juego. Seguir usando la app después de un cambio implica aceptarlo."],
+	["Contacto", "Dudas o pedidos sobre tus datos o tu cuenta: roldanhr98@gmail.com (SRGamestudios)."],
 ]
 
 ## Versión de Google Play: con compras dentro del juego
@@ -59,6 +61,9 @@ const TERMS_STORE := [
 const PRIVACY_ONLINE := [
 	["Resumen", "Dream Racing no tiene publicidad ni análisis. No vendemos ni compartimos datos personales. Tu progreso se guarda en tu teléfono. Solo si lo elegís, el modo online guarda en nuestro servidor tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo."],
 	["Niños", "El juego no tiene publicidad ni chat. El modo online es opcional y la cuenta con correo es solo para mayores de 13 años (o con permiso de un adulto); sin cuenta no se pide ningún dato personal. Las compras dentro del juego se hacen con la cuenta de Google Play de un adulto."],
+	["Qué se guarda", "Tu perfil de juego (autos, mejoras, pintura, dinero del juego, estrellas, tiempos y opciones) queda en el almacenamiento privado de la app, en tu teléfono. Solo si participás en el modo online se envían tu nombre de piloto y tus mejores marcas, y tu correo si creás una cuenta. Si desinstalás la app, se pierde lo que está en el teléfono."],
+	["Internet", "El juego funciona sin conexión. Se usa internet para las compras (a través de Google Play), para descargar contenido en la versión de prueba y, solo si participás, para el modo online (rankings y cuenta)."],
+	["Dónde se guardan los datos online", "Los datos del modo online (nombre de piloto, marcas y, si creás una cuenta, tu correo) se guardan en servidores de Supabase, que los procesa por nuestra cuenta. Los conservamos hasta que borres tu cuenta o nos pidas borrarlos. Los registros técnicos de envíos solo sirven para frenar abusos."],
 	["Rankings online (opcional)", "Si activás «Participar en los rankings online» (viene apagado), el juego crea un usuario anónimo y envía a nuestro servidor (Supabase) tu nombre de piloto y tus mejores marcas (tiempo o puntos, pista y auto) para armar el ranking, que ven todos los jugadores. No se envía ningún otro dato, y lo podés apagar cuando quieras. Para borrar tus marcas escribí al contacto del juego."],
 	["Cuenta con correo (opcional)", "Si creás una cuenta, guardamos tu correo electrónico y una contraseña (que nunca vemos: se guarda cifrada) en Supabase, solo para que puedas recuperar tus marcas del ranking en otro teléfono. Tu correo no se muestra a otros jugadores ni se usa para publicidad. Es solo para mayores de 13 años. Podés cerrar sesión cuando quieras y borrar tu cuenta y tus marcas desde el juego (Modo online → Cuenta) o escribiendo al contacto del juego."],
 ]
@@ -69,8 +74,16 @@ func _privacy() -> Array:
 		return _merged(base, PRIVACY_ONLINE)
 	return base
 
+## Solo si esta versión trae el modo online configurado
+const TERMS_ONLINE := [
+	["Cuenta y rankings online", "Si usás el modo online, tu nombre de piloto y tus mejores marcas se muestran a otros jugadores. Elegí un nombre que no sea ofensivo ni se haga pasar por otra persona: podemos cambiarlo, o quitar marcas conseguidas con trampas o programas externos. La cuenta con correo es personal y solo para mayores de 13 años: cuidá tu contraseña. Podés borrar tu cuenta cuando quieras desde el juego. El servicio online puede cambiar o detenerse, y no afecta lo que jugás sin conexión."],
+]
+
 func _terms() -> Array:
-	return _merged(TERMS, TERMS_STORE) if Release.store() else TERMS
+	var base: Array = _merged(TERMS, TERMS_STORE) if Release.store() else TERMS
+	if m.app != null and m.app.online != null and m.app.online.configured():
+		return _merged(base, TERMS_ONLINE)
+	return base
 
 ## Reemplaza las secciones de igual título y agrega las nuevas al final
 func _merged(base: Array, extra: Array) -> Array:

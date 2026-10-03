@@ -10,13 +10,13 @@
 Dream Racing es un juego sin cuentas, sin publicidad y sin análisis (analytics). **No recopilamos, vendemos ni compartimos datos personales.** Tu progreso se guarda únicamente en tu dispositivo. *(Excepción: el modo online opcional y la cuenta con correo, que solo existen en las versiones que los traen; ver al final.)*
 
 ### Qué datos se guardan y dónde
-- **Perfil de juego** (nombre de piloto que elegís, autos, mejoras, pintura, dinero del juego, estrellas, tiempos y opciones): se guarda en el almacenamiento interno de la app, en tu teléfono. No se envía a ningún servidor. Si desinstalás la app o borrás sus datos, se pierde.
+- **Perfil de juego** (nombre de piloto que elegís, autos, mejoras, pintura, dinero del juego, estrellas, tiempos y opciones): se guarda en el almacenamiento interno de la app, en tu teléfono. No se envía a ningún servidor (salvo lo del modo online opcional, ver al final). Si desinstalás la app o borrás sus datos, se pierde.
 - **Capturas de pantalla** que vos mismo tomás con el botón de captura: se guardan en la carpeta *Imágenes / DreamRacing* de tu teléfono. Podés borrarlas desde la galería del juego o desde tu teléfono.
 - **Sensores de movimiento** (acelerómetro/giroscopio): se usan solo para manejar inclinando el teléfono, en el momento, y no se guardan ni se envían.
 - **Vibración**: se usa para la respuesta háptica del juego si la activás.
 
 ### Conexión a internet
-**Versión de Google Play:** el juego completo viene dentro de la app y funciona sin conexión. Solo se usa internet, a través de Google Play, cuando hacés una compra dentro del juego; los datos de pago los maneja Google y nunca llegan a nosotros.
+**Versión de Google Play:** el juego completo viene dentro de la app y funciona sin conexión. Solo se usa internet, a través de Google Play, cuando hacés una compra dentro del juego (y, si lo elegís, para el modo online opcional); los datos de pago los maneja Google y nunca llegan a nosotros.
 
 **Versión de prueba descargable (APK):** la app se conecta a internet únicamente para **descargar contenido del juego** (modelos, pistas, música y actualizaciones) desde el repositorio público del proyecto en GitHub (`github.com/webmaletin-art/Rally-Sim-movile`). Al descargar, GitHub puede registrar tu dirección IP como en cualquier descarga web, según su propia política de privacidad. El juego no envía ninguna información tuya en esas descargas.
 
@@ -81,7 +81,12 @@ Owner: SRGamestudios · Email: **roldanhr98@gmail.com**
 ### Rankings online (opcional, solo en las versiones que lo traen)
 Si activás «Participar en los rankings online» (viene apagado), el juego crea un **usuario anónimo** y envía a nuestro servidor (Supabase) tu **nombre de piloto** y tus **mejores marcas** (tiempo o puntos, pista y auto) para armar el ranking, que ven todos los jugadores. No se envía ningún otro dato, y lo podés apagar cuando quieras. Para borrar tus marcas, escribí al contacto del juego.
 
+### Dónde se guardan los datos online y por cuánto tiempo
+Los datos del modo online (nombre de piloto, marcas y, si creás una cuenta, tu correo) se guardan en servidores de **Supabase**, que los procesa por nuestra cuenta. Los conservamos hasta que borres tu cuenta (desde el juego) o nos pidas borrarlos. Los registros técnicos de envíos solo sirven para frenar abusos y se borran junto con la cuenta.
+
 ### Cuenta con correo (opcional, solo en las versiones que traen el modo online)
 Si creás una cuenta, guardamos tu **correo electrónico** y una **contraseña** (que nunca vemos: se guarda cifrada) en nuestro servidor (Supabase), solo para que puedas recuperar tus marcas del ranking en otro teléfono y para mandarte el mensaje de confirmación o de cambio de contraseña. Tu correo no se muestra a otros jugadores ni se usa para publicidad ni se comparte con terceros. La cuenta es solo para mayores de 13 años (o con permiso de un adulto). Podés cerrar sesión cuando quieras y **borrar tu cuenta y tus marcas desde el juego** (*Modo online → Cuenta → Borrar mi cuenta y mis marcas*), o escribiendo al contacto. El borrado es inmediato y definitivo.
 
 *(English)* **Optional email account (only in builds with online mode):** if you create an account we store your **email address** and a **password** (never visible to us; stored hashed) on our server (Supabase), only so you can recover your ranking marks on another phone and so we can send the confirmation or password-reset message. Your email is never shown to other players, used for advertising or shared with third parties. Accounts are for people aged 13 or older (or with an adult's permission). You can sign out at any time and **delete your account and marks from inside the game** (*Online mode → Account → Delete my account and marks*), or by writing to the contact above. Deletion is immediate and permanent.
+
+*(English)* **Where online data is stored and for how long:** online-mode data (driver name, marks and, if you create an account, your email) is stored on **Supabase** servers, which process it on our behalf. We keep it until you delete your account (from the game) or ask us to delete it. Technical submission logs are only used to stop abuse and are deleted with the account.
