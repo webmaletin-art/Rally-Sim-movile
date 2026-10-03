@@ -156,5 +156,7 @@ func _say(r: Dictionary) -> void:
 	var t: String = Tr.t(str(r.get("text", "")))
 	if r.has("arg"):
 		t = t % str(r["arg"])
+	if r.has("detail") and str(r["detail"]) != "":
+		t += "\n(%s)" % str(r["detail"]) # el mensaje del servidor, para saber qué falló
 	msg.text = t
 	msg.add_theme_color_override("font_color", Kit.GREEN if r.get("ok", false) else Kit.RED)

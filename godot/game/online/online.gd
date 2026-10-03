@@ -161,9 +161,23 @@ static func friendly_error(msg: String) -> String:
 		return "Ese correo no parece válido."
 	if "anonymous" in m and "disabled" in m:
 		return "El servidor no permite entrar sin cuenta todavía."
+	if "signup" in m and ("disabled" in m or "not allowed" in m) or "provider" in m and "disabled" in m:
+		return "El servidor todavía no acepta cuentas con correo."
+	if "not authorized" in m or "error sending" in m or "smtp" in m:
+		return "El servidor todavía no puede mandar el correo de confirmación."
 	if msg == "sin conexión":
 		return "Sin conexión a internet."
-	return "No se pudo completar. Probá de nuevo en un rato."
+	return GENERIC_ERROR
+
+const GENERIC_ERROR := "No se pudo completar. Probá de nuevo en un rato."
+
+## Resultado de un error: el texto amable y, si no se supo explicar, el mensaje del servidor (corto) para poder averiguar qué pasó
+static func error_result(raw: String, extra := {}) -> Dictionary:
+	var out: Dictionary = {"ok": false, "text": friendly_error(raw)}
+	if out["text"] == GENERIC_ERROR:
+		out["detail"] = raw.substr(0, 90)
+	out.merge(extra)
+	return out
 
 func is_account() -> bool:
 	return email != ""
@@ -186,7 +200,7 @@ func create_account(mail: String, pw: String) -> Dictionary:
 		if r["ok"] and r["data"] is Dictionary and str((r["data"] as Dictionary).get("access_token", "")) != "":
 			_set_session(parse_session(r["data"] as Dictionary))
 	if not r["ok"]:
-		return {"ok": false, "text": friendly_error(str(r["error"])), "confirm": false}
+		return error_result(str(r["error"]), {"confirm": false})
 	var d: Dictionary = r["data"] if r["data"] is Dictionary else {}
 	var user: Dictionary = d.get("user", d) if d.get("user", d) is Dictionary else {}
 	var confirmed := str(user.get("email", "")) == mail and (user.get("email_confirmed_at") != null or user.get("confirmed_at") != null)
@@ -205,7 +219,7 @@ func login(mail: String, pw: String) -> Dictionary:
 		return {"ok": false, "text": "Escribí tu correo y tu contraseña."}
 	var r := await request(HTTPClient.METHOD_POST, "/auth/v1/token?grant_type=password", {"email": mail, "password": pw})
 	if not r["ok"] or not (r["data"] is Dictionary):
-		return {"ok": false, "text": friendly_error(str(r["error"]))}
+		return error_result(str(r["error"]))
 	var s := parse_session(r["data"] as Dictionary)
 	if s["token"] == "":
 		return {"ok": false, "text": "Correo o contraseña incorrectos."}
@@ -221,7 +235,7 @@ func recover(mail: String) -> Dictionary:
 		return {"ok": false, "text": "Escribí tu correo."}
 	var r := await request(HTTPClient.METHOD_POST, "/auth/v1/recover", {"email": mail})
 	if not r["ok"]:
-		return {"ok": false, "text": friendly_error(str(r["error"]))}
+		return error_result(str(r["error"]))
 	return {"ok": true, "text": "Si ese correo tiene cuenta, te mandamos un mensaje para elegir una contraseña nueva."}
 
 ## Borra la cuenta, las marcas y todo lo que haya en el servidor (Google Play lo exige para las apps con cuentas) y cierra la sesión
