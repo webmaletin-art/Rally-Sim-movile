@@ -134,6 +134,12 @@ func _ready() -> void:
 		app.autorace_used = true
 		var at := autotest.split("@") # prueba: --autotest=gt (lago) o --autotest=gt@drift (plaza de drift)
 		var tc := {"type": "free", "track": "lake", "ai": 0, "sky": "day", "car": at[0], "state": profile.new_car_state(at[0]), "testCar": true, "back": "dealer", "seed": 7}
+		if at.size() > 1 and at[1] == "aurelia": # mundo abierto (prueba)
+			tc["type"] = "city"
+			tc["track"] = "aurelia"
+			tc["testCar"] = false
+			if at.size() > 2:
+				tc["gpsdrive"] = at[2] # --autotest=gt@aurelia@concesionario: el auto va solo hasta ahí
 		if at.size() > 1 and at[1] == "paper":
 			tc["type"] = "timetrial"
 			tc["track"] = "paperRace"
@@ -357,6 +363,12 @@ func go(name: String, arg = null, push := true) -> void:
 		_: _home()
 
 ## Antes de largar una carrera se elige el nivel de simulación (arcade / intermedio / simulador total / personalizado)
+## Mundo abierto: Puerto Aurelia, a recorrer libre con el auto elegido (antes se elige el nivel de simulación)
+func _start_city() -> void:
+	var pid: String = profile.current_id()
+	profile.select(pid)
+	launch({"type": "city", "track": "aurelia", "ai": 0, "sky": "day", "car": pid, "state": profile.car(), "seed": 7, "back": "home", "quick": true})
+
 func launch(cfg: Dictionary, ask := true) -> void:
 	if ask:
 		go("level", cfg)
@@ -505,7 +517,7 @@ func _home() -> void:
 	body.add_child(soon)
 	soon.add_child(tile("🌌", "FANTASÍA", "mapas de ensueño", func(): go("fantasy"), false, 70.0))
 	soon.add_child(tile("🌐", "MODO ONLINE", "PRONTO", func(): go("soon", "online"), false, 70.0))
-	soon.add_child(tile("🗺", "MUNDO ABIERTO", "PRONTO", func(): go("soon", "world"), false, 70.0))
+	soon.add_child(tile("🗺", "MUNDO ABIERTO", "Puerto Aurelia", func(): _start_city(), false, 70.0))
 	var g := Kit.grid(3, 8, 8)
 	body.add_child(g)
 	var tiles := [

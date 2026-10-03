@@ -325,7 +325,11 @@ func _road_segment(rd: Soup, mk: Soup, si: int, ni: int) -> void:
 	# veredas con cordón (más altas); no se dibujan donde cruza otra calle
 	var curb := 0.16
 	var cu := Vector3(0, curb, 0)
-	var side_col := C_SIDE if kind != "rural" else Color(0.66, 0.62, 0.50)
+	var side_col := C_SIDE
+	if kind == "rural" or kind == "shortcut":
+		side_col = Color(0.66, 0.62, 0.50)
+	elif kind == "alley":
+		side_col = Color(0.72, 0.46, 0.42) # veredas de ladrillo rojo
 	var mid := (a + b) * 0.5
 	for sg in [-1.0, 1.0]:
 		var s: float = sg

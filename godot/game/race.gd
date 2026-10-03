@@ -7,6 +7,9 @@ extends Node3D
 const CircuitTrack := preload("res://game/track/circuit_track.gd")
 const RouteTrack := preload("res://game/track/route_track.gd")
 const DriftTrack := preload("res://game/track/drift_track.gd")
+const CityTrack := preload("res://game/track/city_track.gd")
+const CitySession := preload("res://game/city_session.gd")
+const CityDriver := preload("res://game/ai/city_driver.gd")
 const DriftSession := preload("res://game/drift_session.gd")
 const PaperTrack := preload("res://game/track/paper_track.gd")
 const Drag := preload("res://game/data/drag.gd")
@@ -303,6 +306,8 @@ func _ready() -> void:
 		_paper_atmosphere()
 	if track is DreamTrack:
 		_dream_atmosphere()
+	if track is CityTrack:
+		_city_atmosphere()
 	audio = CarAudio.new()
 	add_child(audio)
 	sfx = UiSfx.new()
@@ -460,6 +465,27 @@ func _dream_atmosphere() -> void:
 	else:
 		FantasyWorld.atmosphere_of(th, env, sun, cam, world, _view_k()) # Marte, la Luna o el anillo de Júpiter
 
+## Puerto Aurelia: cielo de día y niebla que cierra las calles a la distancia en que se arman las cuadras (más cerca en teléfonos flojos)
+func _city_atmosphere() -> void:
+	var vk := _view_k()
+	var sky := Sky.new()
+	var psm := ProceduralSkyMaterial.new()
+	psm.sky_top_color = Color(0.40, 0.62, 0.90)
+	psm.sky_horizon_color = Color(0.86, 0.90, 0.95)
+	psm.ground_horizon_color = Color(0.80, 0.84, 0.86)
+	psm.ground_bottom_color = Color(0.70, 0.74, 0.74)
+	sky.sky_material = psm
+	env.sky = sky
+	env.background_mode = Environment.BG_SKY
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	env.ambient_light_energy = 1.0
+	env.fog_enabled = true
+	env.fog_mode = Environment.FOG_MODE_DEPTH
+	env.fog_light_color = Color(0.82, 0.87, 0.92)
+	env.fog_depth_begin = 220.0 * vk
+	env.fog_depth_end = 780.0 * vk
+	cam.far = 1600.0
+
 ## Paper Race: cielo y niebla de papel (la selva se cierra a lo lejos), luz suave y pareja
 func _paper_atmosphere() -> void:
 	env.background_color = Color(0.88, 0.91, 0.84)
@@ -482,6 +508,9 @@ func _make_track() -> void:
 			adv_alt = AdvTrack.new(int(cfg.get("stage", 0)), int(track.forks[0]["fork"]))
 			track.cross_clear(adv_alt)
 			adv_alt.cross_clear(track)
+		return
+	if track_id == "aurelia":
+		track = CityTrack.new() # el mundo abierto: Puerto Aurelia (no figura en routes.json: no es una pista de carrera)
 		return
 	if track_id == "prueba" or not track_maps.has(track_id):
 		track_id = "prueba"
@@ -527,6 +556,14 @@ func _build_track_nodes() -> void:
 			adv_world_alt.cross = track.make_view()
 			adv_world_alt.setup(adv_alt, adv_world.quality)
 			track_root.add_child(adv_world_alt)
+		return
+	if track is CityTrack:
+		var cw: Node3D = track.build_world()
+		cw.view_k = _view_k()
+		track_root.add_child(cw)
+		cw.warm(Vector3(0.0, 0.0, 48.0)) # las cuadras de la plaza ya armadas antes de largar
+		road_mat = track.road_mat
+		ground_mat = track.ground_mat
 		return
 	if track is DriftTrack:
 		track_root.add_child(track.build_world())
@@ -1039,6 +1076,14 @@ func _start_session() -> void:
 		add_child(adv)
 		adv.setup(self)
 		return
+	if menu_mode and track is CityTrack:
+		session = CitySession.new(track, cfg, cars.size())
+		session.names[0] = rival_info[0]["name"]
+		if race_hud != null:
+			race_hud.setup(session, cfg, rival_info)
+			if cfg.has("gpsdrive") and race_hud.city_hud != null: # prueba: el auto va solo por el GPS hasta ese lugar
+				_city_drive_test(str(cfg["gpsdrive"]))
+		return
 	if menu_mode and track is DriftTrack:
 		session = DriftSession.new(track, cfg, cars.size())
 		session.names[0] = rival_info[0]["name"]
@@ -1434,7 +1479,32 @@ func _pace_rivals(dt: float) -> void:
 			cars[i].phys.powerMul = lerpf(cars[i].phys.powerMul, AIDriver.power_target(gap, want), clampf(dt * 1.0, 0.0, 1.0))
 
 ## Sesión: cuenta regresiva, vueltas, posiciones y fin. Después de la meta el auto frena solo y a los 2,5 s sale el resultado.
+## Prueba de manejo de Puerto Aurelia: el auto sigue el GPS hasta un lugar y se informa si llegó o se trabó
+func _city_drive_test(poi_id: String) -> void:
+	var ch = race_hud.city_hud
+	for p in ch.city.pois:
+		if str(p["id"]) == poi_id:
+			ch.set_dest(p["front"], str(p["name"]))
+	var d := CityDriver.new()
+	d.hud = ch
+	cars[0].driver = d
+	_cd_t = 0.0
+
+var _cd_t := 0.0
+
 func _tick_session(dt: float) -> void:
+	if session is CitySession and cfg.has("gpsdrive"):
+		_cd_t += dt
+		var ch = race_hud.city_hud
+		var ph = cars[0].phys
+		if int(_cd_t * 2.0) != int((_cd_t - dt) * 2.0) and int(_cd_t) % 4 == 0 and fmod(_cd_t, 1.0) < dt:
+			print("CITYDRIVE t=%d pos=(%d,%d) v=%d km/h calle=%s" % [int(_cd_t), int(ph.px), int(ph.pz), int(sqrt(ph.vx * ph.vx + ph.vz * ph.vz) * 3.6), ch.street_l.text])
+		if not ch.has_dest and _cd_t > 3.0:
+			print("CITYDRIVE LLEGÓ en %.0f s, recorrió %.0f m, golpes %d" % [_cd_t, session.odo, session.hits])
+			get_tree().quit()
+		elif _cd_t > 240.0:
+			print("CITYDRIVE NO LLEGÓ en 240 s: pos=(%d,%d)" % [int(ph.px), int(ph.pz)])
+			get_tree().quit()
 	session.update(dt, cars)
 	if track is DriftTrack:
 		var cf = (track as DriftTrack).cones

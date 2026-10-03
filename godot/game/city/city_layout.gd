@@ -22,6 +22,7 @@ const SEA_Z := 1260.0
 
 const WALLS := [Color(0.93, 0.78, 0.52), Color(0.96, 0.90, 0.76), Color(0.82, 0.47, 0.34), Color(0.93, 0.70, 0.66), Color(0.70, 0.80, 0.88),
 	Color(0.72, 0.86, 0.76), Color(0.95, 0.94, 0.92), Color(0.70, 0.38, 0.30), Color(0.88, 0.78, 0.64), Color(0.98, 0.84, 0.55)]
+const OLD_WALLS := [Color(0.96, 0.66, 0.52), Color(0.98, 0.80, 0.62), Color(0.97, 0.90, 0.74), Color(0.94, 0.62, 0.60), Color(0.99, 0.86, 0.70), Color(0.90, 0.72, 0.56), Color(0.96, 0.78, 0.74)]
 const ROOFS := [Color(0.72, 0.34, 0.24), Color(0.62, 0.30, 0.22), Color(0.55, 0.50, 0.48), Color(0.78, 0.45, 0.30)]
 
 var seed_v := 20261004
@@ -81,6 +82,7 @@ func build() -> void:
 	_mark_junction_samples()
 	_place_pois()
 	_place_buildings()
+	_fill_blocks()
 
 func _sample_road(id: int, name_s: String, num: int, kind: String, hw: float, sw: float, plan: PackedVector2Array) -> void:
 	var pts := PackedVector3Array()
@@ -115,6 +117,32 @@ func _ring(radius: float, a0: float, a1: float, amp: float) -> PackedVector2Arra
 		out.append(Vector2(cos(a), sin(a)) * rr)
 	return out
 
+## Eje de la ruta rural k (0 = este, 4 = oeste, 6 = norte, 7 = nordeste) a r metros de la plaza: al principio recta y después ondula
+func _rural_pos(k: int, r: float) -> Vector2:
+	var ang := float(k) * PI / 4.0
+	var dirv := Vector2(cos(ang), sin(ang))
+	var per := Vector2(-sin(ang), cos(ang))
+	var ph := float(k) * 1.7
+	var t := smoothstep(1040.0, 1300.0, r)
+	var off := t * (70.0 * sin((r - 1040.0) / 230.0 + ph) + 26.0 * sin((r - 1040.0) / 83.0 + ph * 2.0))
+	return dirv * r + per * off
+
+## Camino ondulado de a hasta b (curvas de a un lado y al otro, nulas en las puntas) que se pasa 2,5 m de cada punta para cruzar la calle de ahí
+func _wavy(a: Vector2, b: Vector2, amp: float, wl: float, phase: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var dv := b - a
+	var len := dv.length()
+	var dn := dv / len
+	var per := Vector2(-dn.y, dn.x)
+	var n := int(ceil(len / STEP))
+	for i in n + 1:
+		var d := len * float(i) / float(n)
+		var env := smoothstep(0.0, 70.0, d) * smoothstep(0.0, 70.0, len - d)
+		out.append(a + dn * d + per * (amp * env * sin(TAU * d / wl + phase)))
+	out[0] -= dn * 2.5
+	out[out.size() - 1] += dn * 2.5
+	return out
+
 func _make_roads() -> void:
 	var id := 0
 	# plaza: la rotonda del centro
@@ -136,16 +164,10 @@ func _make_roads() -> void:
 	var rural_ids := {}
 	var rn := 20
 	for k in [0, 4, 6, 7]:
-		var ang := float(k) * PI / 4.0
-		var dirv := Vector2(cos(ang), sin(ang))
-		var per := Vector2(-sin(ang), cos(ang))
 		var plan := PackedVector2Array()
 		var r := 1040.0
-		var ph := float(k) * 1.7
 		while r < RURAL_END + 0.01:
-			var t := smoothstep(1040.0, 1300.0, r) # al principio recta (sigue siendo la avenida) y después ondula
-			var off := t * (70.0 * sin((r - 1040.0) / 230.0 + ph) + 26.0 * sin((r - 1040.0) / 83.0 + ph * 2.0))
-			plan.append(dirv * r + per * off)
+			plan.append(_rural_pos(k, r)) # al principio recta (sigue siendo la avenida) y después ondula
 			r += STEP
 		_sample_road(id, "Ruta %d" % rn, rn, "rural", 4.6, 1.6, plan)
 		rural_ids[k] = id
@@ -163,6 +185,27 @@ func _make_roads() -> void:
 		var ang := PI / 16.0 + float(k) * PI / 8.0
 		_sample_road(id, "Calle %d" % (201 + k), 201 + k, "minor", 3.8, 2.2, _radial(650.0, 1040.0, ang, 6.0, 0.0))
 		id += 1
+	# atajos: caminos con curvas que unen una ruta con la de al lado (vas por una a otra ciudad y, si querés, doblás y salís por la otra)
+	var sc := 1
+	for sp in [[0, 1300.0, 7, 1350.0, 46.0, 210.0, 0.0], [0, 1760.0, 7, 1810.0, 40.0, 180.0, 1.3], [7, 1560.0, 6, 1610.0, 44.0, 200.0, 2.1], [7, 2020.0, 6, 2070.0, 38.0, 170.0, 0.7]]:
+		_sample_road(id, "Atajo %d" % sc, sc, "shortcut", 3.8, 1.4, _wavy(_rural_pos(int(sp[0]), float(sp[1])), _rural_pos(int(sp[2]), float(sp[3])), float(sp[4]), float(sp[5]), float(sp[6])))
+		id += 1
+		sc += 1
+	# casco viejo (al sudeste): callejones angostos y sinuosos entre los anillos 520 y 910, con fachadas bajas de colores y veredas de ladrillo
+	var cv := 1
+	for deg in [50.6, 61.9, 73.1, 84.4]:
+		var ang := deg_to_rad(float(deg))
+		var plan := PackedVector2Array()
+		var dirv := Vector2(cos(ang), sin(ang))
+		var per := Vector2(-sin(ang), cos(ang))
+		var r := 512.0
+		while r < 918.01:
+			var env := smoothstep(512.0, 560.0, r) * smoothstep(918.0, 870.0, r)
+			plan.append(dirv * r + per * (13.0 * env * sin(TAU * (r - 512.0) / 104.0 + float(cv))))
+			r += STEP
+		_sample_road(id, "Calle Vieja %d" % cv, 400 + cv, "alley", 2.5, 1.4, plan)
+		id += 1
+		cv += 1
 	# costanera sobre el mar (de los 35° a los 145°)
 	_sample_road(id, "Costanera 90", 90, "coast", 6.0, 3.6, _ring(COAST_R, deg_to_rad(35.0), deg_to_rad(145.0), 0.0))
 	id += 1
@@ -371,8 +414,8 @@ func _clear_of_roads(px: float, pz: float, rad: float, own: int) -> bool:
 	# ¿ningún corredor de otra calle toca un círculo de radio rad en (px, pz)?
 	var kx := int(floor(px / HC))
 	var kz := int(floor(pz / HC))
-	for dx in range(-2, 3):
-		for dz in range(-2, 3):
+	for dx in range(-1, 2): # el mayor retiro (≈26 m) es menor que la celda (32 m): alcanzan las 9 de alrededor
+		for dz in range(-1, 2):
 			var k2 := Vector2i(kx + dx, kz + dz)
 			if not _hash.has(k2):
 				continue
@@ -390,7 +433,8 @@ func _clear_of_roads(px: float, pz: float, rad: float, own: int) -> bool:
 						return false
 	return true
 
-var _occ: Dictionary = {} # Vector2i(24 m) -> Array de huellas [x, z, yaw, w, d] de lo ya construido
+const OCC := 40.0 # celda de la tabla de huellas: mayor que la diagonal del edificio más grande, así alcanzan las 9 de alrededor
+var _occ: Dictionary = {} # Vector2i(40 m) -> Array de huellas [x, z, yaw, w, d] de lo ya construido
 
 static func _rects_overlap(ax: float, az: float, ayaw: float, aw: float, ad: float, bx: float, bz: float, byaw: float, bw: float, bd: float) -> bool:
 	# separación de ejes (SAT) entre dos rectángulos orientados, con 0,6 m de aire
@@ -404,9 +448,9 @@ static func _rects_overlap(ax: float, az: float, ayaw: float, aw: float, ad: flo
 	return true
 
 func _spot_free(cen: Vector2, w: float, d: float, yaw: float) -> bool:
-	var ok_key := Vector2i(int(floor(cen.x / 24.0)), int(floor(cen.y / 24.0)))
-	for ox in range(-2, 3):
-		for oz in range(-2, 3):
+	var ok_key := Vector2i(int(floor(cen.x / OCC)), int(floor(cen.y / OCC)))
+	for ox in range(-1, 2):
+		for oz in range(-1, 2):
 			var kk := Vector2i(ok_key.x + ox, ok_key.y + oz)
 			if _occ.has(kk):
 				for c in (_occ[kk] as Array):
@@ -415,7 +459,7 @@ func _spot_free(cen: Vector2, w: float, d: float, yaw: float) -> bool:
 	return true
 
 func _add_building(cen: Vector2, w: float, d: float, h: float, yaw: float, wall: Color, roof: Color, zone: int, hip: bool, road: int, extra: Dictionary = {}) -> void:
-	var ok_key := Vector2i(int(floor(cen.x / 24.0)), int(floor(cen.y / 24.0)))
+	var ok_key := Vector2i(int(floor(cen.x / OCC)), int(floor(cen.y / OCC)))
 	if not _occ.has(ok_key):
 		_occ[ok_key] = []
 	(_occ[ok_key] as Array).append([cen.x, cen.y, yaw, w, d])
@@ -452,10 +496,12 @@ func _place_buildings() -> void:
 			while i < pts.size() - 1:
 				var p := pts[i]
 				var zone := zone_of(p.x, p.z)
-				if kind == "rural" or (kind == "coast" and sdv > 0.0):
+				if kind == "rural" or kind == "shortcut" or (kind == "coast" and sdv > 0.0):
 					i += int(40.0 / STEP) # las rutas no tienen edificios y la costanera no se edifica del lado del mar
 					continue
 				var st := _style_for(zone, rd)
+				if kind == "alley":
+					st = {"h": [12.8, 22.4], "w": [8.0, 14.0], "d": [10.0, 14.0], "hip": 0.35}
 				var w := _rng.randf_range(float(st["w"][0]), float(st["w"][1]))
 				var d := _rng.randf_range(float(st["d"][0]), float(st["d"][1]))
 				var steps := maxi(1, int(ceil((w + _rng.randf_range(0.5, 3.5)) / STEP)))
@@ -473,8 +519,42 @@ func _place_buildings() -> void:
 				if _clear_of_roads(cen.x, cen.y, rad * 0.78, ri) and _spot_free(cen, w, d, atan2(tn.x, tn.y)) and _corners_clear(cen, w, d, atan2(tn.x, tn.y)):
 					var hh := _rng.randf_range(float(st["h"][0]), float(st["h"][1]))
 					hh = maxf(3.2, roundf(hh / 3.2) * 3.2) # la altura se redondea a pisos de 3,2 m
-					_add_building(cen, w, d, hh, atan2(tn.x, tn.y), WALLS[_rng.randi() % WALLS.size()], ROOFS[_rng.randi() % ROOFS.size()], zone, _rng.randf() < float(st["hip"]), ri)
+					_add_building(cen, w, d, hh, atan2(tn.x, tn.y), (OLD_WALLS if kind == "alley" else WALLS)[_rng.randi() % (OLD_WALLS if kind == "alley" else WALLS).size()], ROOFS[_rng.randi() % ROOFS.size()], zone, _rng.randf() < float(st["hip"]), ri)
 				i = j
+
+## Rellena el interior de las manzanas (lo que quedó entre los edificios de frente de calle) para que la ciudad se vea cerrada: una grilla de 15 m con desvío, cada
+## edificio alineado con la calle más cercana (o con los anillos si no hay ninguna a mano). Va después de los de frente de calle y de los lugares especiales.
+func _fill_blocks() -> void:
+	var step := 15.0
+	var gx := -1180.0
+	while gx < 1180.0:
+		var gz := -1180.0
+		while gz < 1280.0:
+			var jx := _rng.randf_range(-3.0, 3.0)
+			var jz := _rng.randf_range(-3.0, 3.0)
+			var cen := Vector2(gx + jx, gz + jz)
+			gz += step
+			var zone := zone_of(cen.x, cen.y)
+			if zone >= 4 or cen.length() < PLAZA_R + 20.0 or cen.y > SEA_Z - 150.0:
+				continue
+			var pr := probe(cen.x, cen.y)
+			if pr[0] > -1.0:
+				continue # adentro de una calle (o pegado a una vereda)
+			var yaw: float
+			if pr[6] >= 0.0:
+				yaw = atan2(-float(pr[3]), float(pr[2])) # tangente de la calle más cercana
+			else:
+				yaw = atan2(-cen.y, cen.x) # tangente del anillo
+			var st := _style_for(zone, roads[0])
+			var w := _rng.randf_range(float(st["w"][0]) * 0.8, float(st["w"][1]) * 0.8)
+			var d := _rng.randf_range(float(st["d"][0]) * 0.8, float(st["d"][1]) * 0.8)
+			var rad := Vector2(w, d).length() * 0.5
+			if not (_spot_free(cen, w, d, yaw) and _clear_of_roads(cen.x, cen.y, rad, -1)): # el círculo que rodea al edificio no toca ninguna calle
+				continue
+			var hh := _rng.randf_range(float(st["h"][0]), float(st["h"][1]))
+			hh = maxf(3.2, roundf(hh / 3.2) * 3.2)
+			_add_building(cen, w, d, hh, yaw, WALLS[_rng.randi() % WALLS.size()], ROOFS[_rng.randi() % ROOFS.size()], zone, _rng.randf() < float(st["hip"]), int(maxf(pr[6], 0.0)))
+		gx += step
 
 # ───────────────────────── puntos de interés ─────────────────────────
 ## Cada uno es un edificio especial pegado a una calle: [id, tipo, nombre, calle, distancia sobre la calle (m), lado, ancho, fondo, alto, color]

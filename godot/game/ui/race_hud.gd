@@ -6,6 +6,7 @@ const TouchScroll := preload("res://game/ui/touch_scroll.gd")
 const OptionsUi := preload("res://game/ui/options_ui.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const LabPanel := preload("res://game/ui/lab_panel.gd")
+const CityHud := preload("res://game/ui/city_hud.gd")
 
 signal resume_pressed
 signal restart_pressed
@@ -38,6 +39,7 @@ var cine_btn: Button
 var bar: ColorRect
 var bar_fill: ColorRect
 var minimap: Control
+var city_hud: Control # mundo abierto: minimapa que gira, mapa grande y GPS
 var opts: RefCounted
 var opts_box: Control
 var opts_body: VBoxContainer
@@ -204,7 +206,16 @@ func setup(s: RefCounted, c: Dictionary, r: Array) -> void:
 	var cols: Array = []
 	for x in r:
 		cols.append(x["color"])
-	if t == "drift":
+	if city_hud != null:
+		city_hud.queue_free()
+		city_hud = null
+	if t == "city":
+		minimap.visible = false
+		city_hud = CityHud.new()
+		add_child(city_hud)
+		city_hud.setup(s.track, func(m: String) -> void: toast(m))
+		pos_l.visible = false
+	elif t == "drift":
 		var polys: Array = (s.track.map_lines as Array)
 		minimap.setup_lines(polys, s.track.map_bounds, cols)
 	else:
@@ -224,6 +235,8 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 	# el minimapa va arriba a la izquierda, debajo del cronómetro (no tapa el espejo ni los botones)
 	minimap.position = Vector2(14.0, 100.0)
 	tick += dt
+	if city_hud != null and not car_list.is_empty():
+		city_hud.update_hud(dt, car_list[0])
 	if tick > 0.05:
 		tick = 0.0
 		var L: Array = []
@@ -252,6 +265,8 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 			lap_l.text += "  ·  🤖 %s %s" % [bn, _pts(s.bot_score)]
 		drift_l.text = ("%s  ·  %d°" % [_pts(s.cur), int(s.angle_deg)]) if (s.cur > 0.0 and s.state == "run") else ""
 		drift_l.add_theme_color_override("font_color", [Color(0.55, 0.85, 1.0), Color(0.55, 0.85, 1.0), Color(1.0, 0.9, 0.4), Color(1.0, 0.7, 0.25), Color(1.0, 0.5, 0.2), Color(1.0, 0.35, 0.3)][clampi(s.mult, 0, 5)])
+	elif t == "city":
+		lap_l.text = "%s · %.1f km" % [Tr.t("PUERTO AURELIA"), s.odo / 1000.0]
 	elif t == "free":
 		lap_l.text = "PRUEBA LIBRE · salí desde la pausa"
 	elif t == "drift":

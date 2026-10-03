@@ -4,6 +4,7 @@
 extends SceneTree
 
 const CityLayout := preload("res://game/city/city_layout.gd")
+const CityGps := preload("res://game/city/city_gps.gd")
 
 var fail := false
 
@@ -48,7 +49,7 @@ func _init() -> void:
 	var names := {}
 	for rd in c.roads:
 		names[str(rd["name"])] = true
-	for nm in ["Avenida 1", "Avenida 8", "Calle 10", "Calle 80", "Calle 101", "Calle 216", "Costanera 90", "Camino de la Colina 300", "Ruta 20", "Ruta 80", "Plaza Aurora"]:
+	for nm in ["Avenida 1", "Avenida 8", "Calle 10", "Calle 80", "Calle 101", "Calle 216", "Costanera 90", "Camino de la Colina 300", "Ruta 20", "Ruta 80", "Plaza Aurora", "Atajo 1", "Atajo 4", "Calle Vieja 1", "Calle Vieja 4"]:
 		check(names.has(nm), "existe «%s»" % nm)
 	check(names.size() == c.roads.size(), "no hay dos calles con el mismo nombre")
 	# ningún edificio pisa el corredor de una calle
@@ -69,6 +70,18 @@ func _init() -> void:
 			if worst < 0.0:
 				bad += 1
 	check(bad < total / 40, "casi ningún edificio entra en una calle (%d de %d tocan el corredor)" % [bad, total])
+	# atajos y callejones: pendiente máxima razonable y cruzan las calles que unen
+	for nm in ["Atajo 1", "Atajo 2", "Atajo 3", "Atajo 4", "Calle Vieja 1", "Calle Vieja 2", "Calle Vieja 3", "Calle Vieja 4"]:
+		var rd: Dictionary = c.roads[c.road_named(nm)]
+		var pp: PackedVector3Array = rd["pts"]
+		var mg := 0.0
+		for i in range(1, pp.size()):
+			mg = maxf(mg, absf(pp[i].y - pp[i - 1].y) / maxf(0.1, Vector2(pp[i].x - pp[i - 1].x, pp[i].z - pp[i - 1].z).length()))
+		var nj := 0
+		for j in c.junctions:
+			if (j["roads"] as Array).has(int(rd["id"])):
+				nj += 1
+		check(mg < 0.12 and nj >= 2, "%s: pendiente máxima %.1f %%, %d cruces, %d m" % [nm, mg * 100.0, nj, int(rd["cum"][rd["cum"].size() - 1])])
 	# consulta de calle
 	var lc := c.locate(0.0, -150.0)
 	check(str(lc["name"]) == "Avenida 7" and int(lc["cuadra"]) == 2, "locate: en (0, -150) estás en %s, cuadra %d" % [lc["name"], lc["cuadra"]])
@@ -78,6 +91,21 @@ func _init() -> void:
 	var c2 := CityLayout.new()
 	c2.build()
 	check(c2.building_count == c.building_count and c2.junctions.size() == c.junctions.size() and c2.roads.size() == c.roads.size(), "la ciudad sale igual en cada corrida")
+	# GPS: hay camino de la plaza a cada lugar y a cada salida, y no es absurdamente largo
+	var tg0 := Time.get_ticks_usec()
+	var gps := CityGps.new(c)
+	print("     GPS armado en %.0f ms" % (float(Time.get_ticks_usec() - tg0) / 1000.0))
+	var dests: Array = []
+	for p in c.pois:
+		dests.append([str(p["name"]), p["front"]])
+	for ex in c.exits:
+		dests.append([str(ex["name"]), ex["pos"]])
+	for d in dests:
+		var t2 := Time.get_ticks_usec()
+		var r: Dictionary = gps.route(Vector2(0.0, 60.0), d[1])
+		var straight := Vector2(0.0, 60.0).distance_to(d[1])
+		var ln := float(r["len"])
+		check(ln > 0.0 and ln < straight * 2.6 + 400.0, "GPS a %s: %.0f m por calles (en línea recta %.0f m, %.0f ms)" % [d[0], ln, straight, float(Time.get_ticks_usec() - t2) / 1000.0])
 	# costo de las consultas de la física
 	var t1 := Time.get_ticks_usec()
 	var acc := 0.0

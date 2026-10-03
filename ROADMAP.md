@@ -96,3 +96,6 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 ### Arranque
 - Detección automática del teléfono y calidad "Optimizar" por defecto (✅ en esta tanda).
 - Tutorial breve al elegir el primer auto.
+
+## Puerto Aurelia (mundo abierto en papel)
+Base lista (calles numeradas, atajos, casco viejo, cuadras de carga, fachadas, minimapa que gira, mapa grande, GPS). Pendientes y diseño online en `docs/MUNDO_ABIERTO.md`.
