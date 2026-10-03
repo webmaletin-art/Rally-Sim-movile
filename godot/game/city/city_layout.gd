@@ -782,7 +782,7 @@ func _place_props() -> void:
 ## Cada uno es un edificio especial pegado a una calle: [id, tipo, nombre, calle, distancia sobre la calle (m), lado, ancho, fondo, alto, color]
 const POI_SPECS := [
 	["concesionario", "dealer", "Concesionario Aurelia", "Avenida 7", 150.0, 1.0, 34.0, 22.0, 9.6, Color(0.20, 0.45, 0.85)],
-	["taller_centro", "garage", "Taller Central", "Avenida 1", 200.0, -1.0, 26.0, 18.0, 8.0, Color(0.95, 0.45, 0.10)],
+	["taller_centro", "garage", "Taller Central", "Avenida 1", 170.0, -1.0, 26.0, 18.0, 8.0, Color(0.95, 0.45, 0.10)],
 	["taller_puerto", "garage", "Taller del Puerto", "Costanera 90", 420.0, -1.0, 26.0, 18.0, 8.0, Color(0.95, 0.45, 0.10)],
 	["mirador", "view", "Mirador de la Colina", "Camino de la Colina 300", -1.0, 1.0, 18.0, 14.0, 6.4, Color(0.95, 0.80, 0.25)],
 ]
@@ -815,7 +815,20 @@ func _place_pois() -> void:
 		tn = tn.normalized()
 		var side := float(sp[5])
 		var nrm := Vector2(-tn.y, tn.x) * side
-		var cen := Vector2(a.x, a.z) + nrm * (float(rd["hw"]) + float(rd["sw"]) + LINE_GAP + float(sp[7]) * 0.5)
+		var yaw0 := atan2(tn.x, tn.y)
+		var back := 0.6 # se retira del borde de la vereda hasta que ninguna esquina pise una calle (en las curvas las esquinas asoman)
+		var cen := Vector2(a.x, a.z) + nrm * (float(rd["hw"]) + float(rd["sw"]) + LINE_GAP + back + float(sp[7]) * 0.5)
+		for it in 12:
+			var ok := true
+			for cx in [-0.5, 0.5]:
+				for cz in [-0.5, 0.5]:
+					var wp := cen + Vector2(sin(yaw0), cos(yaw0)) * (float(cx) * float(sp[6])) + Vector2(cos(yaw0), -sin(yaw0)) * (float(cz) * float(sp[7]))
+					if probe(wp.x, wp.y)[0] > -0.6:
+						ok = false
+			if ok:
+				break
+			back += 0.5
+			cen = Vector2(a.x, a.z) + nrm * (float(rd["hw"]) + float(rd["sw"]) + LINE_GAP + back + float(sp[7]) * 0.5)
 		if str(sp[1]) == "view":
 			cen = Vector2(a.x, a.z) # el mirador es la plazoleta del final del camino
 		var yaw := atan2(tn.x, tn.y)

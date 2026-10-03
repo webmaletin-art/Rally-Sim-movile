@@ -68,9 +68,9 @@ func _init() -> void:
 					var wp := Vector2(b["x"], b["z"]) + tg * (float(sx) * float(b["w"])) + nm * (float(sz) * float(b["d"]))
 					var pr := c.probe(wp.x, wp.y)
 					worst = minf(worst, -float(pr[0])) # holgura negativa = la esquina está adentro de un corredor
-			if worst < 0.0:
+			if worst < -0.5: # una esquina de un lugar especial puede asomar unos centímetros en una curva
 				bad += 1
-	check(bad < total / 40, "casi ningún edificio entra en una calle (%d de %d tocan el corredor)" % [bad, total])
+	check(bad == 0, "ningún lugar especial se mete en una calle (%d de %d)" % [bad, total])
 	# atajos y callejones: pendiente máxima razonable y cruzan las calles que unen
 	for nm in ["Atajo 1", "Atajo 2", "Atajo 3", "Atajo 4", "Calle Vieja 1", "Calle Vieja 2", "Calle Vieja 3", "Calle Vieja 4"]:
 		var rd: Dictionary = c.roads[c.road_named(nm)]
