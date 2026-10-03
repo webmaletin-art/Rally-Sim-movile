@@ -22,6 +22,8 @@ func _init(p_city: CityLayout) -> void:
 		for si in _near(jp, 14.0):
 			var rid := int(city.s_road[si])
 			var d := Vector2(city.s_x[si], city.s_z[si]).distance_squared_to(jp)
+			if d > 16.0 * 16.0:
+				continue # (_near devuelve celdas enteras: sin este límite una calle a 60 m «cruzaba» con el cruce y el GPS cortaba camino por adentro de los edificios)
 			if not best.has(rid) or d < float(best[rid][1]):
 				best[rid] = [si, d]
 		var keys := best.keys()

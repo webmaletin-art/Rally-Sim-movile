@@ -128,6 +128,7 @@ func _init() -> void:
 					worst = minf(worst, -float(pr[0])) # holgura negativa = la esquina está adentro de un corredor
 			if worst < -0.5: # una esquina de un lugar especial puede asomar unos centímetros en una curva
 				bad += 1
+				print("     mal: %s en (%d, %d), esquina adentro de un corredor por %.1f m" % [str(b.get("poi", "?")), int(b["x"]), int(b["z"]), -worst])
 	check(bad == 0, "ningún lugar especial se mete en una calle (%d de %d)" % [bad, total])
 	# atajos y callejones: pendiente máxima razonable y cruzan las calles que unen
 	for nm in ["Atajo 1", "Atajo 2", "Atajo 3", "Atajo 4", "Calle Vieja 1", "Calle Vieja 2", "Calle Vieja 3", "Calle Vieja 4"]:

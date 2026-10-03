@@ -1362,7 +1362,7 @@ const POI_SPECS := [
 	["taller_suspension", "garage", "Suspensión y Frenos", "Avenida 6", 142.0, -1.0, 26.0, 18.0, 8.0, Color(0.30, 0.65, 0.35), "susp"],
 	["taller_ruedas", "garage", "Taller de Ruedas", "Avenida 8", 142.0, 1.0, 26.0, 18.0, 8.0, Color(0.95, 0.80, 0.20), "wheels"],
 	["taller_reglaje_b", "garage", "Reglaje del Puerto", "Costanera 90", 420.0, -1.0, 26.0, 18.0, 8.0, Color(0.95, 0.65, 0.15), "tune_b"],
-	["estacionamiento", "parking", "Estacionamiento Central", "Avenida 5", 230.0, -1.0, 36.0, 24.0, 11.2, Color(0.28, 0.52, 0.88), "garage"],
+	["estacionamiento", "parking", "Estacionamiento Central", "Avenida 5", 170.0, -1.0, 36.0, 24.0, 11.2, Color(0.28, 0.52, 0.88), "garage"],
 	["mirador", "view", "Mirador de la Colina", "Camino de la Colina 300", -1.0, 1.0, 18.0, 14.0, 6.4, Color(0.95, 0.80, 0.25), ""],
 ]
 
