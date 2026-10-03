@@ -49,6 +49,7 @@ const TERMS := [
 	["Capturas y videos", "Podés compartir capturas y videos del juego libremente, citando «Dream Racing»."],
 	["Cambios", "Podemos actualizar estos términos y el juego. Seguir usando la app después de un cambio implica aceptarlo."],
 	["Contacto", "Dudas o pedidos sobre tus datos o tu cuenta: roldanhr98@gmail.com (SRGamestudios)."],
+	["Ley aplicable", "Estas condiciones se rigen por las leyes de la República Argentina. Si sos consumidor, esto no limita los derechos que te reconozca la ley de tu país."],
 ]
 
 ## Versión de Google Play: con compras dentro del juego
@@ -59,6 +60,7 @@ const TERMS_STORE := [
 
 ## Solo si esta versión trae el modo online configurado (los rankings son opcionales y están apagados de fábrica)
 const PRIVACY_ONLINE := [
+	["Tus derechos", "El responsable es SRGamestudios (Argentina). Podés pedir acceso, corrección o borrado de tus datos escribiendo al contacto, o borrar tu cuenta desde el juego. En Argentina, la Agencia de Acceso a la Información Pública (AAIP), órgano de control de la Ley 25.326, atiende las denuncias y reclamos. Si estás en otro país, también podés ejercer los derechos que te reconozca tu ley local."],
 	["Resumen", "Dream Racing no tiene publicidad ni análisis. No vendemos ni compartimos datos personales. Tu progreso se guarda en tu teléfono. Solo si lo elegís, el modo online guarda en nuestro servidor tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo."],
 	["Niños", "El juego no tiene publicidad ni chat. El modo online es opcional y la cuenta con correo es solo para mayores de 13 años (o con permiso de un adulto); sin cuenta no se pide ningún dato personal. Las compras dentro del juego se hacen con la cuenta de Google Play de un adulto."],
 	["Qué se guarda", "Tu perfil de juego (autos, mejoras, pintura, dinero del juego, estrellas, tiempos y opciones) queda en el almacenamiento privado de la app, en tu teléfono. Solo si participás en el modo online se envían tu nombre de piloto y tus mejores marcas, y tu correo si creás una cuenta. Si desinstalás la app, se pierde lo que está en el teléfono."],

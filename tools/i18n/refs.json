@@ -9,10 +9,10 @@
 "perf_bench.gd:175"
 ],
 " km/h · marcha ": [
-"race.gd:2302"
+"race.gd:2312"
 ],
 " y Bosque (tierra)": [
-"race.gd:1264"
+"race.gd:1274"
 ],
 " · %d rivales": [
 "ui/loading.gd:158"
@@ -35,13 +35,13 @@
 "perf_bench.gd:73"
 ],
 " · FINAL": [
-"ui/menu_career.gd:154"
+"ui/menu_career.gd:166"
 ],
 " · MHz máx.: ": [
-"race.gd:1317"
+"race.gd:1327"
 ],
 " · SIN ": [
-"race.gd:1165"
+"race.gd:1175"
 ],
 "%-52s → %3d FPS · %5.1f ms · p95 %5.1f · p99 %5.1f · peor %5.1f · >20ms %4.1f%% · tirones(>33ms) %3d · fís %4.1f · código %4.1f · render CPU %4.1f / GPU %4.1f · %3d llam · %3dk tri": [
 "perf_bench.gd:138"
@@ -56,10 +56,10 @@
 "adventure/adv_hud.gd:497"
 ],
 "%2d autos · %5d árb · pil %s · som %s · hilos %s · res %3d%%%s  →  %3d FPS · %5.1f ms · fis %4.1f · código %4.1f ms · %4d llam · %dk tri": [
-"race.gd:1163"
+"race.gd:1173"
 ],
 "%d MB en total · %d MB libres": [
-"race.gd:1323"
+"race.gd:1333"
 ],
 "%d autos + sombras": [
 "perf_bench.gd:63"
@@ -74,12 +74,12 @@
 "ui/race_hud.gd:263"
 ],
 "%d para cobrar": [
-"ui/menu.gd:516"
+"ui/menu.gd:519"
 ],
 "%d pts": [
 "ui/menu_adventure.gd:73",
-"ui/menu_career.gd:173",
-"ui/menu.gd:668"
+"ui/menu_career.gd:185",
+"ui/menu.gd:671"
 ],
 "%d puntos de habilidad para gastar": [
 "ui/menu_adventure.gd:65"
@@ -88,10 +88,10 @@
 "car/cockpit.gd:1195"
 ],
 "%d segundos": [
-"ui/menu_career.gd:192"
+"ui/menu_career.gd:204"
 ],
 "%d vuelta(s)": [
-"ui/menu_career.gd:190"
+"ui/menu_career.gd:202"
 ],
 "%s %d (max %.2f)": [
 "fx/effects.gd:428"
@@ -103,19 +103,19 @@
 "perf_bench.gd:137"
 ],
 "(No se corrió la prueba automática. Estado actual:)": [
-"race.gd:1334"
+"race.gd:1344"
 ],
 "(SIN e=efectos c=cielo n=niebla f=filtro de cámara h=controles m=mundo 3D: se apaga a propósito para medir cuánto cuesta; código = tiempo del script por cuadro)": [
-"race.gd:1342"
+"race.gd:1352"
 ],
 "(este teléfono no la informa)": [
-"race.gd:1323"
+"race.gd:1333"
 ],
 "(fís = milisegundos por cuadro que el hilo principal pierde esperando a la física; con hilos debería ser ~0)": [
-"race.gd:1343"
+"race.gd:1353"
 ],
 "(no informa)": [
-"race.gd:1317"
+"race.gd:1327"
 ],
 "(render CPU/GPU = ms que tarda el motor en preparar/dibujar el mundo 3D según el propio motor; 0.0 = este teléfono no lo mide · FPS = cuadros por segundo promedio · p95/p99 = tiempo de cuadro del 95/99 % de los cuadros · fís = ms que el hilo principal espera a la física · código = ms de script por cuadro · llam = llamadas de dibujo · tri = triángulos)": [
 "perf_bench.gd:199"
@@ -142,7 +142,7 @@
 "perf_bench.gd:54"
 ],
 "1 hilo": [
-"race.gd:2286"
+"race.gd:2296"
 ],
 "1-Bit tramado": [
 "fx/lens.gd:274"
@@ -190,7 +190,7 @@
 "perf_bench.gd:210"
 ],
 "=== INFORME DREAM RACING (Godot) ===": [
-"race.gd:1301"
+"race.gd:1311"
 ],
 "A quienes probaron el juego, mandaron ideas y ayudaron a que cada versión salga mejor.": [
 "ui/menu_about.gd:24"
@@ -211,11 +211,11 @@
 "ui/controls.gd:382"
 ],
 "ACEPTO": [
-"ui/menu_about.gd:201"
+"ui/menu_about.gd:203"
 ],
 "ACERCA DE": [
-"ui/menu_about.gd:118",
-"ui/menu.gd:518"
+"ui/menu_about.gd:120",
+"ui/menu.gd:521"
 ],
 "AERO": [
 "ui/lab_panel.gd:26"
@@ -239,7 +239,7 @@
 "ui/menu_adventure.gd:109"
 ],
 "APAGAR MODO DEV": [
-"ui/menu_about.gd:133"
+"ui/menu_about.gd:135"
 ],
 "ARCADE": [
 "ui/menu.gd:367"
@@ -273,8 +273,8 @@
 "adventure/adv_data.gd:15"
 ],
 "Acelerómetro calibrado: sostené el teléfono como para jugar": [
-"race.gd:1525",
-"race.gd:1898"
+"race.gd:1535",
+"race.gd:1908"
 ],
 "Acero": [
 "ui/menu_garage.gd:15"
@@ -314,7 +314,7 @@
 "adventure/adv_data.gd:30"
 ],
 "Al tocar «Acepto» confirmás que leíste y aceptás la política de privacidad y los términos de uso.": [
-"ui/menu_about.gd:195"
+"ui/menu_about.gd:197"
 ],
 "Alerón alto: la cola queda pegada y estable, pero baja la velocidad máxima.": [
 "data/catalog.json"
@@ -365,8 +365,11 @@
 "Amortiguador: extensión": [
 "data/catalog.json"
 ],
+"Anillo de Júpiter": [
+"data/routes.json"
+],
 "Antes de empezar": [
-"ui/menu_about.gd:180"
+"ui/menu_about.gd:182"
 ],
 "Apagada": [
 "ui/options_ui.gd:58",
@@ -380,16 +383,16 @@
 "ui/loading.gd:162"
 ],
 "Armando el recorrido…": [
-"race.gd:242"
+"race.gd:243"
 ],
 "Armando el terreno…": [
-"race.gd:355"
+"race.gd:356"
 ],
 "Armando la ruta… %d m": [
-"race.gd:348"
+"race.gd:349"
 ],
 "Armando los autos y los rivales…": [
-"race.gd:352"
+"race.gd:353"
 ],
 "Arrancás en el pueblo: esquinas a 90° y calles angostas. Frená antes de cada esquina y acelerá a la salida. Afuera del pueblo el asfalto es rápido.": [
 "adventure/adv_route.gd:47"
@@ -410,7 +413,7 @@
 "online/online.gd:46"
 ],
 "Auto": [
-"ui/menu_career.gd:289"
+"ui/menu_career.gd:348"
 ],
 "Auto alto: pasa baches y saltos, pero se inclina más hacia los costados en las curvas.": [
 "data/catalog.json"
@@ -425,7 +428,7 @@
 "store/products.gd:14"
 ],
 "Auto de la prueba: %s · calidad general: %s · resolución del mundo 3D en los pasos: fija (la automática se apaga)": [
-"race.gd:1261"
+"race.gd:1271"
 ],
 "Auto liviano: acelera, frena y gira mejor.": [
 "ui/lab_panel.gd:13"
@@ -476,10 +479,10 @@
 "perf_bench.gd:46"
 ],
 "BENCH fps medio %.1f · %s": [
-"race.gd:2307"
+"race.gd:2317"
 ],
 "BIENVENIDO": [
-"ui/menu_about.gd:179"
+"ui/menu_about.gd:181"
 ],
 "BIENVENIDOS A\n": [
 "adventure/adv_world.gd:1181"
@@ -632,11 +635,11 @@
 "ui/loading.gd:57"
 ],
 "CARRERA": [
-"ui/menu_career.gd:85",
-"ui/menu.gd:511"
+"ui/menu_career.gd:97",
+"ui/menu.gd:512"
 ],
 "CARRERA RÁPIDA": [
-"ui/menu_career.gd:251"
+"ui/menu_career.gd:304"
 ],
 "CHAKAL": [
 "data/catalog.json"
@@ -645,10 +648,10 @@
 "adventure/adv_route.gd:114"
 ],
 "COBRADO ✔": [
-"ui/menu.gd:616"
+"ui/menu.gd:619"
 ],
 "COBRAR ": [
-"ui/menu.gd:618"
+"ui/menu.gd:621"
 ],
 "COLONIA ESPERANZA": [
 "adventure/adv_route.gd:66"
@@ -657,7 +660,7 @@
 "data/catalog.json"
 ],
 "COMPLETA": [
-"race.gd:1264"
+"race.gd:1274"
 ],
 "COMPONENTES": [
 "perf_bench.gd:172"
@@ -667,7 +670,7 @@
 ],
 "COMPRAS": [
 "ui/menu_store.gd:13",
-"ui/menu.gd:519"
+"ui/menu.gd:522"
 ],
 "CON FILTROS": [
 "perf_bench.gd:172",
@@ -677,7 +680,7 @@
 "perf_bench.gd:181"
 ],
 "CONTINUAR": [
-"ui/menu.gd:689"
+"ui/menu.gd:692"
 ],
 "CREAR CUENTA": [
 "ui/menu_account.gd:107"
@@ -686,8 +689,8 @@
 "ui/menu_account.gd:120"
 ],
 "CRÉDITOS": [
-"ui/menu_about.gd:109",
-"ui/menu_about.gd:127"
+"ui/menu_about.gd:111",
+"ui/menu_about.gd:129"
 ],
 "Cada estación de servicio guarda tu avance. Antes de salir podés ajustar el auto para lo que viene: el camino cambia (asfalto, tierra, nieve) y el auto se maneja distinto.\n\nEn la pestaña AJUSTE tenés lo más importante: tracción, presión de gomas, altura y dureza de la suspensión y frenos.": [
 "adventure/adv_data.gd:23"
@@ -715,7 +718,7 @@
 "data/catalog.json"
 ],
 "Calidad automática: partículas al %d/10": [
-"race.gd:1647"
+"race.gd:1657"
 ],
 "Calidad de la captura": [
 "ui/capture_ui.gd:16"
@@ -736,10 +739,10 @@
 "ui/menu_account.gd:60"
 ],
 "Cambio tarde: tocaste el limitador": [
-"race.gd:1933"
+"race.gd:1943"
 ],
 "Cambio temprano: esperá a la zona verde": [
-"race.gd:1931"
+"race.gd:1941"
 ],
 "Cambios": [
 "ui/menu_about.gd:50"
@@ -773,7 +776,7 @@
 ],
 "Cancelar": [
 "ui/menu_adventure.gd:225",
-"ui/menu.gd:645"
+"ui/menu.gd:648"
 ],
 "Cantera (inversa)": [
 "data/routes.json"
@@ -834,7 +837,7 @@
 "Carrera": [
 "ui/loading.gd:153",
 "ui/loading.gd:153",
-"ui/menu_career.gd:287"
+"ui/menu_career.gd:346"
 ],
 "Carrera rápida": [
 "data/rewards.gd:196"
@@ -909,11 +912,11 @@
 "data/catalog.json"
 ],
 "Clima": [
-"ui/menu_career.gd:194",
-"ui/menu_career.gd:292"
+"ui/menu_career.gd:206",
+"ui/menu_career.gd:351"
 ],
 "Clima y efectos…": [
-"race.gd:289"
+"race.gd:290"
 ],
 "Clásico 4x4 ’85": [
 "data/catalog.json"
@@ -941,13 +944,13 @@
 "store/products.gd:13"
 ],
 "Compilando efectos…": [
-"race.gd:361"
+"race.gd:362"
 ],
 "Completaste la Ruta de los Sueños": [
 "adventure/adv_hud.gd:702"
 ],
 "Compras": [
-"ui/menu_about.gd:56"
+"ui/menu_about.gd:57"
 ],
 "Compuesto duro y progresivo: desliza largo y controlable.": [
 "data/catalog.json"
@@ -989,7 +992,7 @@
 "data/catalog.json"
 ],
 "Construyendo camino, banquinas y guardarraíl…": [
-"race.gd:245"
+"race.gd:246"
 ],
 "Contacto": [
 "ui/menu_about.gd:34",
@@ -997,14 +1000,14 @@
 ],
 "Contenido descargable": [
 "ui/menu_about.gd:47",
-"ui/menu_about.gd:57"
+"ui/menu_about.gd:58"
 ],
 "Content-Type: application/json": [
 "online/online.gd:46"
 ],
 "Contrarreloj": [
 "ui/loading.gd:153",
-"ui/menu_career.gd:287",
+"ui/menu_career.gd:346",
 "data/catalog.json"
 ],
 "Contraseña": [
@@ -1059,8 +1062,14 @@
 "Coupé GT · fino en curva": [
 "data/vehicles.json"
 ],
+"Cristales de hielo flotando frente a un Júpiter gigante.": [
+"data/routes.json"
+],
 "Cromado": [
 "data/catalog.json"
+],
+"Cráteres, la Tierra en el cielo y un módulo lunar.": [
+"data/routes.json"
 ],
 "Cuadrado, alto y con tracción a las cuatro. Trepa cualquier cosa; en el asfalto hay que tratarlo con respeto.": [
 "data/catalog.json"
@@ -1072,11 +1081,11 @@
 "data/catalog.json"
 ],
 "Cuenta con correo (opcional)": [
-"ui/menu_about.gd:68",
-"ui/menu.gd:552"
+"ui/menu_about.gd:70",
+"ui/menu.gd:555"
 ],
 "Cuenta y rankings online": [
-"ui/menu_about.gd:79"
+"ui/menu_about.gd:81"
 ],
 "Curvas": [
 "adventure/adv_data.gd:14"
@@ -1115,7 +1124,7 @@
 "ui/loading.gd:177"
 ],
 "DETALLE (p50/p95/p99 = tiempo de cuadro del 50%, 95% y 99% de los cuadros; cuadros lentos = tirones)": [
-"race.gd:1344"
+"race.gd:1354"
 ],
 "DR Bisonte XR": [
 "data/vehicles.json"
@@ -1129,9 +1138,9 @@
 "car/cockpit.gd:691"
 ],
 "DREAM RACING": [
-"race.gd:540",
-"race.gd:569",
-"ui/menu_about.gd:119"
+"race.gd:550",
+"race.gd:579",
+"ui/menu_about.gd:121"
 ],
 "DREAM SHOP · 24 h": [
 "adventure/adv_props.gd:494"
@@ -1168,7 +1177,7 @@
 "ui/menu_garage.gd:14"
 ],
 "Dibujado del mundo 3D a %d%% de la pantalla": [
-"race.gd:1326"
+"race.gd:1336"
 ],
 "Diez banderas repartidas por todo el valle.": [
 "data/catalog.json"
@@ -1192,9 +1201,9 @@
 "data/catalog.json"
 ],
 "Difícil": [
-"ui/menu_career.gd:296",
-"ui/menu_career.gd:298",
-"ui/menu_career.gd:302"
+"ui/menu_career.gd:355",
+"ui/menu_career.gd:357",
+"ui/menu_career.gd:361"
 ],
 "Dirección": [
 "ui/options_ui.gd:68"
@@ -1209,7 +1218,7 @@
 "data/catalog.json"
 ],
 "Distancia": [
-"ui/menu.gd:694"
+"ui/menu.gd:697"
 ],
 "Distancia (largo)": [
 "ui/race_hud.gd:483"
@@ -1239,26 +1248,26 @@
 "ui/menu_about.gd:44"
 ],
 "Dream Racing guarda tu progreso solo en tu teléfono y no tiene publicidad. Los rankings online y la cuenta con correo son opcionales: si los usás, se envían tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo. Descarga contenido del juego desde internet.": [
-"ui/menu_about.gd:183"
+"ui/menu_about.gd:185"
 ],
 "Dream Racing guarda tu progreso solo en tu teléfono y no tiene publicidad. Los rankings online y la cuenta con correo son opcionales: si los usás, se envían tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo. Funciona sin internet; las compras dentro del juego pasan por Google Play.": [
-"ui/menu_about.gd:183"
+"ui/menu_about.gd:185"
 ],
 "Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Descarga contenido del juego desde internet.": [
-"ui/menu_about.gd:181"
+"ui/menu_about.gd:183"
 ],
 "Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Funciona sin internet; las compras dentro del juego pasan por Google Play.": [
-"ui/menu_about.gd:181"
+"ui/menu_about.gd:183"
 ],
 "Dream Racing no tiene cuentas, ni publicidad, ni análisis. No recopilamos, vendemos ni compartimos datos personales. Tu progreso se guarda solo en tu teléfono.": [
 "ui/menu_about.gd:28"
 ],
 "Dream Racing no tiene publicidad ni análisis. No vendemos ni compartimos datos personales. Tu progreso se guarda en tu teléfono. Solo si lo elegís, el modo online guarda en nuestro servidor tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo.": [
-"ui/menu_about.gd:62"
+"ui/menu_about.gd:64"
 ],
 "Drift": [
 "ui/loading.gd:153",
-"ui/menu_career.gd:294",
+"ui/menu_career.gd:353",
 "data/catalog.json"
 ],
 "Drift Coupé": [
@@ -1278,7 +1287,7 @@
 "ui/menu_about.gd:51"
 ],
 "Duelo contra un bot": [
-"ui/menu_career.gd:294"
+"ui/menu_career.gd:353"
 ],
 "Duelo de Titanes": [
 "data/catalog.json"
@@ -1293,7 +1302,7 @@
 "data/catalog.json"
 ],
 "Dónde se guardan los datos online": [
-"ui/menu_about.gd:66"
+"ui/menu_about.gd:68"
 ],
 "ECU reprogramada + árboles de levas": [
 "data/catalog.json"
@@ -1403,13 +1412,13 @@
 "ui/perf_results.gd:27"
 ],
 "El juego completo viene dentro de la app y funciona sin conexión. Las actualizaciones se instalan desde Google Play.": [
-"ui/menu_about.gd:57"
+"ui/menu_about.gd:58"
 ],
 "El juego descarga contenido adicional de internet; la primera vez hace falta conexión. El contenido puede cambiar con las actualizaciones.": [
 "ui/menu_about.gd:47"
 ],
 "El juego funciona sin conexión. Se usa internet para las compras (a través de Google Play), para descargar contenido en la versión de prueba y, solo si participás, para el modo online (rankings y cuenta).": [
-"ui/menu_about.gd:65"
+"ui/menu_about.gd:67"
 ],
 "El juego funciona sin conexión: todo viene dentro de la app. Solo se usa internet, a través de Google Play, cuando hacés una compra dentro del juego. Los datos de pago los maneja Google y nunca llegan a nosotros.": [
 "ui/menu_about.gd:39"
@@ -1418,7 +1427,7 @@
 "ui/menu_about.gd:33"
 ],
 "El juego no tiene publicidad ni chat. El modo online es opcional y la cuenta con correo es solo para mayores de 13 años (o con permiso de un adulto); sin cuenta no se pide ningún dato personal. Las compras dentro del juego se hacen con la cuenta de Google Play de un adulto.": [
-"ui/menu_about.gd:63"
+"ui/menu_about.gd:65"
 ],
 "El juego, sus autos, pistas y diseños pertenecen a sus autores. Los modelos de Mixamo y de Sweet Home 3D se usan según sus licencias (ver Créditos).": [
 "ui/menu_about.gd:48"
@@ -1431,6 +1440,9 @@
 ],
 "El primer jefe": [
 "adventure/adv_data.gd:33"
+],
+"El responsable es SRGamestudios (Argentina). Podés pedir acceso, corrección o borrado de tus datos escribiendo al contacto, o borrar tu cuenta desde el juego. En Argentina, la Agencia de Acceso a la Información Pública (AAIP), órgano de control de la Ley 25.326, atiende las denuncias y reclamos. Si estás en otro país, también podés ejercer los derechos que te reconozca tu ley local.": [
+"ui/menu_about.gd:63"
 ],
 "El rival te lleva %d m.": [
 "adventure/adv_hud.gd:655"
@@ -1491,7 +1503,7 @@
 "online/online.gd:151"
 ],
 "Esta copa se corre solo con el %s. Elegilo en el garaje.": [
-"ui/menu_career.gd:219"
+"ui/menu_career.gd:231"
 ],
 "Esta versión no tiene el modo online configurado.": [
 "online/online.gd:176",
@@ -1533,24 +1545,30 @@
 "Estación del Río": [
 "adventure/adv_route.gd:80"
 ],
+"Estas condiciones se rigen por las leyes de la República Argentina. Si sos consumidor, esto no limita los derechos que te reconozca la ley de tu país.": [
+"ui/menu_about.gd:52"
+],
 "Estilo y stance": [
 "data/catalog.json"
 ],
 "Etapa": [
 "ui/menu_adventure.gd:52",
-"ui/menu_career.gd:285"
+"ui/menu_career.gd:344"
 ],
 "Etapa %d · %s": [
 "app.gd:73"
 ],
 "Experiencia": [
-"ui/menu.gd:694"
+"ui/menu.gd:697"
 ],
 "Extras": [
 "ui/menu_garage.gd:13"
 ],
 "Extrema": [
 "ui/options_ui.gd:72"
+],
+"FANTASÍA": [
+"ui/menu.gd:506"
 ],
 "FERROCARRIL GENERAL BELGRANO": [
 "adventure/adv_world.gd:1361"
@@ -1564,7 +1582,7 @@
 "perf_bench.gd:169"
 ],
 "FPS %d · cuadro %.1f ms · física %.2f ms/cuadro (%s)\nAutos %d · pilotos %s · árboles %d · sombras %s\nLlamadas %d · objetos %d · triángulos %dk": [
-"race.gd:2285"
+"race.gd:2295"
 ],
 "FRENADA: el peso va adelante": [
 "ui/loading.gd:218"
@@ -1586,7 +1604,7 @@
 "online/online.gd:155"
 ],
 "Faltan %d toques…": [
-"ui/menu_about.gd:153"
+"ui/menu_about.gd:155"
 ],
 "Fin del Asfalto": [
 "adventure/adv_route.gd:125"
@@ -1600,8 +1618,11 @@
 "Final: el ajuste que más confianza te dé. En la bajada frenos fuertes.": [
 "adventure/adv_route.gd:182"
 ],
+"Flores gigantes, un planeta enorme y un agujero negro debajo.": [
+"data/routes.json"
+],
 "Formato": [
-"ui/menu_career.gd:193",
+"ui/menu_career.gd:205",
 "ui/capture_ui.gd:17"
 ],
 "Franjas": [
@@ -1639,9 +1660,9 @@
 "data/catalog.json"
 ],
 "Fácil": [
-"ui/menu_career.gd:296",
-"ui/menu_career.gd:298",
-"ui/menu_career.gd:302"
+"ui/menu_career.gd:355",
+"ui/menu_career.gd:357",
+"ui/menu_career.gd:361"
 ],
 "Física y ayudas": [
 "ui/options_ui.gd:44"
@@ -1651,7 +1672,7 @@
 ],
 "GARAJE": [
 "ui/menu_garage.gd:98",
-"ui/menu.gd:513"
+"ui/menu.gd:516"
 ],
 "GIRO": [
 "ui/loading.gd:233",
@@ -1661,7 +1682,7 @@
 "adventure/adv_route.gd:131"
 ],
 "GPU: %s · %s · %s": [
-"race.gd:1324"
+"race.gd:1334"
 ],
 "GT3 de pista": [
 "data/catalog.json"
@@ -1814,7 +1835,7 @@
 "data/catalog.json"
 ],
 "Informe copiado ✔  Pegalo en el chat": [
-"race.gd:1368"
+"race.gd:1378"
 ],
 "Infrarrojo con brillo": [
 "fx/lens.gd:273"
@@ -1843,7 +1864,7 @@
 "Internet": [
 "ui/menu_about.gd:31",
 "ui/menu_about.gd:39",
-"ui/menu_about.gd:65"
+"ui/menu_about.gd:67"
 ],
 "Internet (descargar contenido) y vibración (opcional). No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono.": [
 "ui/menu_about.gd:32"
@@ -1855,7 +1876,7 @@
 "store/products.gd:7"
 ],
 "Juego: versión %s": [
-"race.gd:1303"
+"race.gd:1313"
 ],
 "Jugar sin cuenta": [
 "ui/menu_account.gd:46"
@@ -1888,26 +1909,26 @@
 "adventure/adv_route.gd:184"
 ],
 "LAB reset: potencia %.2f": [
-"race.gd:2211"
+"race.gd:2221"
 ],
 "LAB: potencia %.2f resortes %.0f%% pose %s → %s · cars %d": [
-"race.gd:2203"
+"race.gd:2213"
 ],
 "LABTEST: carga lista, sesión ": [
-"race.gd:380"
+"race.gd:381"
 ],
 "LARGADA": [
-"race.gd:569"
+"race.gd:579"
 ],
 "LISTO. El informe ya quedó copiado (pegalo en el chat). INFORME lo vuelve a copiar.": [
-"race.gd:1094"
+"race.gd:1104"
 ],
 "LLEGÓ PRIMERO": [
 "adventure/adv_hud.gd:694"
 ],
 "LOGROS": [
-"ui/menu.gd:516",
-"ui/menu.gd:585"
+"ui/menu.gd:519",
+"ui/menu.gd:588"
 ],
 "LOS GIRASOLES 9 km": [
 "adventure/adv_route.gd:53"
@@ -1919,6 +1940,9 @@
 "adventure/adv_route.gd:178"
 ],
 "La Fuga · Capítulo 1": [
+"data/routes.json"
+],
+"La Luna · Mar de la Tranquilidad": [
 "data/routes.json"
 ],
 "La Ruta de los Sueños": [
@@ -2057,6 +2081,9 @@
 "Lente: %s": [
 "ui/options_ui.gd:330"
 ],
+"Ley aplicable": [
+"ui/menu_about.gd:52"
+],
 "Leyenda Dream": [
 "data/catalog.json",
 "data/catalog.json"
@@ -2065,7 +2092,7 @@
 "data/catalog.json"
 ],
 "Libre (por puntos)": [
-"ui/menu_career.gd:294"
+"ui/menu_career.gd:353"
 ],
 "Lienzo de tiza": [
 "fx/lens.gd:274"
@@ -2077,7 +2104,7 @@
 "car/car_visual.gd:194"
 ],
 "Listo": [
-"race.gd:381"
+"race.gd:382"
 ],
 "Listo: se borraron tu cuenta y tus marcas.": [
 "online/online.gd:235"
@@ -2089,13 +2116,13 @@
 "adventure/adv_route.gd:59"
 ],
 "Llega el mundo abierto: ciudades amplias, diversos biomas, rutas espectaculares y libre recorrido, con misiones por todo el mapa.": [
-"ui/menu.gd:536"
+"ui/menu.gd:539"
 ],
 "Llega en una próxima actualización": [
 "data/release.gd:84"
 ],
 "Llegará en una actualización gratuita del juego. ¡Gracias por jugar!": [
-"ui/menu.gd:539"
+"ui/menu.gd:542"
 ],
 "Lleva 30 años manejando el camión de la cantera. Diez toneladas que no frenan por nadie.": [
 "adventure/adv_route.gd:136"
@@ -2122,7 +2149,7 @@
 "adventure/adventure.gd:1011"
 ],
 "Los datos del modo online (nombre de piloto, marcas y, si creás una cuenta, tu correo) se guardan en servidores de Supabase, que los procesa por nuestra cuenta. Los conservamos hasta que borres tu cuenta o nos pidas borrarlos. Los registros técnicos de envíos solo sirven para frenar abusos.": [
-"ui/menu_about.gd:66"
+"ui/menu_about.gd:68"
 ],
 "Los mejores de la región · clase S": [
 "data/catalog.json"
@@ -2130,33 +2157,40 @@
 "Los pilotos y sus animaciones usan modelos y movimientos de Mixamo (Adobe), utilizados según su licencia.": [
 "ui/menu_about.gd:21"
 ],
+"Los rivales te siguen el ritmo. No pertenece a ninguna copa.": [
+"ui/menu_career.gd:378"
+],
 "Los textos del juego cambian al instante. La voz del copiloto usa el idioma de tu teléfono.": [
 "ui/options_ui.gd:153"
 ],
 "Los textos legales completos están en el repositorio del juego (docs/PRIVACIDAD.md y docs/TERMINOS.md).": [
-"ui/menu_about.gd:137"
+"ui/menu_about.gd:139"
 ],
 "Lucía Ferreyra": [
 "adventure/adv_route.gd:147"
 ],
+"MAPAS FANTASÍA": [
+"ui/menu_career.gd:264",
+"ui/menu_career.gd:304"
+],
 "META": [
-"race.gd:571",
-"race.gd:1068"
+"race.gd:581",
+"race.gd:1078"
 ],
 "MINA SANTA BÁRBARA": [
 "adventure/adv_route.gd:141",
 "adventure/adv_route.gd:141"
 ],
 "MODO ONLINE": [
-"ui/menu.gd:506",
-"ui/menu.gd:529"
+"ui/menu.gd:507",
+"ui/menu.gd:532"
 ],
 "MOTOR": [
 "ui/lab_panel.gd:21"
 ],
 "MUNDO ABIERTO": [
-"ui/menu.gd:507",
-"ui/menu.gd:529"
+"ui/menu.gd:508",
+"ui/menu.gd:532"
 ],
 "Mamut 6x6": [
 "data/catalog.json"
@@ -2180,8 +2214,11 @@
 "Manual": [
 "ui/options_ui.gd:67"
 ],
-"Mapa fantasía suelto: una vuelta inmensa entre flores gigantes, con subida, bajada y un rival a tu ritmo. No pertenece a ninguna copa.": [
-"ui/menu_career.gd:319"
+"Mapas sueltos de mundos imposibles, todos hechos en papel. Sin copas ni estrellas: correlos cuando quieras.": [
+"ui/menu_career.gd:265"
+],
+"Marte · Monte Olimpo": [
+"data/routes.json"
 ],
 "Masa total: menos peso acelera, frena y dobla mejor.": [
 "ui/lab_panel.gd:13"
@@ -2198,7 +2235,7 @@
 "adventure/adv_route.gd:160"
 ],
 "Medalla": [
-"ui/menu_career.gd:195"
+"ui/menu_career.gd:207"
 ],
 "Media": [
 "autotune.gd:11",
@@ -2228,7 +2265,7 @@
 "perf_bench.gd:209"
 ],
 "Memoria: %s": [
-"race.gd:1323"
+"race.gd:1333"
 ],
 "Menos agarre en las curvas": [
 "adventure/adv_hud.gd:659"
@@ -2267,13 +2304,13 @@
 "adventure/adv_route.gd:73"
 ],
 "Modo": [
-"ui/menu_career.gd:287"
+"ui/menu_career.gd:346"
 ],
 "Modo aventura · simulación total con un poco de ayuda": [
 "ui/loading.gd:151"
 ],
 "Modo desarrollador apagado": [
-"ui/menu_about.gd:135"
+"ui/menu_about.gd:137"
 ],
 "Montaña (inversa)": [
 "data/routes.json"
@@ -2305,7 +2342,7 @@
 "data/catalog.json"
 ],
 "Motor: Godot %s · renderizador %s": [
-"race.gd:1304"
+"race.gd:1314"
 ],
 "Mucha carga adelante: la trompa se pega al piso en curvas rápidas, pero gasta velocidad.": [
 "data/catalog.json"
@@ -2456,10 +2493,10 @@
 "adventure/adv_route.gd:169"
 ],
 "Necesitás %d ⭐ para abrir esta copa (tenés %d)": [
-"ui/menu_career.gd:119"
+"ui/menu_career.gd:131"
 ],
 "Necesitás el %s %s": [
-"ui/menu_career.gd:117"
+"ui/menu_career.gd:129"
 ],
 "Negativa (abierta) = entra más rápido a la curva. Positiva = más estable en recta.": [
 "data/catalog.json"
@@ -2497,23 +2534,23 @@
 "data/catalog.json"
 ],
 "Nivel de los rivales": [
-"ui/menu_career.gd:302"
+"ui/menu_career.gd:361"
 ],
 "Nivel de simulación: ": [
 "ui/loading.gd:163"
 ],
 "Nivel del bot": [
-"ui/menu_career.gd:296"
+"ui/menu_career.gd:355"
 ],
 "Nivel del rival": [
-"ui/menu_career.gd:298"
+"ui/menu_career.gd:357"
 ],
 "Niños": [
 "ui/menu_about.gd:33",
-"ui/menu_about.gd:63"
+"ui/menu_about.gd:65"
 ],
 "No acepto": [
-"ui/menu_about.gd:198"
+"ui/menu_about.gd:200"
 ],
 "No hay autos para mostrar.": [
 "ui/menu_garage.gd:104"
@@ -2528,7 +2565,7 @@
 "online/online.gd:166"
 ],
 "No se pudo guardar la captura": [
-"race.gd:1659"
+"race.gd:1669"
 ],
 "No se pudo iniciar la compra.": [
 "store/billing.gd:73"
@@ -2551,7 +2588,7 @@
 ],
 "OPCIONES": [
 "ui/options_ui.gd:83",
-"ui/menu.gd:517"
+"ui/menu.gd:520"
 ],
 "Oclusión ambiental": [
 "fx/lens.gd:275"
@@ -2597,28 +2634,28 @@
 "ui/capture_ui.gd:17"
 ],
 "POLÍTICA DE PRIVACIDAD": [
-"ui/menu_about.gd:187"
+"ui/menu_about.gd:189"
 ],
 "PONER": [
 "ui/menu_garage.gd:313",
 "ui/menu_garage.gd:333"
 ],
 "PRIVACIDAD": [
-"ui/menu_about.gd:110",
-"ui/menu_about.gd:127"
+"ui/menu_about.gd:112",
+"ui/menu_about.gd:129"
 ],
 "PRONTO": [
-"ui/menu.gd:506",
-"ui/menu.gd:507"
+"ui/menu.gd:507",
+"ui/menu.gd:508"
 ],
 "PRUEBA %d/%d · %s · faltan %d:%02d · NO TOQUES LA PANTALLA": [
-"race.gd:1247"
+"race.gd:1257"
 ],
 "PRUEBA %d/%d · faltan %d s · NO TOQUES LA PANTALLA": [
-"race.gd:1140"
+"race.gd:1150"
 ],
 "PRUEBA AUTOMÁTICA (cada configuración 6 s, sin contar el primer segundo y medio)": [
-"race.gd:1337"
+"race.gd:1347"
 ],
 "PRUEBA DE RENDIMIENTO": [
 "ui/menu_perf.gd:10"
@@ -2648,7 +2685,7 @@
 "data/catalog.json"
 ],
 "Pantalla: %dx%d · %s Hz": [
-"race.gd:1327"
+"race.gd:1337"
 ],
 "Paper Race (selva de papel)": [
 "data/routes.json"
@@ -2670,7 +2707,7 @@
 "car/camera_rig.gd:16"
 ],
 "Participar en los rankings online": [
-"ui/menu.gd:547"
+"ui/menu.gd:550"
 ],
 "Partículas: %s": [
 "ui/options_ui.gd:256"
@@ -2727,13 +2764,13 @@
 "ui/menu_garage.gd:14"
 ],
 "Pista": [
-"ui/menu_career.gd:283"
+"ui/menu_career.gd:342"
 ],
 "Pizarra (contorno blanco)": [
 "fx/lens.gd:274"
 ],
 "Plantando el bosque…": [
-"race.gd:339"
+"race.gd:340"
 ],
 "Plata": [
 "ui/menu_career.gd:11"
@@ -2763,7 +2800,7 @@
 "ui/menu_about.gd:49"
 ],
 "Podés comprar con dinero real el juego completo y bolsas de créditos a través de Google Play. Las cobra y las administra Google: los reembolsos y reclamos se piden en Google Play, según sus políticas. Los créditos y el juego completo son para usar en el juego y no se pueden transferir ni canjear por dinero.": [
-"ui/menu_about.gd:56"
+"ui/menu_about.gd:57"
 ],
 "Podés crearla cuando quieras desde Modo online.": [
 "ui/menu_account.gd:49"
@@ -2787,10 +2824,10 @@
 "adventure/adv_hud.gd:704"
 ],
 "Premios: oro %s · plata %s · bronce %s": [
-"ui/menu_career.gd:213"
+"ui/menu_career.gd:225"
 ],
 "Preparando los controles…": [
-"race.gd:249"
+"race.gd:250"
 ],
 "Presión de freno": [
 "data/catalog.json"
@@ -2820,7 +2857,7 @@
 "ui/menu_garage.gd:447"
 ],
 "Procesador: %s · %d núcleos%s": [
-"race.gd:1317"
+"race.gd:1327"
 ],
 "Profundidad de campo": [
 "fx/lens.gd:275"
@@ -2844,7 +2881,7 @@
 "data/vehicles.json"
 ],
 "Prueba %s: %d pasos de %.1f s (se descarta el primer %.1f s de cada uno). Pistas: Circuito del Lago (asfalto), Drift Plaza%s.": [
-"race.gd:1263"
+"race.gd:1273"
 ],
 "Prueba de rendimiento": [
 "ui/loading.gd:153"
@@ -2853,7 +2890,7 @@
 "ui/loading.gd:153"
 ],
 "Práctica: corrés la etapa con el DR Bisonte de la aventura; no cuenta para tu avance ni da premios.": [
-"ui/menu_career.gd:321"
+"ui/menu_career.gd:380"
 ],
 "Próxima etapa: %s — %s": [
 "adventure/adv_hud.gd:548"
@@ -2866,7 +2903,7 @@
 ],
 "Qué se guarda": [
 "ui/menu_about.gd:29",
-"ui/menu_about.gd:64"
+"ui/menu_about.gd:66"
 ],
 "R2 Turbo": [
 "data/catalog.json"
@@ -2884,19 +2921,19 @@
 "ui/menu_adventure.gd:76"
 ],
 "RENDER triángulos %d · llamadas %d · objetos %d": [
-"race.gd:2303"
+"race.gd:2313"
 ],
 "RENDIMIENTO": [
-"ui/menu.gd:522"
+"ui/menu.gd:525"
 ],
 "REPARAR (%d s)": [
 "adventure/adv_hud.gd:683"
 ],
 "RESULTADO": [
-"ui/menu.gd:650"
+"ui/menu.gd:653"
 ],
 "RESULTADOS (mandame una captura de esto)": [
-"race.gd:1091"
+"race.gd:1101"
 ],
 "RPM x1000": [
 "car/cockpit.gd:1042"
@@ -2933,13 +2970,13 @@
 "adventure/adv_route.gd:138"
 ],
 "Rankings online (opcional)": [
-"ui/menu_about.gd:67"
+"ui/menu_about.gd:69"
 ],
 "Rankings online: se envían tu nombre de piloto y tus mejores marcas (tiempo y puntos). La cuenta con correo es opcional. No se envía nada más.": [
-"ui/menu.gd:545"
+"ui/menu.gd:548"
 ],
 "Recompensa": [
-"ui/menu.gd:694"
+"ui/menu.gd:697"
 ],
 "Recorrido de suspensión": [
 "ui/lab_panel.gd:16"
@@ -3009,7 +3046,7 @@
 ],
 "Resumen": [
 "ui/menu_about.gd:28",
-"ui/menu_about.gd:62"
+"ui/menu_about.gd:64"
 ],
 "Rey de la Plaza": [
 "data/catalog.json"
@@ -3021,11 +3058,11 @@
 "ui/menu_adventure.gd:58"
 ],
 "Rival %d": [
-"race.gd:886"
+"race.gd:896"
 ],
 "Rivales": [
-"ui/menu_career.gd:193",
-"ui/menu_career.gd:301"
+"ui/menu_career.gd:205",
+"ui/menu_career.gd:360"
 ],
 "Rivales serios · autos clase A": [
 "data/catalog.json"
@@ -3055,17 +3092,17 @@
 "data/catalog.json"
 ],
 "Ruta de los Sueños (aventura)": [
-"ui/menu_career.gd:63"
+"ui/menu_career.gd:74"
 ],
 "Ruta de montaña rapidísima. Frená tarde, salí fuerte.": [
 "data/catalog.json"
 ],
 "RÁPIDA": [
-"race.gd:1264",
-"ui/menu.gd:512"
+"race.gd:1274",
+"ui/menu.gd:513"
 ],
 "Récord": [
-"ui/menu_career.gd:194"
+"ui/menu_career.gd:206"
 ],
 "Récord del Bosque": [
 "data/catalog.json"
@@ -3108,7 +3145,7 @@
 "ui/menu_adventure.gd:221"
 ],
 "Se pierden autos, dinero y medallas. No se puede deshacer.": [
-"ui/menu.gd:638"
+"ui/menu.gd:641"
 ],
 "Se termina el asfalto. En la tierra el auto desliza: tracción repartida (45 %), gomas de grava (Rally) y menos presión (25 psi). La suspensión alta (+40 mm) y blanda copia los pozos.\nMirá la guía del mapa: después del taller la tierra sigue por el bosque.": [
 "adventure/adv_data.gd:29"
@@ -3117,7 +3154,7 @@
 "adventure/adv_route.gd:127"
 ],
 "Se viene el modo online: carreras de jugador contra jugador, un ranking mundial y eventos mensuales con premios.": [
-"ui/menu.gd:532"
+"ui/menu.gd:535"
 ],
 "Secuencial de competición": [
 "data/catalog.json"
@@ -3148,10 +3185,10 @@
 "ui/menu_account.gd:67"
 ],
 "Si activás «Participar en los rankings online» (viene apagado), el juego crea un usuario anónimo y envía a nuestro servidor (Supabase) tu nombre de piloto y tus mejores marcas (tiempo o puntos, pista y auto) para armar el ranking, que ven todos los jugadores. No se envía ningún otro dato, y lo podés apagar cuando quieras. Para borrar tus marcas escribí al contacto del juego.": [
-"ui/menu_about.gd:67"
+"ui/menu_about.gd:69"
 ],
 "Si creás una cuenta, guardamos tu correo electrónico y una contraseña (que nunca vemos: se guarda cifrada) en Supabase, solo para que puedas recuperar tus marcas del ranking en otro teléfono. Tu correo no se muestra a otros jugadores ni se usa para publicidad. Es solo para mayores de 13 años. Podés cerrar sesión cuando quieras y borrar tu cuenta y tus marcas desde el juego (Modo online → Cuenta) o escribiendo al contacto del juego.": [
-"ui/menu_about.gd:68"
+"ui/menu_about.gd:70"
 ],
 "Si entrás muy rápido, el auto se abre (subviraje): soltá el acelerador y enderezá un poco el volante. Si la cola se va (sobreviraje), contravolanteá suave.": [
 "ui/loading.gd:178"
@@ -3163,7 +3200,7 @@
 "ui/loading.gd:181"
 ],
 "Si usás el modo online, tu nombre de piloto y tus mejores marcas se muestran a otros jugadores. Elegí un nombre que no sea ofensivo ni se haga pasar por otra persona: podemos cambiarlo, o quitar marcas conseguidas con trampas o programas externos. La cuenta con correo es personal y solo para mayores de 13 años: cuidá tu contraseña. Podés borrar tu cuenta cuando quieras desde el juego. El servicio online puede cambiar o detenerse, y no afecta lo que jugás sin conexión.": [
-"ui/menu_about.gd:79"
+"ui/menu_about.gd:81"
 ],
 "Siempre en el podio": [
 "data/catalog.json"
@@ -3205,7 +3242,7 @@
 ],
 "Sin medalla": [
 "ui/menu_career.gd:11",
-"ui/menu.gd:679"
+"ui/menu.gd:682"
 ],
 "Sin nitro": [
 "data/catalog.json"
@@ -3268,14 +3305,14 @@
 "adventure/adv_props.gd:498"
 ],
 "Sí, borrar todo": [
-"ui/menu.gd:639"
+"ui/menu.gd:642"
 ],
 "Sí, empezar de cero": [
 "ui/menu_adventure.gd:222"
 ],
 "TALLER": [
 "ui/menu_garage.gd:247",
-"ui/menu.gd:515"
+"ui/menu.gd:518"
 ],
 "TALLER A 500 m": [
 "adventure/adv_route.gd:88",
@@ -3296,7 +3333,7 @@
 ],
 "TIENDA": [
 "ui/menu_garage.gd:98",
-"ui/menu.gd:514"
+"ui/menu.gd:517"
 ],
 "TODO: la aventura completa (12 etapas), todas las copas, el camión Mamut, el GT3 RS y el Aerion. El mejor precio.": [
 "store/products.gd:8"
@@ -3345,7 +3382,7 @@
 "data/vehicles.json"
 ],
 "Teléfono: %s · %s %s": [
-"race.gd:1308"
+"race.gd:1318"
 ],
 "Terrazas de piedra, una mina y la rampa de salida": [
 "adventure/adv_route.gd:135"
@@ -3366,7 +3403,7 @@
 "adventure/adv_route.gd:128"
 ],
 "Tipo": [
-"ui/menu_career.gd:193"
+"ui/menu_career.gd:205"
 ],
 "Tito Benítez": [
 "adventure/adv_route.gd:46"
@@ -3384,7 +3421,7 @@
 "data/catalog.json"
 ],
 "Todos los autos manejan solos; la plaza de drift usa conos con física y derrapes.": [
-"race.gd:1265"
+"race.gd:1275"
 ],
 "Tonos de cine (HDR)": [
 "fx/lens.gd:275"
@@ -3399,7 +3436,7 @@
 "data/catalog.json"
 ],
 "Tramo de ruta": [
-"ui/menu_career.gd:190"
+"ui/menu_career.gd:202"
 ],
 "Transmisión": [
 "ui/menu_garage.gd:13",
@@ -3421,16 +3458,16 @@
 "data/catalog.json"
 ],
 "Tu auto es clase %s (PI %d). Esta copa admite hasta clase %s (PI %d). Bajá piezas en el taller o usá otro auto.": [
-"ui/menu_career.gd:223"
+"ui/menu_career.gd:235"
 ],
 "Tu lente: nivel %d · tus efectos: %s · humo/polvo (ajuste del jugador): %s": [
-"race.gd:1262"
+"race.gd:1272"
 ],
 "Tu nivel de simulación": [
 "ui/loading.gd:175"
 ],
 "Tu perfil de juego (autos, mejoras, pintura, dinero del juego, estrellas, tiempos y opciones) queda en el almacenamiento privado de la app, en tu teléfono. Solo si participás en el modo online se envían tu nombre de piloto y tus mejores marcas, y tu correo si creás una cuenta. Si desinstalás la app, se pierde lo que está en el teléfono.": [
-"ui/menu_about.gd:64"
+"ui/menu_about.gd:66"
 ],
 "Tu perfil de juego (nombre de piloto, autos, mejoras, pintura, dinero del juego, estrellas, tiempos y opciones) queda en el almacenamiento privado de la app. No se envía a ningún servidor. Si desinstalás la app, se pierde.": [
 "ui/menu_about.gd:29"
@@ -3447,6 +3484,9 @@
 "Turbo más grande: empuje fuerte en medias y altas.": [
 "data/catalog.json"
 ],
+"Tus derechos": [
+"ui/menu_about.gd:63"
+],
 "Tus marcas del ranking van con tu nombre de piloto. Para entrar desde otro teléfono usá «Iniciar sesión» con este correo.": [
 "ui/menu_account.gd:59"
 ],
@@ -3454,9 +3494,9 @@
 "data/catalog.json"
 ],
 "TÉRMINOS DE USO": [
-"ui/menu_about.gd:111",
-"ui/menu_about.gd:127",
-"ui/menu_about.gd:191"
+"ui/menu_about.gd:113",
+"ui/menu_about.gd:129",
+"ui/menu_about.gd:193"
 ],
 "TÚNEL DEL CÓNDOR": [
 "adventure/adv_route.gd:101"
@@ -3484,6 +3524,9 @@
 ],
 "Un tramo corto de tierra para conocer tu auto. Bajá del tiempo para llevarte el oro.": [
 "data/catalog.json"
+],
+"Un volcán rojo: subida de 300 m, la caldera y un cañón.": [
+"data/routes.json"
 ],
 "Una sola ruta larguísima, de estación en estación: ciudades, campos, montaña, túneles, una cantera y la nieve. En cada etapa hay un rival que tenés que pasar.": [
 "ui/menu_adventure.gd:60"
@@ -3544,14 +3587,14 @@
 "ui/menu_garage.gd:167"
 ],
 "Velocidad máxima": [
-"ui/menu.gd:694",
+"ui/menu.gd:697",
 "adventure/adv_hud.gd:533"
 ],
 "Ventaja sobre el rival": [
 "adventure/adv_hud.gd:533"
 ],
 "Versión %s": [
-"ui/menu_about.gd:121"
+"ui/menu_about.gd:123"
 ],
 "Vibración (opcional) y los permisos de red que necesita el servicio de compras de Google Play (el juego no los usa para nada más). No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono.": [
 "ui/menu_about.gd:40"
@@ -3597,10 +3640,10 @@
 "data/catalog.json"
 ],
 "Vueltas": [
-"ui/menu_career.gd:300"
+"ui/menu_career.gd:359"
 ],
 "VÓRTICE DE ENSUEÑO": [
-"race.gd:531"
+"track/dream_track.gd:16"
 ],
 "Vórtice de Ensueño": [
 "data/routes.json"
@@ -3636,10 +3679,10 @@
 "fx/effects.gd:429"
 ],
 "autos · árboles · pilotos · sombras · hilos · resolución  →  FPS · ms/cuadro · física ms · código ms · llamadas · triángulos": [
-"race.gd:1338"
+"race.gd:1348"
 ],
 "autos · árboles · pilotos · sombras · hilos · resolución  →  FPS · ms/cuadro · física ms · llamadas · triángulos": [
-"race.gd:1091"
+"race.gd:1101"
 ],
 "botón, calidad y grabaciones": [
 "ui/options_ui.gd:48"
@@ -3651,16 +3694,16 @@
 "ui/options_ui.gd:44"
 ],
 "completo (todo adentro)": [
-"race.gd:1296"
+"race.gd:1306"
 ],
 "comprá autos": [
-"ui/menu.gd:514"
+"ui/menu.gd:517"
 ],
 "cresta  ¡ojo!": [
 "car/cockpit.gd:1211"
 ],
 "créditos · legales": [
-"ui/menu.gd:518"
+"ui/menu.gd:521"
 ],
 "cámara al empezar": [
 "ui/options_ui.gd:47"
@@ -3687,7 +3730,7 @@
 "online/online.gd:152"
 ],
 "juego completo · créditos": [
-"ui/menu.gd:519"
+"ui/menu.gd:522"
 ],
 "las 12 etapas y todas las copas": [
 "ui/menu_adventure.gd:93"
@@ -3696,7 +3739,10 @@
 "ui/menu_perf.gd:13"
 ],
 "manejo · sonido": [
-"ui/menu.gd:517"
+"ui/menu.gd:520"
+],
+"mapas de ensueño": [
+"ui/menu.gd:506"
 ],
 "no se pudo mandar el pedido (%d)": [
 "online/online.gd:82"
@@ -3708,10 +3754,10 @@
 "physics/vehicle_physics.gd:241"
 ],
 "piezas · pintura": [
-"ui/menu.gd:515"
+"ui/menu.gd:518"
 ],
 "pista y rivales": [
-"ui/menu.gd:512"
+"ui/menu.gd:513"
 ],
 "por etapa ganada": [
 "ui/menu_adventure.gd:130"
@@ -3720,7 +3766,7 @@
 "ui/menu_adventure.gd:114"
 ],
 "probá tu teléfono": [
-"ui/menu.gd:522"
+"ui/menu.gd:525"
 ],
 "rate limit": [
 "online/online.gd:156"
@@ -3766,7 +3812,7 @@
 "adventure/adv_world.gd:306"
 ],
 "tus autos": [
-"ui/menu.gd:513"
+"ui/menu.gd:516"
 ],
 "unable to validate email": [
 "online/online.gd:160"
@@ -3793,8 +3839,8 @@
 "adventure/adventure.gd:450"
 ],
 "¡CORRER!": [
-"ui/menu_career.gd:227",
-"ui/menu_career.gd:322"
+"ui/menu_career.gd:239",
+"ui/menu_career.gd:381"
 ],
 "¡Cuenta creada! Ya podés entrar con este correo desde cualquier teléfono.": [
 "online/online.gd:196"
@@ -3833,7 +3879,7 @@
 "ui/menu.gd:497"
 ],
 "¿Borrar todo el progreso?": [
-"ui/menu.gd:637"
+"ui/menu.gd:640"
 ],
 "¿Cuánto da tu auto de verdad?": [
 "data/catalog.json"
@@ -3910,7 +3956,7 @@
 "adventure/adv_hud.gd:697"
 ],
 "↺ REPETIR": [
-"ui/menu.gd:685"
+"ui/menu.gd:688"
 ],
 "↺ VOLVER AL AJUSTE DE FÁBRICA": [
 "adventure/adv_hud.gd:617"
@@ -4014,13 +4060,13 @@
 "perf_bench.gd:24"
 ],
 "⚡ Cambios perfectos: %d de %d": [
-"ui/menu.gd:673"
+"ui/menu.gd:676"
 ],
 "⚡ RÁPIDA": [
 "ui/menu_perf.gd:13"
 ],
 "⚡ ¡CAMBIO PERFECTO!": [
-"race.gd:1929"
+"race.gd:1939"
 ],
 "⚪ GOMAS": [
 "ui/menu_garage.gd:263"
@@ -4074,10 +4120,10 @@
 "adventure/adv_hud.gd:697"
 ],
 "⬆ ¡NIVEL %d! +%s": [
-"ui/menu.gd:705"
+"ui/menu.gd:708"
 ],
 "⭐ %d estrellas ganadas · cada medalla suma 1 a 3 estrellas y abre copas nuevas": [
-"ui/menu_career.gd:86"
+"ui/menu_career.gd:98"
 ],
 "🌀 +%d pts": [
 "drift_session.gd:110"
@@ -4100,14 +4146,14 @@
 "ui/menu_career.gd:10"
 ],
 "🌍 Mundo abierto compartido": [
-"ui/menu.gd:533"
+"ui/menu.gd:536"
 ],
 "🌧 Lluvia": [
 "ui/loading.gd:160",
 "ui/menu_career.gd:10"
 ],
 "🌲 Biomas distintos: selva, montaña, nieve, desierto": [
-"ui/menu.gd:537"
+"ui/menu.gd:540"
 ],
 "🎁 Premio diario: +%s (racha %d)": [
 "ui/menu.gd:190"
@@ -4149,22 +4195,22 @@
 "adventure/adv_hud.gd:659"
 ],
 "🎯 Misiones en el mundo abierto": [
-"ui/menu.gd:537"
+"ui/menu.gd:540"
 ],
 "🏁 ASFALTO": [
 "ui/menu_garage.gd:219"
 ],
 "🏁 Carreras JcJ contra otros pilotos": [
-"ui/menu.gd:533"
+"ui/menu.gd:536"
 ],
 "🏁 PROBAR EN ASFALTO": [
 "ui/menu_garage.gd:436"
 ],
 "🏅 ¡NUEVO RÉCORD!": [
-"ui/menu.gd:682"
+"ui/menu.gd:685"
 ],
 "🏆 Ranking de tiempos y puntos": [
-"ui/menu.gd:533"
+"ui/menu.gd:536"
 ],
 "🏆 TERMINAR LA AVENTURA": [
 "adventure/adv_hud.gd:560"
@@ -4182,10 +4228,10 @@
 "adventure/adv_hud.gd:701"
 ],
 "🏆 ¡Le ganaste al bot! (%d pts)": [
-"ui/menu.gd:670"
+"ui/menu.gd:673"
 ],
 "🏙 Ciudades amplias para recorrer": [
-"ui/menu.gd:537"
+"ui/menu.gd:540"
 ],
 "🏜 EN TIERRA": [
 "ui/menu_garage.gd:436"
@@ -4222,7 +4268,7 @@
 "adventure/adv_hud.gd:562"
 ],
 "📅 Eventos mensuales": [
-"ui/menu.gd:533"
+"ui/menu.gd:536"
 ],
 "📋 COPIAR TODO": [
 "ui/perf_results.gd:41"
@@ -4234,19 +4280,19 @@
 "ui/options_ui.gd:223"
 ],
 "📷 Captura guardada": [
-"race.gd:1659"
+"race.gd:1669"
 ],
 "📸 RADAR": [
-"race.gd:571"
+"race.gd:581"
 ],
 "🔄 AJUSTE AUTOMÁTICO PARA MI TELÉFONO": [
 "ui/options_ui.gd:127"
 ],
 "🔒 Completo": [
-"ui/menu_career.gd:99"
+"ui/menu_career.gd:111"
 ],
 "🔒 Próximamente": [
-"ui/menu_career.gd:99"
+"ui/menu_career.gd:111"
 ],
 "🔒 SE GANA TERMINANDO LA AVENTURA": [
 "ui/menu_garage.gd:207"
@@ -4255,7 +4301,7 @@
 "ui/race_hud.gd:353"
 ],
 "🔧 Ajuste aplicado": [
-"race.gd:1781"
+"race.gd:1791"
 ],
 "🔧 El auto tiene daño (motor %d %% · dirección %d %% · suspensión %d %%). Se arregla en los talleres del camino.": [
 "adventure/adv_hud.gd:539"
@@ -4292,42 +4338,42 @@
 "ui/capture_ui.gd:58"
 ],
 "😅 Ganó el bot (%d pts)": [
-"ui/menu.gd:670"
+"ui/menu.gd:673"
 ],
 "🚗 MIS AUTOS": [
 "ui/menu_garage.gd:99"
 ],
 "🚧 Este tipo de evento (%s) llega en una próxima versión del juego nuevo.": [
-"ui/menu_career.gd:217"
+"ui/menu_career.gd:229"
 ],
 "🚧 PRONTO": [
-"ui/menu.gd:530"
+"ui/menu.gd:533"
 ],
 "🚧 pronto": [
-"ui/menu_career.gd:150"
+"ui/menu_career.gd:162"
 ],
 "🛠 Modo desarrollador activo": [
-"ui/menu_about.gd:124"
+"ui/menu_about.gd:126"
 ],
 "🛠 Modo desarrollador: todo desbloqueado": [
-"ui/menu_about.gd:150"
+"ui/menu_about.gd:152"
 ],
 "🛠 Probar conexión con Supabase": [
-"ui/menu.gd:557"
+"ui/menu.gd:560"
 ],
 "🛣 Rutas espectaculares y libre recorrido": [
-"ui/menu.gd:537"
+"ui/menu.gd:540"
 ],
 "🥇 1° puesto · 🥈 2° · 🥉 3°": [
-"ui/menu_career.gd:206"
+"ui/menu_career.gd:218"
 ],
 "🥇 ORO": [
-"ui/menu.gd:679"
+"ui/menu.gd:682"
 ],
 "🥈 Plata": [
-"ui/menu.gd:679"
+"ui/menu.gd:682"
 ],
 "🥉 Bronce": [
-"ui/menu.gd:679"
+"ui/menu.gd:682"
 ]
 }

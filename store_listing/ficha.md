@@ -16,6 +16,9 @@ Una sola ruta larguísima, de estación en estación: 12 etapas con ciudades, ca
 🌀 DRIFT
 Una plaza enorme y una ciudad con rotonda, avenidas y conos con física. Sumá puntos por ángulo y velocidad, encadená combos hasta x5.
 
+🌌 MAPAS FANTASÍA
+Corré en mundos imposibles hechos de papel: un vórtice de flores gigantes con un agujero negro, el volcán de Marte, la Luna con la Tierra en el cielo y el anillo de Júpiter con cristales de hielo.
+
 🚗 AUTOS PARA TODOS LOS GUSTOS
 Pick-ups 4x4, prototipos, camiones, hatchbacks, muscle cars, GT3 y un hiperdeportivo. Probá cualquier auto en la tienda antes de comprarlo.
 

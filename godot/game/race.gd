@@ -13,6 +13,7 @@ const Drag := preload("res://game/data/drag.gd")
 const PaperWorld := preload("res://game/track/paper_world.gd")
 const DreamTrack := preload("res://game/track/dream_track.gd")
 const DreamWorld := preload("res://game/track/dream_world.gd")
+const FantasyWorld := preload("res://game/track/fantasy_world.gd")
 const DriftBot := preload("res://game/ai/drift_bot.gd")
 const MeshChunks := preload("res://game/track/mesh_chunks.gd")
 const PerfBench := preload("res://game/perf_bench.gd")
@@ -447,7 +448,11 @@ func _build_world() -> void:
 
 ## Vórtice de Ensueño: cielo con Júpiter gigante, niebla pastel, sol dorado y reflejos de sol sobre las flores
 func _dream_atmosphere() -> void:
-	DreamWorld.atmosphere(env, sun, cam, world)
+	var th: String = str(track.theme)
+	if th == "dream":
+		DreamWorld.atmosphere(env, sun, cam, world)
+	else:
+		FantasyWorld.atmosphere_of(th, env, sun, cam, world) # Marte, la Luna o el anillo de Júpiter
 
 ## Paper Race: cielo y niebla de papel (la selva se cierra a lo lejos), luz suave y pareja
 func _paper_atmosphere() -> void:
@@ -483,7 +488,9 @@ func _make_track() -> void:
 		track = DriftTrack.new()
 		return
 	if str(m.get("kind", "")) == "dream":
-		track = DreamTrack.new(str(m["route"]), str(m["mode"]), false, 0.0) # Vórtice de Ensueño: la vuelta inmensa de flores
+		track = DreamTrack.new(str(m["route"]), str(m["mode"]), false, 0.0) # mapas fantasía: el Vórtice de Ensueño, Marte, la Luna y el anillo de Júpiter
+		track.theme = str(m.get("world", "dream"))
+		track.title = str(m.get("name", "")).to_upper()
 		return
 	if str(m.get("kind", "")) == "paper":
 		track = PaperTrack.new(str(m["route"]), str(m["mode"]), false, 0.6) # Paper Race: selva de papel, ruta y tierra
@@ -521,14 +528,17 @@ func _build_track_nodes() -> void:
 		ground_mat = track.ground_mat
 		return
 	if track is DreamTrack:
-		var dw := DreamWorld.new()
+		var dw: Node3D = DreamWorld.new() if track.theme == "dream" else FantasyWorld.new()
 		var dq_q := str(profile.setting("quality")) if profile != null else "mid"
 		var dq: float = float({"low": 0.5, "high": 1.0}.get(dq_q, 0.75)) if dq_q != "auto" else float([0.5, 0.75, 1.0][clampi(int(profile.setting("autoTier")), 0, 2)])
-		dw.setup(track, dq, DreamWorld.SUN)
+		if track.theme == "dream":
+			dw.setup(track, dq, DreamWorld.SUN)
+		else:
+			dw.setup_world(track, dq, track.theme)
 		track_root.add_child(dw)
 		road_mat = StandardMaterial3D.new()
 		ground_mat = StandardMaterial3D.new()
-		track_root.add_child(track.build_start_gate(0, "VÓRTICE DE ENSUEÑO"))
+		track_root.add_child(track.build_start_gate(0, str(track.title)))
 		return
 	if track is PaperTrack:
 		var pw := PaperWorld.new()

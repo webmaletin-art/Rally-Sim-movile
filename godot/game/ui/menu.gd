@@ -137,9 +137,9 @@ func _ready() -> void:
 		if at.size() > 1 and at[1] == "paper":
 			tc["type"] = "timetrial"
 			tc["track"] = "paperRace"
-		if at.size() > 1 and at[1] == "dream": # Vórtice de Ensueño contra un rival a la par (prueba)
+		if at.size() > 1 and career.is_fantasy(at[1]): # mapa fantasía (dream, marte, luna, anillo) contra un rival a la par (prueba)
 			tc["type"] = "race"
-			tc["track"] = "dream"
+			tc["track"] = at[1]
 			tc["ai"] = 1
 			tc["skill"] = 0.9
 			tc["testCar"] = false
@@ -343,7 +343,7 @@ func go(name: String, arg = null, push := true) -> void:
 		"level": _level_screen(arg)
 		"goals": _goals()
 		"results": _results()
-		"career", "events", "event", "quick": career.build(name, arg)
+		"career", "events", "event", "quick", "fantasy": career.build(name, arg)
 		"garage", "dealer", "workshop", "tune", "paint": garage.build(name, arg)
 		"about", "privacy", "terms", "credits": about.build(name, arg)
 		"consent": about.consent_screen()
@@ -501,15 +501,18 @@ func _home() -> void:
 		adv_sub = "etapa %d/%d" % [mini(int(ast["stage"]) + 1, AdvRoute.STAGES.size()), AdvRoute.STAGES.size()]
 	body.add_child(menu_button("🌄 AVENTURA", "La Ruta de los Sueños · " + adv_sub, func(): go("adventure"), next_ev.is_empty()))
 	# lo que viene: cerrado, con carteles de qué va a traer
-	var soon := Kit.grid(2, 8, 8)
+	var soon := Kit.grid(3, 8, 8)
 	body.add_child(soon)
+	soon.add_child(tile("🌌", "FANTASÍA", "mapas de ensueño", func(): go("fantasy"), false, 70.0))
 	soon.add_child(tile("🌐", "MODO ONLINE", "PRONTO", func(): go("soon", "online"), false, 70.0))
 	soon.add_child(tile("🗺", "MUNDO ABIERTO", "PRONTO", func(): go("soon", "world"), false, 70.0))
 	var g := Kit.grid(3, 8, 8)
 	body.add_child(g)
 	var tiles := [
 		["🏆", "CARRERA", "%d ⭐" % profile.stars(), func(): go("career"), false],
-		["⚡", "RÁPIDA", "pista y rivales", func(): go("quick"), false],
+		["⚡", "RÁPIDA", "pista y rivales", func():
+			career.quick["fantasy"] = false
+			go("quick"), false],
 		["🚗", "GARAJE", "tus autos", func(): go("garage"), false],
 		["🏬", "TIENDA", "comprá autos", func(): go("dealer"), false],
 		["🔧", "TALLER", "piezas · pintura", func(): go("workshop", 0), false],

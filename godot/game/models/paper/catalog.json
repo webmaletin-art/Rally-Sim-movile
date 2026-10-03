@@ -1087,5 +1087,563 @@
 "tris": 160,
 "weight": 1.0,
 "source": "dream (hecho en papel)"
+},
+{
+"id": "m_roca_1",
+"cat": "roca",
+"h": 1.2,
+"w": 3.92,
+"tris": 80,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_roca_2",
+"cat": "roca",
+"h": 1.4,
+"w": 5.2,
+"tris": 80,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_roca_3",
+"cat": "roca",
+"h": 1.6,
+"w": 6.88,
+"tris": 80,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_roca_4",
+"cat": "roca",
+"h": 1.8,
+"w": 8.04,
+"tris": 80,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_roca_grande",
+"cat": "roca",
+"h": 3.4,
+"w": 16.61,
+"tris": 80,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_lajas",
+"cat": "roca",
+"h": 1.2,
+"w": 2.88,
+"tris": 36,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_rocas",
+"cat": "roca",
+"h": 1.6,
+"w": 6.7,
+"tris": 400,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_picos",
+"cat": "roca",
+"h": 6.5,
+"w": 3.81,
+"tris": 300,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_picos_altos",
+"cat": "roca",
+"h": 12.0,
+"w": 3.86,
+"tris": 280,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_mesa",
+"cat": "roca",
+"h": 9.0,
+"w": 9.98,
+"tris": 168,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_mesa_baja",
+"cat": "roca",
+"h": 4.2,
+"w": 8.11,
+"tris": 112,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_arco",
+"cat": "roca",
+"h": 8.5,
+"w": 9.76,
+"tris": 156,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_cristal_rojo",
+"cat": "roca",
+"h": 2.6,
+"w": 2.01,
+"tris": 216,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_cristal_violeta",
+"cat": "roca",
+"h": 2.4,
+"w": 1.71,
+"tris": 180,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_cactus",
+"cat": "planta",
+"h": 2.4,
+"w": 1.29,
+"tris": 224,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_cactus2",
+"cat": "planta",
+"h": 2.0,
+"w": 1.46,
+"tris": 164,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_liquen",
+"cat": "planta",
+"h": 0.2,
+"w": 4.47,
+"tris": 120,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_polvo",
+"cat": "roca",
+"h": 9.0,
+"w": 7.81,
+"tris": 168,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_antena",
+"cat": "obra",
+"h": 7.0,
+"w": 1.93,
+"tris": 76,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_paneles",
+"cat": "obra",
+"h": 2.2,
+"w": 6.47,
+"tris": 120,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_cupula",
+"cat": "obra",
+"h": 3.4,
+"w": 3.93,
+"tris": 124,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_rover",
+"cat": "obra",
+"h": 3.2,
+"w": 3.1,
+"tris": 188,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "m_bandera",
+"cat": "obra",
+"h": 4.0,
+"w": 2.34,
+"tris": 56,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_roca_1",
+"cat": "roca",
+"h": 1.0,
+"w": 3.65,
+"tris": 80,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_roca_2",
+"cat": "roca",
+"h": 1.2,
+"w": 5.32,
+"tris": 80,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_roca_3",
+"cat": "roca",
+"h": 1.4,
+"w": 6.51,
+"tris": 80,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_roca_4",
+"cat": "roca",
+"h": 1.6,
+"w": 7.15,
+"tris": 80,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_roca_grande",
+"cat": "roca",
+"h": 3.2,
+"w": 13.97,
+"tris": 80,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_rocas",
+"cat": "roca",
+"h": 1.5,
+"w": 6.66,
+"tris": 400,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_lajas",
+"cat": "roca",
+"h": 1.1,
+"w": 3.23,
+"tris": 36,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_cresta",
+"cat": "roca",
+"h": 5.0,
+"w": 4.17,
+"tris": 300,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_borde_crater",
+"cat": "roca",
+"h": 1.3,
+"w": 16.31,
+"tris": 360,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_cristal",
+"cat": "roca",
+"h": 2.2,
+"w": 1.47,
+"tris": 180,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_modulo",
+"cat": "obra",
+"h": 5.4,
+"w": 6.34,
+"tris": 324,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_rover",
+"cat": "obra",
+"h": 3.2,
+"w": 3.1,
+"tris": 188,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_bandera",
+"cat": "obra",
+"h": 4.0,
+"w": 2.34,
+"tris": 56,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_astronauta",
+"cat": "obra",
+"h": 2.6,
+"w": 2.27,
+"tris": 292,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_antena",
+"cat": "obra",
+"h": 8.0,
+"w": 1.94,
+"tris": 76,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_paneles",
+"cat": "obra",
+"h": 2.2,
+"w": 6.47,
+"tris": 120,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "l_cupula",
+"cat": "obra",
+"h": 3.4,
+"w": 3.93,
+"tris": 124,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_hielo_1",
+"cat": "roca",
+"h": 2.4,
+"w": 3.36,
+"tris": 80,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_hielo_2",
+"cat": "roca",
+"h": 1.6,
+"w": 1.52,
+"tris": 100,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_hielo_3",
+"cat": "roca",
+"h": 4.5,
+"w": 7.1,
+"tris": 100,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_hielo_bajo",
+"cat": "roca",
+"h": 0.8,
+"w": 1.41,
+"tris": 120,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_cristal_cian",
+"cat": "roca",
+"h": 4.5,
+"w": 2.42,
+"tris": 216,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_cristal_magenta",
+"cat": "roca",
+"h": 4.2,
+"w": 2.38,
+"tris": 180,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_cristal_dorado",
+"cat": "roca",
+"h": 3.6,
+"w": 1.73,
+"tris": 180,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_cristal_gigante",
+"cat": "roca",
+"h": 14.0,
+"w": 9.64,
+"tris": 180,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_roca_ocre",
+"cat": "roca",
+"h": 1.6,
+"w": 6.2,
+"tris": 80,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_roca_gris",
+"cat": "roca",
+"h": 1.2,
+"w": 4.05,
+"tris": 320,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_roca_flotante",
+"cat": "roca",
+"h": 5.0,
+"w": 5.75,
+"tris": 92,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_roca_flotante2",
+"cat": "roca",
+"h": 4.0,
+"w": 5.63,
+"tris": 92,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_cometa",
+"cat": "roca",
+"h": 3.0,
+"w": 7.94,
+"tris": 116,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_luna_io",
+"cat": "roca",
+"h": 6.0,
+"w": 6.0,
+"tris": 320,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_luna_europa",
+"cat": "roca",
+"h": 5.0,
+"w": 5.0,
+"tris": 320,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_luna_ganimedes",
+"cat": "roca",
+"h": 7.0,
+"w": 7.0,
+"tris": 320,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_mini_anillo",
+"cat": "roca",
+"h": 4.4,
+"w": 8.97,
+"tris": 192,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_estacion",
+"cat": "obra",
+"h": 8.0,
+"w": 15.05,
+"tris": 264,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "r_satelite",
+"cat": "obra",
+"h": 3.2,
+"w": 12.8,
+"tris": 54,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "x_portico_marte",
+"cat": "obra",
+"h": 12.0,
+"w": 27.36,
+"tris": 684,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "x_portico_luna",
+"cat": "obra",
+"h": 12.5,
+"w": 25.7,
+"tris": 312,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
+},
+{
+"id": "x_portico_anillo",
+"cat": "obra",
+"h": 12.0,
+"w": 25.3,
+"tris": 624,
+"weight": 1.0,
+"source": "planetas (hecho en papel)"
 }
 ]

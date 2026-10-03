@@ -12,6 +12,8 @@ const BANK_MAX := 0.11
 const VERGE := 7.5 # franja de campo que se puede pisar después de la banquina
 
 var bank := PackedFloat32Array() # pendiente lateral por muestra (positiva = el lado derecho más alto)
+var theme := "dream" # mundo: dream (Vórtice de Ensueño) · mars · moon · ring
+var title := "VÓRTICE DE ENSUEÑO" # cartel de la largada
 
 func _init(p_route := "", p_mode := "asphalt", reverse := false, p_hills := 0.0) -> void:
 	super(p_route, p_mode, reverse, p_hills)

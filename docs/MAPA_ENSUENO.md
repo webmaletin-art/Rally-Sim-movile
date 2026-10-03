@@ -1,9 +1,9 @@
 # Vórtice de Ensueño — mapa fantasía
 
-> Es un **mapa suelto** (Carrera rápida → «Vórtice de Ensueño»): no está en ninguna copa ni en la aventura, y no suma estrellas. Se corre contra un rival a la par.
+> Es un **mapa suelto** de la sección «Mapas fantasía» (inicio → FANTASÍA; `docs/MAPAS_FANTASIA.md`, junto con Marte, la Luna y el anillo de Júpiter): no está en ninguna copa ni en la aventura, y no suma estrellas. Se corre contra rivales a la par.
 
 Circuito de **9,7 km** (una vuelta inmensa) hecho todo en papel (papercraft) alrededor de un **agujero negro** que se ve muy abajo, en un mar de gas con
-las bandas de color de Júpiter. Está en **Carrera rápida** (carrera con rivales o contrarreloj, 1 a 3 vueltas) y como evento de la Serie Continental.
+las bandas de color de Júpiter. Se corre desde **Mapas fantasía** (carrera con rivales o contrarreloj, 1 a 5 vueltas).
 
 ## La ruta (`tools/dream/route.py` → `data/routes.json`, ruta «ensueno»)
 - Sale de un valle plano, **sube 300 m** en una subida larguísima (hasta el 13,9 %), cruza una **cresta con una curva peraltada** de ~160 m de radio,

@@ -78,6 +78,13 @@ const BALLOONS := [Color(1.0, 0.45, 0.65), Color(1.0, 0.72, 0.30), Color(0.98, 0
 const C_ASPH := Color(0.55, 0.56, 0.62)
 const C_CURB_A := Color(1.0, 0.55, 0.72)
 const C_CURB_B := Color(0.99, 0.96, 0.92)
+const STRATA := [Color(0.99, 0.90, 0.82), Color(0.90, 0.62, 0.74), Color(0.62, 0.46, 0.78), Color(0.38, 0.30, 0.62)]
+# Capas de plantas: [tasa por fila (~7 m) y lado, distancia mínima y máxima al borde, capa, escala mín, escala máx]
+const LAYERS := [
+	[15.0, 0.6, 7.2, "low", 1.8, 3.0], [12.0, 0.4, 7.2, "grass", 1.0, 1.8], [4.0, 2.0, 10.0, "tall", 1.2, 2.1], [3.4, 6.5, 14.5, "shrubs", 1.1, 2.0],
+	[3.0, 1.5, 16.0, "fill", 1.2, 2.2], [0.9, 8.5, 21.0, "trees", 1.0, 1.5], [1.5, 18.0, 56.0, "trees", 1.2, 2.0], [6.0, 12.0, 56.0, "low", 2.2, 3.6],
+	[2.2, 10.0, 54.0, "tall", 1.8, 3.0], [5.0, 8.0, 56.0, "grass", 1.4, 2.4],
+]
 
 const ICO_F := [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
 	[3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]]
@@ -100,6 +107,18 @@ var density := 1.0
 var sun_dir := Vector3(0.35, 0.62, 0.70)
 var inst_total := 0
 var sea_y := -120.0
+var themes: Array = THEMES # los demás mundos (marte, luna, anillo) cambian estas variables: ver fantasy_world.gd
+var zones: Array = ZONES
+var layers: Array = LAYERS
+var strata: Array = STRATA
+var c_asph := C_ASPH
+var c_curb_a := C_CURB_A
+var c_curb_b := C_CURB_B
+var c_shoulder := Color(0.99, 0.90, 0.84)
+var c_mid := Color(1.0, 0.85, 0.35)
+var seed_v := 777
+var glint_amt := 1.0 # cuánto brillan las piezas con el sol
+var _vis_of: Dictionary = {} # distancia de visibilidad por pieza (la fija la capa que la planta)
 var _inst: Dictionary = {}
 var _ico_v: Array[Vector3] = []
 
@@ -107,7 +126,7 @@ func setup(p_track, p_density := 1.0, p_sun_dir := Vector3(0.35, 0.62, 0.70)) ->
 	track = p_track
 	density = p_density
 	sun_dir = p_sun_dir.normalized()
-	rng.seed = 777
+	rng.seed = seed_v
 	var t := (1.0 + sqrt(5.0)) / 2.0
 	for p in [Vector3(-1, t, 0), Vector3(1, t, 0), Vector3(-1, -t, 0), Vector3(1, -t, 0), Vector3(0, -1, t), Vector3(0, 1, t), Vector3(0, -1, -t), Vector3(0, 1, -t),
 			Vector3(t, 0, -1), Vector3(t, 0, 1), Vector3(-t, 0, -1), Vector3(-t, 0, 1)]:
@@ -210,7 +229,7 @@ func _holder(m: ArrayMesh, vis_end: float) -> MeshInstance3D:
 func _theme_at(i: int, jitter: float) -> int:
 	var t := fposmod(float(i) / float(track.n) + rng.randf_range(-jitter, jitter), 1.0)
 	var th := 0
-	for z in ZONES:
+	for z in zones:
 		if t >= float(z[0]):
 			th = int(z[1])
 	return th
@@ -235,9 +254,9 @@ func _build_road(i0: int, i1: int) -> void:
 	var hw: float = track.half_width
 	for i in range(i0, i1):
 		var j := i + 1
-		asph.quad(_pt(i, -hw, 0.015), _pt(i, hw, 0.015), _pt(j, -hw, 0.015), _pt(j, hw, 0.015), _jit(C_ASPH, 0.1))
+		asph.quad(_pt(i, -hw, 0.015), _pt(i, hw, 0.015), _pt(j, -hw, 0.015), _pt(j, hw, 0.015), _jit(c_asph, 0.1))
 		# cordones de colores en los bordes (rosa y blanco que se alternan)
-		var cc := C_CURB_A if (i / 2) % 2 == 0 else C_CURB_B
+		var cc := c_curb_a if (i / 2) % 2 == 0 else c_curb_b
 		for sg in [-1.0, 1.0]:
 			var s: float = sg
 			marks.quad(_pt(i, s * (hw - 0.85), 0.03), _pt(i, s * hw, 0.03), _pt(j, s * (hw - 0.85), 0.03), _pt(j, s * hw, 0.03), cc)
@@ -278,17 +297,16 @@ func _build_ground(i0: int, i1: int) -> void:
 	var sho: float = track.shoulder
 	var edge := hw + sho
 	var bands: Array[float] = [hw, edge, edge + 2.0, edge + 4.5, edge + 7.5, edge + 11.0, edge + 15.0, edge + 20.0, edge + 26.0, edge + 33.0, edge + 41.0, edge + 50.0, edge + 62.0]
-	var strata := [Color(0.99, 0.90, 0.82), Color(0.90, 0.62, 0.74), Color(0.62, 0.46, 0.78), Color(0.38, 0.30, 0.62)]
 	for i in range(i0, i1, 2):
 		var j := mini(i + 2, i1 + 1)
 		var th := _theme_at(i, 0.012)
-		var pal: Array = (THEMES[th] as Dictionary)["ground"]
+		var pal: Array = (themes[th] as Dictionary)["ground"]
 		for side in [-1.0, 1.0]:
 			var sd: float = side
 			for k in bands.size() - 1:
 				var col: Color
 				if k == 0:
-					col = _jit(Color(0.99, 0.90, 0.84), 0.08) # banquina de pétalos claros
+					col = _jit(c_shoulder, 0.08) # banquina de pétalos claros
 				else:
 					# bandas de color paralelas al camino, como las nubes de Júpiter: un degradé suave que ondula a lo largo de la vuelta
 					var mid := (bands[k] + bands[k + 1]) * 0.5 - edge
@@ -328,12 +346,6 @@ func _put(chunk: int, id: String, i: int, lat: float, along: float, s: float) ->
 func _plant() -> void:
 	var hw: float = track.half_width
 	var edge: float = hw + track.shoulder
-	# [tasa por fila (~7 m) y lado, distancia mínima y máxima al borde, capa, escala mín, escala máx]
-	var layers := [
-		[15.0, 0.6, 7.2, "low", 1.8, 3.0], [12.0, 0.4, 7.2, "grass", 1.0, 1.8], [4.0, 2.0, 10.0, "tall", 1.2, 2.1], [3.4, 6.5, 14.5, "shrubs", 1.1, 2.0],
-		[3.0, 1.5, 16.0, "fill", 1.2, 2.2], [0.9, 8.5, 21.0, "trees", 1.0, 1.5], [1.5, 18.0, 56.0, "trees", 1.2, 2.0], [6.0, 12.0, 56.0, "low", 2.2, 3.6],
-		[2.2, 10.0, 54.0, "tall", 1.8, 3.0], [5.0, 8.0, 56.0, "grass", 1.4, 2.4],
-	]
 	for i in range(0, track.n, 2):
 		var ch: int = i / (CH * 2)
 		for side in [-1.0, 1.0]:
@@ -342,9 +354,12 @@ func _plant() -> void:
 				var cnt := int(float(L[0]) * density + rng.randf())
 				for k in cnt:
 					var th := _theme_at(i, 0.03)
-					var pool: Array = (THEMES[th] as Dictionary)[str(L[3])]
+					var pool: Array = (themes[th] as Dictionary)[str(L[3])]
 					var d: float = edge + rng.randf_range(float(L[1]), float(L[2]))
-					_put(ch, _pick(pool), i, sd * d, rng.randf_range(-3.6, 3.6), rng.randf_range(float(L[4]), float(L[5])))
+					var pid := _pick(pool)
+					if L.size() > 6:
+						_vis_of[pid] = maxf(float(_vis_of.get(pid, 0.0)), float(L[6]))
+					_put(ch, pid, i, sd * d, rng.randf_range(-3.6, 3.6), rng.randf_range(float(L[4]), float(L[5])))
 
 # ───────────────────────── arcos de globos ─────────────────────────
 func _ico(acc: Acc, c: Vector3, r: float, col: Color) -> void:
@@ -375,7 +390,7 @@ func _arches() -> void:
 		_holder(m, 800.0) # un objeto por arco: la distancia de visibilidad se mide a cada uno
 
 func _commit_instances() -> void:
-	var mat := PaperKit.glint_material(sun_dir, 1.0)
+	var mat := PaperKit.glint_material(sun_dir, glint_amt)
 	for key in _inst:
 		var parts := str(key).split("|")
 		var id: String = parts[1]

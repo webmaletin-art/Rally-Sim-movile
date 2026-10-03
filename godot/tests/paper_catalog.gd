@@ -11,7 +11,7 @@ func _init() -> void:
 		out = args[0]
 	var prefix := args[1] if args.size() > 1 else "" # solo las piezas cuyo id empieza así (por ejemplo «d_» = flora de ensueño)
 	DirAccess.make_dir_recursive_absolute(out)
-	var groups := {"1_arboles": ["arbol", "palmera"], "2_plantas_flores_rocas": ["arbusto", "planta", "flor", "bambu", "roca", "pasto"], "3_calle_y_suelo": ["calle"]}
+	var groups := {"1_arboles": ["arbol", "palmera"], "2_plantas_flores_rocas": ["arbusto", "planta", "flor", "bambu", "roca", "pasto"], "3_calle_y_suelo": ["calle"], "4_obras": ["obra"]}
 	var cat := PaperKit.catalog()
 	await process_frame
 	for gname in groups:
@@ -45,7 +45,7 @@ func _shot(gname: String, items: Array, out: String, kind: String) -> void:
 	vp.add_child(sun)
 	var cols := 5
 	var rows := int(ceil(float(items.size()) / float(cols)))
-	var cell := 13.0 if kind == "1_arboles" else (3.4 if kind == "2_plantas_flores_rocas" else 7.0)
+	var cell := 13.0 if kind == "1_arboles" else (3.4 if kind == "2_plantas_flores_rocas" else (7.0 if kind == "3_calle_y_suelo" else 16.0))
 	var args2 := OS.get_cmdline_user_args()
 	if args2.size() > 2 and kind == "2_plantas_flores_rocas":
 		cell = float(args2[2]) # tamaño de la celda (más chico = más zoom)

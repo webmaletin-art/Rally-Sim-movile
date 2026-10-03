@@ -12,7 +12,7 @@ const MEDAL_N := ["Sin medalla", "Bronce", "Plata", "Oro"]
 
 var m # menu.gd
 var maps: Dictionary
-var quick := {"dmode": "free", "map": "lake", "mode": "race", "laps": 2, "ai": 3, "sky": "day", "skill": 1.0, "car": "cur", "stage": 0}
+var quick := {"dmode": "free", "map": "lake", "mode": "race", "laps": 2, "ai": 3, "sky": "day", "skill": 1.0, "car": "cur", "stage": 0, "fantasy": false}
 
 func _maps() -> Dictionary:
 	if maps.is_empty():
@@ -20,7 +20,7 @@ func _maps() -> Dictionary:
 	return maps
 
 ## Vista previa de una pista: dos tomas del recorrido que se alternan con un fundido (como una cámara que pasa por la pista)
-func preview(map_id: String, h := 172.0) -> Control:
+func preview(map_id: String, h := 172.0, label_size := 22) -> Control:
 	var base := map_id.replace("Rev", "")
 	var holder := Control.new()
 	holder.custom_minimum_size = Vector2(0, h)
@@ -51,12 +51,23 @@ func preview(map_id: String, h := 172.0) -> Control:
 		tw.tween_interval(2.4)
 		tw.tween_property(rects[1], "modulate:a", 0.0, 0.9)
 	# nombre sobre la imagen
-	var lbl := Kit.label(map_name(map_id), 22, Color.WHITE)
+	var lbl := Kit.label(map_name(map_id), label_size, Color.WHITE)
 	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	lbl.add_theme_constant_override("outline_size", 8)
-	lbl.position = Vector2(12, 8)
+	lbl.add_theme_constant_override("outline_size", 8 if label_size >= 20 else 5)
+	lbl.position = Vector2(12, 8) if label_size >= 20 else Vector2(6, 4)
 	holder.add_child(lbl)
 	return holder
+
+## Mapas fantasía (el Vórtice de Ensueño, Marte, la Luna y el anillo de Júpiter): sueltos, fuera de las copas, todos en papel
+func fantasy_maps() -> Array:
+	var out: Array = []
+	for k in _maps():
+		if str(_maps()[k].get("kind", "")) == "dream":
+			out.append(k)
+	return out
+
+func is_fantasy(id: String) -> bool:
+	return str(_maps().get(id, {}).get("kind", "")) == "dream"
 
 func map_name(id: String) -> String:
 	if id == "adventure":
@@ -73,6 +84,7 @@ func build(name: String, arg) -> void:
 		"events": _events(str(arg))
 		"event": _event(str(arg))
 		"quick": _quick()
+		"fantasy": _fantasy()
 
 func _medals(n: int) -> String:
 	return "●".repeat(n) + "○".repeat(3 - n)
@@ -247,16 +259,63 @@ func _quick_car_name(v) -> String:
 	var cm: Dictionary = _cars_cat()["cars"][str(v)]
 	return "%s %s" % [cm["brand"], cm["model"]]
 
+## Pantalla «Mapas fantasía»: una tarjeta por mapa; al tocarla se abren los ajustes de la carrera con ese mapa
+func _fantasy() -> void:
+	m.set_title("MAPAS FANTASÍA")
+	m.body.add_child(Kit.wrap("Mapas sueltos de mundos imposibles, todos hechos en papel. Sin copas ni estrellas: correlos cuando quieras.", 13, Kit.MUTED, 300))
+	var g := Kit.grid(2, 8, 8)
+	m.body.add_child(g)
+	for id in fantasy_maps():
+		var mp: Dictionary = _maps()[id]
+		var b := Kit.button("", Callable(), false, 18, Vector2(0, 214))
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var v := Kit.vbox(2)
+		v.set_anchors_preset(Control.PRESET_FULL_RECT)
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.offset_left = 6
+		v.offset_right = -6
+		v.offset_top = 6
+		v.offset_bottom = -4
+		var pv := preview(str(id), 92.0, 13)
+		pv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(pv)
+		var tag := Kit.wrap(tr(str(mp.get("tagline", ""))), 12, Kit.TEXT, 120)
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(tag)
+		var st := Kit.label("%s km · ↕ %d m" % [str(mp.get("km", 0)).replace(".", ","), int(mp.get("dz", 0))], 12, Kit.GOLD)
+		st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(st)
+		b.add_child(v)
+		var mid: String = str(id)
+		b.pressed.connect(func() -> void:
+			if Kit.scroll_moved:
+				Kit.scroll_moved = false
+				return
+			m.sfx.play("click")
+			quick["map"] = mid
+			quick["fantasy"] = true
+			m.go("quick"))
+		g.add_child(b)
+
 func _quick() -> void:
-	m.set_title("CARRERA RÁPIDA")
+	if str(m.screen_arg) == "fantasy": # para abrirla directo (pruebas y capturas)
+		quick["fantasy"] = true
+	var fantasy: bool = quick.get("fantasy", false) == true
+	m.set_title("MAPAS FANTASÍA" if fantasy else "CARRERA RÁPIDA")
 	var route_maps: Array = []
-	for k in _maps():
-		if str(_maps()[k].get("kind", "")) == "route" and not _maps()[k].get("hidden", false) and not _maps()[k].get("trench", false):
-			route_maps.append(k)
-	route_maps.append("paperRace") # selva de papel: ruta y tierra, angosta y tupida
-	route_maps.append("dream") # Vórtice de Ensueño: vuelta inmensa de flores con subida, bajada y peralte
-	route_maps.append("drift") # la plaza de drift
-	route_maps.append("adventure") # la Ruta de los Sueños del modo aventura, para recorrerla completa
+	if fantasy:
+		route_maps = fantasy_maps()
+		if not route_maps.has(str(quick["map"])):
+			quick["map"] = route_maps[0]
+	else:
+		for k in _maps():
+			if str(_maps()[k].get("kind", "")) == "route" and not _maps()[k].get("hidden", false) and not _maps()[k].get("trench", false):
+				route_maps.append(k)
+		route_maps.append("paperRace") # selva de papel: ruta y tierra, angosta y tupida
+		route_maps.append("drift") # la plaza de drift
+		route_maps.append("adventure") # la Ruta de los Sueños del modo aventura, para recorrerla completa
+		if is_fantasy(str(quick["map"])):
+			quick["map"] = "lake" # los mapas fantasía tienen su propia sección
 	var adv: bool = str(quick["map"]) == "adventure"
 	var pv_box := VBoxContainer.new()
 	m.body.add_child(pv_box)
@@ -288,7 +347,7 @@ func _quick() -> void:
 	if not adv and car_ids.size() > 0:
 		defs.append(["Auto", "car", car_ids, func(v): return _quick_car_name(v)])
 	if not adv:
-		if str(quick["map"]) != "dream": # el Vórtice de Ensueño tiene su propio cielo
+		if not is_fantasy(str(quick["map"])): # los mapas fantasía tienen su propio cielo
 			defs.append(["Clima", "sky", ["day", "overcast", "sunset", "dusk", "rain"], func(v): return tr(SKY_N[v])])
 		if str(quick["map"]) == "drift":
 			defs.append(["Drift", "dmode", ["free", "duel"], func(v): return tr("Libre (por puntos)") if v == "free" else tr("Duelo contra un bot")])
@@ -315,15 +374,17 @@ func _quick() -> void:
 				else:
 					refresh_pv.call(), m.sfx, 60.0)
 		g.add_child(sel)
-	if str(quick["map"]) == "dream":
-		m.body.add_child(Kit.wrap(tr("Mapa fantasía suelto: una vuelta inmensa entre flores gigantes, con subida, bajada y un rival a tu ritmo. No pertenece a ninguna copa."), 13, Kit.MUTED, 300))
+	if fantasy:
+		m.body.add_child(Kit.wrap(tr(str(_maps()[str(quick["map"])].get("tagline", ""))) + " " + tr("Los rivales te siguen el ritmo. No pertenece a ninguna copa."), 13, Kit.MUTED, 300))
 	if adv:
 		m.body.add_child(Kit.wrap(tr("Práctica: corrés la etapa con el DR Bisonte de la aventura; no cuenta para tu avance ni da premios."), 13, Kit.MUTED, 300))
 	m.body.add_child(Kit.button("¡CORRER!", func(): _start_quick(), true, 26, Vector2(0, 58)))
 
 ## Familia del mapa de la Carrera rápida: cambia qué ajustes se muestran
 func _map_kind(id: String) -> String:
-	return id if id in ["adventure", "drift", "picada", "dream"] else "route"
+	if is_fantasy(id):
+		return "dream"
+	return id if id in ["adventure", "drift", "picada"] else "route"
 
 func _start_quick() -> void:
 	var q := quick
