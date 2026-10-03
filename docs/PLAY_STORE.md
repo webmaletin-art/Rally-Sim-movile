@@ -35,10 +35,10 @@ La versión de prueba (APK liviano / completo de GitHub) **no cambia**: todo lo 
 5. **Contenido de la app** (todos son formularios cortos):
    - Política de privacidad: la URL de arriba.
    - Anuncios: **No contiene anuncios**.
-   - Acceso a la app: todo accesible, sin cuentas.
+   - Acceso a la app: todo accesible sin restricciones (la cuenta con correo es opcional).
    - Clasificación de contenido (IARC): categoría *Juego*; carreras, sin violencia, sin contenido sexual, sin apuestas, sin chat, **con compras dentro de la app**.
    - Público objetivo: **13 años o más** (así no entra en las reglas de «Diseñado para niños»).
-   - Seguridad de los datos: **sin el modo online**, no se recopilan ni comparten datos (los pagos los procesa Google Play). **Con los rankings online encendidos** (ver `docs/ONLINE_SUPABASE.md`) hay que declarar ID de usuario, puntuaciones y, si el jugador crea una cuenta, correo electrónico: todo opcional y no compartido. Como el juego deja **crear cuentas**, Play pide además **poder borrarla desde la app** (ya está: Modo online → Cuenta → Borrar mi cuenta) y **una dirección web para pedir el borrado** (declarala en *Contenido de la app → Eliminación de la cuenta*; por ahora el contacto de la política de privacidad).
+   - Seguridad de los datos y eliminación de la cuenta: **seguí `docs/PLAY_SEGURIDAD_DATOS.md`** (paso a paso, con las respuestas exactas). Resumen: sin el modo online no se recopila nada; con el online encendido se declaran correo, apodo, ID de usuario y puntajes (todo opcional, no compartido), y la dirección web para pedir el borrado es `https://webmaletin-art.github.io/Rally-Sim-movile/docs/eliminar-cuenta.html` (el borrado desde la app ya está: MODO ONLINE → Cuenta → Borrar mi cuenta y mis marcas).
    - Declaración de ID de publicidad: **No** usa.
 6. **Ficha principal de Play Store**: título, descripción corta y larga (`store_listing/ficha.md`), ícono 512, gráfico de funciones 1024×500, capturas (ver sección 4).
 7. **Productos integrados** (Monetizar → Productos → Productos integrados), con **estos IDs exactos** (los pide el código):

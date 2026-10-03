@@ -7,6 +7,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 def inline(t):
     t = html.escape(t)
     t = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', t)
+    t = re.sub(r'\[(.+?)\]\((.+?)\)', r'<a href="\2">\1</a>', t)
     t = re.sub(r'`(.+?)`', r'<code>\1</code>', t)
     t = re.sub(r'\*(.+?)\*', r'<i>\1</i>', t)
     return t
@@ -44,7 +45,7 @@ h1{color:#d9560a}h2{margin-top:2em;border-bottom:2px solid #f2f2f2;padding-botto
 @media(prefers-color-scheme:dark){body{background:#0e1420;color:#e6ebf3}h2{border-color:#243049}code{background:#1b2638}}</style></head>
 <body>%s</body></html>'''
 
-for src, dst, title in [('PRIVACIDAD.md', 'privacidad.html', 'Política de privacidad'), ('TERMINOS.md', 'terminos.html', 'Términos de uso')]:
+for src, dst, title in [('PRIVACIDAD.md', 'privacidad.html', 'Política de privacidad'), ('TERMINOS.md', 'terminos.html', 'Términos de uso'), ('ELIMINAR_CUENTA.md', 'eliminar-cuenta.html', 'Eliminar la cuenta y los datos')]:
     md = open(os.path.join(ROOT, 'docs', src), encoding='utf-8').read()
     open(os.path.join(ROOT, 'docs', dst), 'w', encoding='utf-8').write(PAGE % (title, convert(md)))
     print('docs/' + dst)
