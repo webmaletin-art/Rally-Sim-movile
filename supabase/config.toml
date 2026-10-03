@@ -20,4 +20,9 @@ jwt_expiry = 3600
 enable_refresh_token_rotation = true
 
 [auth.email]
-enable_signup = false
+# Cuenta con correo y contraseña (opcional en el juego). Con «Confirm email» apagado la cuenta anda al toque; si se enciende hace falta un SMTP propio (ver docs/ONLINE_SUPABASE.md).
+enable_signup = true
+enable_confirmations = false
+double_confirm_changes = false
+secure_password_change = false
+

@@ -38,7 +38,7 @@ La versión de prueba (APK liviano / completo de GitHub) **no cambia**: todo lo 
    - Acceso a la app: todo accesible, sin cuentas.
    - Clasificación de contenido (IARC): categoría *Juego*; carreras, sin violencia, sin contenido sexual, sin apuestas, sin chat, **con compras dentro de la app**.
    - Público objetivo: **13 años o más** (así no entra en las reglas de «Diseñado para niños»).
-   - Seguridad de los datos: **sin el modo online**, no se recopilan ni comparten datos (los pagos los procesa Google Play). **Con los rankings online encendidos** (ver `docs/ONLINE_SUPABASE.md`) hay que declarar ID de usuario anónimo y puntuaciones, opcionales y no compartidos.
+   - Seguridad de los datos: **sin el modo online**, no se recopilan ni comparten datos (los pagos los procesa Google Play). **Con los rankings online encendidos** (ver `docs/ONLINE_SUPABASE.md`) hay que declarar ID de usuario, puntuaciones y, si el jugador crea una cuenta, correo electrónico: todo opcional y no compartido. Como el juego deja **crear cuentas**, Play pide además **poder borrarla desde la app** (ya está: Modo online → Cuenta → Borrar mi cuenta) y **una dirección web para pedir el borrado** (declarala en *Contenido de la app → Eliminación de la cuenta*; por ahora el contacto de la política de privacidad).
    - Declaración de ID de publicidad: **No** usa.
 6. **Ficha principal de Play Store**: título, descripción corta y larga (`store_listing/ficha.md`), ícono 512, gráfico de funciones 1024×500, capturas (ver sección 4).
 7. **Productos integrados** (Monetizar → Productos → Productos integrados), con **estos IDs exactos** (los pide el código):

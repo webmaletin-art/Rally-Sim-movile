@@ -7,7 +7,7 @@
 ## Español
 
 ### Resumen
-Dream Racing es un juego sin cuentas, sin publicidad y sin análisis (analytics). **No recopilamos, vendemos ni compartimos datos personales.** Tu progreso se guarda únicamente en tu dispositivo.
+Dream Racing es un juego sin cuentas, sin publicidad y sin análisis (analytics). **No recopilamos, vendemos ni compartimos datos personales.** Tu progreso se guarda únicamente en tu dispositivo. *(Excepción: el modo online opcional y la cuenta con correo, que solo existen en las versiones que los traen; ver al final.)*
 
 ### Qué datos se guardan y dónde
 - **Perfil de juego** (nombre de piloto que elegís, autos, mejoras, pintura, dinero del juego, estrellas, tiempos y opciones): se guarda en el almacenamiento interno de la app, en tu teléfono. No se envía a ningún servidor. Si desinstalás la app o borrás sus datos, se pierde.
@@ -45,7 +45,7 @@ Responsable: SRGamestudios · Correo: **roldanhr98@gmail.com**
 ## English
 
 ### Summary
-Dream Racing has no accounts, no ads and no analytics. **We do not collect, sell or share personal data.** Your progress is stored only on your device.
+Dream Racing has no accounts, no ads and no analytics. **We do not collect, sell or share personal data.** Your progress is stored only on your device. *(Exception: the optional online mode and email account, which only exist in builds that include them; see the end.)*
 
 ### What is stored and where
 - **Game profile** (the driver name you choose, cars, upgrades, paint, in-game money, stars, times and settings) is kept in the app's private storage on your phone. It is never sent to a server. Uninstalling the app or clearing its data deletes it.
@@ -79,4 +79,9 @@ If this policy changes, the new version will be published at this same address a
 Owner: SRGamestudios · Email: **roldanhr98@gmail.com**
 
 ### Rankings online (opcional, solo en las versiones que lo traen)
-Si activás «Participar en los rankings online» (viene apagado), el juego crea un **usuario anónimo** (sin correo ni contraseña) y envía a nuestro servidor (Supabase) tu **nombre de piloto** y tus **mejores marcas** (tiempo o puntos, pista y auto) para armar el ranking, que ven todos los jugadores. No se envía ningún otro dato, y lo podés apagar cuando quieras. Para borrar tus marcas, escribí al contacto del juego.
+Si activás «Participar en los rankings online» (viene apagado), el juego crea un **usuario anónimo** y envía a nuestro servidor (Supabase) tu **nombre de piloto** y tus **mejores marcas** (tiempo o puntos, pista y auto) para armar el ranking, que ven todos los jugadores. No se envía ningún otro dato, y lo podés apagar cuando quieras. Para borrar tus marcas, escribí al contacto del juego.
+
+### Cuenta con correo (opcional, solo en las versiones que traen el modo online)
+Si creás una cuenta, guardamos tu **correo electrónico** y una **contraseña** (que nunca vemos: se guarda cifrada) en nuestro servidor (Supabase), solo para que puedas recuperar tus marcas del ranking en otro teléfono y para mandarte el mensaje de confirmación o de cambio de contraseña. Tu correo no se muestra a otros jugadores ni se usa para publicidad ni se comparte con terceros. La cuenta es solo para mayores de 13 años (o con permiso de un adulto). Podés cerrar sesión cuando quieras y **borrar tu cuenta y tus marcas desde el juego** (*Modo online → Cuenta → Borrar mi cuenta y mis marcas*), o escribiendo al contacto. El borrado es inmediato y definitivo.
+
+*(English)* **Optional email account (only in builds with online mode):** if you create an account we store your **email address** and a **password** (never visible to us; stored hashed) on our server (Supabase), only so you can recover your ranking marks on another phone and so we can send the confirmation or password-reset message. Your email is never shown to other players, used for advertising or shared with third parties. Accounts are for people aged 13 or older (or with an adult's permission). You can sign out at any time and **delete your account and marks from inside the game** (*Online mode → Account → Delete my account and marks*), or by writing to the contact above. Deletion is immediate and permanent.

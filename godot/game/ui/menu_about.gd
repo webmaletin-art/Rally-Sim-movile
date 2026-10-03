@@ -4,6 +4,7 @@ extends RefCounted
 
 const Kit := preload("res://game/ui/ui_kit.gd")
 const Release := preload("res://game/data/release.gd")
+const MenuAccount := preload("res://game/ui/menu_account.gd")
 
 const POLICY_URL := "https://webmaletin-art.github.io/Rally-Sim-movile/docs/privacidad.html"
 const TERMS_URL := "https://github.com/webmaletin-art/Rally-Sim-movile/blob/main/docs/TERMINOS.md"
@@ -56,7 +57,10 @@ const TERMS_STORE := [
 
 ## Solo si esta versión trae el modo online configurado (los rankings son opcionales y están apagados de fábrica)
 const PRIVACY_ONLINE := [
-	["Rankings online (opcional)", "Si activás «Participar en los rankings online» (viene apagado), el juego crea un usuario anónimo, sin correo ni contraseña, y envía a nuestro servidor (Supabase) tu nombre de piloto y tus mejores marcas (tiempo o puntos, pista y auto) para armar el ranking, que ven todos los jugadores. No se envía ningún otro dato, y lo podés apagar cuando quieras. Para borrar tus marcas escribí al contacto del juego."],
+	["Resumen", "Dream Racing no tiene publicidad ni análisis. No vendemos ni compartimos datos personales. Tu progreso se guarda en tu teléfono. Solo si lo elegís, el modo online guarda en nuestro servidor tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo."],
+	["Niños", "El juego no tiene publicidad ni chat. El modo online es opcional y la cuenta con correo es solo para mayores de 13 años (o con permiso de un adulto); sin cuenta no se pide ningún dato personal. Las compras dentro del juego se hacen con la cuenta de Google Play de un adulto."],
+	["Rankings online (opcional)", "Si activás «Participar en los rankings online» (viene apagado), el juego crea un usuario anónimo y envía a nuestro servidor (Supabase) tu nombre de piloto y tus mejores marcas (tiempo o puntos, pista y auto) para armar el ranking, que ven todos los jugadores. No se envía ningún otro dato, y lo podés apagar cuando quieras. Para borrar tus marcas escribí al contacto del juego."],
+	["Cuenta con correo (opcional)", "Si creás una cuenta, guardamos tu correo electrónico y una contraseña (que nunca vemos: se guarda cifrada) en Supabase, solo para que puedas recuperar tus marcas del ranking en otro teléfono. Tu correo no se muestra a otros jugadores ni se usa para publicidad. Es solo para mayores de 13 años. Podés cerrar sesión cuando quieras y borrar tu cuenta y tus marcas desde el juego (Modo online → Cuenta) o escribiendo al contacto del juego."],
 ]
 
 func _privacy() -> Array:
@@ -161,7 +165,10 @@ static func needs_consent(profile: RefCounted) -> bool:
 func consent_screen() -> void:
 	m.set_title("BIENVENIDO")
 	m.body.add_child(Kit.label("Antes de empezar", 26, Kit.ACCENT))
-	m.body.add_child(Kit.wrap("Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Funciona sin internet; las compras dentro del juego pasan por Google Play." if Release.store() else "Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Descarga contenido del juego desde internet.", 15, Kit.TEXT, 300))
+	var intro := "Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Funciona sin internet; las compras dentro del juego pasan por Google Play." if Release.store() else "Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Descarga contenido del juego desde internet."
+	if m.app != null and m.app.online != null and m.app.online.configured():
+		intro = "Dream Racing guarda tu progreso solo en tu teléfono y no tiene publicidad. Los rankings online y la cuenta con correo son opcionales: si los usás, se envían tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo. Funciona sin internet; las compras dentro del juego pasan por Google Play." if Release.store() else "Dream Racing guarda tu progreso solo en tu teléfono y no tiene publicidad. Los rankings online y la cuenta con correo son opcionales: si los usás, se envían tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo. Descarga contenido del juego desde internet."
+	m.body.add_child(Kit.wrap(intro, 15, Kit.TEXT, 300))
 	var g := Kit.grid(2, 8, 8)
 	m.body.add_child(g)
 	g.add_child(m.tile("🔒", "POLÍTICA DE PRIVACIDAD", "", func() -> void:
@@ -183,6 +190,9 @@ func consent_screen() -> void:
 		m.profile.save()
 		m.sfx.play("buy")
 		m.stack.clear()
-		m.go("home", null, false), true, 22, Vector2(0, 56))
+		if MenuAccount.should_offer(m.profile, m.app.online):
+			m.go("account", "welcome", false)
+		else:
+			m.go("home", null, false), true, 22, Vector2(0, 56))
 	yes.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(yes)

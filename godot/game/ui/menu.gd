@@ -15,6 +15,7 @@ const Lens := preload("res://game/fx/lens.gd")
 const OptionsUi := preload("res://game/ui/options_ui.gd")
 const MenuAdventure := preload("res://game/ui/menu_adventure.gd")
 const MenuAbout := preload("res://game/ui/menu_about.gd")
+const MenuAccount := preload("res://game/ui/menu_account.gd")
 const MenuPerf := preload("res://game/ui/menu_perf.gd")
 const MenuStore := preload("res://game/ui/menu_store.gd")
 const Release := preload("res://game/data/release.gd")
@@ -45,6 +46,7 @@ var career: RefCounted
 var garage: RefCounted
 var adventure: RefCounted
 var about: RefCounted
+var account: RefCounted
 var perf: RefCounted
 var store: RefCounted
 var frames := 0
@@ -115,6 +117,8 @@ func _ready() -> void:
 	adventure.m = self
 	about = MenuAbout.new()
 	about.m = self
+	account = MenuAccount.new()
+	account.m = self
 	perf = MenuPerf.new()
 	perf.m = self
 	store = MenuStore.new()
@@ -176,6 +180,8 @@ func _ready() -> void:
 		arg0 = {"type": "race", "track": "lake", "ai": 3, "car": profile.current_id(), "state": profile.car()} # solo para probar la pantalla
 	if start_screen == "home" and not no_consent and MenuAbout.needs_consent(profile):
 		go("consent")
+	elif start_screen == "home" and not no_consent and MenuAccount.should_offer(profile, app.online):
+		go("account", "welcome") # una sola vez: crear cuenta con correo (opcional)
 	else:
 		go(parts[0], arg0)
 		if start_screen == "home":
@@ -313,7 +319,7 @@ func go(name: String, arg = null, push := true) -> void:
 	panel.add_child(col)
 	var head := Kit.hbox(8)
 	col.add_child(head)
-	if name != "home" and name != "consent":
+	if name != "home" and name != "consent" and not (name == "account" and arg == "welcome"):
 		head.add_child(Kit.button("← ATRÁS", back, false, 16, Vector2(104, 40)))
 	title_l = Kit.label("", 26, Kit.ACCENT)
 	title_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -341,6 +347,7 @@ func go(name: String, arg = null, push := true) -> void:
 		"garage", "dealer", "workshop", "tune", "paint": garage.build(name, arg)
 		"about", "privacy", "terms", "credits": about.build(name, arg)
 		"consent": about.consent_screen()
+		"account": account.build(arg)
 		"perf":
 			if not Release.store():
 				perf.build(name, arg)
@@ -535,12 +542,16 @@ func _soon_screen(kind: String) -> void:
 
 ## Conexión con Supabase ya preparada: el jugador elige si participa en los rankings (apagado de fábrica) y, en modo desarrollador, se prueba la conexión
 func _online_options() -> void:
-	body.add_child(Kit.wrap("Rankings online: se envían tu nombre de piloto y tus mejores marcas (tiempo y puntos) sin crear ninguna cuenta. No se envía nada más.", 13, Kit.MUTED, 300))
+	body.add_child(Kit.wrap("Rankings online: se envían tu nombre de piloto y tus mejores marcas (tiempo y puntos). La cuenta con correo es opcional. No se envía nada más.", 13, Kit.MUTED, 300))
 	var on: bool = profile.setting("onlineScores") == true
 	body.add_child(Kit.button(("☑ " if on else "☐ ") + tr("Participar en los rankings online"), func() -> void:
 		sfx.play("click")
 		profile.set_setting("onlineScores", not on)
 		go("soon", "online", false), on, 16, Vector2(0, 46)))
+	var acct: String = app.online.email if app.online.is_account() else ""
+	body.add_child(Kit.button(("👤 " + acct) if acct != "" else "👤 " + tr("Cuenta con correo (opcional)"), func() -> void:
+		sfx.play("click")
+		go("account"), false, 16, Vector2(0, 46)))
 	if Release.dev(profile):
 		var res := Kit.wrap("", 13, Kit.GREEN, 300)
 		body.add_child(Kit.button("🛠 Probar conexión con Supabase", func() -> void:

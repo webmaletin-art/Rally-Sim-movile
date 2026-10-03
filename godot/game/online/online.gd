@@ -16,6 +16,7 @@ var token := ""
 var refresh_token := ""
 var uid := ""
 var expires_at := 0 # segundos unix
+var email := "" # correo de la cuenta ("" = jugador anónimo)
 var last_error := ""
 
 func _ready() -> void:
@@ -65,7 +66,7 @@ static func board_for(result_type: String, cfg: Dictionary) -> String:
 static func parse_session(d: Dictionary) -> Dictionary:
 	var user: Dictionary = d.get("user", {}) if d.get("user", {}) is Dictionary else {}
 	return {"token": str(d.get("access_token", "")), "refresh": str(d.get("refresh_token", "")), "uid": str(user.get("id", "")),
-		"expires_at": int(Time.get_unix_time_from_system()) + int(d.get("expires_in", 3600)) - 60}
+		"email": str(user.get("email", "")), "expires_at": int(Time.get_unix_time_from_system()) + int(d.get("expires_in", 3600)) - 60}
 
 # ───────────────────────── red ─────────────────────────
 func request(method: int, path: String, body: Variant = null, bearer := "") -> Dictionary:
@@ -114,9 +115,10 @@ func _set_session(s: Dictionary) -> void:
 	refresh_token = str(s["refresh"])
 	uid = str(s["uid"])
 	expires_at = int(s["expires_at"])
+	email = str(s.get("email", ""))
 	var f := FileAccess.open(SESSION_PATH, FileAccess.WRITE)
 	if f != null:
-		f.store_string(JSON.stringify({"refresh": refresh_token, "uid": uid}))
+		f.store_string(JSON.stringify({"refresh": refresh_token, "uid": uid, "email": email}))
 
 func _load_session() -> void:
 	if FileAccess.file_exists(SESSION_PATH):
@@ -124,12 +126,125 @@ func _load_session() -> void:
 		if d is Dictionary:
 			refresh_token = str((d as Dictionary).get("refresh", ""))
 			uid = str((d as Dictionary).get("uid", ""))
+			email = str((d as Dictionary).get("email", ""))
 
 ## Llama a una función de la base (RPC) con sesión
 func call_fn(fn: String, args: Dictionary, need_session := true) -> Dictionary:
 	if need_session and not await sign_in():
 		return {"ok": false, "code": 0, "data": null, "error": last_error if last_error != "" else "sin sesión"}
 	return await request(HTTPClient.METHOD_POST, "/rest/v1/rpc/" + fn, args, token if need_session else "")
+
+# ───────────────────────── cuenta con correo (opcional) ─────────────────────────
+## El jugador entra sin cuenta (anónimo). Si quiere, le suma correo y contraseña: es el MISMO usuario, así que conserva sus marcas, y
+## en otro teléfono vuelve a entrar con «iniciar sesión». El progreso del juego (autos, créditos) sigue guardado en el teléfono.
+static func valid_email(e: String) -> bool:
+	var parts := e.strip_edges().split("@")
+	return parts.size() == 2 and parts[0].length() > 0 and parts[1].length() >= 3 and "." in parts[1] and not parts[1].begins_with(".") and not parts[1].ends_with(".") and not " " in e
+
+static func valid_password(p: String) -> bool:
+	return p.length() >= 8
+
+## Traduce los mensajes de Supabase Auth a algo que entienda el jugador
+static func friendly_error(msg: String) -> String:
+	var m := msg.to_lower()
+	if "already registered" in m or "already been registered" in m:
+		return "Ese correo ya tiene una cuenta. Probá con «Iniciar sesión»."
+	if "invalid login" in m:
+		return "Correo o contraseña incorrectos."
+	if "not confirmed" in m:
+		return "Falta confirmar el correo: abrí el mensaje que te mandamos y tocá el enlace."
+	if "rate limit" in m or "too many" in m or ("after" in m and "seconds" in m):
+		return "Hiciste muchos intentos seguidos. Esperá unos minutos y probá de nuevo."
+	if "password" in m and ("least" in m or "weak" in m or "short" in m):
+		return "La contraseña es muy corta o débil (mínimo 8 caracteres)."
+	if "valid email" in m or "invalid email" in m or "unable to validate email" in m:
+		return "Ese correo no parece válido."
+	if "anonymous" in m and "disabled" in m:
+		return "El servidor no permite entrar sin cuenta todavía."
+	if msg == "sin conexión":
+		return "Sin conexión a internet."
+	return "No se pudo completar. Probá de nuevo en un rato."
+
+func is_account() -> bool:
+	return email != ""
+
+## Crea la cuenta. Si ya hay un usuario anónimo, le agrega el correo y la contraseña (mismas marcas). Devuelve {ok, text, confirm}.
+## confirm = true si el servidor pide confirmar el correo antes de usarla. «text» es la clave en español para traducir (con «arg» si lleva %s).
+func create_account(mail: String, pw: String) -> Dictionary:
+	mail = mail.strip_edges().to_lower()
+	if not configured():
+		return {"ok": false, "text": "Esta versión no tiene el modo online configurado.", "confirm": false}
+	if not valid_email(mail):
+		return {"ok": false, "text": "Ese correo no parece válido.", "confirm": false}
+	if not valid_password(pw):
+		return {"ok": false, "text": "La contraseña tiene que tener al menos 8 caracteres.", "confirm": false}
+	var r: Dictionary
+	if refresh_token != "" and await sign_in():
+		r = await request(HTTPClient.METHOD_PUT, "/auth/v1/user", {"email": mail, "password": pw}, token)
+	else:
+		r = await request(HTTPClient.METHOD_POST, "/auth/v1/signup", {"email": mail, "password": pw})
+		if r["ok"] and r["data"] is Dictionary and str((r["data"] as Dictionary).get("access_token", "")) != "":
+			_set_session(parse_session(r["data"] as Dictionary))
+	if not r["ok"]:
+		return {"ok": false, "text": friendly_error(str(r["error"])), "confirm": false}
+	var d: Dictionary = r["data"] if r["data"] is Dictionary else {}
+	var user: Dictionary = d.get("user", d) if d.get("user", d) is Dictionary else {}
+	var confirmed := str(user.get("email", "")) == mail and (user.get("email_confirmed_at") != null or user.get("confirmed_at") != null)
+	if confirmed:
+		email = mail
+		_set_session({"token": token, "refresh": refresh_token, "uid": uid, "email": mail, "expires_at": expires_at})
+		return {"ok": true, "text": "¡Cuenta creada! Ya podés entrar con este correo desde cualquier teléfono.", "confirm": false}
+	return {"ok": true, "text": "Te mandamos un mensaje a %s. Tocá el enlace para confirmar la cuenta y después volvé al juego.", "arg": mail, "confirm": true}
+
+## Entra con una cuenta existente (reemplaza al usuario anónimo de este teléfono)
+func login(mail: String, pw: String) -> Dictionary:
+	mail = mail.strip_edges().to_lower()
+	if not configured():
+		return {"ok": false, "text": "Esta versión no tiene el modo online configurado."}
+	if not valid_email(mail) or pw == "":
+		return {"ok": false, "text": "Escribí tu correo y tu contraseña."}
+	var r := await request(HTTPClient.METHOD_POST, "/auth/v1/token?grant_type=password", {"email": mail, "password": pw})
+	if not r["ok"] or not (r["data"] is Dictionary):
+		return {"ok": false, "text": friendly_error(str(r["error"]))}
+	var s := parse_session(r["data"] as Dictionary)
+	if s["token"] == "":
+		return {"ok": false, "text": "Correo o contraseña incorrectos."}
+	if s["email"] == "":
+		s["email"] = mail
+	_set_session(s)
+	return {"ok": true, "text": "¡Listo! Entraste como %s.", "arg": mail}
+
+## Manda el mensaje para elegir una contraseña nueva
+func recover(mail: String) -> Dictionary:
+	mail = mail.strip_edges().to_lower()
+	if not valid_email(mail):
+		return {"ok": false, "text": "Escribí tu correo."}
+	var r := await request(HTTPClient.METHOD_POST, "/auth/v1/recover", {"email": mail})
+	if not r["ok"]:
+		return {"ok": false, "text": friendly_error(str(r["error"]))}
+	return {"ok": true, "text": "Si ese correo tiene cuenta, te mandamos un mensaje para elegir una contraseña nueva."}
+
+## Borra la cuenta, las marcas y todo lo que haya en el servidor (Google Play lo exige para las apps con cuentas) y cierra la sesión
+func delete_account() -> Dictionary:
+	if not await sign_in():
+		return {"ok": false, "text": friendly_error(last_error)}
+	var r := await call_fn("delete_my_account", {})
+	if not r["ok"]:
+		return {"ok": false, "text": friendly_error(str(r["error"]))}
+	logout()
+	return {"ok": true, "text": "Listo: se borraron tu cuenta y tus marcas."}
+
+## Cierra la sesión de este teléfono (vuelve a ser un jugador anónimo la próxima vez que mande una marca)
+func logout() -> void:
+	if token != "":
+		request(HTTPClient.METHOD_POST, "/auth/v1/logout", {}, token) # no hace falta esperar la respuesta
+	token = ""
+	refresh_token = ""
+	uid = ""
+	email = ""
+	expires_at = 0
+	if FileAccess.file_exists(SESSION_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SESSION_PATH))
 
 # ───────────────────────── lo que usa el juego ─────────────────────────
 ## Manda una marca (si el jugador participa en los rankings). No molesta: se llama sin esperar el resultado.

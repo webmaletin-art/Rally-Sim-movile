@@ -53,15 +53,27 @@ Corré la compilación (cada push a `main` ya lo hace). En el registro, el paso 
 3. Tiene que decir **«✔ Conectado a Supabase (usuario xxxxxx…)»**. Si falla, el mensaje dice por qué (falta la clave, la autenticación anónima está apagada, o no se aplicaron las migraciones).
 4. El modo desarrollador **no manda marcas** (para que nadie ensucie los rankings). Apagalo (**Acerca de → APAGAR MODO DESARROLLADOR**), corré una carrera y mirá en Supabase → *Table Editor → scores*: aparece tu marca. (Con el modo desarrollador apagado ya no ves el botón de prueba, pero el juego sigue funcionando igual.)
 
+## Cuentas con correo (opcional, ya está en el juego)
+El jugador entra **sin cuenta** (usuario anónimo). Al abrir el juego por primera vez (y siempre desde *Modo online → Cuenta con correo*) puede **crear una cuenta con correo y contraseña**: es el *mismo* usuario anónimo al que se le suma el correo, así que conserva sus marcas; en otro teléfono vuelve con «Iniciar sesión». También hay «Olvidé mi contraseña» y «Cerrar sesión». El progreso del juego (autos, créditos) sigue guardado solo en el teléfono: la cuenta **no** hace copia en la nube todavía.
+
+**Qué configurar en Supabase** (*Authentication*):
+1. *Sign In / Providers → Email*: **Enable Email provider** encendido (y «Allow new users to sign up» encendido).
+2. *Confirm email*: recomendado **apagado al principio**. El correo de Supabase que viene por defecto manda muy pocos mensajes por hora (unos 2–4), así que con «Confirm email» encendido los registros se traban apenas haya movimiento. Para encenderlo bien, primero configurá un **SMTP propio** (*Authentication → SMTP Settings*, por ejemplo Resend o Brevo, tienen plan gratis) y recién ahí activá la confirmación. El juego ya maneja las dos formas (si pide confirmar, avisa «revisá tu correo»).
+3. *URL Configuration → Site URL*: la dirección de la política de privacidad (`https://webmaletin-art.github.io/Rally-Sim-movile/docs/privacidad.html`) sirve por ahora; es adonde lleva el enlace de los correos de confirmación y de «olvidé mi contraseña». Más adelante conviene una página propia que diga «listo, volvé al juego».
+4. *Email Templates* (opcional): podés traducir/editar los mensajes de confirmación y de recuperación.
+5. *Rate Limits*: dejá los valores por defecto.
+
+**Google Play como forma de entrar:** todavía no. Hacerlo bien pide el plugin nativo de *Google Play Games Services* para Godot, un cliente OAuth en Google Cloud y activar el proveedor Google en Supabase (entrar con el *ID token*). Se puede sumar encima de lo que hay sin tocar el resto (misma tabla de jugadores). Queda en la hoja de ruta.
+
 ## Cómo funciona (para no perderse)
 - El juego usa solo la **clave pública**. Nadie puede escribir directo en las tablas: las marcas entran únicamente por `submit_score`, que valida que haya sesión, que la pista exista, que el tiempo sea posible (nadie recorre una pista a más de 120 m/s), y limita a 40 envíos por hora. Guarda **una mejor marca por jugador, pista y tabla** (carrera, contrarreloj, picada, drift).
 - Las pistas y su largo están en la tabla `tracks`; **cuando agreguemos una pista nueva, va también una migración nueva** (`supabase/migrations/AAAAMMDDHHMMSS_nombre.sql`) con su fila.
 - Quedan afuera de los rankings: modo desarrollador, pruebas de autos de la tienda, prácticas de la aventura y el duelo de drift contra el bot.
-- La sesión anónima se guarda en el teléfono (`user://online.json`). Si desinstalan la app, el jugador nuevo es otro usuario.
+- La sesión se guarda en el teléfono (`user://online.json`). Sin cuenta, si desinstalan la app el jugador nuevo es otro usuario; con cuenta, vuelve con «Iniciar sesión».
 
 ## Antes de publicar con el online encendido
 - La política de privacidad ya trae el apartado «Rankings online (opcional)» (en el juego solo se muestra si la versión trae el online configurado; también está en `docs/PRIVACIDAD.md` y `docs/privacidad.html`). **Volvé a publicar `privacidad.html`** si la tenés alojada (GitHub Pages lo hace solo al hacer push).
-- **Play Console → Seguridad de los datos**: pasá a declarar que se recopilan *Identificadores de usuario* (ID anónimo) y *Datos del juego* (puntuaciones), opcionales, usados para la «Funcionalidad de la app», no compartidos.
+- **Play Console → Seguridad de los datos**: pasá a declarar que se recopilan *Dirección de correo electrónico* (solo si el jugador crea una cuenta), *Identificadores de usuario* (ID) y *Datos del juego* (puntuaciones), opcionales, usados para la «Funcionalidad de la app», no compartidos.
 - El AAB ahora lleva el permiso de Internet.
 
 ## Lo que sigue (cuando quieras)

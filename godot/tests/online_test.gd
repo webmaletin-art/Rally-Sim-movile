@@ -62,5 +62,72 @@ func _init() -> void:
 	on.profile.d["settings"]["onlineScores"] = false
 	var off: Dictionary = await on.submit_score("dream", "race", 200.0, "gt", 1, "r1")
 	check(not off["ok"] and off["error"] == "apagado", "con «Rankings online» apagado no manda nada")
+	await _account_tests(on)
 	OS.kill(pid)
+	OS.kill(pid2)
 	quit(1 if fail else 0)
+
+var pid2 := -1
+
+## Cuenta con correo: se le suma al usuario anónimo (mismas marcas), inicio de sesión desde otro «teléfono», errores y cierre de sesión
+func _account_tests(on: Node) -> void:
+	check(Online.valid_email("ana@correo.com") and not Online.valid_email("ana@correo") and not Online.valid_email("ana correo@x.com") and not Online.valid_email("@x.com"), "valida los correos")
+	check(Online.valid_password("12345678") and not Online.valid_password("1234567"), "la contraseña pide 8 caracteres")
+	check("ya tiene una cuenta" in Online.friendly_error("User already registered") and "incorrectos" in Online.friendly_error("Invalid login credentials"), "traduce los errores del servidor")
+	var anon_uid: String = on.uid
+	check(not on.is_account(), "arranca como jugador anónimo")
+	var bad: Dictionary = await on.create_account("ana@correo", "12345678")
+	check(not bad["ok"], "no crea una cuenta con un correo inválido")
+	var short: Dictionary = await on.create_account("ana@correo.com", "123")
+	check(not short["ok"], "no crea una cuenta con una contraseña corta")
+	var c: Dictionary = await on.create_account("Ana@Correo.com", "clave-larga-1")
+	check(c["ok"] and not c["confirm"] and on.is_account() and on.email == "ana@correo.com" and on.uid == anon_uid, "suma el correo al mismo usuario (%s)" % str(c["text"]))
+	var dup: Dictionary = await on.create_account("ana@correo.com", "otra-clave-1")
+	check(not dup["ok"], "no deja repetir un correo (%s)" % str(dup["text"]))
+	# otro teléfono: sesión limpia + inicio de sesión
+	on.logout()
+	check(not on.is_account() and on.token == "" and on.refresh_token == "" and not FileAccess.file_exists(Online.SESSION_PATH), "cerrar sesión borra todo lo guardado")
+	var wrong: Dictionary = await on.login("ana@correo.com", "mala")
+	check(not wrong["ok"] and "incorrectos" in str(wrong["text"]), "contraseña equivocada: %s" % str(wrong["text"]))
+	var li: Dictionary = await on.login("ana@correo.com", "clave-larga-1")
+	check(li["ok"] and on.is_account() and on.uid == anon_uid, "inicia sesión y vuelve a ser el mismo usuario")
+	var lb: Dictionary = await on.leaderboard("dream", "race", 10)
+	check(lb["ok"] and lb["data"][0]["is_me"] == true, "con la cuenta sigue viendo sus marcas")
+	var rc: Dictionary = await on.recover("ana@correo.com")
+	check(rc["ok"], "pide cambiar la contraseña")
+	# borrar la cuenta: se van la cuenta y las marcas; el correo se puede volver a usar y la sesión vieja ya no sirve
+	var del_uid: String = on.uid
+	var del: Dictionary = await on.delete_account()
+	check(del["ok"] and not on.is_account() and on.token == "" and on.uid == "", "borra la cuenta y cierra la sesión")
+	var gone: Dictionary = await on.login("ana@correo.com", "clave-larga-1")
+	check(not gone["ok"], "después de borrarla ya no se puede entrar (%s)" % str(gone["text"]))
+	check(await on.sign_in() and on.uid != del_uid, "queda como un jugador anónimo nuevo")
+	var lb2: Dictionary = await on.leaderboard("dream", "race", 10)
+	check(lb2["ok"] and (lb2["data"] as Array).is_empty(), "sus marcas ya no están en el ranking")
+	var c2: Dictionary = await on.create_account("ana@correo.com", "clave-larga-1")
+	check(c2["ok"], "el mismo correo se puede volver a usar (%s)" % str(c2["text"]))
+	# después de reiniciar el juego la cuenta sigue
+	var again := Online.new()
+	again.profile = on.profile
+	root.add_child(again)
+	await process_frame
+	check(again.is_account() and again.email == "ana@correo.com", "al reabrir el juego sigue con la cuenta")
+	again.url = "http://127.0.0.1:54330"
+	again.anon_key = KEY
+	# cuenta nueva sin usuario anónimo previo (registro al primer inicio)
+	again.logout()
+	var fresh: Dictionary = await again.create_account("beto@correo.com", "clave-larga-2")
+	check(fresh["ok"] and again.is_account() and again.uid != "" and again.uid != anon_uid, "crea una cuenta nueva desde cero (%s)" % str(fresh["text"]))
+	# servidor que pide confirmar el correo
+	pid2 = OS.create_process("python3", [ProjectSettings.globalize_path("res://").path_join("../tools/online/mock_supabase.py"), "54331", "--confirm"])
+	OS.delay_msec(900)
+	var cf := Online.new()
+	cf.profile = on.profile
+	root.add_child(cf)
+	await process_frame
+	cf.url = "http://127.0.0.1:54331"
+	cf.anon_key = KEY
+	cf.logout()
+	check(await cf.sign_in(), "(servidor con confirmación) entra anónimo")
+	var cc: Dictionary = await cf.create_account("carla@correo.com", "clave-larga-3")
+	check(cc["ok"] and cc["confirm"] == true and not cf.is_account() and "confirmar" in str(cc["text"]), "pide confirmar el correo y todavía no queda como cuenta (%s)" % str(cc["text"]))

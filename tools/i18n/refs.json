@@ -74,12 +74,12 @@
 "ui/race_hud.gd:263"
 ],
 "%d para cobrar": [
-"ui/menu.gd:509"
+"ui/menu.gd:516"
 ],
 "%d pts": [
 "ui/menu_adventure.gd:73",
 "ui/menu_career.gd:173",
-"ui/menu.gd:657"
+"ui/menu.gd:668"
 ],
 "%d puntos de habilidad para gastar": [
 "ui/menu_adventure.gd:65"
@@ -193,10 +193,10 @@
 "race.gd:1301"
 ],
 "A quienes probaron el juego, mandaron ideas y ayudaron a que cada versión salga mejor.": [
-"ui/menu_about.gd:23"
+"ui/menu_about.gd:24"
 ],
 "ABS, tracción y estabilidad altas y ayuda de trazada fuerte: el auto perdona casi todo.": [
-"ui/menu.gd:360"
+"ui/menu.gd:367"
 ],
 "ABS, tracción, estabilidad": [
 "ui/options_ui.gd:44"
@@ -211,11 +211,11 @@
 "ui/controls.gd:382"
 ],
 "ACEPTO": [
-"ui/menu_about.gd:181"
+"ui/menu_about.gd:188"
 ],
 "ACERCA DE": [
-"ui/menu_about.gd:101",
-"ui/menu.gd:511"
+"ui/menu_about.gd:105",
+"ui/menu.gd:518"
 ],
 "AERO": [
 "ui/lab_panel.gd:26"
@@ -239,10 +239,10 @@
 "ui/menu_adventure.gd:109"
 ],
 "APAGAR MODO DEV": [
-"ui/menu_about.gd:116"
+"ui/menu_about.gd:120"
 ],
 "ARCADE": [
-"ui/menu.gd:360"
+"ui/menu.gd:367"
 ],
 "ARCADE: ABS, control de tracción y estabilidad altos, y el auto te ayuda a doblar. Ideal para aprender la pista.": [
 "ui/loading.gd:169"
@@ -266,7 +266,7 @@
 "ui/menu_garage.gd:609"
 ],
 "Accept: application/json": [
-"online/online.gd:45"
+"online/online.gd:46"
 ],
 "Aceleración": [
 "ui/menu_garage.gd:168",
@@ -314,7 +314,7 @@
 "adventure/adv_data.gd:30"
 ],
 "Al tocar «Acepto» confirmás que leíste y aceptás la política de privacidad y los términos de uso.": [
-"ui/menu_about.gd:175"
+"ui/menu_about.gd:182"
 ],
 "Alerón alto: la cola queda pegada y estable, pero baja la velocidad máxima.": [
 "data/catalog.json"
@@ -326,7 +326,7 @@
 "data/catalog.json"
 ],
 "Algunos modelos de casas y objetos provienen de Sweet Home 3D (bibliotecas de uso libre).": [
-"ui/menu_about.gd:21"
+"ui/menu_about.gd:22"
 ],
 "Aligerado": [
 "data/catalog.json"
@@ -366,7 +366,7 @@
 "data/catalog.json"
 ],
 "Antes de empezar": [
-"ui/menu_about.gd:163"
+"ui/menu_about.gd:167"
 ],
 "Apagada": [
 "ui/options_ui.gd:58",
@@ -407,7 +407,7 @@
 "data/catalog.json"
 ],
 "Authorization: Bearer ": [
-"online/online.gd:45"
+"online/online.gd:46"
 ],
 "Auto": [
 "ui/menu_career.gd:289"
@@ -448,7 +448,7 @@
 "ui/options_ui.gd:256"
 ],
 "Autos": [
-"ui/menu_about.gd:19"
+"ui/menu_about.gd:20"
 ],
 "Avance guardado": [
 "adventure/adv_hud.gd:533"
@@ -463,7 +463,7 @@
 "ui/options_ui.gd:59"
 ],
 "Ayudas medias y ayuda de trazada suave: un manejo equilibrado.": [
-"ui/menu.gd:361"
+"ui/menu.gd:368"
 ],
 "Aérea": [
 "ui/options_ui.gd:78",
@@ -479,7 +479,7 @@
 "race.gd:2307"
 ],
 "BIENVENIDO": [
-"ui/menu_about.gd:162"
+"ui/menu_about.gd:166"
 ],
 "BIENVENIDOS A\n": [
 "adventure/adv_world.gd:1181"
@@ -583,6 +583,9 @@
 "Borderlands (cómic)": [
 "fx/lens.gd:274"
 ],
+"Borrar mi cuenta y mis marcas": [
+"ui/menu_account.gd:69"
+],
 "Bosque (inverso)": [
 "data/routes.json"
 ],
@@ -630,7 +633,7 @@
 ],
 "CARRERA": [
 "ui/menu_career.gd:85",
-"ui/menu.gd:504"
+"ui/menu.gd:511"
 ],
 "CARRERA RÁPIDA": [
 "ui/menu_career.gd:251"
@@ -642,10 +645,10 @@
 "adventure/adv_route.gd:114"
 ],
 "COBRADO ✔": [
-"ui/menu.gd:605"
+"ui/menu.gd:616"
 ],
 "COBRAR ": [
-"ui/menu.gd:607"
+"ui/menu.gd:618"
 ],
 "COLONIA ESPERANZA": [
 "adventure/adv_route.gd:66"
@@ -664,7 +667,7 @@
 ],
 "COMPRAS": [
 "ui/menu_store.gd:13",
-"ui/menu.gd:512"
+"ui/menu.gd:519"
 ],
 "CON FILTROS": [
 "perf_bench.gd:172",
@@ -674,11 +677,17 @@
 "perf_bench.gd:181"
 ],
 "CONTINUAR": [
-"ui/menu.gd:678"
+"ui/menu.gd:689"
+],
+"CREAR CUENTA": [
+"ui/menu_account.gd:107"
+],
+"CREAR MI CUENTA": [
+"ui/menu_account.gd:120"
 ],
 "CRÉDITOS": [
-"ui/menu_about.gd:92",
-"ui/menu_about.gd:110"
+"ui/menu_about.gd:96",
+"ui/menu_about.gd:114"
 ],
 "Cada estación de servicio guarda tu avance. Antes de salir podés ajustar el auto para lo que viene: el camino cambia (asfalto, tierra, nieve) y el auto se maneja distinto.\n\nEn la pestaña AJUSTE tenés lo más importante: tracción, presión de gomas, altura y dureza de la suspensión y frenos.": [
 "adventure/adv_data.gd:23"
@@ -723,6 +732,9 @@
 "Camber extremo (stance)": [
 "data/catalog.json"
 ],
+"Cambiar la contraseña (te mandamos un correo)": [
+"ui/menu_account.gd:60"
+],
 "Cambio tarde: tocaste el limitador": [
 "race.gd:1933"
 ],
@@ -730,7 +742,7 @@
 "race.gd:1931"
 ],
 "Cambios": [
-"ui/menu_about.gd:48"
+"ui/menu_about.gd:49"
 ],
 "Cambios más rápidos. Nivel 2 habilita ajustar la relación final.": [
 "data/catalog.json"
@@ -761,7 +773,7 @@
 ],
 "Cancelar": [
 "ui/menu_adventure.gd:225",
-"ui/menu.gd:634"
+"ui/menu.gd:645"
 ],
 "Cantera (inversa)": [
 "data/routes.json"
@@ -785,10 +797,10 @@
 "ui/capture_ui.gd:15"
 ],
 "Capturas": [
-"ui/menu_about.gd:29"
+"ui/menu_about.gd:30"
 ],
 "Capturas y videos": [
-"ui/menu_about.gd:47"
+"ui/menu_about.gd:48"
 ],
 "Capó": [
 "perf_bench.gd:21",
@@ -854,6 +866,9 @@
 "Cerca de 0: ruedas derechas. Frena mejor, pero agarra menos en curva.": [
 "data/catalog.json"
 ],
+"Cerrar sesión": [
+"ui/menu_account.gd:65"
+],
 "Chacarero y piloto de rally. En la tierra se siente en casa.": [
 "adventure/adv_route.gd:126"
 ],
@@ -885,7 +900,7 @@
 "adventure/adv_route.gd:112"
 ],
 "Clase": [
-"ui/menu.gd:482"
+"ui/menu.gd:489"
 ],
 "Clase libre · solo para leyendas": [
 "data/catalog.json"
@@ -932,7 +947,7 @@
 "adventure/adv_hud.gd:702"
 ],
 "Compras": [
-"ui/menu_about.gd:53"
+"ui/menu_about.gd:54"
 ],
 "Compuesto duro y progresivo: desliza largo y controlable.": [
 "data/catalog.json"
@@ -955,6 +970,9 @@
 "Con tu lente y efectos": [
 "perf_bench.gd:43"
 ],
+"Con una cuenta tus marcas de los rankings quedan a tu nombre aunque cambies de teléfono. Es opcional: el juego anda igual sin cuenta, y tu progreso (autos y créditos) se sigue guardando en este teléfono.": [
+"ui/menu_account.gd:42"
+],
 "Conectando con Google Play…": [
 "ui/menu_store.gd:22"
 ],
@@ -974,16 +992,22 @@
 "race.gd:245"
 ],
 "Contenido descargable": [
-"ui/menu_about.gd:45",
-"ui/menu_about.gd:54"
+"ui/menu_about.gd:46",
+"ui/menu_about.gd:55"
 ],
 "Content-Type: application/json": [
-"online/online.gd:45"
+"online/online.gd:46"
 ],
 "Contrarreloj": [
 "ui/loading.gd:153",
 "ui/menu_career.gd:287",
 "data/catalog.json"
+],
+"Contraseña": [
+"ui/menu_account.gd:113"
+],
+"Contraseña (mínimo 8 caracteres)": [
+"ui/menu_account.gd:113"
 ],
 "Control": [
 "adventure/adv_data.gd:17"
@@ -1018,6 +1042,13 @@
 "Corredor de picadas de la ciudad. Muy rápido en las rectas, se apura en las esquinas.": [
 "adventure/adv_route.gd:110"
 ],
+"Correo electrónico": [
+"ui/menu_account.gd:108"
+],
+"Correo o contraseña incorrectos.": [
+"online/online.gd:153",
+"online/online.gd:211"
+],
 "Coupé GT": [
 "data/catalog.json"
 ],
@@ -1035,6 +1066,10 @@
 ],
 "Cuatro vueltas. Cuidá el auto y atacá al final.": [
 "data/catalog.json"
+],
+"Cuenta con correo (opcional)": [
+"ui/menu_about.gd:63",
+"ui/menu.gd:552"
 ],
 "Curvas": [
 "adventure/adv_data.gd:14"
@@ -1089,7 +1124,7 @@
 "DREAM RACING": [
 "race.gd:540",
 "race.gd:569",
-"ui/menu_about.gd:102"
+"ui/menu_about.gd:106"
 ],
 "DREAM SHOP · 24 h": [
 "adventure/adv_props.gd:494"
@@ -1167,7 +1202,7 @@
 "data/catalog.json"
 ],
 "Distancia": [
-"ui/menu.gd:683"
+"ui/menu.gd:694"
 ],
 "Distancia (largo)": [
 "ui/race_hud.gd:483"
@@ -1191,19 +1226,28 @@
 "adventure/adv_data.gd:34"
 ],
 "Dream Racing": [
-"ui/menu_about.gd:18"
+"ui/menu_about.gd:19"
 ],
 "Dream Racing es un juego de simulación para entretenimiento, ofrecido «tal cual», sin garantías.": [
-"ui/menu_about.gd:42"
+"ui/menu_about.gd:43"
+],
+"Dream Racing guarda tu progreso solo en tu teléfono y no tiene publicidad. Los rankings online y la cuenta con correo son opcionales: si los usás, se envían tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo. Descarga contenido del juego desde internet.": [
+"ui/menu_about.gd:170"
+],
+"Dream Racing guarda tu progreso solo en tu teléfono y no tiene publicidad. Los rankings online y la cuenta con correo son opcionales: si los usás, se envían tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo. Funciona sin internet; las compras dentro del juego pasan por Google Play.": [
+"ui/menu_about.gd:170"
 ],
 "Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Descarga contenido del juego desde internet.": [
-"ui/menu_about.gd:164"
+"ui/menu_about.gd:168"
 ],
 "Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Funciona sin internet; las compras dentro del juego pasan por Google Play.": [
-"ui/menu_about.gd:164"
+"ui/menu_about.gd:168"
 ],
 "Dream Racing no tiene cuentas, ni publicidad, ni análisis. No recopilamos, vendemos ni compartimos datos personales. Tu progreso se guarda solo en tu teléfono.": [
-"ui/menu_about.gd:27"
+"ui/menu_about.gd:28"
+],
+"Dream Racing no tiene publicidad ni análisis. No vendemos ni compartimos datos personales. Tu progreso se guarda en tu teléfono. Solo si lo elegís, el modo online guarda en nuestro servidor tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo.": [
+"ui/menu_about.gd:60"
 ],
 "Drift": [
 "ui/loading.gd:153",
@@ -1245,6 +1289,12 @@
 ],
 "EL MAPA": [
 "adventure/adv_hud.gd:428"
+],
+"ENTRAR": [
+"ui/menu_account.gd:120"
+],
+"ENVIAR CORREO": [
+"ui/menu_account.gd:120"
 ],
 "EQUIPADO": [
 "ui/menu_garage.gd:313",
@@ -1303,7 +1353,7 @@
 "adventure/adv_route.gd:93"
 ],
 "El acelerómetro se calibra solo al empezar la carrera; para recalibrar usá Opciones desde la pausa": [
-"ui/menu.gd:109"
+"ui/menu.gd:111"
 ],
 "El agarre baja con la deriva y en tierra o lluvia": [
 "ui/loading.gd:265"
@@ -1330,7 +1380,7 @@
 "store/products.gd:13"
 ],
 "El dinero, los autos, las estrellas y los logros son virtuales: no tienen valor real, no se canjean por dinero ni se venden.": [
-"ui/menu_about.gd:43"
+"ui/menu_about.gd:44"
 ],
 "El disco de freno se ve por entre los rayos de la llanta. Las pinzas llevan el color de «Pinzas».": [
 "ui/menu_garage.gd:567"
@@ -1339,19 +1389,22 @@
 "ui/perf_results.gd:27"
 ],
 "El juego completo viene dentro de la app y funciona sin conexión. Las actualizaciones se instalan desde Google Play.": [
-"ui/menu_about.gd:54"
+"ui/menu_about.gd:55"
 ],
 "El juego descarga contenido adicional de internet; la primera vez hace falta conexión. El contenido puede cambiar con las actualizaciones.": [
-"ui/menu_about.gd:45"
+"ui/menu_about.gd:46"
 ],
 "El juego funciona sin conexión: todo viene dentro de la app. Solo se usa internet, a través de Google Play, cuando hacés una compra dentro del juego. Los datos de pago los maneja Google y nunca llegan a nosotros.": [
-"ui/menu_about.gd:37"
+"ui/menu_about.gd:38"
 ],
 "El juego no tiene publicidad ni chat, y no recopila datos de nadie, incluidos los menores. Las compras dentro del juego se hacen con la cuenta de Google Play de un adulto.": [
-"ui/menu_about.gd:32"
+"ui/menu_about.gd:33"
+],
+"El juego no tiene publicidad ni chat. El modo online es opcional y la cuenta con correo es solo para mayores de 13 años (o con permiso de un adulto); sin cuenta no se pide ningún dato personal. Las compras dentro del juego se hacen con la cuenta de Google Play de un adulto.": [
+"ui/menu_about.gd:61"
 ],
 "El juego, sus autos, pistas y diseños pertenecen a sus autores. Los modelos de Mixamo y de Sweet Home 3D se usan según sus licencias (ver Créditos).": [
-"ui/menu_about.gd:46"
+"ui/menu_about.gd:47"
 ],
 "El más rápido del pueblo. Maneja la camioneta del corralón.": [
 "adventure/adv_route.gd:46"
@@ -1365,11 +1418,14 @@
 "El rival te lleva %d m.": [
 "adventure/adv_hud.gd:655"
 ],
+"El servidor no permite entrar sin cuenta todavía.": [
+"online/online.gd:163"
+],
 "El último desafío. Ganala y sos leyenda.": [
 "data/catalog.json"
 ],
 "Elegís cada ayuda a gusto.": [
-"ui/menu.gd:363"
+"ui/menu.gd:370"
 ],
 "Embrague reforzado": [
 "data/catalog.json"
@@ -1393,16 +1449,36 @@
 "ui/loading.gd:180"
 ],
 "Entré, pero falló el ranking: %s. ¿Se aplicaron las migraciones?": [
-"online/online.gd:154"
+"online/online.gd:269"
+],
+"Es posible que te pidamos confirmar el correo con un enlace. Usamos tu correo solo para la cuenta del ranking, y al crearla se activan los rankings online (los podés apagar en Modo online).": [
+"ui/menu_account.gd:151"
 ],
 "Es un juego: no imites lo que ves en la vida real y no uses el teléfono mientras manejás un vehículo.": [
-"ui/menu_about.gd:44"
+"ui/menu_about.gd:45"
 ],
 "Escenarios y objetos": [
-"ui/menu_about.gd:21"
+"ui/menu_about.gd:22"
+],
+"Escribí tu correo y tu contraseña.": [
+"online/online.gd:205"
+],
+"Escribí tu correo.": [
+"online/online.gd:221"
+],
+"Ese correo no parece válido.": [
+"online/online.gd:161",
+"online/online.gd:178"
+],
+"Ese correo ya tiene una cuenta. Probá con «Iniciar sesión».": [
+"online/online.gd:151"
 ],
 "Esta copa se corre solo con el %s. Elegilo en el garaje.": [
 "ui/menu_career.gd:219"
+],
+"Esta versión no tiene el modo online configurado.": [
+"online/online.gd:176",
+"online/online.gd:203"
 ],
 "Estabilidad": [
 "ui/options_ui.gd:58"
@@ -1451,7 +1527,7 @@
 "app.gd:73"
 ],
 "Experiencia": [
-"ui/menu.gd:683"
+"ui/menu.gd:694"
 ],
 "Extras": [
 "ui/menu_garage.gd:13"
@@ -1487,10 +1563,13 @@
 "adventure/adv_route.gd:71"
 ],
 "Falta configurar la dirección y la clave de Supabase (secretos del repositorio).": [
-"online/online.gd:148"
+"online/online.gd:263"
+],
+"Falta confirmar el correo: abrí el mensaje que te mandamos y tocá el enlace.": [
+"online/online.gd:155"
 ],
 "Faltan %d toques…": [
-"ui/menu_about.gd:136"
+"ui/menu_about.gd:140"
 ],
 "Fin del Asfalto": [
 "adventure/adv_route.gd:125"
@@ -1555,7 +1634,7 @@
 ],
 "GARAJE": [
 "ui/menu_garage.gd:98",
-"ui/menu.gd:506"
+"ui/menu.gd:513"
 ],
 "GIRO": [
 "ui/loading.gd:233",
@@ -1618,7 +1697,7 @@
 "adventure/adv_route.gd:132"
 ],
 "Gracias": [
-"ui/menu_about.gd:23"
+"ui/menu_about.gd:24"
 ],
 "Gran Premio Nacional": [
 "data/catalog.json"
@@ -1650,6 +1729,9 @@
 "Guardarraíl": [
 "ui/loading.gd:181"
 ],
+"Guardá tus marcas": [
+"ui/menu_account.gd:41"
+],
 "HABILIDADES": [
 "ui/menu_adventure.gd:73",
 "ui/menu_adventure.gd:127"
@@ -1667,7 +1749,10 @@
 "adventure/adv_route.gd:95"
 ],
 "Hecho con Godot Engine, software libre bajo licencia MIT (godotengine.org).": [
-"ui/menu_about.gd:22"
+"ui/menu_about.gd:23"
+],
+"Hiciste muchos intentos seguidos. Esperá unos minutos y probá de nuevo.": [
+"online/online.gd:157"
 ],
 "Hiperdeportivo AWD": [
 "data/catalog.json"
@@ -1684,8 +1769,11 @@
 "Híbrido 2 motores": [
 "data/catalog.json"
 ],
+"INICIAR SESIÓN": [
+"ui/menu_account.gd:107"
+],
 "INTERMEDIO": [
-"ui/menu.gd:361"
+"ui/menu.gd:368"
 ],
 "INTERMEDIO: ayudas medias y una ayuda de trazada suave: manejo equilibrado.": [
 "ui/loading.gd:170"
@@ -1736,11 +1824,11 @@
 "ui/loading.gd:162"
 ],
 "Internet": [
-"ui/menu_about.gd:30",
-"ui/menu_about.gd:37"
+"ui/menu_about.gd:31",
+"ui/menu_about.gd:38"
 ],
 "Internet (descargar contenido) y vibración (opcional). No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono.": [
-"ui/menu_about.gd:31"
+"ui/menu_about.gd:32"
 ],
 "JPG (liviano)": [
 "ui/capture_ui.gd:17"
@@ -1750,6 +1838,9 @@
 ],
 "Juego: versión %s": [
 "race.gd:1303"
+],
+"Jugar sin cuenta": [
+"ui/menu_account.gd:46"
 ],
 "KAZE": [
 "data/catalog.json"
@@ -1797,8 +1888,8 @@
 "adventure/adv_hud.gd:694"
 ],
 "LOGROS": [
-"ui/menu.gd:509",
-"ui/menu.gd:574"
+"ui/menu.gd:516",
+"ui/menu.gd:585"
 ],
 "LOS GIRASOLES 9 km": [
 "adventure/adv_route.gd:53"
@@ -1817,7 +1908,7 @@
 "adventure/adv_hud.gd:407"
 ],
 "La Ruta de los Sueños · ": [
-"ui/menu.gd:495"
+"ui/menu.gd:502"
 ],
 "La Sombra": [
 "adventure/adv_route.gd:179"
@@ -1826,7 +1917,7 @@
 "data/routes.json"
 ],
 "La app se conecta solo para descargar contenido del juego (modelos, pistas, música y actualizaciones) desde el repositorio público del proyecto en GitHub. Como en cualquier descarga, GitHub puede registrar tu dirección IP según su propia política.": [
-"ui/menu_about.gd:30"
+"ui/menu_about.gd:31"
 ],
 "La aventura es SIMULACIÓN TOTAL, con un poco de ayuda: ABS y algo de control de tracción y estabilidad. Las ayudas se pueden cambiar en Opciones.": [
 "adventure/adv_hud.gd:425"
@@ -1845,6 +1936,12 @@
 ],
 "La ciudad: esquinas a 90°, avenidas anchas y un paso bajo nivel. Las veredas están altas: no te subas al cordón.": [
 "adventure/adv_route.gd:111"
+],
+"La contraseña es muy corta o débil (mínimo 8 caracteres).": [
+"online/online.gd:159"
+],
+"La contraseña tiene que tener al menos 8 caracteres.": [
+"online/online.gd:180"
 ],
 "La final": [
 "adventure/adv_data.gd:34"
@@ -1904,7 +2001,7 @@
 "store/products.gd:10"
 ],
 "Las capturas de pantalla que sacás con el botón de captura se guardan en tu teléfono, en la carpeta de imágenes del juego. Las podés borrar desde la galería del juego.": [
-"ui/menu_about.gd:29"
+"ui/menu_about.gd:30"
 ],
 "Las compras funcionan en la versión de Google Play. En esta versión de prueba no están disponibles.": [
 "ui/menu_store.gd:20"
@@ -1964,6 +2061,9 @@
 "Listo": [
 "race.gd:381"
 ],
+"Listo: se borraron tu cuenta y tus marcas.": [
+"online/online.gd:235"
+],
 "Llantas": [
 "ui/menu_garage.gd:14"
 ],
@@ -1971,13 +2071,13 @@
 "adventure/adv_route.gd:59"
 ],
 "Llega el mundo abierto: ciudades amplias, diversos biomas, rutas espectaculares y libre recorrido, con misiones por todo el mapa.": [
-"ui/menu.gd:529"
+"ui/menu.gd:536"
 ],
 "Llega en una próxima actualización": [
 "data/release.gd:84"
 ],
 "Llegará en una actualización gratuita del juego. ¡Gracias por jugar!": [
-"ui/menu.gd:532"
+"ui/menu.gd:539"
 ],
 "Lleva 30 años manejando el camión de la cantera. Diez toneladas que no frenan por nadie.": [
 "adventure/adv_route.gd:136"
@@ -1995,7 +2095,7 @@
 "store/products.gd:12"
 ],
 "Los autos del juego fueron diseñados y modelados por el equipo de Dream Racing.": [
-"ui/menu_about.gd:19"
+"ui/menu_about.gd:20"
 ],
 "Los cambios no se guardan ni cuestan nada: son solo para probar. Se aplican al soltar la barra.": [
 "ui/lab_panel.gd:137"
@@ -2007,13 +2107,13 @@
 "data/catalog.json"
 ],
 "Los pilotos y sus animaciones usan modelos y movimientos de Mixamo (Adobe), utilizados según su licencia.": [
-"ui/menu_about.gd:20"
+"ui/menu_about.gd:21"
 ],
 "Los textos del juego cambian al instante. La voz del copiloto usa el idioma de tu teléfono.": [
 "ui/options_ui.gd:153"
 ],
 "Los textos legales completos están en el repositorio del juego (docs/PRIVACIDAD.md y docs/TERMINOS.md).": [
-"ui/menu_about.gd:120"
+"ui/menu_about.gd:124"
 ],
 "Lucía Ferreyra": [
 "adventure/adv_route.gd:147"
@@ -2027,15 +2127,15 @@
 "adventure/adv_route.gd:141"
 ],
 "MODO ONLINE": [
-"ui/menu.gd:499",
-"ui/menu.gd:522"
+"ui/menu.gd:506",
+"ui/menu.gd:529"
 ],
 "MOTOR": [
 "ui/lab_panel.gd:21"
 ],
 "MUNDO ABIERTO": [
-"ui/menu.gd:500",
-"ui/menu.gd:522"
+"ui/menu.gd:507",
+"ui/menu.gd:529"
 ],
 "Mamut 6x6": [
 "data/catalog.json"
@@ -2149,7 +2249,7 @@
 "ui/loading.gd:151"
 ],
 "Modo desarrollador apagado": [
-"ui/menu_about.gd:118"
+"ui/menu_about.gd:122"
 ],
 "Montaña (inversa)": [
 "data/routes.json"
@@ -2174,7 +2274,7 @@
 ],
 "Motor": [
 "ui/options_ui.gd:61",
-"ui/menu_about.gd:22",
+"ui/menu_about.gd:23",
 "data/catalog.json"
 ],
 "Motor de competición": [
@@ -2325,8 +2425,8 @@
 "adventure/adv_hud.gd:568"
 ],
 "NIVEL DE SIMULACIÓN": [
-"ui/menu.gd:366",
-"ui/menu.gd:405"
+"ui/menu.gd:373",
+"ui/menu.gd:412"
 ],
 "Nadie sabe quién es. Gana todas las carreras de nieve desde hace diez años.": [
 "adventure/adv_route.gd:169"
@@ -2385,19 +2485,23 @@
 "ui/menu_career.gd:298"
 ],
 "Niños": [
-"ui/menu_about.gd:32"
+"ui/menu_about.gd:33",
+"ui/menu_about.gd:61"
 ],
 "No acepto": [
-"ui/menu_about.gd:178"
+"ui/menu_about.gd:185"
 ],
 "No hay autos para mostrar.": [
 "ui/menu_garage.gd:104"
 ],
 "No pude entrar (%s).": [
-"online/online.gd:151"
+"online/online.gd:266"
 ],
 "No se pudo completar la compra.": [
 "store/billing.gd:120"
+],
+"No se pudo completar. Probá de nuevo en un rato.": [
+"online/online.gd:166"
 ],
 "No se pudo guardar la captura": [
 "race.gd:1659"
@@ -2418,12 +2522,18 @@
 "Normales": [
 "ui/options_ui.gd:53"
 ],
+"OLVIDÉ MI CONTRASEÑA": [
+"ui/menu_account.gd:107"
+],
 "OPCIONES": [
 "ui/options_ui.gd:83",
-"ui/menu.gd:510"
+"ui/menu.gd:517"
 ],
 "Oclusión ambiental": [
 "fx/lens.gd:275"
+],
+"Olvidé mi contraseña": [
+"ui/menu_account.gd:149"
 ],
 "Onboard (casco)": [
 "perf_bench.gd:21",
@@ -2454,7 +2564,7 @@
 "ui/race_hud.gd:333"
 ],
 "PERSONALIZADO": [
-"ui/menu.gd:363"
+"ui/menu.gd:370"
 ],
 "PERSONALIZADO: usás las ayudas que elegiste. Podés cambiarlas desde Opciones en la pausa.": [
 "ui/loading.gd:172"
@@ -2463,19 +2573,19 @@
 "ui/capture_ui.gd:17"
 ],
 "POLÍTICA DE PRIVACIDAD": [
-"ui/menu_about.gd:167"
+"ui/menu_about.gd:174"
 ],
 "PONER": [
 "ui/menu_garage.gd:313",
 "ui/menu_garage.gd:333"
 ],
 "PRIVACIDAD": [
-"ui/menu_about.gd:93",
-"ui/menu_about.gd:110"
+"ui/menu_about.gd:97",
+"ui/menu_about.gd:114"
 ],
 "PRONTO": [
-"ui/menu.gd:499",
-"ui/menu.gd:500"
+"ui/menu.gd:506",
+"ui/menu.gd:507"
 ],
 "PRUEBA %d/%d · %s · faltan %d:%02d · NO TOQUES LA PANTALLA": [
 "race.gd:1247"
@@ -2536,7 +2646,7 @@
 "car/camera_rig.gd:16"
 ],
 "Participar en los rankings online": [
-"ui/menu.gd:540"
+"ui/menu.gd:547"
 ],
 "Partículas: %s": [
 "ui/options_ui.gd:256"
@@ -2551,11 +2661,11 @@
 "data/catalog.json"
 ],
 "Permisos": [
-"ui/menu_about.gd:31",
-"ui/menu_about.gd:38"
+"ui/menu_about.gd:32",
+"ui/menu_about.gd:39"
 ],
 "Personajes y animaciones": [
-"ui/menu_about.gd:20"
+"ui/menu_about.gd:21"
 ],
 "Personalizado": [
 "ui/loading.gd:162"
@@ -2583,7 +2693,7 @@
 ],
 "Piloto": [
 "adventure/adventure.gd:102",
-"online/online.gd:139",
+"online/online.gd:254",
 "data/profile.gd:27"
 ],
 "Piloto ganador": [
@@ -2623,13 +2733,16 @@
 "ui/options_ui.gd:53"
 ],
 "Podemos actualizar estos términos y el juego. Seguir usando la app después de un cambio implica aceptarlo.": [
-"ui/menu_about.gd:48"
+"ui/menu_about.gd:49"
 ],
 "Podés compartir capturas y videos del juego libremente, citando «Dream Racing».": [
-"ui/menu_about.gd:47"
+"ui/menu_about.gd:48"
 ],
 "Podés comprar con dinero real el juego completo y bolsas de créditos a través de Google Play. Las cobra y las administra Google: los reembolsos y reclamos se piden en Google Play, según sus políticas. Los créditos y el juego completo son para usar en el juego y no se pueden transferir ni canjear por dinero.": [
-"ui/menu_about.gd:53"
+"ui/menu_about.gd:54"
+],
+"Podés crearla cuando quieras desde Modo online.": [
+"ui/menu_account.gd:49"
 ],
 "Polvo en la Cantera": [
 "data/catalog.json"
@@ -2692,7 +2805,7 @@
 "ui/options_ui.gd:74"
 ],
 "Propiedad intelectual": [
-"ui/menu_about.gd:46"
+"ui/menu_about.gd:47"
 ],
 "Prototipo T1+": [
 "data/catalog.json"
@@ -2728,7 +2841,7 @@
 "fx/lens.gd:272"
 ],
 "Qué se guarda": [
-"ui/menu_about.gd:28"
+"ui/menu_about.gd:29"
 ],
 "R2 Turbo": [
 "data/catalog.json"
@@ -2749,13 +2862,13 @@
 "race.gd:2303"
 ],
 "RENDIMIENTO": [
-"ui/menu.gd:515"
+"ui/menu.gd:522"
 ],
 "REPARAR (%d s)": [
 "adventure/adv_hud.gd:683"
 ],
 "RESULTADO": [
-"ui/menu.gd:639"
+"ui/menu.gd:650"
 ],
 "RESULTADOS (mandame una captura de esto)": [
 "race.gd:1091"
@@ -2795,13 +2908,13 @@
 "adventure/adv_route.gd:138"
 ],
 "Rankings online (opcional)": [
-"ui/menu_about.gd:59"
+"ui/menu_about.gd:62"
 ],
-"Rankings online: se envían tu nombre de piloto y tus mejores marcas (tiempo y puntos) sin crear ninguna cuenta. No se envía nada más.": [
-"ui/menu.gd:538"
+"Rankings online: se envían tu nombre de piloto y tus mejores marcas (tiempo y puntos). La cuenta con correo es opcional. No se envía nada más.": [
+"ui/menu.gd:545"
 ],
 "Recompensa": [
-"ui/menu.gd:683"
+"ui/menu.gd:694"
 ],
 "Recorrido de suspensión": [
 "ui/lab_panel.gd:16"
@@ -2870,7 +2983,8 @@
 "ui/options_ui.gd:74"
 ],
 "Resumen": [
-"ui/menu_about.gd:27"
+"ui/menu_about.gd:28",
+"ui/menu_about.gd:60"
 ],
 "Rey de la Plaza": [
 "data/catalog.json"
@@ -2923,7 +3037,7 @@
 ],
 "RÁPIDA": [
 "race.gd:1264",
-"ui/menu.gd:505"
+"ui/menu.gd:512"
 ],
 "Récord": [
 "ui/menu_career.gd:194"
@@ -2945,7 +3059,7 @@
 "ui/menu_adventure.gd:110"
 ],
 "SIMULADOR TOTAL": [
-"ui/menu.gd:362"
+"ui/menu.gd:369"
 ],
 "SIMULADOR TOTAL: sin ayudas. Cada frenada y cada acelerada cuentan: manejá fino.": [
 "ui/loading.gd:171"
@@ -2969,7 +3083,7 @@
 "ui/menu_adventure.gd:221"
 ],
 "Se pierden autos, dinero y medallas. No se puede deshacer.": [
-"ui/menu.gd:627"
+"ui/menu.gd:638"
 ],
 "Se termina el asfalto. En la tierra el auto desliza: tracción repartida (45 %), gomas de grava (Rally) y menos presión (25 psi). La suspensión alta (+40 mm) y blanda copia los pozos.\nMirá la guía del mapa: después del taller la tierra sigue por el bosque.": [
 "adventure/adv_data.gd:29"
@@ -2978,7 +3092,7 @@
 "adventure/adv_route.gd:127"
 ],
 "Se viene el modo online: carreras de jugador contra jugador, un ranking mundial y eventos mensuales con premios.": [
-"ui/menu.gd:525"
+"ui/menu.gd:532"
 ],
 "Secuencial de competición": [
 "data/catalog.json"
@@ -2987,7 +3101,7 @@
 "ui/options_ui.gd:78"
 ],
 "Seguridad": [
-"ui/menu_about.gd:44"
+"ui/menu_about.gd:45"
 ],
 "Según la calidad": [
 "ui/options_ui.gd:53",
@@ -3005,11 +3119,20 @@
 "Serie Continental": [
 "data/catalog.json"
 ],
-"Si activás «Participar en los rankings online» (viene apagado), el juego crea un usuario anónimo, sin correo ni contraseña, y envía a nuestro servidor (Supabase) tu nombre de piloto y tus mejores marcas (tiempo o puntos, pista y auto) para armar el ranking, que ven todos los jugadores. No se envía ningún otro dato, y lo podés apagar cuando quieras. Para borrar tus marcas escribí al contacto del juego.": [
-"ui/menu_about.gd:59"
+"Sesión cerrada": [
+"ui/menu_account.gd:67"
+],
+"Si activás «Participar en los rankings online» (viene apagado), el juego crea un usuario anónimo y envía a nuestro servidor (Supabase) tu nombre de piloto y tus mejores marcas (tiempo o puntos, pista y auto) para armar el ranking, que ven todos los jugadores. No se envía ningún otro dato, y lo podés apagar cuando quieras. Para borrar tus marcas escribí al contacto del juego.": [
+"ui/menu_about.gd:62"
+],
+"Si creás una cuenta, guardamos tu correo electrónico y una contraseña (que nunca vemos: se guarda cifrada) en Supabase, solo para que puedas recuperar tus marcas del ranking en otro teléfono. Tu correo no se muestra a otros jugadores ni se usa para publicidad. Es solo para mayores de 13 años. Podés cerrar sesión cuando quieras y borrar tu cuenta y tus marcas desde el juego (Modo online → Cuenta) o escribiendo al contacto del juego.": [
+"ui/menu_about.gd:63"
 ],
 "Si entrás muy rápido, el auto se abre (subviraje): soltá el acelerador y enderezá un poco el volante. Si la cola se va (sobreviraje), contravolanteá suave.": [
 "ui/loading.gd:178"
+],
+"Si ese correo tiene cuenta, te mandamos un mensaje para elegir una contraseña nueva.": [
+"online/online.gd:225"
 ],
 "Si rozás la chapa del costado, el auto se frena; un golpe fuerte te hace perder tiempo. Y no se puede pasar: vas a volver a la pista.": [
 "ui/loading.gd:181"
@@ -3035,13 +3158,16 @@
 "ui/options_ui.gd:59"
 ],
 "Sin ayudas: sin ABS, sin control de tracción, sin estabilidad ni ayuda de trazada. Manejás vos.": [
-"ui/menu.gd:362"
+"ui/menu.gd:369"
 ],
 "Sin cambios": [
 "ui/menu_garage.gd:391"
 ],
 "Sin cartel en pie": [
 "data/catalog.json"
+],
+"Sin conexión a internet.": [
+"online/online.gd:165"
 ],
 "Sin kit": [
 "data/catalog.json"
@@ -3051,7 +3177,7 @@
 ],
 "Sin medalla": [
 "ui/menu_career.gd:11",
-"ui/menu.gd:668"
+"ui/menu.gd:679"
 ],
 "Sin nitro": [
 "data/catalog.json"
@@ -3114,14 +3240,14 @@
 "adventure/adv_props.gd:498"
 ],
 "Sí, borrar todo": [
-"ui/menu.gd:628"
+"ui/menu.gd:639"
 ],
 "Sí, empezar de cero": [
 "ui/menu_adventure.gd:222"
 ],
 "TALLER": [
 "ui/menu_garage.gd:247",
-"ui/menu.gd:508"
+"ui/menu.gd:515"
 ],
 "TALLER A 500 m": [
 "adventure/adv_route.gd:88",
@@ -3142,7 +3268,7 @@
 ],
 "TIENDA": [
 "ui/menu_garage.gd:98",
-"ui/menu.gd:507"
+"ui/menu.gd:514"
 ],
 "TODO: la aventura completa (12 etapas), todas las copas, el camión Mamut, el GT3 RS y el Aerion. El mejor precio.": [
 "store/products.gd:8"
@@ -3158,6 +3284,10 @@
 ],
 "TU AUTO Y TUS HABILIDADES": [
 "adventure/adv_hud.gd:422"
+],
+"TU CUENTA": [
+"ui/menu_account.gd:40",
+"ui/menu_account.gd:56"
 ],
 "TU configuración de lente y efectos": [
 "perf_bench.gd:81"
@@ -3179,6 +3309,9 @@
 ],
 "Tamaño del volante": [
 "ui/options_ui.gd:76"
+],
+"Te mandamos un mensaje a %s. Tocá el enlace para confirmar la cuenta y después volvé al juego.": [
+"online/online.gd:197"
 ],
 "Tehuelche G4": [
 "data/vehicles.json"
@@ -3217,7 +3350,7 @@
 "ui/menu_garage.gd:59"
 ],
 "Todo es virtual": [
-"ui/menu_about.gd:43"
+"ui/menu_about.gd:44"
 ],
 "Todo terreno moderado. Correcto en todos lados.": [
 "data/catalog.json"
@@ -3269,7 +3402,7 @@
 "ui/loading.gd:175"
 ],
 "Tu perfil de juego (nombre de piloto, autos, mejoras, pintura, dinero del juego, estrellas, tiempos y opciones) queda en el almacenamiento privado de la app. No se envía a ningún servidor. Si desinstalás la app, se pierde.": [
-"ui/menu_about.gd:28"
+"ui/menu_about.gd:29"
 ],
 "Turbo": [
 "ui/options_ui.gd:64"
@@ -3283,13 +3416,16 @@
 "Turbo más grande: empuje fuerte en medias y altas.": [
 "data/catalog.json"
 ],
+"Tus marcas del ranking van con tu nombre de piloto. Para entrar desde otro teléfono usá «Iniciar sesión» con este correo.": [
+"ui/menu_account.gd:59"
+],
 "Tus primeras carreras": [
 "data/catalog.json"
 ],
 "TÉRMINOS DE USO": [
-"ui/menu_about.gd:94",
-"ui/menu_about.gd:110",
-"ui/menu_about.gd:171"
+"ui/menu_about.gd:98",
+"ui/menu_about.gd:114",
+"ui/menu_about.gd:178"
 ],
 "TÚNEL DEL CÓNDOR": [
 "adventure/adv_route.gd:101"
@@ -3310,7 +3446,10 @@
 "data/catalog.json"
 ],
 "Un juego de rally y carreras de simulación hecho para jugar desde el celular, con pilotos y copilotos que viven cada curva.": [
-"ui/menu_about.gd:18"
+"ui/menu_about.gd:19"
+],
+"Un momento…": [
+"ui/menu_account.gd:127"
 ],
 "Un tramo corto de tierra para conocer tu auto. Bajá del tiempo para llevarte el oro.": [
 "data/catalog.json"
@@ -3325,7 +3464,7 @@
 "ui/options_ui.gd:69"
 ],
 "Uso personal": [
-"ui/menu_about.gd:42"
+"ui/menu_about.gd:43"
 ],
 "V6 3.0 biturbo 480 cv": [
 "data/catalog.json"
@@ -3377,17 +3516,17 @@
 "ui/menu_garage.gd:167"
 ],
 "Velocidad máxima": [
-"ui/menu.gd:683",
+"ui/menu.gd:694",
 "adventure/adv_hud.gd:533"
 ],
 "Ventaja sobre el rival": [
 "adventure/adv_hud.gd:533"
 ],
 "Versión %s": [
-"ui/menu_about.gd:104"
+"ui/menu_about.gd:108"
 ],
 "Vibración (opcional) y los permisos de red que necesita el servicio de compras de Google Play (el juego no los usa para nada más). No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono.": [
-"ui/menu_about.gd:38"
+"ui/menu_about.gd:39"
 ],
 "Vibración tipo volante (peso y baches)": [
 "ui/options_ui.gd:70"
@@ -3442,6 +3581,9 @@
 "XIII (historieta)": [
 "fx/lens.gd:274"
 ],
+"Ya tengo cuenta · Iniciar sesión": [
+"ui/menu_account.gd:44"
+],
 "Ya tenés gratis la Copa Debut, 3 etapas de la aventura y todas las pistas. Desbloqueá más:": [
 "ui/menu_store.gd:70"
 ],
@@ -3456,6 +3598,12 @@
 ],
 "afuera → adentro → afuera": [
 "ui/loading.gd:282"
+],
+"already been registered": [
+"online/online.gd:150"
+],
+"already registered": [
+"online/online.gd:150"
 ],
 "auto %d: %s": [
 "fx/effects.gd:429"
@@ -3479,13 +3627,13 @@
 "race.gd:1296"
 ],
 "comprá autos": [
-"ui/menu.gd:507"
+"ui/menu.gd:514"
 ],
 "cresta  ¡ojo!": [
 "car/cockpit.gd:1211"
 ],
 "créditos · legales": [
-"ui/menu.gd:511"
+"ui/menu.gd:518"
 ],
 "cámara al empezar": [
 "ui/options_ui.gd:47"
@@ -3494,7 +3642,7 @@
 "perf_bench.gd:196"
 ],
 "error %d": [
-"online/online.gd:92"
+"online/online.gd:93"
 ],
 "español, English, português, français, italiano, Deutsch": [
 "ui/options_ui.gd:48"
@@ -3503,10 +3651,16 @@
 "perf_bench.gd:196"
 ],
 "etapa %d/%d": [
-"ui/menu.gd:494"
+"ui/menu.gd:501"
+],
+"invalid email": [
+"online/online.gd:160"
+],
+"invalid login": [
+"online/online.gd:152"
 ],
 "juego completo · créditos": [
-"ui/menu.gd:512"
+"ui/menu.gd:519"
 ],
 "las 12 etapas y todas las copas": [
 "ui/menu_adventure.gd:93"
@@ -3515,19 +3669,22 @@
 "ui/menu_perf.gd:13"
 ],
 "manejo · sonido": [
-"ui/menu.gd:510"
+"ui/menu.gd:517"
 ],
 "no se pudo mandar el pedido (%d)": [
-"online/online.gd:81"
+"online/online.gd:82"
+],
+"not confirmed": [
+"online/online.gd:154"
 ],
 "physics NaN → recover": [
 "physics/vehicle_physics.gd:241"
 ],
 "piezas · pintura": [
-"ui/menu.gd:508"
+"ui/menu.gd:515"
 ],
 "pista y rivales": [
-"ui/menu.gd:505"
+"ui/menu.gd:512"
 ],
 "por etapa ganada": [
 "ui/menu_adventure.gd:130"
@@ -3536,7 +3693,10 @@
 "ui/menu_adventure.gd:114"
 ],
 "probá tu teléfono": [
-"ui/menu.gd:515"
+"ui/menu.gd:522"
+],
+"rate limit": [
+"online/online.gd:156"
 ],
 "recta 300": [
 "car/cockpit.gd:1211"
@@ -3545,10 +3705,11 @@
 "perf_bench.gd:22"
 ],
 "sin conexión": [
-"online/online.gd:92"
+"online/online.gd:93",
+"online/online.gd:164"
 ],
 "sin configurar": [
-"online/online.gd:73"
+"online/online.gd:74"
 ],
 "sin controles en pantalla": [
 "perf_bench.gd:22"
@@ -3563,19 +3724,28 @@
 "perf_bench.gd:22"
 ],
 "sin respuesta": [
-"online/online.gd:151"
+"online/online.gd:266"
 ],
 "sin sesión": [
-"online/online.gd:131"
+"online/online.gd:134"
 ],
 "sin sonido": [
 "perf_bench.gd:22"
+],
+"too many": [
+"online/online.gd:156"
 ],
 "tramo de la aventura": [
 "adventure/adv_world.gd:306"
 ],
 "tus autos": [
-"ui/menu.gd:506"
+"ui/menu.gd:513"
+],
+"unable to validate email": [
+"online/online.gd:160"
+],
+"valid email": [
+"online/online.gd:160"
 ],
 "volante con el acelerómetro": [
 "ui/options_ui.gd:46"
@@ -3598,6 +3768,9 @@
 "¡CORRER!": [
 "ui/menu_career.gd:227",
 "ui/menu_career.gd:320"
+],
+"¡Cuenta creada! Ya podés entrar con este correo desde cualquier teléfono.": [
+"online/online.gd:196"
 ],
 "¡DE VUELTA A LA RUTA!": [
 "adventure/adventure.gd:730"
@@ -3623,20 +3796,26 @@
 "¡Lado a lado con %s!": [
 "adventure/adv_hud.gd:285"
 ],
+"¡Listo! Entraste como %s.": [
+"online/online.gd:215"
+],
 "¡Vas primero! · %d m de ventaja": [
 "adventure/adv_hud.gd:282"
 ],
 "¡nuevo! · %d etapas": [
-"ui/menu.gd:490"
+"ui/menu.gd:497"
 ],
 "¿Borrar todo el progreso?": [
-"ui/menu.gd:626"
+"ui/menu.gd:637"
 ],
 "¿Cuánto da tu auto de verdad?": [
 "data/catalog.json"
 ],
 "¿Reiniciar la aventura?": [
 "ui/menu_adventure.gd:220"
+],
+"¿Seguro? Se borran tu cuenta y tus marcas del ranking, para siempre. Tocá de nuevo para confirmar.": [
+"ui/menu_account.gd:74"
 ],
 "Ángulo de dirección": [
 "data/catalog.json"
@@ -3673,7 +3852,7 @@
 ],
 "← ATRÁS": [
 "ui/race_hud.gd:439",
-"ui/menu.gd:317",
+"ui/menu.gd:323",
 "adventure/adv_hud.gd:435"
 ],
 "↑ ATAJO DEL BARRO\n↗ CAMINO DEL BOSQUE": [
@@ -3704,7 +3883,7 @@
 "adventure/adv_hud.gd:697"
 ],
 "↺ REPETIR": [
-"ui/menu.gd:674"
+"ui/menu.gd:685"
 ],
 "↺ VOLVER AL AJUSTE DE FÁBRICA": [
 "adventure/adv_hud.gd:617"
@@ -3749,7 +3928,7 @@
 "ui/menu_adventure.gd:114"
 ],
 "▶ JUGAR": [
-"ui/menu.gd:368"
+"ui/menu.gd:375"
 ],
 "▶ SALIR DE LA ESTACIÓN": [
 "adventure/adv_hud.gd:512"
@@ -3758,7 +3937,7 @@
 "adventure/adv_hud.gd:688"
 ],
 "▶ SEGUIR CARRERA": [
-"ui/menu.gd:488"
+"ui/menu.gd:495"
 ],
 "▶ SEGUIR · ETAPA %d": [
 "ui/menu_adventure.gd:64"
@@ -3796,7 +3975,7 @@
 "adventure/adventure.gd:1010"
 ],
 "⚙ Gráficos ajustados a tu teléfono: %s": [
-"ui/menu.gd:263"
+"ui/menu.gd:269"
 ],
 "⚙ Motor": [
 "adventure/adv_hud.gd:659"
@@ -3808,7 +3987,7 @@
 "perf_bench.gd:24"
 ],
 "⚡ Cambios perfectos: %d de %d": [
-"ui/menu.gd:662"
+"ui/menu.gd:673"
 ],
 "⚡ RÁPIDA": [
 "ui/menu_perf.gd:13"
@@ -3821,6 +4000,9 @@
 ],
 "⛽ Las estaciones de servicio son los puntos de guardado: el auto entra solo, carga combustible y antes de salir podés leer la guía de la próxima etapa, ajustar el auto y gastar tus puntos de habilidad.": [
 "adventure/adv_hud.gd:418"
+],
+"✉ CREAR CUENTA CON CORREO": [
+"ui/menu_account.gd:43"
 ],
 "✔ APLICAR": [
 "ui/menu_garage.gd:394",
@@ -3837,7 +4019,10 @@
 "ui/perf_results.gd:43"
 ],
 "✔ Conectado a Supabase (usuario %s…, %d filas en el ranking de prueba).": [
-"online/online.gd:155"
+"online/online.gd:270"
+],
+"✔ Cuenta activa": [
+"ui/menu_account.gd:57"
 ],
 "✔ EN TU GARAJE": [
 "ui/menu_garage.gd:196"
@@ -3862,7 +4047,7 @@
 "adventure/adv_hud.gd:697"
 ],
 "⬆ ¡NIVEL %d! +%s": [
-"ui/menu.gd:694"
+"ui/menu.gd:705"
 ],
 "⭐ %d estrellas ganadas · cada medalla suma 1 a 3 estrellas y abre copas nuevas": [
 "ui/menu_career.gd:86"
@@ -3877,7 +4062,7 @@
 "ui/menu_garage.gd:436"
 ],
 "🌄 AVENTURA": [
-"ui/menu.gd:495"
+"ui/menu.gd:502"
 ],
 "🌆 Anochecer": [
 "ui/loading.gd:160",
@@ -3888,17 +4073,17 @@
 "ui/menu_career.gd:10"
 ],
 "🌍 Mundo abierto compartido": [
-"ui/menu.gd:526"
+"ui/menu.gd:533"
 ],
 "🌧 Lluvia": [
 "ui/loading.gd:160",
 "ui/menu_career.gd:10"
 ],
 "🌲 Biomas distintos: selva, montaña, nieve, desierto": [
-"ui/menu.gd:530"
+"ui/menu.gd:537"
 ],
 "🎁 Premio diario: +%s (racha %d)": [
-"ui/menu.gd:184"
+"ui/menu.gd:190"
 ],
 "🎉 ¡Completaste las %d etapas gratis! Seguí la Ruta de los Sueños: campos, montaña, túneles, cantera y nieve hasta la cumbre.": [
 "ui/menu_adventure.gd:83"
@@ -3937,28 +4122,28 @@
 "adventure/adv_hud.gd:659"
 ],
 "🎯 Misiones en el mundo abierto": [
-"ui/menu.gd:530"
+"ui/menu.gd:537"
 ],
 "🏁 ASFALTO": [
 "ui/menu_garage.gd:219"
 ],
 "🏁 Carreras JcJ contra otros pilotos": [
-"ui/menu.gd:526"
+"ui/menu.gd:533"
 ],
 "🏁 PROBAR EN ASFALTO": [
 "ui/menu_garage.gd:436"
 ],
 "🏅 ¡NUEVO RÉCORD!": [
-"ui/menu.gd:671"
+"ui/menu.gd:682"
 ],
 "🏆 Ranking de tiempos y puntos": [
-"ui/menu.gd:526"
+"ui/menu.gd:533"
 ],
 "🏆 TERMINAR LA AVENTURA": [
 "adventure/adv_hud.gd:560"
 ],
 "🏆 completada": [
-"ui/menu.gd:492"
+"ui/menu.gd:499"
 ],
 "🏆 ¡%s completada! +%s": [
 "data/rewards.gd:185"
@@ -3970,10 +4155,10 @@
 "adventure/adv_hud.gd:701"
 ],
 "🏆 ¡Le ganaste al bot! (%d pts)": [
-"ui/menu.gd:659"
+"ui/menu.gd:670"
 ],
 "🏙 Ciudades amplias para recorrer": [
-"ui/menu.gd:530"
+"ui/menu.gd:537"
 ],
 "🏜 EN TIERRA": [
 "ui/menu_garage.gd:436"
@@ -3983,6 +4168,9 @@
 ],
 "🏬 TIENDA": [
 "ui/menu_garage.gd:99"
+],
+"👁 Mostrar contraseña": [
+"ui/menu_account.gd:115"
 ],
 "💎 DESBLOQUEAR EN COMPRAS": [
 "ui/menu_garage.gd:201"
@@ -4007,7 +4195,7 @@
 "adventure/adv_hud.gd:562"
 ],
 "📅 Eventos mensuales": [
-"ui/menu.gd:526"
+"ui/menu.gd:533"
 ],
 "📋 COPIAR TODO": [
 "ui/perf_results.gd:41"
@@ -4077,7 +4265,7 @@
 "ui/capture_ui.gd:58"
 ],
 "😅 Ganó el bot (%d pts)": [
-"ui/menu.gd:659"
+"ui/menu.gd:670"
 ],
 "🚗 MIS AUTOS": [
 "ui/menu_garage.gd:99"
@@ -4086,33 +4274,33 @@
 "ui/menu_career.gd:217"
 ],
 "🚧 PRONTO": [
-"ui/menu.gd:523"
+"ui/menu.gd:530"
 ],
 "🚧 pronto": [
 "ui/menu_career.gd:150"
 ],
 "🛠 Modo desarrollador activo": [
-"ui/menu_about.gd:107"
+"ui/menu_about.gd:111"
 ],
 "🛠 Modo desarrollador: todo desbloqueado": [
-"ui/menu_about.gd:133"
+"ui/menu_about.gd:137"
 ],
 "🛠 Probar conexión con Supabase": [
-"ui/menu.gd:546"
+"ui/menu.gd:557"
 ],
 "🛣 Rutas espectaculares y libre recorrido": [
-"ui/menu.gd:530"
+"ui/menu.gd:537"
 ],
 "🥇 1° puesto · 🥈 2° · 🥉 3°": [
 "ui/menu_career.gd:206"
 ],
 "🥇 ORO": [
-"ui/menu.gd:668"
+"ui/menu.gd:679"
 ],
 "🥈 Plata": [
-"ui/menu.gd:668"
+"ui/menu.gd:679"
 ],
 "🥉 Bronce": [
-"ui/menu.gd:668"
+"ui/menu.gd:679"
 ]
 }
