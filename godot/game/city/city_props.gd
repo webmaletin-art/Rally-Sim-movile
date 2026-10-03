@@ -3,10 +3,15 @@ extends RefCounted
 ## todos los de una cuadra se juntan en una sola malla (una llamada de dibujo) y se rearma cuando uno se rompe: el objeto queda tirado en el piso.
 ## Espacio local del objeto: +y arriba y +z hacia la calle (hacia donde apunta el brazo de la farola o del semáforo).
 
-enum { LAMP, TREE, LIGHT, BOLLARD, MONUMENT, PILLAR, PARKED }
-const RADIUS := [0.30, 0.45, 0.30, 0.20, 3.6, 1.0, 1.5] # radio de choque de cada tipo (m)
+enum { LAMP, TREE, LIGHT, BOLLARD, MONUMENT, PILLAR, PARKED, FLOWERS, BUSH, GRASS, RTREE, PUMP, BLOCK }
+const RADIUS := [0.30, 0.45, 0.30, 0.20, 3.6, 1.0, 1.5, 0.0, 0.0, 0.0, 0.0, 0.9, 3.0] # 0 = decoración: no choca ni se rompe
+const PieceBatch := preload("res://game/city/piece_batch.gd")
+const STREET_TREES := ["tree_birch", "tree_tree", "tree_sassafras", "tree_quaking_aspen", "sc_acacia", "tree_weeping_willow", "abedul", "sc_cypress"]
+const ROAD_TREES := ["alamo", "pino", "sc_pine", "tree_tree", "tree_birch", "tree_lombardy_poplar", "sc_cypress", "tree_sassafras", "arbol_hoja_ancha", "tree_quaking_aspen"]
+const PALMS := ["palmera", "sc_palm_tree", "tree_palm_tree", "sc_coconut_tree"]
+const FLOWER_PIECES := ["flor_roja", "flor_amarilla", "flor_violeta", "flor_blanca", "flor_naranja", "margarita"] # radio de choque de cada tipo (m)
 const TYPE_NAMES := ["farola", "árbol", "semáforo", "bolardo", "monumento", "pilar", "auto estacionado"]
-const SOLID_FROM := 4 # desde este tipo no se rompen
+const SOLID_FROM := 4 # desde este tipo no se rompen (los de radio 0 son solo adorno)
 
 static func _tri(v: PackedVector3Array, c: PackedColorArray, a: Vector3, b: Vector3, d: Vector3, center: Vector3, col: Color) -> void:
 	# la cara mira hacia afuera del cuerpo (lejos de center)
@@ -33,6 +38,20 @@ static func box(v: PackedVector3Array, c: PackedColorArray, xf: Transform3D, cen
 		_tri(v, c, p[f[0]], p[f[1]], p[f[2]], mid, col)
 		_tri(v, c, p[f[0]], p[f[2]], p[f[3]], mid, col)
 
+## Charco de luz sobre el piso: un abanico de triángulos que se apaga hacia el borde (el alfa baja a 0)
+static func halo(v: PackedVector3Array, c: PackedColorArray, xf: Transform3D, cen: Vector3, r: float, col: Color, n := 10) -> void:
+	var mid: Vector3 = xf * cen
+	var edge := Color(col.r, col.g, col.b, 0.0)
+	for i in n:
+		var a0 := TAU * float(i) / float(n)
+		var a1 := TAU * float(i + 1) / float(n)
+		v.append(mid)
+		v.append(xf * (cen + Vector3(cos(a0) * r, 0.0, sin(a0) * r)))
+		v.append(xf * (cen + Vector3(cos(a1) * r, 0.0, sin(a1) * r)))
+		c.append(col)
+		c.append(edge)
+		c.append(edge)
+
 ## Tronco de cono de n lados (r0 abajo, r1 arriba), con tapa de arriba
 static func frustum(v: PackedVector3Array, c: PackedColorArray, xf: Transform3D, base: Vector3, r0: float, r1: float, hgt: float, n: int, col: Color, rot := 0.0) -> void:
 	var mid: Vector3 = xf * (base + Vector3(0.0, hgt * 0.5, 0.0))
@@ -50,7 +69,7 @@ static func frustum(v: PackedVector3Array, c: PackedColorArray, xf: Transform3D,
 			_tri(v, c, xf * top, t0, t1, mid, col.lightened(0.12))
 
 ## Pone un objeto en la malla. fallen: dirección (x, z) hacia donde cayó (Vector2.ZERO = parado)
-static func emit(kind: int, x: float, y: float, z: float, yaw: float, seed_v: float, fallen: Vector2, v: PackedVector3Array, c: PackedColorArray) -> void:
+static func emit(kind: int, x: float, y: float, z: float, yaw: float, seed_v: float, fallen: Vector2, v: PackedVector3Array, c: PackedColorArray, gv := PackedVector3Array(), gc := PackedColorArray()) -> void:
 	var xf := Transform3D(Basis(Vector3.UP, yaw), Vector3(x, y, z))
 	if fallen != Vector2.ZERO:
 		var d := Vector3(fallen.x, 0.0, fallen.y).normalized()
@@ -63,13 +82,39 @@ static func emit(kind: int, x: float, y: float, z: float, yaw: float, seed_v: fl
 			box(v, c, xf, Vector3(0, 2.8, 0), Vector3(0.14, 5.1, 0.14), steel)
 			box(v, c, xf, Vector3(0, 5.25, 0.6), Vector3(0.1, 0.1, 1.3), steel)
 			box(v, c, xf, Vector3(0, 5.17, 1.25), Vector3(0.46, 0.16, 0.72), Color(1.0, 0.93, 0.68))
+			if fallen == Vector2.ZERO:
+				# de noche: la lámpara brilla y tira un charco de luz en el piso (superficie aparte, aditiva: ver CityWorld._glow_instance)
+				box(gv, gc, xf, Vector3(0, 5.1, 1.25), Vector3(0.5, 0.2, 0.76), Color(1.0, 0.88, 0.5, 1.0))
+				halo(gv, gc, xf, Vector3(0, 0.06, 1.2), 6.5, Color(1.0, 0.82, 0.45, 0.5))
 		TREE:
-			var g := 0.30 + 0.12 * fmod(seed_v * 7.3, 1.0)
-			var gc := Color(g, 0.56 + 0.1 * fmod(seed_v * 3.1, 1.0), 0.24 + 0.05 * fmod(seed_v * 5.7, 1.0))
-			box(v, c, xf, Vector3(0, 1.3, 0), Vector3(0.3, 2.6, 0.3), Color(0.42, 0.30, 0.20))
-			frustum(v, c, xf, Vector3(0, 2.2, 0), 1.55, 1.15, 1.7, 6, gc, seed_v * 3.0)
-			frustum(v, c, xf, Vector3(0, 3.7, 0), 1.25, 0.55, 1.5, 6, gc.lightened(0.1), seed_v * 5.0 + 0.5)
-			frustum(v, c, xf, Vector3(0, 5.1, 0), 0.6, 0.0, 1.0, 6, gc.lightened(0.18), seed_v * 7.0)
+			# árboles del pack de papel (con volumen: copas de ocho caras o más), de varias especies; cerca del mar, palmeras
+			var sp: Array = PALMS if seed_v > 0.93 else STREET_TREES
+			var id: String = sp[int(seed_v * 977.0) % sp.size()]
+			PieceBatch.add(id, Vector3.ZERO, seed_v * TAU, 5.5 + 2.5 * fmod(seed_v * 13.7, 1.0), v, c, xf, 1.18)
+		RTREE:
+			var id2: String = ROAD_TREES[int(seed_v * 977.0) % ROAD_TREES.size()]
+			PieceBatch.add(id2, Vector3.ZERO, seed_v * TAU, 7.5 + 3.5 * fmod(seed_v * 13.7, 1.0), v, c, xf, 1.18)
+		FLOWERS:
+			for k in 5:
+				var a := TAU * (float(k) + fmod(seed_v * 5.1, 1.0)) / 5.0
+				var rr := 0.25 + 0.55 * fmod(seed_v * 7.3 + float(k) * 0.37, 1.0)
+				PieceBatch.add(FLOWER_PIECES[(int(seed_v * 977.0) + k) % FLOWER_PIECES.size()], Vector3(cos(a) * rr, 0, sin(a) * rr), seed_v * 6.0 + float(k), 0.9 + 0.5 * fmod(seed_v * 3.3 + float(k) * 0.2, 1.0), v, c, xf)
+			PieceBatch.add("pasto_alto", Vector3(0.1, 0, 0.1), seed_v * 4.0, 0.0, v, c, xf)
+		GRASS:
+			PieceBatch.add("pasto_alto", Vector3.ZERO, seed_v * TAU, 0.0, v, c, xf)
+			PieceBatch.add("pasto_alto", Vector3(0.7, 0, 0.3), seed_v * 5.0, 0.0, v, c, xf)
+			PieceBatch.add("pasto", Vector3(-0.5, 0, 0.5), seed_v * 7.0, 0.0, v, c, xf)
+		BUSH:
+			PieceBatch.add("arbusto" if seed_v < 0.6 else "arbusto_flores", Vector3.ZERO, seed_v * TAU, 1.1 + 0.5 * fmod(seed_v * 9.1, 1.0), v, c, xf)
+		BLOCK:
+			pass # solo choca (el kiosco de la gasolinera): se dibuja aparte
+		PUMP:
+			var body := Color(0.92, 0.92, 0.94)
+			box(v, c, xf, Vector3(0, 0.45, 0), Vector3(1.1, 0.9, 0.9), Color(0.2, 0.2, 0.24)) # base
+			box(v, c, xf, Vector3(0, 1.25, 0), Vector3(0.9, 1.3, 0.7), body)
+			box(v, c, xf, Vector3(0, 1.55, 0.38), Vector3(0.6, 0.35, 0.06), Color(0.15, 0.6, 0.85)) # pantalla
+			box(v, c, xf, Vector3(0.55, 1.05, 0), Vector3(0.12, 0.7, 0.3), Color(0.12, 0.12, 0.14)) # manguera
+			box(v, c, xf, Vector3(0, 2.0, 0), Vector3(1.0, 0.18, 0.8), Color(0.88, 0.2, 0.15))
 		LIGHT:
 			var dark := Color(0.16, 0.17, 0.19)
 			box(v, c, xf, Vector3(0, 2.2, 0), Vector3(0.18, 4.4, 0.18), Color(0.30, 0.32, 0.33))

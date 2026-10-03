@@ -36,9 +36,21 @@ Se definen en `godot/game/data/shops.gd` (qué pestañas, mejoras y grupos de aj
 
 ## Subsuelo (oculto: no figura en el mapa ni en el GPS)
 - **Túnel en cruz**: dos calles cubiertas de 1,8 km que se cruzan en el centro (con curvas). Es un tubo cerrado (piso con rayas, paredes con franja, techo con lámparas); en el cruce las paredes se abren hacia la otra calle. Cuatro **bocas** escondidas fuera del centro: este y oeste (en las rutas 20 y 40), norte (ruta 60) y sur (costanera). Se entra por una y se sale por la boca del brazo por el que se llegue al final, con la velocidad conservada.
-- **Estacionamiento subterráneo**: boca en el Parque del Drift (cartel «P ESTACIONAMIENTO»); adentro una sala redonda con pilares y autos de papel estacionados, se maneja libre y se sale por el círculo verde del sur.
+- **Estacionamiento subterráneo**: boca en el Parque del Drift (cartel «P ESTACIONAMIENTO»); adentro una sala redonda con pilares, **sin autos** (los únicos autos serán los 3D de los jugadores que entren al mundo abierto), se maneja libre y se sale por el círculo verde del sur.
 - Cómo se hace: el túnel y la sala están en un «bolsillo» del mundo (x > 3000, plano) y las bocas son enlaces (`links` de `city_layout.gd`, `city_links.gd`) que mueven el auto con un fundido a negro. Abajo la luz del sol casi se apaga y la niebla es oscura y corta (`race.gd`, `_underground_light`).
 - Las puntas de los brazos todavía salen a la ciudad; en la próxima actualización pueden conectar con otras ciudades.
+
+## Nafta y gasolineras
+- **4 gasolineras de papel** (Norte, Este, Sur y Oeste, sobre las avenidas 7, 1, 3 y 6): lote redondo abierto con techo de color, surtidores, kiosco, poste de precios y un **círculo verde** por cada punto de carga (`_place_stations` en `city_layout.gd`, `_station` en `city_world.gd`).
+- **El tanque dura unos 80 km** (`city_fuel.gd`): consume más con el acelerador a fondo y casi nada al soltarlo. Se guarda en el perfil (`fuel`) y no gasta bajo tierra.
+- **Sin estar pendiente:** al bajar del 15 % aparece un aviso y el **GPS marca solo la gasolinera más cercana**; con el tanque vacío el auto no acelera (hay que llegar a una gasolinera, o usar el último trecho en bajada). Barra de nafta bajo el minimapa.
+- **Cargar:** frenás sobre un círculo verde, tarda 1,5 s + 3 s por tanque entero que falte, y se **paga con créditos** (120 por tanque lleno). Si no alcanzan se carga lo que se pueda pagar; con tanque vacío y 0 créditos regalan un 8 % para seguir. En modo desarrollador es gratis.
+- Es una buena razón para vender créditos (Coins) en la tienda: la nafta es el gasto fijo del mundo abierto.
+
+## Día y noche
+- **Un día entero dura 16 minutos** (`city_clock.gd`): amanecer, mañana, mediodía, tarde, atardecer y noche. El reloj se ve bajo la barra de nafta y la hora se guarda en el perfil.
+- **Liviano:** son unos pocos valores (cielo, luz del sol o la luna, ambiente y niebla) que se recalculan 8 veces por segundo; no hay luces dinámicas ni sombras nuevas. El ambiente sale de un color (no del cielo), así el cielo no regenera reflejos.
+- **De noche:** las **ventanas y vidrieras** se prenden en el shader de las fachadas (`night`), las **lámparas** brillan y tiran charcos de luz sobre el piso (malla aditiva por cuadra, `city_glow`), la gasolinera enciende su techo y el auto tiene un **haz de faros** plano sobre el piso. Bajo tierra la luz sigue siendo la de siempre.
 
 ## HUD
 - **Minimapa que gira** con el auto (arriba = hacia donde mirás, la N roja gira), nombre de la calle y cuadra.
@@ -47,6 +59,7 @@ Se definen en `godot/game/data/shops.gd` (qué pestañas, mejoras y grupos de aj
 ## Pruebas
 - `tests/city_test.gd` (también en el CI): calles, pendientes, edificios fuera de corredores, GPS a cada lugar y salida, costo de las consultas.
 - `tests/city_shots.gd`: capturas desde varios puntos (xvfb).
+- Pruebas con banderas: `--autotest=gt@aurelia@-@pose:x,z,grados@tod:21@fuel:0.3` (`tod` fija la hora, `fuel` la nafta con la que arranca; `-` = sin GPS).
 - Manejo automático por el GPS: `--menu --autotest=gt@aurelia@concesionario` (el auto va solo hasta ahí y avisa si llegó o se trabó).
 
 ## Qué falta (por etapas)

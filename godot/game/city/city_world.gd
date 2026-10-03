@@ -7,6 +7,7 @@ const PaperKit := preload("res://game/fx/paper_kit.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityProps := preload("res://game/city/city_props.gd")
 const Tr := preload("res://game/i18n/tr.gd")
+const CityNames := preload("res://game/city/city_names.gd")
 const FACADE := preload("res://game/fx/city_facade.gdshader")
 const TEX := "res://game/models/paper/tex/"
 
@@ -17,6 +18,8 @@ var radius := 3 # cuadras a la redonda que se mantienen armadas
 var view_k := 1.0
 var built_total := 0
 var _facade_mat: ShaderMaterial
+var glow_mat: StandardMaterial3D = make_glow_material() # luces de noche (ver _glow_instance)
+var glow_on := false # las luces de la calle están encendidas (las cuadras nuevas nacen con este estado)
 var _tunnel_mat: StandardMaterial3D # el interior de los túneles y del estacionamiento: sin luz del sol (pintado), con franjas y lámparas
 var _queue: Array = []
 var _frame_budget_ms := 6.0
@@ -128,9 +131,11 @@ func _props_instance(key: Vector2i) -> MeshInstance3D:
 		return null
 	var v := PackedVector3Array()
 	var c := PackedColorArray()
+	var gv := PackedVector3Array()
+	var gc := PackedColorArray()
 	for id in (city.props_in[key] as PackedInt32Array):
 		var fallen: Vector2 = track.broken.get(id, Vector2.ZERO)
-		CityProps.emit(int(city.prop_type[id]), city.prop_x[id], city.prop_y[id], city.prop_z[id], city.prop_yaw[id], city.prop_seed[id], fallen, v, c)
+		CityProps.emit(int(city.prop_type[id]), city.prop_x[id], city.prop_y[id], city.prop_z[id], city.prop_yaw[id], city.prop_seed[id], fallen, v, c, gv, gc)
 	if v.is_empty():
 		return null
 	var m := ArrayMesh.new()
@@ -139,21 +144,66 @@ func _props_instance(key: Vector2i) -> MeshInstance3D:
 	mi.name = "props"
 	mi.mesh = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.visibility_range_end = 170.0 * maxf(view_k, 0.6)
+	mi.visibility_range_end = 190.0 * maxf(view_k, 0.6)
+	if not gv.is_empty():
+		mi.add_child(_glow_instance(gv, gc, mi.visibility_range_end))
 	return mi
+
+## Luces de noche (lámparas, charcos de luz): malla aparte con material aditivo; el reloj (CityClock) la enciende o apaga entera con el grupo «city_glow» y regula su brillo
+func _glow_instance(gv: PackedVector3Array, gc: PackedColorArray, vis_end: float) -> MeshInstance3D:
+	var m := ArrayMesh.new()
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = gv
+	arr[Mesh.ARRAY_COLOR] = gc
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	m.surface_set_material(0, glow_mat)
+	var gi := MeshInstance3D.new()
+	gi.name = "glow"
+	gi.mesh = m
+	gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	gi.visibility_range_end = vis_end
+	gi.visible = glow_on
+	gi.add_to_group("city_glow")
+	return gi
+
+## Material aditivo de las luces: el brillo (alfa del albedo) lo pone el reloj
+static func make_glow_material() -> StandardMaterial3D:
+	var gm := StandardMaterial3D.new()
+	gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	gm.vertex_color_use_as_albedo = true
+	gm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	gm.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	gm.albedo_color = Color(1, 1, 1, 0)
+	return gm
 
 func _register_props(key: Vector2i) -> void:
 	if not city.props_in.has(key):
 		return
 	for id in (city.props_in[key] as PackedInt32Array):
-		if not track.broken.has(id):
-			track.add_prop(id, city.prop_x[id], city.prop_z[id], CityProps.RADIUS[int(city.prop_type[id])])
+		var rad: float = CityProps.RADIUS[int(city.prop_type[id])]
+		if rad > 0.0 and not track.broken.has(id):
+			track.add_prop(id, city.prop_x[id], city.prop_z[id], rad)
+
+## El reloj de la ciudad prende o apaga las luces: n = 0 (día) … 1 (noche)
+func set_night(n: float) -> void:
+	if _facade_mat != null:
+		_facade_mat.set_shader_parameter("night", n)
+	glow_mat.albedo_color = Color(1, 1, 1, clampf(n * 1.1, 0.0, 1.0))
+	var on := n > 0.03
+	if on != glow_on:
+		glow_on = on
+		if is_inside_tree():
+			for gnode in get_tree().get_nodes_in_group("city_glow"):
+				(gnode as Node3D).visible = on
 
 func _unregister_props(key: Vector2i) -> void:
 	if not city.props_in.has(key):
 		return
 	for id in (city.props_in[key] as PackedInt32Array):
-		if not track.broken.has(id):
+		if CityProps.RADIUS[int(city.prop_type[id])] > 0.0 and not track.broken.has(id):
 			track.remove_prop(id, city.prop_x[id], city.prop_z[id])
 
 ## Arma las cuadras de alrededor de p (hasta max_new por llamada) y borra las lejanas
@@ -239,12 +289,12 @@ func _build_chunk(key: Vector2i) -> Node3D:
 	if pi != null:
 		root.add_child(pi)
 	_register_props(key)
-	var tl := _treelines(key)
-	if tl != null:
-		root.add_child(tl)
 	for mo in city.mouths:
 		if city.chunk_of((mo["pos"] as Vector2).x, (mo["pos"] as Vector2).y) == key:
 			root.add_child(_mouth(mo))
+	for st in city.stations:
+		if city.chunk_of((st["center"] as Vector2).x, (st["center"] as Vector2).y) == key:
+			root.add_child(_station(st))
 	for h in city.halls:
 		if city.chunk_of((h["pos"] as Vector2).x, (h["pos"] as Vector2).y) == key:
 			root.add_child(_hall(h))
@@ -278,6 +328,8 @@ func _ground_color(x: float, z: float, y: float) -> Color:
 		if Vector2(x, z).distance_to(oa["pos"]) < float(oa["r"]) + 6.0:
 			if oa.get("dark", false):
 				return Color(0.22, 0.23, 0.27)
+			if oa.get("station", false):
+				return Color(0.58, 0.60, 0.65)
 			return Color(0.66, 0.68, 0.72) if bool(oa["paving"]) else Color(0.46, 0.64, 0.36) # parque del drift: pavimento · plaza: pasto
 	var zone := city.zone_of(x, z)
 	var jit := 0.012 * sin(x * 0.011) * cos(z * 0.009)
@@ -565,82 +617,6 @@ func _box_building(s: Soup, b: Dictionary) -> void:
 				s.quad_out(e0, e0 + up, e1 + up, e1, cw, mid2, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO)
 			s.quad_up(q0 + up, q1 + up, q2 + up, q3 + up, cw.darkened(0.12))
 
-## Bordes de las rutas rurales: dos filas de árboles de papel recortados, parados a lo largo del camino, para que nunca se vea qué hay más allá (el jugador no puede salir)
-func _treelines(key: Vector2i) -> MeshInstance3D:
-	var x0 := float(key.x) * CityLayout.CELL
-	var z0 := float(key.y) * CityLayout.CELL
-	var v := PackedVector3Array()
-	var c := PackedColorArray()
-	var kx0 := int(floor((x0 - 12.0) / CityLayout.HC))
-	var kx1 := int(floor((x0 + CityLayout.CELL + 12.0) / CityLayout.HC))
-	var kz0 := int(floor((z0 - 12.0) / CityLayout.HC))
-	var kz1 := int(floor((z0 + CityLayout.CELL + 12.0) / CityLayout.HC))
-	for kx in range(kx0, kx1 + 1):
-		for kz in range(kz0, kz1 + 1):
-			var k2 := Vector2i(kx, kz)
-			if not city._hash.has(k2):
-				continue
-			for si in (city._hash[k2] as PackedInt32Array):
-				var px: float = city.s_x[si]
-				var pz: float = city.s_z[si]
-				if px < x0 or px >= x0 + CityLayout.CELL or pz < z0 or pz >= z0 + CityLayout.CELL:
-					continue
-				var ni: int = city.s_next[si]
-				if ni < 0:
-					continue
-				var road: Dictionary = city.roads[city.s_road[si]]
-				var kind: String = road["kind"]
-				if kind != "rural" and kind != "shortcut":
-					continue
-				var a := Vector2(px, pz)
-				var b := Vector2(city.s_x[ni], city.s_z[ni])
-				var tn := (b - a).normalized()
-				var nrm := Vector2(-tn.y, tn.x)
-				for sd in [-1.0, 1.0]:
-					for row in 2:
-						var off := float(road["hw"]) + float(road["sw"]) + 1.4 + float(row) * 1.9
-						for tk in 2:
-							var cen := a.lerp(b, 0.25 + 0.5 * float(tk)) + nrm * (float(sd) * off)
-							var pr := city.probe(cen.x, cen.y)
-							if pr[6] >= 0.0 and int(pr[6]) != city.s_road[si] and float(pr[0]) > -1.8:
-								continue # donde sale una calle (la entrada de una boca de túnel) no hay árboles
-							var hsh := fposmod(sin(cen.x * 12.9898 + cen.y * 78.233) * 43758.5453, 1.0)
-							_paper_tree(v, c, cen, tn, 6.0 + 4.0 * hsh, hsh, row)
-	if v.is_empty():
-		return null
-	var m := ArrayMesh.new()
-	PaperKit.add_surface(m, v, c, PaperKit.material(null, 0.0, 0.2, 0.3))
-	var mi := MeshInstance3D.new()
-	mi.name = "treelines"
-	mi.mesh = m
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.visibility_range_end = 190.0 * maxf(view_k, 0.6)
-	return mi
-
-## Un árbol recortado (dos triángulos de copa y un tronco) parado en el plano del camino
-func _paper_tree(v: PackedVector3Array, c: PackedColorArray, cen: Vector2, tn: Vector2, h: float, hsh: float, row: int) -> void:
-	var y := city.height(cen.x, cen.y)
-	var g := 0.30 + 0.12 * hsh - 0.05 * float(row)
-	var col := Color(g * 0.8, 0.50 + 0.14 * hsh - 0.06 * float(row), 0.24 + 0.05 * hsh)
-	var t3 := Vector3(tn.x, 0.0, tn.y)
-	var base := Vector3(cen.x, y - 0.3, cen.y)
-	var up := Vector3(0, 1, 0)
-	# tronco
-	var tr_col := Color(0.38, 0.27, 0.18)
-	v.append_array(PackedVector3Array([base - t3 * 0.18, base + t3 * 0.18, base + t3 * 0.18 + up * 1.4, base - t3 * 0.18, base + t3 * 0.18 + up * 1.4, base - t3 * 0.18 + up * 1.4]))
-	for i in 6:
-		c.append(tr_col)
-	# copa baja y copa alta
-	var w1 := 2.7 + 0.8 * hsh
-	var low := PackedVector3Array([base - t3 * w1 + up * 1.1, base + t3 * w1 + up * 1.1, base + up * (h * 0.7)])
-	var high := PackedVector3Array([base - t3 * (w1 * 0.7) + up * (h * 0.45), base + t3 * (w1 * 0.7) + up * (h * 0.45), base + up * h])
-	v.append_array(low)
-	v.append_array(high)
-	for i in 3:
-		c.append(col)
-	for i in 3:
-		c.append(col.lightened(0.12))
-
 ## Portón cerrado al final de una ruta rural: la salida a otra ciudad todavía no abrió (próxima actualización)
 func _gate(ex: Dictionary) -> Node3D:
 	var root := Node3D.new()
@@ -826,6 +802,59 @@ func _tunnel_segment(tn: Soup, si: int, ni: int) -> void:
 		tn.quad(a - na * wx, a - na * wx + up, a + na * wx + up, a + na * wx, Color(0.18, 0.62, 0.34))
 	if city.s_next[ni] < 0:
 		tn.quad(b - nb * wx, b - nb * wx + up, b + nb * wx + up, b + nb * wx, Color(0.18, 0.62, 0.34))
+
+## Una gasolinera: techo con franjas sobre los surtidores, kiosco al fondo con cartel, poste de precios y los círculos verdes donde se frena (los surtidores y las columnas son objetos)
+func _station(st: Dictionary) -> Node3D:
+	var root := Node3D.new()
+	root.name = "station_" + str(st["id"])
+	var c: Vector2 = st["center"]
+	var nr: Vector2 = st["dir"]
+	var col: Color = st["color"]
+	var y := city.height(c.x, c.y)
+	var xf := Transform3D(Basis(Vector3.UP, atan2(nr.x, nr.y)), Vector3(c.x, y, c.y)) # +z local = hacia el fondo del lote, +x = a lo largo de la calle
+	var v := PackedVector3Array()
+	var cl := PackedColorArray()
+	CityProps.box(v, cl, xf, Vector3(0, 5.2, 1.5), Vector3(18.0, 0.6, 10.0), col)
+	CityProps.box(v, cl, xf, Vector3(0, 5.2, -3.6), Vector3(18.2, 0.8, 0.5), Color(0.97, 0.97, 0.97))
+	CityProps.box(v, cl, xf, Vector3(0, 4.85, 1.5), Vector3(17.6, 0.1, 9.6), Color(0.92, 0.92, 0.9))
+	# kiosco
+	CityProps.box(v, cl, xf, Vector3(0, 2.1, 14.5), Vector3(15.0, 4.2, 6.0), Color(0.93, 0.92, 0.88))
+	CityProps.box(v, cl, xf, Vector3(0, 4.45, 14.5), Vector3(16.0, 0.5, 7.0), col)
+	CityProps.box(v, cl, xf, Vector3(0, 1.9, 11.45), Vector3(10.0, 2.2, 0.12), Color(0.16, 0.30, 0.45))
+	CityProps.box(v, cl, xf, Vector3(5.2, 1.3, 11.45), Vector3(1.4, 2.6, 0.14), col.darkened(0.2))
+	# poste de precios en el borde del lote, junto a la calle
+	CityProps.box(v, cl, xf, Vector3(-11.0, 4.0, -9.0), Vector3(0.5, 8.0, 0.5), Color(0.25, 0.27, 0.30))
+	CityProps.box(v, cl, xf, Vector3(-11.0, 7.6, -9.0), Vector3(3.2, 2.2, 0.35), col)
+	CityProps.box(v, cl, xf, Vector3(-11.0, 7.6, -9.2), Vector3(2.8, 1.8, 0.1), Color(0.97, 0.97, 0.97))
+	var m := ArrayMesh.new()
+	PaperKit.add_surface(m, v, cl, PaperKit.material(null, 0.0, 0.2, 0.3))
+	var mi := MeshInstance3D.new()
+	mi.mesh = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	# de noche: luces del techo y un charco de luz bajo la marquesina
+	var gv := PackedVector3Array()
+	var gc := PackedColorArray()
+	CityProps.box(gv, gc, xf, Vector3(0, 4.78, 1.5), Vector3(17.0, 0.08, 9.0), Color(1.0, 0.96, 0.82, 1.0))
+	CityProps.box(gv, gc, xf, Vector3(0, 1.9, 11.4), Vector3(9.6, 2.0, 0.1), Color(1.0, 0.85, 0.5, 0.8))
+	CityProps.halo(gv, gc, xf, Vector3(0, 0.07, 1.5), 12.0, Color(1.0, 0.92, 0.7, 0.55), 14)
+	root.add_child(_glow_instance(gv, gc, 260.0))
+	for fp in st["fuel_points"]:
+		var ring := _circle_mesh(1.9, 2.3, Color(0.20, 0.85, 0.35), Color(0.97, 0.97, 0.97))
+		ring.position = Vector3((fp as Vector2).x, city.height((fp as Vector2).x, (fp as Vector2).y) + 0.1, (fp as Vector2).y)
+		root.add_child(ring)
+	var lab := Label3D.new()
+	lab.text = Tr.t("GASOLINERA")
+	lab.font_size = 72
+	lab.pixel_size = 0.012
+	lab.modulate = Color(1, 1, 1)
+	lab.outline_size = 14
+	lab.outline_modulate = Color(0.1, 0.1, 0.12)
+	var tp := c + nr * 11.0
+	lab.position = Vector3(tp.x - nr.x * 0.5, y + 5.4, tp.y - nr.y * 0.5)
+	lab.rotation = Vector3(0, atan2(-nr.x, -nr.y), 0)
+	root.add_child(lab)
+	return root
 
 ## Marca circular del suelo (el círculo verde de los locales y de las salidas)
 func _circle_mesh(r_in: float, r_out: float, col_in: Color, col_out: Color) -> MeshInstance3D:
@@ -1083,7 +1112,7 @@ func _sign(b: Dictionary) -> Node3D:
 	for p in city.pois:
 		if str(p["id"]) == nm:
 			title = str(p["name"])
-	lab.text = title
+	lab.text = Tr.t(title)
 	lab.font_size = 96
 	lab.pixel_size = 0.012
 	lab.modulate = Color(1, 1, 1)

@@ -44,6 +44,7 @@ var building_count := 0
 var links: Array = [] # {id, pos: Vector2, r: float, to: [x, z, yaw], label: String}
 var mouths: Array = [] # estructuras de entrada: {id, pos: Vector2, dir: Vector2 (hacia adentro de la boca), kind: "tunnel" | "park"}
 var halls: Array = [] # {pos, r, h}
+var stations: Array = [] # gasolineras: {id, name, center, yaw, dir, tn, color, fuel_points: [Vector2], pumps: [Vector2], front}
 # objetos de la calle (farolas, árboles, semáforos, bolardos): el id es el índice; salen igual en todos los teléfonos
 var prop_type := PackedByteArray()
 var prop_x := PackedFloat32Array()
@@ -103,8 +104,10 @@ func build() -> void:
 	_index()
 	_mark_junction_samples()
 	_place_pois()
+	_place_stations()
 	_place_facades()
 	_place_props()
+	_place_roadside()
 
 func _sample_road(id: int, name_s: String, num: int, kind: String, hw: float, sw: float, plan: PackedVector2Array) -> void:
 	var pts := PackedVector3Array()
@@ -655,7 +658,7 @@ func _point_covered(x: float, z: float, margin := 0.3) -> bool:
 var open_areas: Array = [] # {pos: Vector2, r: float, name: String}
 func _no_build(p: Vector2) -> bool:
 	for oa in open_areas:
-		if p.distance_to(oa["pos"]) < float(oa["r"]):
+		if p.distance_to(oa["pos"]) < float(oa.get("nb", oa["r"])):
 			return true
 	return false
 
@@ -879,6 +882,67 @@ func _slabs_in_run(kind: String, pts: PackedVector3Array, away: PackedVector2Arr
 		slabs[key] = arr
 		slab_count += 1
 
+# ───────────────────────── gasolineras ─────────────────────────
+## Las gasolineras: un lote redondo abierto (se maneja por adentro) pegado a una avenida, con techo sobre los surtidores, un kiosco al fondo y un círculo verde donde se frena
+## para cargar. El resto del lote lo cierra una pared de edificios por detrás (para que nunca se vea el fondo).
+const STATION_SPECS := [
+	["gas_norte", "Gasolinera Norte", "Avenida 7", 380.0, 1.0, Color(0.88, 0.20, 0.15)],
+	["gas_este", "Gasolinera Este", "Avenida 1", 560.0, -1.0, Color(0.16, 0.52, 0.86)],
+	["gas_sur", "Gasolinera Sur", "Avenida 3", 700.0, 1.0, Color(0.96, 0.70, 0.12)],
+	["gas_oeste", "Gasolinera Oeste", "Avenida 6", 560.0, -1.0, Color(0.20, 0.68, 0.36)],
+]
+const LOT_R := 22.0
+
+func _place_stations() -> void:
+	stations.clear()
+	for sp in STATION_SPECS:
+		var ri := road_named(str(sp[2]))
+		if ri < 0:
+			continue
+		var rd: Dictionary = roads[ri]
+		var pts: PackedVector3Array = rd["pts"]
+		var cum: PackedFloat32Array = rd["cum"]
+		var bi := 0
+		for i in pts.size():
+			if cum[i] <= float(sp[3]):
+				bi = i
+		var a := pts[bi]
+		var b := pts[mini(bi + 1, pts.size() - 1)]
+		var tn := Vector2(b.x - a.x, b.z - a.z).normalized()
+		var nrm := Vector2(-tn.y, tn.x) * float(sp[4])
+		var center := Vector2(a.x, a.z) + nrm * (float(rd["hw"]) + float(rd["sw"]) + LOT_R - 3.0)
+		var yaw := atan2(tn.x, tn.y)
+		var pumps: Array = []
+		for lat in [-6.0, -2.0, 2.0, 6.0]:
+			pumps.append(center + nrm * 1.5 + tn * float(lat))
+		var fpts: Array = [center + nrm * -1.9 + tn * -4.0, center + nrm * -1.9 + tn * 4.0]
+		var st := {"id": str(sp[0]), "name": str(sp[1]), "center": center, "yaw": yaw, "dir": nrm, "tn": tn, "color": sp[5], "fuel_points": fpts, "pumps": pumps,
+			"front": Vector2(a.x, a.z) + nrm * (float(rd["hw"]) * 0.5)}
+		stations.append(st)
+		open_areas.append({"pos": center, "r": LOT_R, "name": str(sp[1]), "paving": true, "nb": 24.0, "station": true})
+		pois.append({"id": str(sp[0]), "kind": "fuel", "name": str(sp[1]), "pos": center, "yaw": yaw, "size": Vector2(2, 2), "color": sp[5], "y": height(center.x, center.y), "road": ri,
+			"front": st["front"], "shop": "", "door": center, "dir": nrm, "road_yaw": yaw})
+		# la pared de atrás: un arco de losas alrededor del lote, salvo donde pasa la calle
+		var steps := 18
+		for k in steps:
+			var a0 := TAU * float(k) / float(steps)
+			var a1 := TAU * float(k + 1) / float(steps)
+			var am := (a0 + a1) * 0.5
+			var mp := center + Vector2(cos(am), sin(am)) * (LOT_R + 1.5)
+			var pr := probe(mp.x, mp.y)
+			if pr[6] >= 0.0 and pr[0] > -0.4:
+				continue # ahí pasa la calle (el frente del lote)
+			var p0 := center + Vector2(cos(a0), sin(a0)) * (LOT_R + 1.5)
+			var p1 := center + Vector2(cos(a1), sin(a1)) * (LOT_R + 1.5)
+			var sl := {"pts": PackedVector3Array([Vector3(p0.x, height(p0.x, p0.y), p0.y), Vector3(p1.x, height(p1.x, p1.y), p1.y)]),
+				"away": PackedVector2Array([Vector2(cos(a0), sin(a0)), Vector2(cos(a1), sin(a1))]), "h": 9.6, "wall": WALLS[(k * 3 + int(sp[3])) % WALLS.size()], "roof": ROOFS[k % ROOFS.size()],
+				"seed": _rng.randf(), "depth": 6.0, "house": false, "hp": 0.0, "hn": 0.0, "zone": 1}
+			var key := chunk_of(p0.x, p0.y)
+			var arr: Array = slabs.get(key, [])
+			arr.append(sl)
+			slabs[key] = arr
+			slab_count += 1
+
 # ───────────────────────── objetos de la calle ─────────────────────────
 func _add_prop(t: int, x: float, z: float, to_road: Vector2) -> void:
 	# nunca sobre el asfalto de ninguna calle
@@ -893,7 +957,7 @@ func _add_prop(t: int, x: float, z: float, to_road: Vector2) -> void:
 	if pr[0] >= 0.0:
 		py = float(pr[4]) + (0.16 if pr[6] >= 0.0 else 0.0) # sobre la vereda (el cordón sube 16 cm); en una plaza abierta, a ras del suelo
 	prop_y.append(py)
-	prop_yaw.append(atan2(to_road.x, to_road.y) if t != 1 else _rng.randf() * TAU)
+	prop_yaw.append(atan2(to_road.x, to_road.y) if not (t == 1 or t >= 7) else _rng.randf() * TAU)
 	prop_seed.append(_rng.randf())
 	var key := chunk_of(x, z)
 	var arr: PackedInt32Array = props_in.get(key, PackedInt32Array())
@@ -912,7 +976,7 @@ func _place_props() -> void:
 		var hw := float(rd["hw"])
 		var sw := float(rd["sw"])
 		var lamp_gap: float = {"plaza": 22.0, "alley": 26.0, "minor": 46.0, "coast": 30.0, "hill": 60.0}.get(kind, 40.0)
-		var tree_gap := 22.0
+		var tree_gap := 56.0 # pocos árboles de calle (y lindos): no una fila continua
 		var acc_l := _rng.randf() * lamp_gap
 		var acc_t := _rng.randf() * tree_gap
 		var acc_b := 0.0
@@ -941,7 +1005,7 @@ func _place_props() -> void:
 					_add_prop(0, p.x - nrm.x * sd * off, p.y - nrm.y * sd * off, nrm * sd) # callejón: faroles de los dos lados
 			if acc_t >= tree_gap and not near_j and kind in ["major", "ring", "coast", "minor", "hill", "plaza"] and sw >= 2.0:
 				acc_t = 0.0
-				if _rng.randf() < 0.8:
+				if _rng.randf() < 0.75:
 					var st := flip_t
 					flip_t = -flip_t
 					if not (kind == "coast" and st > 0.0):
@@ -956,9 +1020,28 @@ func _place_props() -> void:
 				_add_prop(3, p.x + nrm.x * (hw + sw - 0.4), p.y + nrm.y * (hw + sw - 0.4), -nrm)
 	# plaza Aurora: el monumento del centro y un anillo de árboles; el parque del drift queda libre (solo faroles en su calle)
 	_add_prop(4, 0.0, 0.0, Vector2(0, 1))
-	for i in 10:
-		var a := TAU * (float(i) + 0.5) / 10.0
+	for i in 8:
+		var a := TAU * (float(i) + 0.5) / 8.0
 		_add_prop(1, cos(a) * 30.0, sin(a) * 30.0, Vector2(0, 1))
+	for i in 16: # canteros de flores alrededor del monumento y bajo los árboles
+		var a := TAU * float(i) / 16.0
+		_add_prop(7, cos(a) * 14.0, sin(a) * 14.0, Vector2(0, 1))
+		if i % 2 == 0:
+			_add_prop(8, cos(a + 0.2) * 22.0, sin(a + 0.2) * 22.0, Vector2(0, 1))
+			_add_prop(9, cos(a + 0.1) * 36.0, sin(a + 0.1) * 36.0, Vector2(0, 1))
+	# gasolineras: surtidores, columnas del techo y bloques que cierran el kiosco (nada de esto se rompe)
+	for st in stations:
+		var c: Vector2 = st["center"]
+		var nr: Vector2 = st["dir"]
+		var tg: Vector2 = st["tn"]
+		for pp in st["pumps"]:
+			_add_prop(11, (pp as Vector2).x, (pp as Vector2).y, -nr)
+		for cl in [[-7.0, -3.0], [7.0, -3.0], [-7.0, 6.0], [7.0, 6.0]]:
+			var q: Vector2 = c + tg * float(cl[0]) + nr * (float(cl[1]) + 0.5)
+			_add_prop(5, q.x, q.y, nr)
+		for bl in [-5.0, 0.0, 5.0]:
+			var q2: Vector2 = c + nr * 14.0 + tg * float(bl)
+			_add_prop(12, q2.x, q2.y, nr)
 	# boca del estacionamiento: dos postes a cada lado (que no se rompen)
 	for mo in mouths:
 		if str(mo["kind"]) == "park":
@@ -971,14 +1054,7 @@ func _place_props() -> void:
 	for i in 12:
 		var a := TAU * (float(i) + 0.5) / 12.0
 		_add_prop(5, HALL_C.x + cos(a) * 26.0, HALL_C.y + sin(a) * 26.0, Vector2(0, 1))
-	for ring in [[37.0, 22], [17.0, 10]]:
-		var rr: float = ring[0]
-		var cn: int = ring[1]
-		for i in cn:
-			var a := TAU * float(i) / float(cn) + 0.1
-			if absf(angle_difference(a, PI * 0.5)) < 0.32 or _rng.randf() < 0.3:
-				continue
-			_add_prop(6, HALL_C.x + cos(a) * rr, HALL_C.y + sin(a) * rr, Vector2(-cos(a), -sin(a)))
+	# el estacionamiento queda vacío: los únicos autos son los de los jugadores
 	# semáforos: cuatro por cruce grande (dos por cada calle, en esquinas opuestas)
 	for j in junctions:
 		if not bool(j["major"]):
@@ -1004,6 +1080,54 @@ func _place_props() -> void:
 			var offs := float(ra["hw"]) + float(ra["sw"]) * 0.5
 			for sg in [1.0, -1.0]:
 				_add_prop(2, jp.x + (ta.x * along + na.x * offs) * sg, jp.y + (ta.y * along + na.y * offs) * sg, -na * sg)
+
+## Bordes de las rutas rurales y de los atajos: una tirada de árboles del pack (varias especies, dos filas), con pasto, flores y algún arbusto abajo. No chocan: el auto no sale del camino.
+func _place_roadside() -> void:
+	for ri in roads.size():
+		var rd: Dictionary = roads[ri]
+		var kind := str(rd["kind"])
+		if kind != "rural" and kind != "shortcut":
+			continue
+		var pts: PackedVector3Array = rd["pts"]
+		var base := float(rd["hw"]) + float(rd["sw"])
+		var acc_t := _rng.randf() * 12.0
+		var acc_u := _rng.randf() * 17.0
+		var acc_g := _rng.randf() * 5.0
+		var acc_b := _rng.randf() * 40.0
+		for i in range(1, pts.size() - 1):
+			var tn := Vector2(pts[i + 1].x - pts[i - 1].x, pts[i + 1].z - pts[i - 1].z)
+			if tn.length() < 0.1:
+				continue
+			tn = tn.normalized()
+			var nrm := Vector2(-tn.y, tn.x)
+			var p := Vector2(pts[i].x, pts[i].z)
+			var step := Vector2(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z).length()
+			acc_t += step
+			acc_u += step
+			acc_g += step
+			acc_b += step
+			for sd in [-1.0, 1.0]:
+				var sg: float = sd
+				if acc_t >= 12.0:
+					var o := base + 3.5 + _rng.randf() * 2.0
+					_add_prop(10, p.x + nrm.x * sg * o, p.y + nrm.y * sg * o, nrm)
+				if acc_u >= 17.0:
+					var o2 := base + 9.5 + _rng.randf() * 3.0
+					_add_prop(10, p.x + nrm.x * sg * o2, p.y + nrm.y * sg * o2, nrm)
+				if acc_g >= 5.0:
+					var o3 := base + 1.0 + _rng.randf() * 2.2
+					_add_prop(9 if _rng.randf() < 0.5 else 7, p.x + nrm.x * sg * o3, p.y + nrm.y * sg * o3, nrm)
+				if acc_b >= 40.0:
+					var o4 := base + 2.0 + _rng.randf() * 1.5
+					_add_prop(8, p.x + nrm.x * sg * o4, p.y + nrm.y * sg * o4, nrm)
+			if acc_t >= 12.0:
+				acc_t = 0.0
+			if acc_u >= 17.0:
+				acc_u = 0.0
+			if acc_g >= 5.0:
+				acc_g = 0.0
+			if acc_b >= 40.0:
+				acc_b = 0.0
 
 # ───────────────────────── puntos de interés ─────────────────────────
 ## Cada uno es un edificio especial pegado a una calle: [id, tipo, nombre, calle, distancia sobre la calle (m), lado, ancho, fondo, alto, color, local (ver data/shops.gd)]

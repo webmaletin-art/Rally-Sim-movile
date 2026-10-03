@@ -9,6 +9,7 @@ uniform sampler2D grain : source_color, repeat_enable, filter_linear_mipmap;
 uniform vec3 edge_col : source_color = vec3(0.96, 0.93, 0.85);
 uniform float grain_amt : hint_range(0.0, 0.5) = 0.10;
 uniform float tint_var : hint_range(0.0, 0.3) = 0.10;
+uniform float night : hint_range(0.0, 1.0) = 0.0; // 0 = de día · 1 = de noche: se prenden las luces de las ventanas y de los negocios
 
 varying vec3 v_wpos;
 varying vec3 wcol;
@@ -40,6 +41,7 @@ void fragment() {
 	NORMAL = fn;
 	vec3 col = wcol;
 	float crease = 0.0; // 1 = hay un doblez o un borde de papel en este píxel
+	vec3 glow = vec3(0.0); // luz propia (ventanas prendidas de noche)
 	vec2 sz = UV2;
 	vec2 uv = UV;
 	if (sz.y > 0.5 && uv.y > 0.0) {
@@ -72,6 +74,7 @@ void fragment() {
 				float dr = box(f, vec2(0.30, 0.0), vec2(0.70, 0.74), pw) * door;
 				col = mix(col, vec3(0.20, 0.27, 0.34) * (0.8 + 0.4 * hv2), shop);
 				col = mix(col, vec3(0.42, 0.26, 0.15), dr);
+				glow = vec3(1.0, 0.82, 0.48) * shop * step(0.30, hv2) * (0.75 + 0.35 * hv);
 				crease = max(crease, clamp(box(f, vec2(0.10, 0.08), vec2(0.90, 0.78), pw) - shop - dr, 0.0, 1.0) * 0.5);
 				float awn = box(f, vec2(0.05, 0.78), vec2(0.95, 0.92), pw) * step(0.45, hv2);
 				col = mix(col, mix(vec3(0.85, 0.28, 0.20), vec3(0.20, 0.45, 0.30), step(0.5, fract(hv * 7.0))), awn);
@@ -82,6 +85,9 @@ void fragment() {
 				vec3 glass = vec3(0.34, 0.44, 0.56) * (0.75 + 0.5 * hv2);
 				col = mix(col, col * 1.15, frame);
 				col = mix(col, glass * (0.88 + 0.24 * f.y), win);
+				// de noche, algunas ventanas están prendidas (cálidas, a veces azuladas de tele)
+				float lit = step(0.42, hv) * win;
+				glow = mix(vec3(1.0, 0.78, 0.42), vec3(0.62, 0.78, 1.0), step(0.86, hv2)) * lit * (0.65 + 0.5 * hv2);
 				// el hueco es un recorte: sombra del papel en el borde de arriba y de la izquierda, y un filo claro alrededor
 				float shadow = win - box(f, vec2(0.34, 0.28), vec2(0.70, 0.76), pw);
 				col = mix(col, col * 0.72, clamp(shadow, 0.0, 1.0));
@@ -115,5 +121,6 @@ void fragment() {
 	float g = texture(grain, v_wpos.xz * 0.45 + v_wpos.y * 0.31).r;
 	base *= 1.0 + (g - 0.5) * grain_amt * 2.0;
 	ALBEDO = mix(base, edge_col, clamp(crease, 0.0, 1.0) * 0.5);
+	EMISSION = glow * night * 1.25;
 	ROUGHNESS = 1.0;
 }

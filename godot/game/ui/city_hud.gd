@@ -5,11 +5,12 @@ extends Control
 const Kit := preload("res://game/ui/ui_kit.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CityGps := preload("res://game/city/city_gps.gd")
+const CityNames := preload("res://game/city/city_names.gd")
 
 const MINI := 176.0 # lado del minimapa (px)
 const MINI_R := 230.0 # metros que muestra de radio
-const KIND_COL := {"dealer": Color(0.35, 0.65, 1.0), "garage": Color(1.0, 0.6, 0.15), "view": Color(1.0, 0.88, 0.3)}
-const KIND_ICON := {"dealer": "🚗", "garage": "🔧", "view": "⛰"}
+const KIND_COL := {"dealer": Color(0.35, 0.65, 1.0), "garage": Color(1.0, 0.6, 0.15), "view": Color(1.0, 0.88, 0.3), "fuel": Color(0.95, 0.32, 0.28)}
+const KIND_ICON := {"dealer": "🚗", "garage": "🔧", "view": "⛰", "fuel": "⛽"}
 
 var city
 var track
@@ -85,6 +86,30 @@ func setup(p_track, toast_cb: Callable) -> void:
 	gps_l.position = Vector2(14.0 + MINI + 8.0, 134.0)
 	gps_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(gps_l)
+	# nafta (barra bajo el minimapa) y hora
+	fuel_l = Kit.label("", 16, Color.WHITE)
+	fuel_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	fuel_l.add_theme_constant_override("outline_size", 6)
+	fuel_l.position = Vector2(14.0, 100.0 + MINI + 6.0)
+	fuel_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(fuel_l)
+	clock_l = Kit.label("", 16, Color(1.0, 0.92, 0.6))
+	clock_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	clock_l.add_theme_constant_override("outline_size", 6)
+	clock_l.position = Vector2(14.0, 100.0 + MINI + 44.0)
+	clock_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(clock_l)
+	fuel_bar = ColorRect.new()
+	fuel_bar.position = Vector2(14.0, 100.0 + MINI + 32.0)
+	fuel_bar.size = Vector2(MINI, 7.0)
+	fuel_bar.color = Color(0, 0, 0, 0.55)
+	fuel_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(fuel_bar)
+	fuel_fill = ColorRect.new()
+	fuel_fill.position = Vector2(1.0, 1.0)
+	fuel_fill.size = Vector2(MINI - 2.0, 5.0)
+	fuel_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fuel_bar.add_child(fuel_fill)
 	_build_big()
 	_fade = ColorRect.new()
 	_fade.color = Color(0, 0, 0, 0)
@@ -93,6 +118,23 @@ func setup(p_track, toast_cb: Callable) -> void:
 	add_child(_fade)
 
 var _fade: ColorRect
+var fuel_l: Label
+var clock_l: Label
+var fuel_bar: ColorRect
+var fuel_fill: ColorRect
+
+## Nafta: level 0..1; fill ≥ 0 mientras se está cargando (progreso de la carga)
+func set_fuel(level: float, fill := -1.0) -> void:
+	if fuel_l == null:
+		return
+	var col := Color(0.35, 0.9, 0.5) if level > 0.3 else (Color(1.0, 0.75, 0.2) if level > 0.15 else Color(1.0, 0.3, 0.3))
+	if fill >= 0.0:
+		col = Color(0.3, 0.8, 1.0)
+		fuel_l.text = "⛽ %d%% · %s %d%%" % [roundi(level * 100.0), Tr.t("cargando"), roundi(fill * 100.0)]
+	else:
+		fuel_l.text = "⛽ %d%%" % roundi(level * 100.0)
+	fuel_fill.size.x = (MINI - 2.0) * clampf(level, 0.0, 1.0)
+	fuel_fill.color = col
 
 ## Fundido a negro (entrar a un taller o a un túnel): 0 = nada · 1 = negro
 func set_fade(a: float) -> void:
@@ -166,7 +208,7 @@ func _big_input(e: InputEvent) -> void:
 			bd = d
 			best = i
 	if best >= 0:
-		set_dest(city.pois[best]["front"], str(city.pois[best]["name"]))
+		set_dest(city.pois[best]["front"], Tr.t(str(city.pois[best]["name"])))
 	else:
 		set_dest(w, Tr.t("el punto elegido"))
 	_set_big(false)
@@ -178,6 +220,9 @@ func set_dest(p: Vector2, nm: String) -> void:
 	_reroute()
 	if _toast_cb.is_valid():
 		_toast_cb.call(Tr.t("📍 GPS: %s") % nm)
+
+func clear_dest() -> void:
+	_clear_dest()
 
 func _clear_dest() -> void:
 	has_dest = false
@@ -206,15 +251,15 @@ func update_hud(dt: float, car) -> void:
 	if big:
 		(_big.get_node("map") as Control).queue_redraw()
 	var loc: Dictionary = city.locate(car_pos.x, car_pos.y)
-	if int(loc["road"]) >= 0:
-		street_l.text = "%s · %s %d" % [str(loc["name"]), Tr.t("cuadra"), int(loc["cuadra"])]
+	if int(loc["road"]) >= 0 or str(loc["name"]) != "":
+		street_l.text = "%s · %s %d" % [CityNames.t(str(loc["name"])), Tr.t("cuadra"), int(loc["cuadra"])]
 	else:
 		street_l.text = Tr.t("Fuera de calle")
 	for ex in city.exits:
 		if not _exit_warned.has(ex["num"]) and car_pos.distance_to(ex["pos"]) < 140.0:
 			_exit_warned[ex["num"]] = true
 			if _toast_cb.is_valid():
-				_toast_cb.call(Tr.t("%s: esa ciudad abre en la próxima actualización") % str(ex["name"]))
+				_toast_cb.call(Tr.t("%s: esa ciudad abre en la próxima actualización") % CityNames.t(str(ex["name"])))
 	if has_dest:
 		_off_t += step
 		_gps_text()
@@ -338,13 +383,13 @@ class MapView extends Control:
 			draw_circle(sp, 9.0 if big else 6.5, Color(0, 0, 0, 0.7))
 			draw_circle(sp, 7.0 if big else 5.0, col)
 			if big:
-				draw_string(f, sp + Vector2(12.0, 6.0), str(p["name"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color.WHITE)
+				draw_string(f, sp + Vector2(12.0, 6.0), Tr.t(str(p["name"])), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color.WHITE)
 		for ex in hud.city.exits:
 			var sp: Vector2 = xf * (ex["pos"] as Vector2)
 			if Rect2(Vector2.ZERO, sz).grow(12.0).has_point(sp):
 				draw_rect(Rect2(sp - Vector2(5, 5), Vector2(10, 10)), Color(0.3, 0.9, 0.5))
 				if big:
-					draw_string(f, sp + Vector2(10.0, 5.0), str(ex["name"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.6, 1.0, 0.7))
+					draw_string(f, sp + Vector2(10.0, 5.0), CityNames.t(str(ex["name"])), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.6, 1.0, 0.7))
 		if hud.has_dest:
 			var dp: Vector2 = xf * (hud.dest as Vector2)
 			if Rect2(Vector2.ZERO, sz).grow(12.0).has_point(dp):

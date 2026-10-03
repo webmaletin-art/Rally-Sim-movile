@@ -24,7 +24,7 @@ static func new_car_state(id: String) -> Dictionary:
 	return {"upg": {}, "tires": "street", "tiresOwned": ["street"], "tune": {}, "paint": (m["paint"] as Dictionary).duplicate(), "km": 0.0, "bought": Time.get_unix_time_from_system()}
 
 static func default_profile() -> Dictionary:
-	return {"v": 1, "name": "Piloto", "credits": 5000, "xp": 0, "level": 1, "owned": {}, "current": "", "events": {}, "cups": {},
+	return {"v": 1, "name": "Piloto", "credits": 5000, "fuel": 1.0, "xp": 0, "level": 1, "owned": {}, "current": "", "events": {}, "cups": {},
 		"stats": {"km": 0.0, "races": 0, "wins": 0, "podiums": 0, "events": 0, "driftBest": 0, "topSpeed": 0, "boards": {}, "traps": {}, "time": 0.0},
 		"iap": {}, "settings": DEFAULT_SETTINGS.duplicate(true), "daily": {"day": "", "streak": 0}, "claimed": {}, "created": Time.get_unix_time_from_system(), "tutorial": false}
 

@@ -138,11 +138,19 @@ func _ready() -> void:
 			tc["type"] = "city"
 			tc["track"] = "aurelia"
 			tc["testCar"] = false
-			if at.size() > 2:
-				if at[2] == "map":
+			for ai in range(2, at.size()):
+				if at[ai].begins_with("pose:"): # prueba: arranca en este punto (x,z,rumbo en grados)
+					var pp := at[ai].substr(5).split(",")
+					tc["resume"] = [float(pp[0]), float(pp[1]), deg_to_rad(float(pp[2]))]
+				elif at[ai].begins_with("tod:"):
+					tc["tod"] = float(at[ai].substr(4)) # prueba: hora del día fija
+					tc["tod_frozen"] = true
+				elif at[ai].begins_with("fuel:"):
+					tc["fuel"] = float(at[ai].substr(5)) # prueba: nafta con la que arranca (0..1)
+				elif at[ai] == "map":
 					tc["bigmap"] = true # prueba: abre el mapa grande con el GPS puesto al concesionario
-				else:
-					tc["gpsdrive"] = at[2] # --autotest=gt@aurelia@concesionario: el auto va solo hasta ahí
+				elif at[ai] != "-":
+					tc["gpsdrive"] = at[ai] # --autotest=gt@aurelia@concesionario: el auto va solo hasta ahí
 		if at.size() > 1 and at[1] == "paper":
 			tc["type"] = "timetrial"
 			tc["track"] = "paperRace"

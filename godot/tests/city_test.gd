@@ -44,6 +44,15 @@ func _init() -> void:
 	check(rural_n == 4 and c.exits.size() == 4, "4 rutas rurales con su Salida numerada (%s)" % str(c.exits.map(func(e): return e["num"])))
 	check(c.junctions.size() > 140, "%d cruces" % c.junctions.size())
 	check(c.slab_count > 3000 and c.building_count == 8, "%d frentes de edificios y %d lugares especiales (el concesionario y siete talleres)" % [c.slab_count, c.building_count])
+	# gasolineras: cuatro, cada una con puntos de carga que no caen sobre ninguna calle
+	check(c.stations.size() == 4, "hay %d gasolineras" % c.stations.size())
+	for st in c.stations:
+		var fp0: Vector2 = st["fuel_points"][0]
+		var dr: Vector2 = st["dir"]
+		print("     %s en (%d, %d), círculo en (%d, %d), rumbo %d°" % [st["id"], int(st["center"].x), int(st["center"].y), int(fp0.x), int(fp0.y), int(rad_to_deg(atan2(dr.x, dr.y)))])
+		for fp in st["fuel_points"]:
+			var prf := c.probe(fp.x, fp.y)
+			check(int(prf[6]) < -1, "el círculo de %s está dentro del lote (no sobre una calle)" % st["id"])
 	check(worst_up > 0.03 and worst_up < 0.2, "el camino de la colina sube como máximo %.1f %%" % (worst_up * 100.0))
 	check(worst_dn > -0.22, "y baja como máximo %.1f %%" % (worst_dn * 100.0))
 	# los números de calle
@@ -106,7 +115,7 @@ func _init() -> void:
 	print("     frentes: %d losas, %d puntos de línea de edificación, %d sin pared" % [c.slab_count, tested, gaps])
 	check(gaps < tested / 50, "los frentes de las calles no tienen huecos (%d de %d)" % [gaps, tested])
 	# objetos de la calle: hay de cada tipo y ninguno sobre el asfalto
-	var cnt := [0, 0, 0, 0, 0, 0, 0]
+	var cnt := [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 	var on_road := 0
 	for i in c.prop_type.size():
 		cnt[c.prop_type[i]] += 1

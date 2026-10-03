@@ -12,6 +12,8 @@ const CitySession := preload("res://game/city_session.gd")
 const CityDriver := preload("res://game/ai/city_driver.gd")
 const CityShops := preload("res://game/city/city_shops.gd")
 const CityLinks := preload("res://game/city/city_links.gd")
+const CityFuel := preload("res://game/city/city_fuel.gd")
+const CityClock := preload("res://game/city/city_clock.gd")
 const DriftSession := preload("res://game/drift_session.gd")
 const PaperTrack := preload("res://game/track/paper_track.gd")
 const Drag := preload("res://game/data/drag.gd")
@@ -489,6 +491,9 @@ func _city_atmosphere() -> void:
 	env.fog_depth_begin = 160.0 * vk
 	env.fog_depth_end = 560.0 * vk
 	cam.far = 1600.0
+	if menu_mode and profile != null:
+		clock = CityClock.new()
+		clock.setup(self, psm)
 
 ## Paper Race: cielo y niebla de papel (la selva se cierra a lo lejos), luz suave y pareja
 func _paper_atmosphere() -> void:
@@ -1096,6 +1101,8 @@ func _start_session() -> void:
 			shops.setup(self, track.world_node, track.city)
 			links = CityLinks.new()
 			links.setup(self, track.world_node, track.city)
+			fuel = CityFuel.new()
+			fuel.setup(self, track.city)
 			if cfg.has("bigmap") and race_hud.city_hud != null:
 				race_hud.city_hud.set_dest(race_hud.city_hud.city.pois[0]["front"], str(race_hud.city_hud.city.pois[0]["name"]))
 				race_hud.city_hud.call_deferred("_set_big", true)
@@ -1533,6 +1540,8 @@ var _link_test: PackedStringArray = PackedStringArray()
 var _link_stage := 0
 var shops # CityShops (solo en Dream City)
 var links # CityLinks: bocas de túnel y estacionamiento
+var fuel # CityFuel: nafta y gasolineras
+var clock # CityClock: ciclo de día y noche
 var _ug := 0.0 # 0 = afuera · 1 = bajo tierra (el sol y el cielo se apagan)
 var _ug_base: Array = [] # luz del sol, luz ambiente, niebla (color, inicio, fin) de afuera
 var shopshot := ""
@@ -1541,6 +1550,8 @@ var _shopshot_f := 0
 ## Se entra a un local (taller o concesionario): se sale al menú de ese local y después se vuelve a la calle (ver app.gd)
 func enter_shop(id: String, resume: Array) -> void:
 	cfg["resume"] = resume
+	if fuel != null:
+		fuel.save()
 	cfg.erase("gpsdrive") # (la prueba automática no sigue al volver)
 	exit_requested.emit("shop:" + id)
 
@@ -1550,6 +1561,10 @@ func _underground_light(dt: float) -> void:
 		return
 	if _ug_base.is_empty():
 		_ug_base = [sun.light_energy, env.ambient_light_energy, env.fog_light_color, env.fog_depth_begin, env.fog_depth_end]
+	if clock != null:
+		_ug_base[0] = clock.sun_e
+		_ug_base[1] = clock.amb_e
+		_ug_base[2] = clock.fog_col
 	var inside: bool = cars[0].phys.px > 3000.0
 	_ug = move_toward(_ug, 1.0 if inside else 0.0, dt * 3.0)
 	sun.light_energy = lerpf(float(_ug_base[0]), 0.10, _ug)
@@ -1565,6 +1580,9 @@ func _tick_session(dt: float) -> void:
 	if shops != null:
 		shops.update(dt)
 		links.update(dt)
+		fuel.update(dt)
+		if clock != null:
+			clock.update(dt)
 		_underground_light(dt)
 	if shopshot != "" and cfg.has("resume"):
 		_shopshot_f += 1
@@ -1917,6 +1935,8 @@ func set_tunnel_light(k: float) -> void:
 var _light_k := 0.0
 
 func _quit() -> void:
+	if fuel != null:
+		fuel.save()
 	AudioServer.set_bus_mute(0, false)
 	exit_requested.emit(str(cfg.get("back", "home")))
 
@@ -2017,6 +2037,8 @@ func _save_cabin_cfg() -> void:
 func _on_option(key: String, value) -> void:
 	match key:
 		"to_menu":
+			if fuel != null:
+				fuel.save()
 			AudioServer.set_bus_mute(0, false)
 			exit_requested.emit("home")
 		"panel_closed":
@@ -2165,6 +2187,9 @@ func _step_physics(dt: float) -> void:
 	pl.in_steer = controls.steer
 	pl.in_handbrake = controls.handbrake
 	pl.in_nitro = controls.nitro
+	if fuel != null and fuel.blocks_throttle():
+		pl.in_throttle = 0.0 # sin nafta (o cargando) el auto no acelera
+		pl.in_nitro = false
 	if menu_mode and session != null and session.state == "run" and assist_view != null:
 		var la := float(_sim_assists()["line"]) / 100.0
 		# con el auto casi parado la ayuda no gira el volante (antes se veía el volante torcido en la largada)

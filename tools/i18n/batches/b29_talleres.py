@@ -26,3 +26,19 @@ T = {
 "Ajuste fino para asfalto y velocidad: aerodinámica, alineación y presiones.": ("Fine tuning for tarmac and speed: aero, alignment and pressures.", "Ajuste fino para asfalto e velocidade: aerodinâmica, alinhamento e pressões.", "Réglage fin pour asphalte et vitesse : aéro, géométrie et pressions.", "Messa a punto per asfalto e velocità: aerodinamica, allineamento e pressioni.", "Feinabstimmung für Asphalt und Tempo: Aero, Spur und Drücke."),
 "Ajuste fino para tierra, saltos y derrapes.": ("Fine tuning for dirt, jumps and drifts.", "Ajuste fino para terra, saltos e derrapagens.", "Réglage fin pour terre, sauts et dérapages.", "Messa a punto per terra, salti e derapate.", "Feinabstimmung für Schotter, Sprünge und Drifts."),
 }
+T.update({
+"Avenida": ("Avenue", "Avenida", "Avenue", "Viale", "Allee"),
+"Calle": ("Street", "Rua", "Rue", "Via", "Straße"),
+"Calle Vieja": ("Old Street", "Rua Velha", "Vieille Rue", "Via Vecchia", "Alte Gasse"),
+"Ruta": ("Route", "Rota", "Route", "Strada", "Route"),
+"Costanera": ("Seafront", "Orla", "Front de mer", "Lungomare", "Uferpromenade"),
+"Atajo": ("Shortcut", "Atalho", "Raccourci", "Scorciatoia", "Abkürzung"),
+"Camino de la Colina": ("Hill Road", "Estrada da Colina", "Route de la Colline", "Strada della Collina", "Hügelstraße"),
+"Plaza Aurora": ("Aurora Square", "Praça Aurora", "Place Aurore", "Piazza Aurora", "Aurora-Platz"),
+"Parque del Drift": ("Drift Park", "Parque do Drift", "Parc du Drift", "Parco del Drift", "Drift-Park"),
+"Túnel Oeste-Este": ("West-East Tunnel", "Túnel Oeste-Leste", "Tunnel Ouest-Est", "Galleria Ovest-Est", "Tunnel West-Ost"),
+"Túnel Norte-Sur": ("North-South Tunnel", "Túnel Norte-Sul", "Tunnel Nord-Sud", "Galleria Nord-Sud", "Tunnel Nord-Süd"),
+"Estacionamiento subterráneo": ("Underground parking", "Estacionamento subterrâneo", "Parking souterrain", "Parcheggio sotterraneo", "Tiefgarage"),
+"Salida": ("Exit", "Saída", "Sortie", "Uscita", "Ausfahrt"),
+"Entrada": ("Entrance", "Entrada", "Entrée", "Ingresso", "Eingang"),
+})

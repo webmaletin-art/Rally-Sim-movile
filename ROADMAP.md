@@ -98,4 +98,4 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 - Tutorial breve al elegir el primer auto.
 
 ## Dream City (mundo abierto en papel)
-Base lista (calles numeradas, atajos, casco viejo, cuadras de carga, fachadas, minimapa que gira, mapa grande, GPS). Pendientes y diseño online en `docs/MUNDO_ABIERTO.md`.
+Base lista (calles numeradas, atajos, casco viejo, cuadras de carga, fachadas, minimapa que gira, mapa grande, GPS). Ya tiene locales entrables, túnel y estacionamiento subterráneos, 4 gasolineras con nafta (se paga con créditos) y ciclo de día y noche. Pendientes y diseño online en `docs/MUNDO_ABIERTO.md`.

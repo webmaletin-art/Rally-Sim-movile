@@ -16,6 +16,10 @@ Dream City sale en la versión 1 con la ciudad base y las rutas hacia otras ciud
 - ✅ Hecho: ocho locales entrables con puerta de garage (concesionario, pintura, motor, transmisión, suspensión y frenos, ruedas y dos reglajes) y estacionamiento subterráneo.
 - Pendiente: menú del taller visto de costado (suspensión y pintura con el auto de perfil) y las piezas de carrocería (alerón, paragolpes…), que las trae el dueño.
 
+## 3b. Nafta y día/noche
+- ✅ Hecho: nafta con 4 gasolineras (se paga con créditos), reloj de día y noche con ventanas y lámparas prendidas.
+- Pendiente: gasolineras en las otras ciudades; precio que cambie con la hora; tanque más grande como mejora del auto; clima (lluvia/niebla) combinado con el reloj; estrellas en el cielo.
+
 ## 4. Obras grandes
 - ✅ Hecho: túnel subterráneo en cruz (oculto) con cuatro bocas.
 - Autovía elevada con tren de alta velocidad y de carga (imágenes), túneles por la montaña, puentes procedurales, campos de girasoles y otros efectos de perspectiva.
