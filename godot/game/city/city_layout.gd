@@ -906,6 +906,13 @@ const STATION_KINDS := {
 		"bays": [[-5.0, -4.4], [5.0, -4.4], [0.0, 4.4]], "blocks": [[-3.0, 11.0], [3.0, 11.0]], "isle": [12.0, 0.0]},
 }
 
+# adorno por tamaño: [x, z] locales de árboles, canteros de flores y arbustos (adentro del playón, lejos de los carriles)
+const STATION_DECOR := {
+	"big": {"trees": [[-27.0, 13.0], [27.0, 13.0], [-34.0, -4.0], [34.0, -4.0]], "flowers": [[-13.0, 18.0], [13.0, 18.0], [-30.0, -12.0], [30.0, -12.0]], "bushes": [[-19.0, 15.0], [19.0, 15.0], [-25.0, 6.0], [25.0, 6.0]]},
+	"mid": {"trees": [[-17.0, 9.0], [17.0, 9.0]], "flowers": [[-10.0, 13.5], [10.0, 13.5], [-19.0, -4.0]], "bushes": [[-14.0, 12.0], [14.0, 12.0]]},
+	"small": {"trees": [[-12.0, 8.0], [12.0, 8.0]], "flowers": [[-7.0, 11.5], [7.0, 11.5]], "bushes": [[-10.0, 10.0], [10.0, 10.0]]},
+}
+
 ## ¿El playón de una gasolinera cabe ahí? No toca el asfalto de ninguna calle, ni un lugar especial, ni una zona abierta, ni otra gasolinera.
 func _lot_ok(circles: Array, r: float) -> bool:
 	for cc in circles:
@@ -1172,6 +1179,19 @@ func _place_props() -> void:
 			_add_prop(5, (cl as Vector2).x, (cl as Vector2).y, nr)
 		for bl in st["blocks"]:
 			_add_prop(12, (bl as Vector2).x, (bl as Vector2).y, nr)
+		# adorno de papel: árboles atrás, canteros con flores y arbustos junto al kiosco y al frente (los árboles se rompen; lo demás es decoración)
+		var sdec: Dictionary = STATION_DECOR[str(st["kind"])]
+		var c1: Vector2 = st["center"]
+		var lx1: Vector2 = st["lx"]
+		for tp in sdec["trees"]:
+			var q1: Vector2 = c1 + lx1 * float(tp[0]) + nr * float(tp[1])
+			_add_prop(1, q1.x, q1.y, nr)
+		for fp1 in sdec["flowers"]:
+			var q2: Vector2 = c1 + lx1 * float(fp1[0]) + nr * float(fp1[1])
+			_add_prop(7, q2.x, q2.y, nr)
+		for bp in sdec["bushes"]:
+			var q3: Vector2 = c1 + lx1 * float(bp[0]) + nr * float(bp[1])
+			_add_prop(8, q3.x, q3.y, nr)
 		if bool(st["rural"]):
 			# el fondo del lote en la ruta: una tirada de árboles detrás del playón
 			var c0: Vector2 = st["center"]

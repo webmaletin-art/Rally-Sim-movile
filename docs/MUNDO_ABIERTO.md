@@ -50,6 +50,8 @@ Se definen en `godot/game/data/shops.gd` (qué pestañas, mejoras y grupos de aj
 - **Cargar:** frenás sobre un círculo verde, tarda 1,5 s + 3 s por tanque entero que falte, y se **paga con créditos** (120 por tanque lleno). Si no alcanzan se carga lo que se pueda pagar; con tanque vacío y 0 créditos regalan un 8 % para seguir. En modo desarrollador es gratis.
 - Es una buena razón para vender créditos (Coins) en la tienda: la nafta es el gasto fijo del mundo abierto.
 
+- **Todo en papel:** techos plegados en dos aguas, banderines de papel colgando de los aleros, canteros con flores y árboles del pack (los de la gasolinera se pueden romper), conos de papel plegado; el material es el de papel (grano, sombreado plano y dobleces marcados).
+
 ## Peajes
 - **Un peaje por cada ruta rural** (Ruta 20, 40, 60 y 80), a ~95 m de donde empieza la ruta (antes de la ruta de alta velocidad). Pórtico, isla central con cabina y **una barrera por carril** (`_toll` en `city_world.gd`, lógica en `city_toll.gd`).
 - La barrera cerrada es **sólida** (círculos de choque): hay que frenar (menos de ~30 km/h) en un carril, se **cobra 30 créditos** (15 con pase), la barrera se levanta y se pasa. Sin créditos no abre. Para volver a la ciudad las barreras se abren solas y no se cobra. En modo desarrollador pasa gratis.

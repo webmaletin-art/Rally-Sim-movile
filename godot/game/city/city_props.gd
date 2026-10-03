@@ -38,6 +38,50 @@ static func box(v: PackedVector3Array, c: PackedColorArray, xf: Transform3D, cen
 		_tri(v, c, p[f[0]], p[f[1]], p[f[2]], mid, col)
 		_tri(v, c, p[f[0]], p[f[2]], p[f[3]], mid, col)
 
+## Techo de papel plegado en dos aguas: la cumbrera corre a lo largo de x (en z = 0), los aleros caen en z = ±d/2. y0 = altura de los aleros, rise = cuánto sube la cumbrera.
+## Cara de abajo lisa y los dos tímpanos cerrados: se ve como una hoja doblada por la mitad.
+static func prism_roof(v: PackedVector3Array, c: PackedColorArray, xf: Transform3D, w: float, d: float, y0: float, rise: float, col: Color, under: Color) -> void:
+	var hx := w * 0.5
+	var hz := d * 0.5
+	var a: Vector3 = xf * Vector3(-hx, y0, -hz)
+	var b: Vector3 = xf * Vector3(hx, y0, -hz)
+	var cc: Vector3 = xf * Vector3(hx, y0, hz)
+	var dd: Vector3 = xf * Vector3(-hx, y0, hz)
+	var r0: Vector3 = xf * Vector3(-hx, y0 + rise, 0.0)
+	var r1: Vector3 = xf * Vector3(hx, y0 + rise, 0.0)
+	var mid: Vector3 = xf * Vector3(0.0, y0 + rise * 0.3, 0.0)
+	var lite := col.lightened(0.12)
+	_tri(v, c, a, b, r1, mid, col)
+	_tri(v, c, a, r1, r0, mid, col)
+	_tri(v, c, dd, cc, r1, mid, lite)
+	_tri(v, c, dd, r1, r0, mid, lite)
+	_tri(v, c, a, dd, r0, mid, col.darkened(0.1)) # tímpanos
+	_tri(v, c, b, cc, r1, mid, col.darkened(0.1))
+	_tri(v, c, a, b, cc, mid, under) # cara de abajo
+	_tri(v, c, a, cc, dd, mid, under)
+
+## Guirnalda de banderines de papel: triángulos que cuelgan de una cuerda (de a a b en el espacio local), de colores que se alternan
+static func bunting(v: PackedVector3Array, c: PackedColorArray, xf: Transform3D, a: Vector3, b: Vector3, cols: Array, gap := 0.9, size := 0.55) -> void:
+	var n := maxi(1, int(a.distance_to(b) / gap))
+	var dirv := (b - a) / float(n)
+	for i in n:
+		var p0: Vector3 = a + dirv * (float(i) + 0.15)
+		var p1: Vector3 = a + dirv * (float(i) + 0.85)
+		var sag := 0.12 * sin(PI * (float(i) + 0.5) / float(n)) # la cuerda cuelga un poco en el medio
+		p0.y -= sag
+		p1.y -= sag
+		var tip := (p0 + p1) * 0.5 + Vector3(0.0, -size * 1.25, 0.0)
+		var col: Color = cols[i % cols.size()]
+		var wa: Vector3 = xf * p0
+		var wb: Vector3 = xf * p1
+		var wt: Vector3 = xf * tip
+		v.append(wa)
+		v.append(wb)
+		v.append(wt)
+		c.append(col)
+		c.append(col)
+		c.append(col)
+
 ## Charco de luz sobre el piso: un abanico de triángulos que se apaga hacia el borde (el alfa baja a 0)
 static func halo(v: PackedVector3Array, c: PackedColorArray, xf: Transform3D, cen: Vector3, r: float, col: Color, n := 10) -> void:
 	var mid: Vector3 = xf * cen

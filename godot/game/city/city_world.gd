@@ -6,6 +6,7 @@ extends Node3D
 const PaperKit := preload("res://game/fx/paper_kit.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityProps := preload("res://game/city/city_props.gd")
+const PieceBatch := preload("res://game/city/piece_batch.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CityNames := preload("res://game/city/city_names.gd")
 const FACADE := preload("res://game/fx/city_facade.gdshader")
@@ -825,10 +826,13 @@ func _station(st: Dictionary) -> Node3D:
 	var cw: float = kd["canopy"][0]
 	var cd: float = kd["canopy"][1]
 	# techo: losa del color de la marca con cantos blancos (a rayas amarillas y negras en la de carga rápida) y la cara de abajo clara
-	CityProps.box(v, cl, xf, Vector3(0, 5.25, 0), Vector3(cw, 0.55, cd), col)
-	CityProps.box(v, cl, xf, Vector3(0, 4.9, 0), Vector3(cw - 0.4, 0.1, cd - 0.4), Color(0.92, 0.92, 0.9))
+	CityProps.prism_roof(v, cl, xf, cw, cd, 4.95, 1.1, col, Color(0.92, 0.92, 0.9))
 	CityProps.box(v, cl, xf, Vector3(0, 5.2, -cd * 0.5 - 0.02), Vector3(cw + 0.2, 0.9, 0.3), white)
 	CityProps.box(v, cl, xf, Vector3(0, 5.2, cd * 0.5 + 0.02), Vector3(cw + 0.2, 0.9, 0.3), white)
+	# banderines de papel colgando de los aleros (de la marca, blancos y amarillos)
+	var flags: Array = [col, white, Color(0.97, 0.80, 0.15), col.lightened(0.25), white]
+	CityProps.bunting(v, cl, xf, Vector3(-cw * 0.5, 4.7, -cd * 0.5 - 0.25), Vector3(cw * 0.5, 4.7, -cd * 0.5 - 0.25), flags)
+	CityProps.bunting(v, cl, xf, Vector3(-cw * 0.5, 4.7, cd * 0.5 + 0.25), Vector3(cw * 0.5, 4.7, cd * 0.5 + 0.25), flags)
 	if fast:
 		var nst := int(cw / 2.0)
 		for k in nst:
@@ -935,7 +939,16 @@ func _toll(t: Dictionary) -> Node3D:
 	# conos y marcas
 	for sx in [-1.0, 1.0]:
 		for k in 3:
-			CityProps.box(v, cl, xf, Vector3(float(sx) * (hw - 0.6), 0.3, -5.0 - float(k) * 3.0), Vector3(0.4, 0.6, 0.4), Color(1.0, 0.45, 0.1))
+			CityProps.frustum(v, cl, xf, Vector3(float(sx) * (hw - 0.6), 0.0, -5.0 - float(k) * 3.0), 0.32, 0.04, 0.7, 4, Color(1.0, 0.45, 0.1), 0.785)
+	# banderines de papel en el pórtico y canteros con flores y árboles a los costados (de adorno, fuera de la calzada)
+	var tflags: Array = [red, white, Color(0.97, 0.80, 0.15), white]
+	CityProps.bunting(v, cl, xf, Vector3(-hw - 1.0, 5.7, -2.3), Vector3(hw + 1.0, 5.7, -2.3), tflags)
+	CityProps.bunting(v, cl, xf, Vector3(-hw - 1.0, 5.7, 2.3), Vector3(hw + 1.0, 5.7, 2.3), tflags)
+	for sx in [-1.0, 1.0]:
+		PieceBatch.add("bush_flower_box", Vector3(float(sx) * (hw + 3.2), 0.0, 3.5), 1.57, 0.0, v, cl, xf)
+		PieceBatch.add("bush_plant_box", Vector3(float(sx) * (hw + 3.2), 0.0, -4.0), 1.57, 0.0, v, cl, xf)
+		PieceBatch.add("sc_cypress", Vector3(float(sx) * (hw + 5.2), 0.0, 7.0), 0.4, 6.5, v, cl, xf, 1.15)
+		PieceBatch.add("tree_birch", Vector3(float(sx) * (hw + 5.6), 0.0, -9.0), 1.1, 6.0, v, cl, xf, 1.15)
 	var m := ArrayMesh.new()
 	PaperKit.add_surface(m, v, cl, PaperKit.material(null, 0.0, 0.2, 0.3))
 	var mi := MeshInstance3D.new()
