@@ -78,6 +78,26 @@ func _init() -> void:
 		var cam_p := fr - Vector2(sin(ty), cos(ty)) * 13.0
 		var dv: Vector2 = (pp["door"] as Vector2) - cam_p
 		shots.append(["30_local_%s" % str(pp["id"]), cam_p.x, cam_p.y, rad_to_deg(atan2(dv.x, dv.y)), 2.8, -3.0])
+	shots.append(["70_garaje_g_este", 6000.0, 6012.0, 90.0, 1.7, -2.0])
+	shots.append(["71_garaje_g_norte", 6000.0, 6020.0, 180.0, 1.7, -2.0])
+	shots.append(["72_garaje_rampa_u", 6026.0, 6000.0, 90.0, 1.7, 0.0])
+	shots.append(["72b_garaje_rampa_b", 5974.0, 6000.0, -90.0, 1.7, 0.0])
+	shots.append(["73_garaje_u", 6100.0, 6012.0, 180.0, 1.7, -3.0])
+	shots.append(["74_garaje_b", 5900.0, 6012.0, 180.0, 1.7, -3.0])
+	shots.append(["74b_garaje_b_este", 5900.0, 6008.0, 90.0, 1.7, -3.0])
+	shots.append(["74c_garaje_b_oeste", 5900.0, 6008.0, -90.0, 1.7, -3.0])
+	shots.append(["74r_a", 5960.0, 5992.0, -90.0, 1.7, -2.0])
+	shots.append(["74r_b", 5936.0, 6008.0, -90.0, 1.7, -2.0])
+	shots.append(["74r_c", 5936.0, 6008.0, 90.0, 1.7, -2.0])
+	shots.append(["74r_d", 5960.0, 5992.0, 90.0, 1.7, -2.0])
+	shots.append(["75_garaje_alto", 6000.0, 6000.0, -90.0, 12.0, -50.0])
+	for pg in track.city.pois:
+		if str(pg["id"]) == "estacionamiento":
+			var gfr: Vector2 = pg["front"]
+			var gdr: Vector2 = pg["dir"]
+			var cam_g := gfr + Vector2(gdr.y, -gdr.x) * 30.0
+			var dvg: Vector2 = (pg["pos"] as Vector2) - cam_g
+			shots.append(["76_garaje_fachada", cam_g.x, cam_g.y, rad_to_deg(atan2(dvg.x, dvg.y)), 3.0, -3.0])
 	for stn in track.city.stations:
 		var sc: Vector2 = stn["center"]
 		var snr: Vector2 = stn["dir"]

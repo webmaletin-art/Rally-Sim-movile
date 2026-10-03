@@ -80,13 +80,13 @@ func _ground_plane() -> void:
 	m.albedo_color = Color(0.62, 0.66, 0.50)
 	m.roughness = 1.0
 	mi.material_override = m
-	mi.position = Vector3(0, -3.0, 0)
+	mi.position = Vector3(0, -6.5, 0) # más abajo que el subsuelo del Estacionamiento Central
 	mi.extra_cull_margin = 100000.0
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 	var sea := MeshInstance3D.new()
 	var pm2 := PlaneMesh.new()
-	pm2.size = Vector2(30000, 12000)
+	pm2.size = Vector2(6000, 12000) # sólo bajo la ciudad: más allá (x > 3000) está el bolsillo de los túneles y los estacionamientos
 	sea.mesh = pm2
 	var sm := StandardMaterial3D.new()
 	sm.albedo_color = Color(0.20, 0.52, 0.70)
@@ -359,8 +359,12 @@ func _terrain(s: Soup, x0: float, z0: float) -> void:
 			var h := city.height(wx, wz)
 			# donde hay una calle el terreno se hunde un poco para que el asfalto quede por encima aunque la ladera suba al costado
 			var pr := city.probe(wx, wz)
-			if pr[6] >= 0.0 and pr[0] > -7.0:
-				h = minf(h, float(pr[4]) - 0.5)
+			if pr[6] >= 0.0 and pr[0] > (-20.0 if float(pr[4]) < -0.3 else -7.0):
+				h = minf(h, float(pr[4]) - 0.5) # (bajo tierra se hunde más lejos: si no, las lomas del terreno asoman por adentro de la rampa)
+			for oa in city.open_areas:
+				# las salas del estacionamiento a distinta altura: el suelo queda por debajo (y bastante más allá de la pared)
+				if (oa as Dictionary).has("y") and Vector2(wx, wz).distance_to(oa["pos"]) < float(oa["r"]) + 22.0:
+					h = minf(h, float(oa["y"]) - 0.5)
 			hs[iz * (n + 1) + ix] = h
 	for iz in n:
 		for ix in n:
@@ -787,7 +791,7 @@ func _tunnel_segment(tn: Soup, si: int, ni: int) -> void:
 		var s: float = sg
 		tn.quad(a + na * (hw - 0.55) * s + lu, b + nb * (hw - 0.55) * s + lu, b + nb * (hw - 0.4) * s + lu, a + na * (hw - 0.4) * s + lu, Color(0.92, 0.92, 0.92))
 		var mid := (a + b) * 0.5 + (na + nb) * 0.5 * (wx * s)
-		if _in_other_road(mid.x, mid.z, rid):
+		if not str(road["name"]).begins_with("Rampa") and _in_other_road(mid.x, mid.z, rid):
 			continue # la bifurcación: acá la pared se abre hacia la otra calle
 		var wa := a + na * (wx * s)
 		var wb := b + nb * (wx * s)
@@ -801,10 +805,11 @@ func _tunnel_segment(tn: Soup, si: int, ni: int) -> void:
 		var l1 := a.lerp(b, 0.8)
 		var cy := Vector3(0, hgt - 0.02, 0)
 		tn.quad(l0 - na * 0.8 + cy, l1 - nb * 0.8 + cy, l1 + nb * 0.8 + cy, l0 + na * 0.8 + cy, Color(1.0, 0.97, 0.78))
-	# cierres de las puntas de los brazos: pared verde (la salida)
-	if city.s_prev[si] < 0:
+	# cierres de las puntas de los brazos: pared verde (la salida); las rampas del estacionamiento quedan abiertas a las salas
+	var is_ramp := str(road["name"]).begins_with("Rampa")
+	if city.s_prev[si] < 0 and not is_ramp:
 		tn.quad(a - na * wx, a - na * wx + up, a + na * wx + up, a + na * wx, Color(0.18, 0.62, 0.34))
-	if city.s_next[ni] < 0:
+	if city.s_next[ni] < 0 and not is_ramp:
 		tn.quad(b - nb * wx, b - nb * wx + up, b + nb * wx + up, b + nb * wx, Color(0.18, 0.62, 0.34))
 
 ## Una gasolinera: playón con techo sobre las islas de surtidores, carriles con círculos verdes (3 a 6 puntos de carga), kiosco al fondo con vidriera, poste de precios y carteles.
@@ -1025,32 +1030,48 @@ func _hall(h: Dictionary) -> Node3D:
 	var c: Vector2 = h["pos"]
 	var r: float = h["r"]
 	var hgt: float = h["h"]
+	var fy: float = h.get("y", 0.0) # altura del piso de esta sala
+	var gaps: Array = h.get("gaps", [])
 	var s := Soup.new()
 	var n := 40
 	for i in n:
 		var a0 := TAU * float(i) / float(n)
 		var a1 := TAU * float(i + 1) / float(n)
-		var p0 := Vector3(c.x + cos(a0) * r, 0.0, c.y + sin(a0) * r)
-		var p1 := Vector3(c.x + cos(a1) * r, 0.0, c.y + sin(a1) * r)
-		var cen := Vector3(c.x, 0.0, c.y)
+		var p0 := Vector3(c.x + cos(a0) * r, fy, c.y + sin(a0) * r)
+		var p1 := Vector3(c.x + cos(a1) * r, fy, c.y + sin(a1) * r)
+		var cen := Vector3(c.x, fy, c.y)
 		var cu := Vector3(0, hgt, 0)
 		s.tri(cen + Vector3(0, 0.02, 0), p0 + Vector3(0, 0.02, 0), p1 + Vector3(0, 0.02, 0), Color(0.25, 0.26, 0.30))
 		s.tri(cen + cu, p0 + cu, p1 + cu, Color(0.32, 0.33, 0.38))
+		# la pared se abre donde empieza una rampa (el techo y el piso siguen)
+		var am := (a0 + a1) * 0.5
+		var open := false
+		for g in gaps:
+			if absf(wrapf(am - float(g[0]), -PI, PI)) < float(g[1]) - 0.5 * (a1 - a0) * 0.5:
+				open = true
+		if open:
+			continue
 		s.quad(p0, p0 + cu, p1 + cu, p1, Color(0.64, 0.66, 0.70) if i % 2 == 0 else Color(0.56, 0.58, 0.63))
 		s.quad(p0 + Vector3(0, 0.9, 0), p0 + Vector3(0, 1.5, 0), p1 + Vector3(0, 1.5, 0), p1 + Vector3(0, 0.9, 0), Color(0.95, 0.52, 0.14))
-	# rayas de los lugares: líneas radiales entre 29 y 41 m y el borde del pasillo
+	# rayas de los lugares: líneas radiales en la corona exterior y el borde del pasillo (proporcional al radio: la sala de 42 m las dibuja entre 29 y 41 m)
 	for i in 44:
 		var a := TAU * float(i) / 44.0
+		var skip := false
+		for g in gaps:
+			if absf(wrapf(a - float(g[0]), -PI, PI)) < float(g[1]) + 0.12:
+				skip = true
+		if skip:
+			continue
 		var d := Vector3(cos(a), 0, sin(a))
 		var t := Vector3(-sin(a), 0, cos(a))
-		var p_in := Vector3(c.x, 0.04, c.y) + d * 30.0
-		var p_out := Vector3(c.x, 0.04, c.y) + d * 41.0
+		var p_in := Vector3(c.x, fy + 0.04, c.y) + d * (r * 0.7)
+		var p_out := Vector3(c.x, fy + 0.04, c.y) + d * (r * 0.975)
 		s.quad(p_in - t * 0.07, p_out - t * 0.07, p_out + t * 0.07, p_in + t * 0.07, Color(0.92, 0.92, 0.92))
-	for k in [12.0, 24.0, 34.0]:
-		var m_n := 8 if k < 20.0 else (12 if k < 30.0 else 14)
+	for k in [r * 0.285, r * 0.57, r * 0.81]:
+		var m_n := 8 if k < r * 0.48 else (12 if k < r * 0.71 else 14)
 		for i in m_n:
 			var a := TAU * (float(i) + 0.5) / float(m_n)
-			var lc := Vector3(c.x + cos(a) * k, hgt - 0.02, c.y + sin(a) * k)
+			var lc := Vector3(c.x + cos(a) * k, fy + hgt - 0.02, c.y + sin(a) * k)
 			s.quad(lc + Vector3(-1.4, 0, -0.5), lc + Vector3(1.4, 0, -0.5), lc + Vector3(1.4, 0, 0.5), lc + Vector3(-1.4, 0, 0.5), Color(1.0, 0.97, 0.78))
 	var m := ArrayMesh.new()
 	_surface(m, s, _tunnel_mat)
@@ -1154,6 +1175,19 @@ func _shop_front(b: Dictionary) -> Node3D:
 	CityProps.box(v, c, xf, Vector3(0, 4.55, 0.05), Vector3(8.0, 0.5, 0.3), col)
 	CityProps.box(v, c, xf, Vector3(-3.75, 2.1, 0.05), Vector3(0.4, 4.2, 0.3), col.darkened(0.15))
 	CityProps.box(v, c, xf, Vector3(3.75, 2.1, 0.05), Vector3(0.4, 4.2, 0.3), col.darkened(0.15))
+	if str(p["kind"]) == "parking":
+		# el cartel grande de la «P» sobre el portón: un tablero azul de papel con la letra blanca
+		CityProps.box(v, c, xf, Vector3(0, 7.4, 0.2), Vector3(4.6, 4.6, 0.3), Color(0.10, 0.28, 0.72))
+		CityProps.box(v, c, xf, Vector3(0, 7.4, 0.12), Vector3(5.0, 5.0, 0.2), Color(0.97, 0.97, 0.96))
+		var pl := Label3D.new()
+		pl.text = "P"
+		pl.font_size = 360
+		pl.pixel_size = 0.011
+		pl.modulate = Color(1, 1, 1)
+		pl.outline_size = 0
+		pl.position = xf * Vector3(0, 7.4, 0.42)
+		pl.rotation = Vector3(0, yaw, 0)
+		root.add_child(pl)
 	var m := ArrayMesh.new()
 	PaperKit.add_surface(m, v, c, PaperKit.material(null, 0.0, 0.2, 0.3))
 	var mouth := MeshInstance3D.new()

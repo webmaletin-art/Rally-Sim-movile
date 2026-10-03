@@ -18,6 +18,7 @@ var phase := ""
 var t := 0.0
 var fade := 0.0
 var _driver
+var _prev_driver # el piloto que había antes de entrar (la prueba automática lo usa)
 var _dist_in := 0.0
 
 func setup(p_race, p_world, p_city) -> void:
@@ -79,6 +80,7 @@ func _begin(id: String, p: Dictionary) -> void:
 	var front: Vector2 = p["front"]
 	var dir: Vector2 = p["dir"]
 	race.cars[0].place(front.x, front.y, atan2(dir.x, dir.y)) # derecho frente al portón
+	_prev_driver = race.cars[0].driver
 	_driver = BayDriver.new()
 	race.cars[0].driver = _driver
 	_dist_in = (p["door"] as Vector2).distance_to(front) + 4.0
@@ -110,4 +112,26 @@ func _run(dt: float) -> void:
 		if fade >= 1.0:
 			phase = "gone"
 			var front: Vector2 = p["front"]
-			race.enter_shop(str(p["shop"]), [front.x, front.y, float(p["road_yaw"])])
+			if str(p["shop"]) == "garage":
+				_enter_garage()
+			else:
+				race.enter_shop(str(p["shop"]), [front.x, front.y, float(p["road_yaw"])])
+
+## El Estacionamiento Central no tiene menú: la pantalla está en negro, el auto aparece en la planta baja (mirando hacia adentro) y la pantalla se abre sola (lo hace CityLinks)
+func _enter_garage() -> void:
+	var to: Array = city.spawns[1] # [x, z, rumbo] de la planta baja
+	var ph = race.cars[0].phys
+	var v := clampf(sqrt(ph.vx * ph.vx + ph.vz * ph.vz), 0.0, 6.0)
+	world.warm(Vector3(float(to[0]), 0.0, float(to[1])))
+	race.cars[0].place(float(to[0]), float(to[1]), float(to[2]))
+	ph.vx = sin(float(to[2])) * v
+	ph.vz = cos(float(to[2])) * v
+	ph.vLong = v
+	race.cars[0].driver = _prev_driver
+	race.on_teleport()
+	race.links.phase = "in"
+	race.links.t = 0.0
+	race.links.cooldown = 2.0
+	active = ""
+	phase = ""
+	fade = 0.0

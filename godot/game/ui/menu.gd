@@ -138,10 +138,13 @@ func _ready() -> void:
 			tc["type"] = "city"
 			tc["track"] = "aurelia"
 			tc["testCar"] = false
+			tc["resume"] = [0.0, 40.0, 0.0] # las pruebas arrancan en la plaza (no en un estacionamiento) salvo que pidan otra pose
 			for ai in range(2, at.size()):
 				if at[ai].begins_with("pose:"): # prueba: arranca en este punto (x,z,rumbo en grados)
 					var pp := at[ai].substr(5).split(",")
 					tc["resume"] = [float(pp[0]), float(pp[1]), deg_to_rad(float(pp[2]))]
+				elif at[ai] == "spawn":
+					tc.erase("resume") # prueba: se aparece dentro de un estacionamiento, como en el juego
 				elif at[ai].begins_with("tod:"):
 					tc["tod"] = float(at[ai].substr(4)) # prueba: hora del día fija
 					tc["tod_frozen"] = true

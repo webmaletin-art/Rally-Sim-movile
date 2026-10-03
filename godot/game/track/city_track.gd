@@ -38,10 +38,15 @@ func ground_info(x: float, z: float) -> Vector2:
 func ground_smooth(x: float, z: float) -> float:
 	return ground_info(x, z).x
 
-## Pose de largada: en la plaza, sobre el anillo, mirando hacia la Avenida 3 (al sur). Los lugares se abren en filas.
+var spawn_i := 0 # cuál de los estacionamientos (city.spawns) toca esta vez: el jugador siempre aparece dentro de uno
+## Pose de largada: dentro de un estacionamiento (subterráneo o de planta baja). Los lugares siguientes se abren en fila hacia el costado.
 func start_pose(slot: int) -> Array:
+	var sp: Array = city.spawns[spawn_i % city.spawns.size()]
 	var side := -1.0 if slot % 2 == 0 else 1.0
-	return [side * 3.0, 48.0 + float(slot / 2) * 9.0 - 8.0, 0.0]
+	var yaw := float(sp[2])
+	var lat := Vector2(cos(yaw), -sin(yaw)) # a la derecha del rumbo
+	var q := Vector2(float(sp[0]), float(sp[1])) + lat * side * 3.0 * float(1 + slot / 2) - Vector2(sin(yaw), cos(yaw)) * float(slot / 2) * 4.0
+	return [q.x, q.y, yaw]
 
 ## Empuja un círculo (x, z, r) hacia adentro del corredor de la calle y lo saca de los postes: (nx, nz, profundidad)
 func push(x: float, z: float, r: float) -> Vector3:

@@ -24,7 +24,7 @@ static func new_car_state(id: String) -> Dictionary:
 	return {"upg": {}, "tires": "street", "tiresOwned": ["street"], "tune": {}, "paint": (m["paint"] as Dictionary).duplicate(), "km": 0.0, "bought": Time.get_unix_time_from_system()}
 
 static func default_profile() -> Dictionary:
-	return {"v": 1, "name": "Piloto", "credits": 5000, "fuel": 1.0, "toll_pass": 0, "xp": 0, "level": 1, "owned": {}, "current": "", "events": {}, "cups": {},
+	return {"v": 1, "name": "Piloto", "credits": 5000, "fuel": 1.0, "toll_pass": 0, "migr": 1, "xp": 0, "level": 1, "owned": {}, "current": "", "events": {}, "cups": {},
 		"stats": {"km": 0.0, "races": 0, "wins": 0, "podiums": 0, "events": 0, "driftBest": 0, "topSpeed": 0, "boards": {}, "traps": {}, "time": 0.0},
 		"iap": {}, "settings": DEFAULT_SETTINGS.duplicate(true), "daily": {"day": "", "streak": 0}, "claimed": {}, "created": Time.get_unix_time_from_system(), "tutorial": false}
 
@@ -54,6 +54,15 @@ func load_data() -> Dictionary:
 					for k in dd["owned"][id]:
 						ns[k] = dd["owned"][id][k]
 					dd["owned"][id] = ns
+			if int(dd.get("migr", 0)) < 1:
+				# una sola vez: cámara interior con los dos pilotos como predeterminada y todos los gráficos en automático (si anda lento, el juego baja la calidad solo)
+				var sets: Dictionary = dd["settings"]
+				sets["camera"] = 6
+				for k2 in ["quality", "textures", "particles", "trees", "shadowsQ"]:
+					sets[k2] = "auto"
+				sets["res"] = 0
+				sets["autotuned"] = false
+				dd["migr"] = 1
 			if str(dd["current"]) != "" and not (dd["owned"] as Dictionary).has(dd["current"]):
 				dd["current"] = (dd["owned"] as Dictionary).keys()[0] if (dd["owned"] as Dictionary).size() > 0 else ""
 			return dd

@@ -19,6 +19,13 @@ const GRID_A1 := 180.0
 const POCKET := Vector2(6000.0, 0.0) # centro del túnel en cruz: un «bolsillo» del mundo, lejos de la ciudad (se entra y se sale por las bocas, con un fundido)
 const HALL_C := Vector2(6000.0, 3000.0) # centro del estacionamiento subterráneo (otro bolsillo)
 const HALL_R := 42.0
+const GARAGE_C := Vector2(6000.0, 6000.0) # el Estacionamiento Central: tres salas redondas (planta baja en el medio, subsuelo al oeste y planta alta al este) unidas por rampas
+const GARAGE_LEVELS := [
+	{"key": "g", "dx": 0.0, "r": 30.0, "y": 0.0, "name": "Estacionamiento Central"},
+	{"key": "u", "dx": 100.0, "r": 26.0, "y": 4.4, "name": "Estacionamiento Central · Planta alta"},
+	{"key": "b", "dx": -100.0, "r": 26.0, "y": -4.4, "name": "Estacionamiento Central · Subsuelo"},
+]
+const RAMP_HW := 4.0
 const TUNNEL_HALF := 900.0 # cada brazo de la cruz mide 900 m desde el centro
 const RINGS := [130.0, 260.0, 390.0, 520.0, 650.0, 780.0, 910.0, 1040.0]
 const COAST_R := 1120.0
@@ -43,7 +50,8 @@ var building_count := 0
 # bocas de túnel y estacionamiento: lugares donde el auto «pasa» a otro lado (con un fundido a negro)
 var links: Array = [] # {id, pos: Vector2, r: float, to: [x, z, yaw], label: String}
 var mouths: Array = [] # estructuras de entrada: {id, pos: Vector2, dir: Vector2 (hacia adentro de la boca), kind: "tunnel" | "park"}
-var halls: Array = [] # {pos, r, h}
+var halls: Array = [] # {pos, r, h, y (altura del piso), gaps: [[ángulo, medio ancho]] (aberturas de la pared donde empiezan las rampas)}
+var spawns: Array = [] # lugares donde aparece el jugador al entrar al mundo: dentro de un estacionamiento [x, z, rumbo]
 var stations: Array = [] # gasolineras: {id, name, center, yaw, dir, tn, color, fuel_points: [Vector2], pumps: [Vector2], front}
 # objetos de la calle (farolas, árboles, semáforos, bolardos): el id es el índice; salen igual en todos los teléfonos
 var prop_type := PackedByteArray()
@@ -321,6 +329,50 @@ func _make_hall(id: int) -> int:
 	links.append({"id": "salida_estacionamiento", "pos": HALL_C + Vector2(0.0, 33.0), "r": 4.0, "to": [mouth.x - d_in.x * 16.0, mouth.y - d_in.y * 16.0, atan2(-d_in.x, -d_in.y)], "label": "SALIDA", "label_pos": HALL_C + Vector2(0.0, 40.0), "label_yaw": PI})
 	halls.append({"pos": HALL_C, "r": HALL_R, "h": 5.2})
 	open_areas.append({"pos": HALL_C, "r": HALL_R - 0.6, "name": "Estacionamiento subterráneo", "paving": true, "dark": true})
+	spawns.append([HALL_C.x, HALL_C.y + 12.0, PI]) # el estacionamiento subterráneo de la boca del parque
+	return id
+
+## Estacionamiento Central: tres salas redondas a distinta altura (sin superponerse en planta, así el suelo de cada una es una altura simple) y dos rampas curvas entre la planta baja
+## y las otras dos. La entrada es un edificio de la ciudad (ver POI_SPECS, «garage»): se entra por el portón y se aparece en la planta baja. Todo se ve por dentro (techo cerrado).
+func _make_garage(id: int) -> int:
+	for lv in GARAGE_LEVELS:
+		var c := GARAGE_C + Vector2(float(lv["dx"]), 0.0)
+		var gaps: Array = []
+		if lv["key"] == "g":
+			gaps = [[0.0, asin(RAMP_HW / float(lv["r"]))], [PI, asin(RAMP_HW / float(lv["r"]))]]
+		elif lv["key"] == "u":
+			gaps = [[PI, asin(RAMP_HW / float(lv["r"]))]]
+		else:
+			gaps = [[0.0, asin(RAMP_HW / float(lv["r"]))]]
+		halls.append({"pos": c, "r": float(lv["r"]), "h": 6.2, "y": float(lv["y"]), "gaps": gaps})
+		open_areas.append({"pos": c, "r": float(lv["r"]) - 0.6, "name": str(lv["name"]), "paving": true, "dark": true, "y": float(lv["y"])})
+	# rampas: del borde de la planta baja al borde de las otras (curvas en S, 10 % de pendiente)
+	for side_v in [1.0, -1.0]:
+		var side: float = side_v
+		var lv_t: Dictionary = GARAGE_LEVELS[1] if side > 0.0 else GARAGE_LEVELS[2]
+		var x0: float = GARAGE_C.x + side * 28.0
+		var x1: float = GARAGE_C.x + side * (absf(float(lv_t["dx"])) - float(lv_t["r"]) + 2.0)
+		var n := 14
+		var plan := PackedVector3Array()
+		var cum := PackedFloat32Array()
+		var acc := 0.0
+		var prev := Vector2.ZERO
+		for i in n + 1:
+			var t := float(i) / float(n)
+			var px: float = lerpf(x0, x1, t)
+			var pz: float = GARAGE_C.y + (side * 8.0) * sin(TAU * t)
+			var py: float = float(lv_t["y"]) * clampf((t - 0.1) / 0.8, 0.0, 1.0)
+			var q := Vector2(px, pz)
+			if i > 0:
+				acc += prev.distance_to(q)
+			prev = q
+			plan.append(Vector3(px, py, pz))
+			cum.append(acc)
+		var nj := PackedByteArray()
+		nj.resize(plan.size())
+		roads.append({"id": roads.size(), "name": "Rampa · Planta alta" if side > 0.0 else "Rampa · Subsuelo", "num": 0, "kind": "tunnel", "hw": RAMP_HW, "sw": 0.0, "pts": plan, "cum": cum, "nj": nj})
+	spawns.append([GARAGE_C.x, GARAGE_C.y + 8.0, PI]) # planta baja
+	spawns.append([GARAGE_C.x - 100.0, GARAGE_C.y + 8.0, PI]) # subsuelo
 	return id
 
 func _make_roads() -> void:
@@ -402,6 +454,7 @@ func _make_roads() -> void:
 	id += 1
 	id = _make_tunnels(id)
 	id = _make_hall(id)
+	id = _make_garage(id)
 
 ## Trazado del camino de la colina: waypoints en polares (radio, ángulo) alrededor del centro de la colina, con el radio siempre bajando (así el camino nunca baja
 ## para volver a subir) y las cuchillas redondeadas (Chaikin en polares). Antes arranca el tramo de la avenida 6 hasta el pie de la colina.
@@ -574,7 +627,7 @@ func probe(x: float, z: float) -> PackedFloat64Array:
 			out[1] = 0.0
 			out[2] = 0.0
 			out[3] = 0.0
-			out[4] = height(x, z)
+			out[4] = float(oa["y"]) if oa.has("y") else height(x, z)
 			out[5] = orr
 			out[6] = -2.0 - float(oi)
 	return out
@@ -1213,6 +1266,15 @@ func _place_props() -> void:
 	for i in 12:
 		var a := TAU * (float(i) + 0.5) / 12.0
 		_add_prop(5, HALL_C.x + cos(a) * 26.0, HALL_C.y + sin(a) * 26.0, Vector2(0, 1))
+	# Estacionamiento Central: pilares en cada sala (lejos de las rampas y del lugar donde aparece el auto)
+	for lv in GARAGE_LEVELS:
+		var gc := GARAGE_C + Vector2(float(lv["dx"]), 0.0)
+		var big: bool = lv["key"] == "g"
+		var np := 8 if big else 6
+		for i in np:
+			var a := (22.5 + 45.0 * float(i)) * PI / 180.0 if big else (15.0 + 60.0 * float(i)) * PI / 180.0
+			var rr := 19.0 if big else 15.0
+			_add_prop(5, gc.x + cos(a) * rr, gc.y + sin(a) * rr, Vector2(0, 1))
 	# el estacionamiento queda vacío: los únicos autos son los de los jugadores
 	# semáforos: cuatro por cruce grande (dos por cada calle, en esquinas opuestas)
 	for j in junctions:
@@ -1300,6 +1362,7 @@ const POI_SPECS := [
 	["taller_suspension", "garage", "Suspensión y Frenos", "Avenida 6", 142.0, -1.0, 26.0, 18.0, 8.0, Color(0.30, 0.65, 0.35), "susp"],
 	["taller_ruedas", "garage", "Taller de Ruedas", "Avenida 8", 142.0, 1.0, 26.0, 18.0, 8.0, Color(0.95, 0.80, 0.20), "wheels"],
 	["taller_reglaje_b", "garage", "Reglaje del Puerto", "Costanera 90", 420.0, -1.0, 26.0, 18.0, 8.0, Color(0.95, 0.65, 0.15), "tune_b"],
+	["estacionamiento", "parking", "Estacionamiento Central", "Avenida 5", 230.0, -1.0, 36.0, 24.0, 11.2, Color(0.28, 0.52, 0.88), "garage"],
 	["mirador", "view", "Mirador de la Colina", "Camino de la Colina 300", -1.0, 1.0, 18.0, 14.0, 6.4, Color(0.95, 0.80, 0.25), ""],
 ]
 
@@ -1367,5 +1430,9 @@ func _place_pois() -> void:
 			nj_b.resize(plan.size())
 			roads[roads.size() - 1]["nj"] = nj_b
 			_index_road(roads.size() - 1)
+		if str(sp[10]) == "garage":
+			# la salida de la planta baja lleva al frente del edificio, mirando por la calle
+			links.append({"id": "salida_estacionamiento_central", "pos": GARAGE_C + Vector2(0.0, 24.0), "r": 4.0, "to": [lane.x, lane.y, yaw], "label": "SALIDA",
+				"label_pos": GARAGE_C + Vector2(0.0, 29.0), "label_yaw": PI})
 		if str(sp[1]) != "view":
 			_add_building(cen, float(sp[6]), float(sp[7]), float(sp[8]), yaw, sp[9], sp[9].darkened(0.3), zone_of(cen.x, cen.y), false, ri, {"poi": str(sp[0]), "side": -side})

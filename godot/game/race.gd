@@ -521,6 +521,11 @@ func _make_track() -> void:
 		return
 	if track_id == "aurelia":
 		track = CityTrack.new() # el mundo abierto: Dream City (no figura en routes.json: no es una pista de carrera)
+		if profile != null and not cfg.has("resume"):
+			# se aparece dentro de un estacionamiento: uno distinto cada vez (el subterráneo del parque, la planta baja y el subsuelo del Estacionamiento Central)
+			track.spawn_i = int(profile.d.get("spawn_n", 0)) % track.city.spawns.size()
+			profile.d["spawn_n"] = track.spawn_i + 1
+			profile.save()
 		return
 	if track_id == "prueba" or not track_maps.has(track_id):
 		track_id = "prueba"
@@ -571,7 +576,8 @@ func _build_track_nodes() -> void:
 		var cw: Node3D = track.build_world()
 		cw.view_k = _view_k()
 		track_root.add_child(cw)
-		var wp := Vector3(0.0, 0.0, 48.0)
+		var spw: Array = track.start_pose(0)
+		var wp := Vector3(float(spw[0]), 0.0, float(spw[1]))
 		if cfg.has("resume"):
 			wp = Vector3(float(cfg["resume"][0]), 0.0, float(cfg["resume"][1])) # se vuelve de un taller: las cuadras de ese lugar
 		cw.warm(wp) # las cuadras de alrededor ya armadas antes de largar
@@ -1842,6 +1848,9 @@ func _auto_degrade() -> bool:
 	if p_auto and p > 2:
 		_set_auto_particles(int(steps[pi + 1]))
 		return true
+	if track is CityTrack and track.world_node != null and float(track.world_node.view_k) > 0.62:
+		_set_city_view(maxf(0.6, float(track.world_node.view_k) - 0.2)) # Dream City: se arman menos cuadras y la niebla cierra antes
+		return true
 	var tx := str(profile.setting("autoTex"))
 	if str(profile.setting("textures")) == "auto" and tx != "low":
 		profile.set_setting("autoTex", "mid" if tx == "high" else "low")
@@ -1851,6 +1860,15 @@ func _auto_degrade() -> bool:
 		_set_auto_particles(int(steps[pi + 1]))
 		return true
 	return false
+
+## Alcance de la vista de Dream City (1,0 = completo · 0,6 = el mínimo): cuántas cuadras se arman a la redonda y a qué distancia cierra la niebla
+func _set_city_view(vk: float) -> void:
+	track.world_node.view_k = vk
+	env.fog_depth_begin = 160.0 * vk
+	env.fog_depth_end = 560.0 * vk
+	if not _ug_base.is_empty():
+		_ug_base[3] = env.fog_depth_begin
+		_ug_base[4] = env.fog_depth_end
 
 func _set_auto_particles(v: int) -> void:
 	profile.set_setting("autoParticles", v)

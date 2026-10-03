@@ -40,6 +40,10 @@ Se definen en `godot/game/data/shops.gd` (qué pestañas, mejoras y grupos de aj
 - Cómo se hace: el túnel y la sala están en un «bolsillo» del mundo (x > 3000, plano) y las bocas son enlaces (`links` de `city_layout.gd`, `city_links.gd`) que mueven el auto con un fundido a negro. Abajo la luz del sol casi se apaga y la niebla es oscura y corta (`race.gd`, `_underground_light`).
 - Las puntas de los brazos todavía salen a la ciudad; en la próxima actualización pueden conectar con otras ciudades.
 
+## Estacionamientos y aparición
+- **El jugador siempre aparece dentro de un estacionamiento** (uno distinto cada vez, rotan): el subterráneo del Parque del Drift, la planta baja del Estacionamiento Central o su subsuelo (`CityTrack.start_pose`, `city.spawns`, contador `spawn_n` del perfil). Se sale manejando hasta el círculo verde «SALIDA» y se aparece en la calle.
+- **Estacionamiento Central** (edificio de la Avenida 5, con un gran cartel «P»): se entra frenando en el círculo verde, el portón se abre y el auto entra solo (igual que los talleres, pero en vez de un menú se funde a negro y se aparece en la planta baja). Adentro hay **tres niveles**: planta baja (a nivel de la calle), **subsuelo** (−4,4 m) y **un solo piso alto** (+4,4 m), unidos por dos rampas curvas de 10 % de pendiente; no hay más pisos para que nadie pueda ver qué hay detrás de los edificios. El interior vive en el «bolsillo» del mundo (x > 3000) como salas redondas que no se superponen en planta (así el suelo de cada una es una altura simple: `open_areas` con `y` y las rampas son calles con altura propia), con techo cerrado, pilares y rayas de lugares. Sin autos: sólo los de los jugadores (`city_layout.gd`: `_make_garage`; `city_world.gd`: `_hall` con `y` y aberturas en la pared donde empiezan las rampas).
+
 ## Nafta y gasolineras
 - **4 gasolineras de papel**, cada una un **playón** que ocupa el lugar de una manzana (varios círculos que se pisan, con una pared de edificios por detrás), con techo sobre islas de surtidores, carriles con **3 a 6 puntos de carga** (círculo verde), kiosco con vidriera, poste de precios y carteles (`_place_stations`/`STATION_KINDS` en `city_layout.gd`, `_station` en `city_world.gd`). El generador busca un lugar libre cerca del pedido (sin pisar calles, locales ni zonas abiertas):
   - **Carga Rápida Central** (grande, 6 puntos) en la Avenida 3, cerca del centro, donde pasa la mayoría. Carga en ~2 s y cuesta un 30 % más, pero regala un **pase de peaje** (los dos próximos peajes a mitad de precio).
@@ -55,6 +59,10 @@ Se definen en `godot/game/data/shops.gd` (qué pestañas, mejoras y grupos de aj
 ## Peajes
 - **Un peaje por cada ruta rural** (Ruta 20, 40, 60 y 80), a ~95 m de donde empieza la ruta (antes de la ruta de alta velocidad). Pórtico, isla central con cabina y **una barrera por carril** (`_toll` en `city_world.gd`, lógica en `city_toll.gd`).
 - La barrera cerrada es **sólida** (círculos de choque): hay que frenar (menos de ~30 km/h) en un carril, se **cobra 30 créditos** (15 con pase), la barrera se levanta y se pasa. Sin créditos no abre. Para volver a la ciudad las barreras se abren solas y no se cobra. En modo desarrollador pasa gratis.
+
+## Cámara y calidad
+- La cámara predeterminada es siempre la **interior con los dos pilotos** (la de atrás del piloto). Al actualizar, una sola vez, se pone en esa cámara y **todos los gráficos pasan a «Automático»** (`migr` en el perfil).
+- Si el teléfono anda lento, el juego baja solo, en este orden: partículas, resolución del mundo 3D, **alcance de la vista de Dream City** (menos cuadras armadas y niebla más corta, hasta 0,6), texturas y el filtro de cámara. Las cuadras de alrededor se arman antes de largar (`warm`) y lo lejano se oculta por distancia (`visibility_range`).
 
 ## Día y noche
 - **Un día entero dura 16 minutos** (`city_clock.gd`): amanecer, mañana, mediodía, tarde, atardecer y noche. El reloj se ve bajo la barra de nafta y la hora se guarda en el perfil.

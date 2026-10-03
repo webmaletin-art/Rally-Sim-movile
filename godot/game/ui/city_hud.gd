@@ -9,8 +9,8 @@ const CityNames := preload("res://game/city/city_names.gd")
 
 const MINI := 176.0 # lado del minimapa (px)
 const MINI_R := 230.0 # metros que muestra de radio
-const KIND_COL := {"dealer": Color(0.35, 0.65, 1.0), "garage": Color(1.0, 0.6, 0.15), "view": Color(1.0, 0.88, 0.3), "fuel": Color(0.95, 0.32, 0.28), "toll": Color(0.95, 0.95, 0.95)}
-const KIND_ICON := {"dealer": "🚗", "garage": "🔧", "view": "⛰", "fuel": "⛽", "toll": "🛣"}
+const KIND_COL := {"dealer": Color(0.35, 0.65, 1.0), "garage": Color(1.0, 0.6, 0.15), "view": Color(1.0, 0.88, 0.3), "fuel": Color(0.95, 0.32, 0.28), "toll": Color(0.95, 0.95, 0.95), "parking": Color(0.30, 0.55, 0.95)}
+const KIND_ICON := {"dealer": "🚗", "garage": "🔧", "view": "⛰", "fuel": "⛽", "toll": "🛣", "parking": "🅿"}
 
 var city
 var track
