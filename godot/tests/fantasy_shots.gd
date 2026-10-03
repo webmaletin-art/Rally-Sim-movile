@@ -11,6 +11,7 @@ func _init() -> void:
 	var out := args[0] if args.size() > 0 else "/tmp/fantasy_shots"
 	var map_id := args[1] if args.size() > 1 else "marte"
 	var dens := float(args[2]) if args.size() > 2 else 0.75
+	var view := lerpf(0.6, 1.0, (dens - 0.5) / 0.5) # el alcance de vista que usa el juego según la calidad
 	DirAccess.make_dir_recursive_absolute(out)
 	var maps: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["maps"]
 	var m: Dictionary = maps[map_id]
@@ -44,9 +45,9 @@ func _init() -> void:
 		world.setup(track, dens, DreamWorld.SUN)
 		sun_dir = DreamWorld.SUN
 	else:
-		FantasyWorld.atmosphere_of(theme, env, sun, cam, vp)
+		FantasyWorld.atmosphere_of(theme, env, sun, cam, vp, view)
 		world = FantasyWorld.new()
-		world.setup_world(track, dens, theme)
+		world.setup_world(track, dens, theme, view)
 		sun_dir = FantasyWorld.SUNS[theme]
 		planet_dir = FantasyWorld.PLANETS.get(theme, planet_dir)
 	vp.add_child(world)

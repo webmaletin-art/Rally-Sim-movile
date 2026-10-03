@@ -447,12 +447,18 @@ func _build_world() -> void:
 	_build_track_nodes()
 
 ## Vórtice de Ensueño: cielo con Júpiter gigante, niebla pastel, sol dorado y reflejos de sol sobre las flores
+## Alcance de la vista de los mapas fantasía según la calidad: 0,6 (teléfonos flojos) · 0,8 · 1,0. Achica las distancias de visibilidad y la niebla para ahorrar dibujo.
+func _view_k() -> float:
+	var q := str(profile.setting("quality")) if profile != null else "mid"
+	var dq: float = float({"low": 0.5, "high": 1.0}.get(q, 0.75)) if q != "auto" else float([0.5, 0.75, 1.0][clampi(int(profile.setting("autoTier")), 0, 2)])
+	return lerpf(0.6, 1.0, (dq - 0.5) / 0.5)
+
 func _dream_atmosphere() -> void:
 	var th: String = str(track.theme)
 	if th == "dream":
 		DreamWorld.atmosphere(env, sun, cam, world)
 	else:
-		FantasyWorld.atmosphere_of(th, env, sun, cam, world) # Marte, la Luna o el anillo de Júpiter
+		FantasyWorld.atmosphere_of(th, env, sun, cam, world, _view_k()) # Marte, la Luna o el anillo de Júpiter
 
 ## Paper Race: cielo y niebla de papel (la selva se cierra a lo lejos), luz suave y pareja
 func _paper_atmosphere() -> void:
@@ -532,9 +538,10 @@ func _build_track_nodes() -> void:
 		var dq_q := str(profile.setting("quality")) if profile != null else "mid"
 		var dq: float = float({"low": 0.5, "high": 1.0}.get(dq_q, 0.75)) if dq_q != "auto" else float([0.5, 0.75, 1.0][clampi(int(profile.setting("autoTier")), 0, 2)])
 		if track.theme == "dream":
+			dw.view_k = _view_k()
 			dw.setup(track, dq, DreamWorld.SUN)
 		else:
-			dw.setup_world(track, dq, track.theme)
+			dw.setup_world(track, dq, track.theme, _view_k())
 		track_root.add_child(dw)
 		road_mat = StandardMaterial3D.new()
 		ground_mat = StandardMaterial3D.new()

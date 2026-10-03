@@ -118,6 +118,7 @@ var c_shoulder := Color(0.99, 0.90, 0.84)
 var c_mid := Color(1.0, 0.85, 0.35)
 var seed_v := 777
 var glint_amt := 1.0 # cuánto brillan las piezas con el sol
+var view_k := 1.0 # alcance de la vista (0,6 en teléfonos flojos … 1): achica las distancias de visibilidad para ahorrar dibujo
 var _vis_of: Dictionary = {} # distancia de visibilidad por pieza (la fija la capa que la planta)
 var _inst: Dictionary = {}
 var _ico_v: Array[Vector3] = []
@@ -221,7 +222,7 @@ func _holder(m: ArrayMesh, vis_end: float) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.visibility_range_end = vis_end
+	mi.visibility_range_end = vis_end * view_k
 	add_child(mi)
 	return mi
 
@@ -406,7 +407,7 @@ func _commit_instances() -> void:
 		mmi.material_override = mat
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		var cat := str(PaperKit.info(id).get("cat", ""))
-		mmi.visibility_range_end = 560.0 if cat == "arbol" else (280.0 if cat in ["arbusto", "bambu"] else 160.0)
+		mmi.visibility_range_end = (float(_vis_of[id]) if _vis_of.has(id) else (560.0 if cat == "arbol" else (280.0 if cat in ["arbusto", "bambu"] else 160.0))) * view_k
 		add_child(mmi)
 	_inst.clear()
 

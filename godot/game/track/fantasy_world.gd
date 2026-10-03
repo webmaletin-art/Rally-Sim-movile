@@ -33,8 +33,8 @@ const DEFS := {
 				"tall": ["m_picos", "m_mesa_baja", "m_picos"], "huge": ["m_mesa", "m_arco", "m_picos_altos", "m_mesa"], "fill": ["m_cristal_rojo", "m_cactus", "m_cactus2"]},
 		],
 		"zones": [[0.0, 0], [0.16, 1], [0.34, 2], [0.50, 3], [0.64, 1], [0.80, 4]],
-		"layers": [[10.0, 0.6, 7.0, "low", 0.45, 1.0, 120.0], [3.0, 1.5, 14.0, "mid", 0.55, 1.15, 240.0], [1.0, 9.0, 36.0, "tall", 0.8, 1.5, 420.0],
-			[0.16, 14.0, 60.0, "huge", 0.9, 1.5, 760.0], [1.4, 1.5, 16.0, "fill", 1.0, 1.9, 200.0], [2.0, 12.0, 60.0, "mid", 1.6, 2.8, 380.0]],
+		"layers": [[10.0, 0.6, 7.0, "low", 0.45, 1.0, 90.0], [3.0, 1.5, 14.0, "mid", 0.55, 1.15, 170.0], [1.0, 9.0, 36.0, "tall", 0.8, 1.5, 300.0],
+			[0.16, 14.0, 60.0, "huge", 0.9, 1.5, 480.0], [1.4, 1.5, 16.0, "fill", 1.0, 1.9, 150.0], [2.0, 12.0, 60.0, "mid", 1.6, 2.8, 260.0]],
 		"strata": [Color(0.85, 0.55, 0.38), Color(0.70, 0.38, 0.28), Color(0.52, 0.28, 0.24), Color(0.34, 0.20, 0.22)],
 		"asph": Color(0.46, 0.38, 0.36), "curb_a": Color(0.97, 0.46, 0.18), "curb_b": Color(0.98, 0.93, 0.86), "shoulder": Color(0.93, 0.68, 0.48), "mid_line": Color(1.0, 0.86, 0.45),
 		"porticos": [[0.0, "x_portico_marte"], [0.20, "x_portico_marte"], [0.42, "x_portico_marte"], [0.50, "x_portico_marte"], [0.66, "x_portico_marte"], [0.84, "x_portico_marte"]],
@@ -46,6 +46,7 @@ const DEFS := {
 			{"t": 0.74, "lat": -21.0, "id": "m_cupula", "s": 1.4}, {"t": 0.93, "lat": 15.0, "id": "m_antena", "s": 1.3},
 		],
 		"craters": 0.35, "glint": 0.25, "sea": true, "seed": 5101,
+		"horizon": {"mode": 0, "far": Color(0.86, 0.55, 0.45), "near": Color(0.70, 0.40, 0.32), "haze": Color(0.97, 0.66, 0.48), "hf": 120.0, "hn": 70.0, "seed": 3.0},
 	},
 	"moon": {
 		"themes": [
@@ -63,8 +64,8 @@ const DEFS := {
 				"tall": ["l_cresta", "l_roca_grande", "l_borde_crater"], "huge": ["l_cresta", "l_roca_grande"], "fill": ["l_cristal", "l_cristal", "l_lajas"]},
 		],
 		"zones": [[0.0, 0], [0.18, 1], [0.38, 2], [0.58, 3], [0.78, 1]],
-		"layers": [[9.0, 0.6, 7.0, "low", 0.45, 1.05, 120.0], [2.6, 1.5, 14.0, "mid", 0.55, 1.2, 240.0], [0.8, 9.0, 36.0, "tall", 0.8, 1.6, 420.0],
-			[0.14, 14.0, 60.0, "huge", 0.9, 1.6, 760.0], [0.8, 1.5, 16.0, "fill", 1.0, 1.9, 200.0], [1.6, 12.0, 60.0, "mid", 1.6, 2.8, 380.0]],
+		"layers": [[9.0, 0.6, 7.0, "low", 0.45, 1.05, 90.0], [2.6, 1.5, 14.0, "mid", 0.55, 1.2, 170.0], [0.8, 9.0, 36.0, "tall", 0.8, 1.6, 300.0],
+			[0.14, 14.0, 60.0, "huge", 0.9, 1.6, 480.0], [0.8, 1.5, 16.0, "fill", 1.0, 1.9, 150.0], [1.6, 12.0, 60.0, "mid", 1.6, 2.8, 260.0]],
 		"strata": [Color(0.72, 0.72, 0.76), Color(0.55, 0.55, 0.60), Color(0.40, 0.40, 0.46), Color(0.26, 0.26, 0.32)],
 		"asph": Color(0.34, 0.34, 0.40), "curb_a": Color(0.98, 0.55, 0.16), "curb_b": Color(0.97, 0.97, 0.98), "shoulder": Color(0.80, 0.80, 0.84), "mid_line": Color(0.96, 0.96, 1.0),
 		"porticos": [[0.0, "x_portico_luna"], [0.17, "x_portico_luna"], [0.36, "x_portico_luna"], [0.55, "x_portico_luna"], [0.76, "x_portico_luna"]],
@@ -76,6 +77,7 @@ const DEFS := {
 			{"t": 0.89, "lat": -17.0, "id": "l_paneles", "s": 1.4},
 		],
 		"craters": 0.55, "glint": 0.45, "sea": false, "seed": 5202,
+		"horizon": {"mode": 1, "far": Color(0.40, 0.41, 0.50), "near": Color(0.24, 0.24, 0.31), "haze": Color(0.14, 0.15, 0.22), "hf": 70.0, "hn": 40.0, "seed": 5.0},
 	},
 	"ring": {
 		"themes": [
@@ -96,8 +98,8 @@ const DEFS := {
 				"tall": ["r_cristal_cian", "r_hielo_3", "r_cristal_cian"], "huge": ["r_cristal_gigante", "r_hielo_3"], "fill": ["r_cristal_cian", "r_hielo_1", "r_cristal_magenta"]},
 		],
 		"zones": [[0.0, 0], [0.12, 4], [0.26, 2], [0.40, 3], [0.54, 1], [0.68, 4], [0.82, 0]],
-		"layers": [[9.0, 0.6, 7.0, "low", 0.6, 1.2, 120.0], [3.0, 1.5, 14.0, "mid", 0.7, 1.3, 240.0], [1.3, 8.0, 34.0, "tall", 0.8, 1.5, 420.0],
-			[0.14, 14.0, 60.0, "huge", 0.9, 1.5, 760.0], [1.3, 1.5, 16.0, "fill", 1.0, 1.9, 200.0], [1.8, 12.0, 60.0, "mid", 1.6, 2.8, 380.0]],
+		"layers": [[8.0, 0.6, 7.0, "low", 0.6, 1.2, 90.0], [2.2, 1.5, 14.0, "mid", 0.7, 1.3, 170.0], [0.9, 8.0, 34.0, "tall", 0.8, 1.5, 300.0],
+			[0.12, 14.0, 60.0, "huge", 0.9, 1.5, 480.0], [0.9, 1.5, 16.0, "fill", 1.0, 1.9, 150.0], [1.3, 12.0, 60.0, "mid", 1.6, 2.8, 260.0]],
 		"strata": [Color(0.90, 0.95, 1.0), Color(0.70, 0.82, 0.95), Color(0.55, 0.60, 0.88), Color(0.30, 0.28, 0.55)],
 		"asph": Color(0.30, 0.32, 0.46), "curb_a": Color(0.45, 0.90, 1.0), "curb_b": Color(0.98, 0.98, 1.0), "shoulder": Color(0.92, 0.96, 1.0), "mid_line": Color(0.65, 0.95, 1.0),
 		"porticos": [[0.0, "x_portico_anillo"], [0.12, "x_portico_anillo"], [0.25, "x_portico_anillo"], [0.38, "x_portico_anillo"], [0.50, "x_portico_anillo"],
@@ -108,9 +110,10 @@ const DEFS := {
 			{"t": 0.50, "lat": -24.0, "id": "r_cristal_gigante", "s": 1.2},
 		],
 		# [tasa por fila y lado, altura mín, altura máx, distancia mín, distancia máx al borde, piezas, escala mín, máx, visibilidad]
-		"floaters": [[0.30, 10.0, 55.0, 8.0, 58.0, ["r_roca_flotante", "r_roca_flotante2", "r_cometa", "r_mini_anillo", "r_satelite"], 0.9, 1.7, 650.0],
-			[0.012, 90.0, 190.0, 40.0, 240.0, ["r_luna_io", "r_luna_europa", "r_luna_ganimedes"], 3.0, 5.5, 3000.0]],
+		"floaters": [[0.22, 10.0, 55.0, 8.0, 58.0, ["r_roca_flotante", "r_roca_flotante2", "r_cometa", "r_mini_anillo", "r_satelite"], 0.9, 1.7, 420.0],
+			[0.006, 90.0, 190.0, 40.0, 240.0, ["r_luna_io", "r_luna_europa", "r_luna_ganimedes"], 3.0, 5.5, 900.0]],
 		"craters": 0.0, "glint": 1.2, "sea": false, "seed": 5303,
+		"horizon": {"mode": 2, "far": Color(0.46, 0.56, 0.88), "near": Color(0.28, 0.34, 0.66), "haze": Color(0.55, 0.85, 1.0), "hf": 130.0, "hn": 80.0, "seed": 7.0},
 	},
 }
 
@@ -118,8 +121,9 @@ var world := "mars"
 var _def: Dictionary = {}
 
 ## Arma el mundo: world = "mars" | "moon" | "ring"
-func setup_world(p_track, p_density: float, p_world: String) -> void:
+func setup_world(p_track, p_density: float, p_world: String, p_view := 1.0) -> void:
 	world = p_world
+	view_k = p_view
 	_def = DEFS[world]
 	themes = _def["themes"]
 	zones = _def["zones"]
@@ -221,8 +225,46 @@ func _craters(rate: float) -> void:
 		PaperKit.add_surface(m, a2.v, a2.c, PaperKit.material(null, 0.0, 0.2, 0.25))
 		_holder(m, 420.0)
 
-# ───────────────────────── mar de polvo (Marte) ─────────────────────────
+# ───────────────────────── horizonte pintado y mar de polvo ─────────────────────────
+const HORIZON := preload("res://game/fx/space_horizon.gdshader")
+var _horizon: MeshInstance3D
+
+## Un anillo de una sola pieza alrededor de la cámara con la silueta de lo lejano (reemplaza el relieve que ya no se dibuja a la distancia)
+func _horizon_ring() -> void:
+	var hd: Dictionary = _def["horizon"]
+	var cm := CylinderMesh.new()
+	cm.top_radius = 1500.0
+	cm.bottom_radius = 1500.0
+	cm.height = 400.0
+	cm.radial_segments = 40
+	cm.rings = 1
+	cm.cap_top = false
+	cm.cap_bottom = false
+	_horizon = MeshInstance3D.new()
+	_horizon.mesh = cm
+	var m := ShaderMaterial.new()
+	m.shader = HORIZON
+	m.set_shader_parameter("mode", int(hd["mode"]))
+	m.set_shader_parameter("far_col", hd["far"])
+	m.set_shader_parameter("near_col", hd["near"])
+	m.set_shader_parameter("haze_col", hd["haze"])
+	m.set_shader_parameter("h_far", float(hd["hf"]))
+	m.set_shader_parameter("h_near", float(hd["hn"]))
+	m.set_shader_parameter("seed", float(hd["seed"]))
+	_horizon.material_override = m
+	_horizon.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_horizon.extra_cull_margin = 100000.0
+	add_child(_horizon)
+
+func _process(dt: float) -> void:
+	super(dt)
+	if _horizon != null:
+		var c := get_viewport().get_camera_3d()
+		if c != null:
+			_horizon.global_position = c.global_position
+
 func _cloud_sea() -> void:
+	_horizon_ring()
 	if not bool(_def["sea"]):
 		return
 	var mi := MeshInstance3D.new()
@@ -239,7 +281,7 @@ func _cloud_sea() -> void:
 	_sea = m
 
 # ───────────────────────── cielo y luz de cada mundo ─────────────────────────
-static func atmosphere_of(w: String, env: Environment, sun: DirectionalLight3D, cam: Camera3D, host: Node) -> void:
+static func atmosphere_of(w: String, env: Environment, sun: DirectionalLight3D, cam: Camera3D, host: Node, view := 1.0) -> void:
 	var sky := Sky.new()
 	var sm := ShaderMaterial.new()
 	sm.shader = SPACE_SKY
@@ -271,7 +313,7 @@ static func atmosphere_of(w: String, env: Environment, sun: DirectionalLight3D, 
 			sm.set_shader_parameter("moon2_r", 0.018)
 			sm.set_shader_parameter("moon2_col", Color(0.70, 0.64, 0.60))
 			fog_col = Color(0.95, 0.62, 0.45)
-			fog_range = Vector2(450.0, 6500.0)
+			fog_range = Vector2(300.0, 2600.0)
 			amb = Color(0.96, 0.78, 0.68)
 			amb_e = 0.95
 			sun_col = Color(1.0, 0.86, 0.70)
@@ -292,7 +334,7 @@ static func atmosphere_of(w: String, env: Environment, sun: DirectionalLight3D, 
 			sm.set_shader_parameter("planet_r", 0.15)
 			sm.set_shader_parameter("glow_col", Color(0.35, 0.6, 1.0))
 			fog_col = Color(0.02, 0.02, 0.05)
-			fog_range = Vector2(700.0, 8000.0)
+			fog_range = Vector2(350.0, 3000.0)
 			amb = Color(0.58, 0.62, 0.78)
 			amb_e = 0.6
 			sun_e = 1.9
@@ -319,7 +361,7 @@ static func atmosphere_of(w: String, env: Environment, sun: DirectionalLight3D, 
 			sm.set_shader_parameter("moon2_r", 0.028)
 			sm.set_shader_parameter("moon2_col", Color(0.95, 0.93, 0.88))
 			fog_col = Color(0.12, 0.10, 0.28)
-			fog_range = Vector2(600.0, 9000.0)
+			fog_range = Vector2(320.0, 2800.0)
 			amb = Color(0.74, 0.78, 1.0)
 			amb_e = 0.75
 			sun_col = Color(1.0, 0.95, 0.88)
@@ -331,8 +373,8 @@ static func atmosphere_of(w: String, env: Environment, sun: DirectionalLight3D, 
 	env.fog_enabled = true
 	env.fog_light_color = fog_col
 	env.fog_mode = Environment.FOG_MODE_DEPTH
-	env.fog_depth_begin = fog_range.x
-	env.fog_depth_end = fog_range.y
+	env.fog_depth_begin = fog_range.x * lerpf(0.5, 1.0, view)
+	env.fog_depth_end = fog_range.y * lerpf(0.55, 1.0, view)
 	env.fog_depth_curve = 1.5
 	env.fog_sky_affect = 0.0
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -341,7 +383,7 @@ static func atmosphere_of(w: String, env: Environment, sun: DirectionalLight3D, 
 	sun.light_color = sun_col
 	sun.light_energy = sun_e
 	sun.transform = Transform3D(Basis.looking_at(-sd.normalized(), Vector3.UP), Vector3.ZERO)
-	cam.far = 9000.0
+	cam.far = 4000.0
 	var fl := Flare.new()
 	fl.cam = cam
 	fl.sun_dir = sd

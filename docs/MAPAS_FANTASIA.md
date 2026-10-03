@@ -25,11 +25,35 @@ estrellas; se corren contra rivales que siguen tu ritmo (`race.gd::_pace_rivals`
 - **Menú**: `ui/menu_career.gd` (`_fantasy()` la pantalla de tarjetas, `_quick()` con `quick["fantasy"]` los ajustes de la carrera) y el tile del inicio en `ui/menu.gd`.
   Las miniaturas son `ui/tracks/<mapa>_0.jpg` y `_1.jpg` (se sacan de las capturas).
 
+## Fluidez en teléfonos
+La idea: que el mapa se vea llamativo pero corra parejo. Se ahorra así:
+- **Alcance de la vista según la calidad** (`race.gd::_view_k`, 0,6 · 0,8 · 1,0 con la calidad baja · media · alta o la automática): achica todas las distancias de visibilidad
+  (rocas chicas ~90 m, medianas ~170 m, picos ~300 m, mesetas y cristales gigantes ~480 m a vista completa), la niebla y el largo del camino y la meseta que se dibujan.
+- **Horizonte pintado** (`fx/space_horizon.gdshader`): un solo anillo alrededor de la cámara con la silueta de lo lejano (mesetas y picos de Marte, lomas de la Luna, cristales
+  del anillo). No son modelos: es una imagen procedural, una llamada de dibujo. Lo lejano real se corta y la silueta tapa el hueco.
+- **Cielo todo procedural** (`fx/space_sky.gdshader`): el planeta, las lunas, las estrellas y la nebulosa no cuestan geometría.
+- **Niebla de espacio**: las distancias grandes se funden con la niebla del mundo (cámara a 4000 m como máximo).
+- **Una llamada de dibujo por pieza y tramo** (MultiMesh), piezas de 36 a 420 triángulos y sin sombras propias.
+- Densidad de piezas por calidad: 0,5 · 0,75 · 1,0.
+
+Carga medida con `tests/fantasy_perf.gd` (llamadas de dibujo y triángulos por cuadro desde 24 puntos de la vuelta, sin autos ni pantalla; el xvfb dibuja por software, así que no
+mide cuadros por segundo, solo cuánto se le pide al teléfono):
+
+| Calidad | Marte | Luna | Anillo |
+|---|---|---|---|
+| Baja (densidad 0,5 · vista 0,6) | 77k tri · 54 llamadas | 78k tri · 51 | 82k tri · 53 |
+| Media (0,75 · 0,8) | 140k · 65 | 134k · 61 | 145k · 67 |
+| Alta (1,0 · 1,0) | 208k · 76 | 214k · 72 | ~250k · 80 |
+
+Para comparar: el Vórtice de Ensueño pedía ~565k triángulos en calidad media antes de aplicarle el alcance de vista.
+Si un teléfono se traba, lo primero que se toca es `FantasyWorld.DEFS` (tasas y distancias de cada capa) o el factor de `_view_k`.
+
 ## Pruebas y capturas
 - `tests/fantasy_test.gd`: largo, desnivel, pendientes, peralte, suelo continuo, límite lateral, que existan las piezas, cantidad de piezas y que el rival se quede a la par.
 - `tests/fantasy_shots.gd`: capturas desde varios puntos de la vuelta de cualquier mapa (también `dream`):
   `xvfb-run -a godot --path godot --rendering-driver opengl3 --resolution 1280x720 --script res://tests/fantasy_shots.gd -- /carpeta marte`.
 - Una carrera real: `tools/godot/run_shot.sh /tmp/x.png --track=luna --cars=2 --auto --cam=chase --viewat=0.3`.
+- Carga de dibujo: `xvfb-run -a godot --path godot --rendering-driver opengl3 --resolution 1280x576 --script res://tests/fantasy_perf.gd -- anillo 0.5` (mapa y densidad).
 - Piezas: `tests/paper_catalog.gd` (`-- /carpeta m_ 9` saca las de Marte).
 
 ## Online
