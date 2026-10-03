@@ -8,6 +8,7 @@ const CarParts := preload("res://game/car/car_parts.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const Release := preload("res://game/data/release.gd")
+const Shops := preload("res://game/data/shops.gd")
 
 const DARK := Color(0.05, 0.06, 0.08)
 const GROUP_SHORT := {"Neumáticos": "Gomas", "Alineación": "Alineac.", "Suspensión": "Susp.", "Frenos": "Frenos", "Transmisión": "Transm.", "Aerodinámica": "Aero", "Diversión (gustos raros)": "Extras"}
@@ -18,6 +19,7 @@ var m # menu.gd
 var shop_i := 0
 var mine_i := -1
 var ws_tab := 0
+var shop := "" # taller de Dream City en el que se está (vacío: el taller completo del menú)
 var up_cat := 0
 var tune_grp := 0
 var paint_target := "body"
@@ -35,6 +37,20 @@ const PAINT_FEE := 300
 
 func build(name: String, arg) -> void:
 	match name:
+		"shop":
+			shop = str(arg)
+			var sd := Shops.get_shop(shop)
+			if sd.is_empty():
+				shop = ""
+				m.go("home")
+			elif str(sd["kind"]) == "dealer":
+				shop = ""
+				m.go("dealer", null, false)
+			else:
+				ws_tab = int((sd["tabs"] as Array)[0])
+				up_cat = 0
+				tune_grp = 0
+				_workshop()
 		"garage": _cars(true)
 		"dealer": _cars(false)
 		"workshop":
@@ -243,8 +259,12 @@ func _buy_car(id: String) -> void:
 		m.toast(tr("No te alcanza el dinero"))
 
 # ───────────────────────── taller ─────────────────────────
+func _shop_data() -> Dictionary:
+	return Shops.get_shop(shop) if shop != "" else {}
+
 func _workshop() -> void:
-	m.set_title("TALLER")
+	var sd := _shop_data()
+	m.set_title(("%s %s" % [sd["icon"], tr(str(sd.get("title", sd["name"])))]) if not sd.is_empty() else "TALLER")
 	if _no_car():
 		return
 	var id: String = m.profile.current_id()
@@ -260,10 +280,20 @@ func _workshop() -> void:
 	hl.clip_text = true
 	hl.custom_minimum_size.x = 40
 	head.add_child(hl)
-	m.body.add_child(Kit.tabs(["⚙ PIEZAS", "⚪ GOMAS", "🎚 AJUSTE", "🎨 PINTURA"], ws_tab, func(i: int) -> void:
-		ws_tab = i
-		m.sfx.play("click")
-		m.go("workshop", null, false), 16, 40.0))
+	var tab_names := ["⚙ PIEZAS", "⚪ GOMAS", "🎚 AJUSTE", "🎨 PINTURA"]
+	var allowed: Array = sd["tabs"] if not sd.is_empty() else [0, 1, 2, 3]
+	if not allowed.has(ws_tab):
+		ws_tab = int(allowed[0])
+	if allowed.size() > 1:
+		var shown: Array = []
+		for ti in allowed:
+			shown.append(tab_names[int(ti)])
+		m.body.add_child(Kit.tabs(shown, allowed.find(ws_tab), func(i: int) -> void:
+			ws_tab = int(allowed[i])
+			m.sfx.play("click")
+			m.go("workshop", null, false), 16, 40.0))
+	elif not sd.is_empty():
+		m.body.add_child(Kit.wrap(tr(str(sd["info"])), 14, Kit.MUTED, 300))
 	match ws_tab:
 		0: _ws_parts(id)
 		1: _ws_tires(id, st)
@@ -277,6 +307,13 @@ func _after_change() -> void:
 
 func _ws_parts(id: String) -> void:
 	var ups: Array = _cat()["upgrades"]
+	var sdp := _shop_data()
+	if sdp.has("parts"):
+		var fil: Array = []
+		for u in ups:
+			if (sdp["parts"] as Array).has(str(u["id"])):
+				fil.append(u)
+		ups = fil
 	up_cat = clampi(up_cat, 0, ups.size() - 1)
 	var row := Kit.hbox(8)
 	m.body.add_child(row)
@@ -454,6 +491,13 @@ func _ws_tune(id: String, st: Dictionary) -> void:
 	_draft_sync(id, st)
 	var tune: Dictionary = draft_tune
 	var groups: Array = _cat()["tune"]
+	var sdt := _shop_data()
+	if sdt.has("tune"):
+		var fg: Array = []
+		for g in groups:
+			if (sdt["tune"] as Array).has(str(g["g"])):
+				fg.append(g)
+		groups = fg
 	tune_grp = clampi(tune_grp, 0, groups.size() - 1)
 	var names: Array = []
 	for g in groups:

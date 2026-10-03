@@ -18,6 +18,28 @@ Una ciudad enorme para recorrer libre, estilo Mónaco, toda en papel y pensada p
 
 > Nota técnica: Godot toma como frente de una cara el sentido horario. El generador de mallas (`Soup.tri`) emite los vértices en ese orden; si se invierte, las paredes se ven «abiertas» desde la calle (se ve el interior de la caja).
 
+## Locales (concesionario y talleres)
+Ocho locales con puerta de garage, cada uno en una avenida, con cartel de su color. Frente a cada uno hay un **círculo verde** sobre el asfalto: si frenás encima, el auto se alinea derecho frente al portón, el portón de papel sube, el auto entra solo y la pantalla se funde a negro. Se abre el menú de ese local y al tocar **🚪 SALIR** volvés a la calle, en el mismo lugar y con el auto como lo dejaste.
+
+| Local | Qué hace |
+|---|---|
+| Concesionario Dream City | autos nuevos y garaje |
+| Taller de Pintura | colores, acabados, llantas, pinzas y discos |
+| Taller de Motor | motor, turbo, aligerado y nitro |
+| Taller de Transmisión | caja de cambios, diferencial y reparto de tracción |
+| Suspensión y Frenos | suspensión, amortiguadores, barras, frenos y estilo |
+| Taller de Ruedas | gomas, presiones y alineación |
+| Reglaje Central (pista) | aerodinámica, alineación y presiones |
+| Reglaje del Puerto (tierra y drift) | suspensión, frenos, transmisión y extras |
+
+Se definen en `godot/game/data/shops.gd` (qué pestañas, mejoras y grupos de ajuste muestra cada uno) y en `POI_SPECS` de `city_layout.gd` (dónde están). Cada local tiene una calle de entrada (`kind = "bay"`) que cruza la vereda hasta adentro del edificio. El flujo está en `city_shops.gd` (círculo, portón, entrada y fundido) y en `app.gd`/`menu.gd` (`city_return`: vuelta a la calle).
+
+## Subsuelo (oculto: no figura en el mapa ni en el GPS)
+- **Túnel en cruz**: dos calles cubiertas de 1,8 km que se cruzan en el centro (con curvas). Es un tubo cerrado (piso con rayas, paredes con franja, techo con lámparas); en el cruce las paredes se abren hacia la otra calle. Cuatro **bocas** escondidas fuera del centro: este y oeste (en las rutas 20 y 40), norte (ruta 60) y sur (costanera). Se entra por una y se sale por la boca del brazo por el que se llegue al final, con la velocidad conservada.
+- **Estacionamiento subterráneo**: boca en el Parque del Drift (cartel «P ESTACIONAMIENTO»); adentro una sala redonda con pilares y autos de papel estacionados, se maneja libre y se sale por el círculo verde del sur.
+- Cómo se hace: el túnel y la sala están en un «bolsillo» del mundo (x > 3000, plano) y las bocas son enlaces (`links` de `city_layout.gd`, `city_links.gd`) que mueven el auto con un fundido a negro. Abajo la luz del sol casi se apaga y la niebla es oscura y corta (`race.gd`, `_underground_light`).
+- Las puntas de los brazos todavía salen a la ciudad; en la próxima actualización pueden conectar con otras ciudades.
+
 ## HUD
 - **Minimapa que gira** con el auto (arriba = hacia donde mirás, la N roja gira), nombre de la calle y cuadra.
 - Tocando el minimapa se abre el **mapa grande fijo** (norte arriba) con lugares y salidas: tocá un lugar (o cualquier punto) y el **GPS** traza el camino por las calles (Dijkstra sobre los puntos de las calles, unos pocos ms) con aviso de la próxima curva y la distancia; si te salís del camino recalcula.

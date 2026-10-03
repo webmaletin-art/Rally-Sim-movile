@@ -10,9 +10,20 @@ var top_speed := 17.0 # m/s
 var stuck_t := 0.0
 var rev_t := 0.0
 var idx := 0
+var goal := Vector2(INF, INF) # punto final a campo abierto (una plaza): cuando se acaba el camino se va derecho hasta ahí
 
 func update(ph, dt: float) -> Vector3:
 	var route: PackedVector2Array = hud.route if hud != null else PackedVector2Array()
+	if route.size() < 2 and goal.x < 1e8:
+		var q := Vector2(ph.px, ph.pz)
+		var dg := goal - q
+		if dg.length() < 2.0:
+			return Vector3(0.0, 0.8, 0.0)
+		var fx2 := sin(ph.yaw)
+		var fz2 := cos(ph.yaw)
+		var al := atan2(dg.x * cos(ph.yaw) - dg.y * sin(ph.yaw), maxf(0.05, dg.x * fx2 + dg.y * fz2))
+		var sp2 := sqrt(ph.vx * ph.vx + ph.vz * ph.vz)
+		return Vector3(1.0 if sp2 < 7.0 else 0.0, 0.0, clampf(-al * 1.8, -1.0, 1.0))
 	if route.size() < 2:
 		return Vector3(0.0, 0.6, 0.0)
 	var p := Vector2(ph.px, ph.pz)
@@ -55,6 +66,13 @@ func update(ph, dt: float) -> Vector3:
 		rev_t -= dt
 		return Vector3(0.0, 1.0, clampf(alpha * 1.5, -1.0, 1.0)) # freno en reversa: el auto retrocede con el freno sostenido
 	var want := clampf(top_speed * (1.0 - 0.75 * minf(1.0, absf(alpha) * 1.4)), 5.0, top_speed)
+	# frena para llegar parado al final del camino (sirve para frenar justo sobre el círculo verde de un local)
+	var rem := 0.0
+	for i in range(idx, route.size() - 1):
+		rem += route[i].distance_to(route[i + 1])
+	want = minf(want, 1.0 + rem * 0.45)
+	if rem < 2.5:
+		want = 0.0
 	var thr := 1.0 if spd < want else 0.0
-	var brk := 0.0 if spd < want + 2.0 else 0.5
+	var brk := 0.0 if spd < want + 2.0 else (0.5 if want > 0.5 else 1.0)
 	return Vector3(thr, brk, clampf(-alpha * 1.8, -1.0, 1.0))

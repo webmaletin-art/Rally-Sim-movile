@@ -84,7 +84,7 @@ func _push_locked(x: float, z: float, r: float) -> Vector3:
 					best = Vector3(ox / e if e > 0.001 else 1.0, oz / e if e > 0.001 else 0.0, rs - e)
 					hit_id = pid
 					hit_pos = Vector2(px, pz)
-	if hit_id >= 0 and best.z > 0.0 and hit_id < city.prop_type.size() and int(city.prop_type[hit_id]) != 4: # el monumento y los portones de las salidas no se rompen
+	if hit_id >= 0 and best.z > 0.0 and hit_id < city.prop_type.size() and int(city.prop_type[hit_id]) < 4: # el monumento, los pilares, los autos estacionados y los portones de las salidas no se rompen
 		# el primer golpe lo tira (el auto lo siente una vez) y deja de ser obstáculo
 		_break_locked(hit_id, hit_pos, Vector2(-best.x, -best.y))
 	return best

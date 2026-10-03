@@ -3,9 +3,10 @@ extends RefCounted
 ## todos los de una cuadra se juntan en una sola malla (una llamada de dibujo) y se rearma cuando uno se rompe: el objeto queda tirado en el piso.
 ## Espacio local del objeto: +y arriba y +z hacia la calle (hacia donde apunta el brazo de la farola o del semáforo).
 
-enum { LAMP, TREE, LIGHT, BOLLARD, MONUMENT }
-const RADIUS := [0.30, 0.45, 0.30, 0.20, 3.6] # radio de choque de cada tipo (m)
-const TYPE_NAMES := ["farola", "árbol", "semáforo", "bolardo", "monumento"]
+enum { LAMP, TREE, LIGHT, BOLLARD, MONUMENT, PILLAR, PARKED }
+const RADIUS := [0.30, 0.45, 0.30, 0.20, 3.6, 1.0, 1.5] # radio de choque de cada tipo (m)
+const TYPE_NAMES := ["farola", "árbol", "semáforo", "bolardo", "monumento", "pilar", "auto estacionado"]
+const SOLID_FROM := 4 # desde este tipo no se rompen
 
 static func _tri(v: PackedVector3Array, c: PackedColorArray, a: Vector3, b: Vector3, d: Vector3, center: Vector3, col: Color) -> void:
 	# la cara mira hacia afuera del cuerpo (lejos de center)
@@ -83,6 +84,19 @@ static func emit(kind: int, x: float, y: float, z: float, yaw: float, seed_v: fl
 			box(v, c, xf, Vector3(0, 0.9, 0), Vector3(5.6, 0.6, 5.6), stone)
 			frustum(v, c, xf, Vector3(0, 1.2, 0), 1.5, 0.7, 11.0, 4, stone.lightened(0.05), PI * 0.25)
 			frustum(v, c, xf, Vector3(0, 12.2, 0), 0.7, 0.0, 1.6, 4, Color(0.95, 0.78, 0.25), PI * 0.25)
+		PILLAR:
+			box(v, c, xf, Vector3(0, 2.4, 0), Vector3(1.2, 4.8, 1.2), Color(0.66, 0.66, 0.69))
+			box(v, c, xf, Vector3(0, 0.3, 0), Vector3(1.6, 0.6, 1.6), Color(0.52, 0.52, 0.56))
+			box(v, c, xf, Vector3(0, 1.4, 0), Vector3(1.24, 0.35, 1.24), Color(0.96, 0.78, 0.15)) # franja amarilla
+		PARKED:
+			var hue := fmod(seed_v * 5.37, 1.0)
+			var body := Color.from_hsv(hue, 0.55, 0.88)
+			box(v, c, xf, Vector3(0, 0.55, 0), Vector3(1.8, 0.7, 4.3), body)
+			box(v, c, xf, Vector3(0, 1.1, -0.2), Vector3(1.55, 0.5, 2.3), Color(0.18, 0.24, 0.32))
+			box(v, c, xf, Vector3(0, 1.38, -0.2), Vector3(1.5, 0.08, 2.1), body.darkened(0.1))
+			for wx in [-0.92, 0.92]:
+				for wz in [-1.4, 1.4]:
+					box(v, c, xf, Vector3(float(wx), 0.32, float(wz)), Vector3(0.22, 0.64, 0.64), Color(0.10, 0.10, 0.12))
 		BOLLARD:
 			box(v, c, xf, Vector3(0, 0.4, 0), Vector3(0.18, 0.8, 0.18), Color(0.16, 0.18, 0.22))
 			box(v, c, xf, Vector3(0, 0.86, 0), Vector3(0.25, 0.12, 0.25), Color(0.30, 0.33, 0.38))

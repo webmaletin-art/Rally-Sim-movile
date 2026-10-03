@@ -13,10 +13,11 @@ Dream City sale en la versión 1 con la ciudad base y las rutas hacia otras ciud
 - Más objetos rompibles: carteles, conos, puestos de diarios, canteros.
 
 ## 3. Garajes, concesionarios y talleres
-- Puerta de garage que se abre y el auto entra solo; menú del taller visto de costado (suspensión y pintura). Las piezas de carrocería (alerón, paragolpes…) las trae el dueño.
-- Estacionamiento subterráneo.
+- ✅ Hecho: ocho locales entrables con puerta de garage (concesionario, pintura, motor, transmisión, suspensión y frenos, ruedas y dos reglajes) y estacionamiento subterráneo.
+- Pendiente: menú del taller visto de costado (suspensión y pintura con el auto de perfil) y las piezas de carrocería (alerón, paragolpes…), que las trae el dueño.
 
 ## 4. Obras grandes
+- ✅ Hecho: túnel subterráneo en cruz (oculto) con cuatro bocas.
 - Autovía elevada con tren de alta velocidad y de carga (imágenes), túneles por la montaña, puentes procedurales, campos de girasoles y otros efectos de perspectiva.
 - Conexión con la plaza de drift y picadas en las avenidas anchas.
 

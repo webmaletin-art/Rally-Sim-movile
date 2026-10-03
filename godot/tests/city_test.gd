@@ -43,7 +43,7 @@ func _init() -> void:
 	check(c.roads.size() >= 47, "%d calles (%.1f km de calzada)" % [c.roads.size(), km])
 	check(rural_n == 4 and c.exits.size() == 4, "4 rutas rurales con su Salida numerada (%s)" % str(c.exits.map(func(e): return e["num"])))
 	check(c.junctions.size() > 140, "%d cruces" % c.junctions.size())
-	check(c.slab_count > 3000 and c.building_count == 3, "%d frentes de edificios y %d lugares especiales" % [c.slab_count, c.building_count])
+	check(c.slab_count > 3000 and c.building_count == 8, "%d frentes de edificios y %d lugares especiales (el concesionario y siete talleres)" % [c.slab_count, c.building_count])
 	check(worst_up > 0.03 and worst_up < 0.2, "el camino de la colina sube como máximo %.1f %%" % (worst_up * 100.0))
 	check(worst_dn > -0.22, "y baja como máximo %.1f %%" % (worst_dn * 100.0))
 	# los números de calle
@@ -88,7 +88,7 @@ func _init() -> void:
 	var tested := 0
 	for ri in c.roads.size():
 		var rd: Dictionary = c.roads[ri]
-		if str(rd["kind"]) in ["rural", "shortcut", "plaza"]:
+		if str(rd["kind"]) in ["rural", "shortcut", "plaza", "bay", "tunnel"]:
 			continue
 		var pp: PackedVector3Array = rd["pts"]
 		for i in range(2, pp.size() - 2, 2):
@@ -106,7 +106,7 @@ func _init() -> void:
 	print("     frentes: %d losas, %d puntos de línea de edificación, %d sin pared" % [c.slab_count, tested, gaps])
 	check(gaps < tested / 50, "los frentes de las calles no tienen huecos (%d de %d)" % [gaps, tested])
 	# objetos de la calle: hay de cada tipo y ninguno sobre el asfalto
-	var cnt := [0, 0, 0, 0, 0]
+	var cnt := [0, 0, 0, 0, 0, 0, 0]
 	var on_road := 0
 	for i in c.prop_type.size():
 		cnt[c.prop_type[i]] += 1

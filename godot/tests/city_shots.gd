@@ -57,6 +57,24 @@ func _init() -> void:
 		["06_costanera", 0.0, 1100.0, 90.0, 3.0, -3.0], ["07_colina_sube", -860.0, -780.0, 200.0, 3.0, -4.0], ["08_colina_alto", -900.0, -900.0, 45.0, 30.0, -10.0],
 		["09_ruta_este", 1500.0, 0.0, -90.0, 3.0, -3.0], ["10_barrio", -520.0, 380.0, 60.0, 3.0, -4.0], ["11_plaza_alto", 0.0, 120.0, 0.0, 120.0, -45.0],
 		["12_casco_viejo", 305.0, 563.0, 64.0, 2.6, -3.0], ["13_casco_viejo_b", 198.0, 609.0, 23.0, 2.6, -3.0], ["14_casco_alto", 330.0, 600.0, 28.0, 45.0, -30.0], ["15_atajo", 1330.0, 100.0, 80.0, 3.0, -3.0], ["16_vacio_a", 109.0, -330.0, 180.0, 70.0, -55.0], ["17_vacio_b", -56.0, 290.0, 180.0, 70.0, -55.0], ["18_barrio_alto", -520.0, 380.0, 60.0, 60.0, -40.0], ["19_zenit", -520.0, 380.0, 0.0, 160.0, -89.0], ["20_grilla", -540.0, 200.0, 60.0, 3.0, -3.0], ["21_parque", 178.0, 128.0, 180.0, 3.0, -3.0], ["22_afueras", 0.0, 940.0, 180.0, 3.0, -3.0], ["23_parque_alto", 178.0, 150.0, 180.0, 70.0, -50.0], ["24_plaza_alto", 0.0, 100.0, 180.0, 60.0, -45.0], ["25_ruta_borde", 1600.0, 56.0, 87.0, 2.6, -2.0], ["26_salida", 2255.0, -37.0, 93.0, 2.6, -2.0], ["27_atajo_borde", 1330.0, 100.0, 80.0, 3.0, -2.0]]
+	var pk := Vector2(cos(deg_to_rad(22.5)), sin(deg_to_rad(22.5))) * 195.0
+	shots.append(["40_tunel_recto", 5550.0, 30.0, 90.0, 1.9, -2.0])
+	shots.append(["41_tunel_cruce", 5930.0, 0.0, 90.0, 1.9, -2.0])
+	shots.append(["42_tunel_alto", 5900.0, 0.0, 90.0, 5.2, -22.0])
+	shots.append(["43_sala", 6000.0, 2985.0, 0.0, 1.9, -2.0])
+	shots.append(["44_sala_alto", 6000.0, 2962.0, 0.0, 4.5, -30.0])
+	shots.append(["45_boca_este", 1150.0, 22.0, 180.0, 2.6, -2.0])
+	shots.append(["46_boca_parque", pk.x + 18.0, pk.y, -90.0, 2.6, -2.0])
+	var ns := 0
+	for pp in track.city.pois:
+		if str(pp["shop"]) == "" or ns >= 4:
+			continue
+		ns += 1
+		var fr: Vector2 = pp["front"]
+		var ty := float(pp["road_yaw"])
+		var cam_p := fr - Vector2(sin(ty), cos(ty)) * 13.0
+		var dv: Vector2 = (pp["door"] as Vector2) - cam_p
+		shots.append(["30_local_%s" % str(pp["id"]), cam_p.x, cam_p.y, rad_to_deg(atan2(dv.x, dv.y)), 2.8, -3.0])
 	for sh in shots:
 		var x := float(sh[1])
 		var z := float(sh[2])

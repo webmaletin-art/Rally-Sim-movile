@@ -17,6 +17,7 @@ var radius := 3 # cuadras a la redonda que se mantienen armadas
 var view_k := 1.0
 var built_total := 0
 var _facade_mat: ShaderMaterial
+var _tunnel_mat: StandardMaterial3D # el interior de los túneles y del estacionamiento: sin luz del sol (pintado), con franjas y lámparas
 var _queue: Array = []
 var _frame_budget_ms := 6.0
 
@@ -59,6 +60,10 @@ func setup(p_track) -> void:
 	_facade_mat = ShaderMaterial.new()
 	_facade_mat.shader = FACADE
 	_facade_mat.set_shader_parameter("grain", PaperKit.grain())
+	_tunnel_mat = StandardMaterial3D.new()
+	_tunnel_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_tunnel_mat.vertex_color_use_as_albedo = true
+	_tunnel_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_ground_plane()
 
 ## Un plano enorme y plano bajo todo el mundo (el color de la lejanía): lo que todavía no se armó no deja un hueco
@@ -208,13 +213,15 @@ func _build_chunk(key: Vector2i) -> Node3D:
 	_terrain(terr, x0, z0)
 	var rd := Soup.new()
 	var mk := Soup.new()
-	_roads(rd, mk, key)
+	var tn := Soup.new()
+	_roads(rd, mk, key, tn)
 	var bl := Soup.new()
 	var specials := _buildings(bl, key)
 	var m := ArrayMesh.new()
 	_surface(m, terr, PaperKit.material(null, 0.0, 0.2, 0.25))
 	_surface(m, rd, PaperKit.material(load(TEX + "asphalt.png") as Texture2D, 0.28, 0.22, 0.07))
 	_surface(m, mk, PaperKit.material(null, 0.0, 0.2, 0.0))
+	_surface(m, tn, _tunnel_mat)
 	var mi := MeshInstance3D.new()
 	mi.mesh = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -235,6 +242,15 @@ func _build_chunk(key: Vector2i) -> Node3D:
 	var tl := _treelines(key)
 	if tl != null:
 		root.add_child(tl)
+	for mo in city.mouths:
+		if city.chunk_of((mo["pos"] as Vector2).x, (mo["pos"] as Vector2).y) == key:
+			root.add_child(_mouth(mo))
+	for h in city.halls:
+		if city.chunk_of((h["pos"] as Vector2).x, (h["pos"] as Vector2).y) == key:
+			root.add_child(_hall(h))
+	for l in city.links:
+		if str(l["label"]) != "" and city.chunk_of((l["label_pos"] as Vector2).x, (l["label_pos"] as Vector2).y) == key:
+			root.add_child(_link_label(l))
 	for ex in city.exits:
 		if city.chunk_of((ex["pos"] as Vector2).x, (ex["pos"] as Vector2).y) == key:
 			root.add_child(_gate(ex))
@@ -260,6 +276,8 @@ const TC := 16.0 # lado de una celda del terreno
 func _ground_color(x: float, z: float, y: float) -> Color:
 	for oa in city.open_areas:
 		if Vector2(x, z).distance_to(oa["pos"]) < float(oa["r"]) + 6.0:
+			if oa.get("dark", false):
+				return Color(0.22, 0.23, 0.27)
 			return Color(0.66, 0.68, 0.72) if bool(oa["paving"]) else Color(0.46, 0.64, 0.36) # parque del drift: pavimento · plaza: pasto
 	var zone := city.zone_of(x, z)
 	var jit := 0.012 * sin(x * 0.011) * cos(z * 0.009)
@@ -306,7 +324,7 @@ const C_CURB := Color(0.70, 0.67, 0.62)
 const C_YEL := Color(1.0, 0.82, 0.30)
 const C_WHT := Color(0.97, 0.96, 0.93)
 
-func _roads(rd: Soup, mk: Soup, key: Vector2i) -> void:
+func _roads(rd: Soup, mk: Soup, key: Vector2i, tn: Soup) -> void:
 	var x0 := float(key.x) * CityLayout.CELL
 	var z0 := float(key.y) * CityLayout.CELL
 	var x1 := x0 + CityLayout.CELL
@@ -329,7 +347,7 @@ func _roads(rd: Soup, mk: Soup, key: Vector2i) -> void:
 				var ni: int = city.s_next[si]
 				if ni < 0:
 					continue
-				_road_segment(rd, mk, si, ni)
+				_road_segment(rd, mk, si, ni, tn)
 
 ## Normal (hacia la derecha del avance) en el punto si, unida con la del tramo anterior para que las curvas no queden con huecos. Devuelve (nx, nz, escala del ancho)
 func _miter(si: int) -> Vector3:
@@ -383,7 +401,7 @@ func _in_other_road(x: float, z: float, own: int) -> bool:
 					return true
 	return false
 
-func _road_segment(rd: Soup, mk: Soup, si: int, ni: int) -> void:
+func _road_segment(rd: Soup, mk: Soup, si: int, ni: int, tn: Soup) -> void:
 	var road: Dictionary = city.roads[city.s_road[si]]
 	var hw: float = road["hw"]
 	var sw: float = road["sw"]
@@ -391,6 +409,9 @@ func _road_segment(rd: Soup, mk: Soup, si: int, ni: int) -> void:
 	var a := Vector3(city.s_x[si], city.s_y[si], city.s_z[si])
 	var b := Vector3(city.s_x[ni], city.s_y[ni], city.s_z[ni])
 	if Vector2(b.x - a.x, b.z - a.z).length() < 0.05:
+		return
+	if kind == "tunnel":
+		_tunnel_segment(tn, si, ni)
 		return
 	var ma := _miter(si)
 	var mb := _miter(ni)
@@ -409,7 +430,7 @@ func _road_segment(rd: Soup, mk: Soup, si: int, ni: int) -> void:
 	elif kind == "alley":
 		side_col = Color(0.72, 0.46, 0.42) # veredas de ladrillo rojo
 	var mid := (a + b) * 0.5
-	for sg in [-1.0, 1.0]:
+	for sg in ([] if sw < 0.01 else [-1.0, 1.0]):
 		var s: float = sg
 		var nmid := (na + nb).normalized()
 		var probe_pt := mid + nmid * (s * (hw + sw * 0.5))
@@ -431,7 +452,7 @@ func _road_segment(rd: Soup, mk: Soup, si: int, ni: int) -> void:
 	var local_i := si - _first_sample(city.s_road[si])
 	var nj: PackedByteArray = road["nj"]
 	var junc := nj.size() > local_i and nj[local_i] != 0
-	if not junc and kind != "plaza":
+	if not junc and kind != "plaza" and kind != "bay":
 		var lw := 0.11
 		var mu := Vector3(0, 0.055, 0)
 		if kind in ["major", "ring", "coast", "hill", "rural"] and hw >= 4.0:
@@ -470,7 +491,7 @@ func _buildings(s: Soup, key: Vector2i) -> Array:
 	for b in city.buildings[key]:
 		_box_building(s, b)
 		if b.has("poi"):
-			specials.append(_sign(b))
+			specials.append(_shop_front(b))
 	return specials
 
 func _box_building(s: Soup, b: Dictionary) -> void:
@@ -580,6 +601,9 @@ func _treelines(key: Vector2i) -> MeshInstance3D:
 						var off := float(road["hw"]) + float(road["sw"]) + 1.4 + float(row) * 1.9
 						for tk in 2:
 							var cen := a.lerp(b, 0.25 + 0.5 * float(tk)) + nrm * (float(sd) * off)
+							var pr := city.probe(cen.x, cen.y)
+							if pr[6] >= 0.0 and int(pr[6]) != city.s_road[si] and float(pr[0]) > -1.8:
+								continue # donde sale una calle (la entrada de una boca de túnel) no hay árboles
 							var hsh := fposmod(sin(cen.x * 12.9898 + cen.y * 78.233) * 43758.5453, 1.0)
 							_paper_tree(v, c, cen, tn, 6.0 + 4.0 * hsh, hsh, row)
 	if v.is_empty():
@@ -758,6 +782,298 @@ func _gable(s: Soup, p: Vector3, a: Vector2, depth: float, h: float, rise: float
 		s.tri(t0, rg, tb, col)
 	else:
 		s.tri(t0, tb, rg, col)
+
+## Un tramo del túnel: piso con rayas y manchas de luz, dos paredes con franja, techo y lámparas. En el cruce del centro las paredes se abren hacia la otra calle.
+func _tunnel_segment(tn: Soup, si: int, ni: int) -> void:
+	var rid: int = city.s_road[si]
+	var road: Dictionary = city.roads[rid]
+	var hw: float = road["hw"]
+	var a := Vector3(city.s_x[si], city.s_y[si], city.s_z[si])
+	var b := Vector3(city.s_x[ni], city.s_y[ni], city.s_z[ni])
+	var ma := _miter(si)
+	var mb := _miter(ni)
+	var na := Vector3(ma.x, 0.0, ma.y)
+	var nb := Vector3(mb.x, 0.0, mb.y)
+	var li := si - _first_sample(rid)
+	var hgt := 6.2
+	var wx := hw + 0.3
+	var up := Vector3(0, hgt, 0)
+	var lit := li % 2 == 0
+	tn.quad(a - na * wx, b - nb * wx, b + nb * wx, a + na * wx, Color(0.30, 0.31, 0.36) if lit else Color(0.20, 0.21, 0.25))
+	var lu := Vector3(0, 0.03, 0)
+	if li % 3 != 2:
+		tn.quad(a - na * 0.12 + lu, b - nb * 0.12 + lu, b + nb * 0.12 + lu, a + na * 0.12 + lu, Color(0.95, 0.80, 0.15))
+	for sg in [-1.0, 1.0]:
+		var s: float = sg
+		tn.quad(a + na * (hw - 0.55) * s + lu, b + nb * (hw - 0.55) * s + lu, b + nb * (hw - 0.4) * s + lu, a + na * (hw - 0.4) * s + lu, Color(0.92, 0.92, 0.92))
+		var mid := (a + b) * 0.5 + (na + nb) * 0.5 * (wx * s)
+		if _in_other_road(mid.x, mid.z, rid):
+			continue # la bifurcación: acá la pared se abre hacia la otra calle
+		var wa := a + na * (wx * s)
+		var wb := b + nb * (wx * s)
+		tn.quad(wa, wa + up, wb + up, wb, Color(0.66, 0.68, 0.72) if lit else Color(0.57, 0.59, 0.64))
+		tn.quad(wa + Vector3(0, 0.9, 0), wa + Vector3(0, 1.5, 0), wb + Vector3(0, 1.5, 0), wb + Vector3(0, 0.9, 0), Color(0.95, 0.52, 0.14)) # franja naranja
+		tn.quad(wa + Vector3(0, 5.0, 0), wa + Vector3(0, 5.25, 0), wb + Vector3(0, 5.25, 0), wb + Vector3(0, 5.0, 0), Color(1.0, 0.96, 0.75) if lit else Color(0.85, 0.82, 0.62)) # tira de luz
+	var ceil_y := Vector3(0, hgt + float(rid % 3) * 0.02, 0)
+	tn.quad(a - na * wx + ceil_y, b - nb * wx + ceil_y, b + nb * wx + ceil_y, a + na * wx + ceil_y, Color(0.34, 0.35, 0.40))
+	if lit:
+		var l0 := a.lerp(b, 0.2)
+		var l1 := a.lerp(b, 0.8)
+		var cy := Vector3(0, hgt - 0.02, 0)
+		tn.quad(l0 - na * 0.8 + cy, l1 - nb * 0.8 + cy, l1 + nb * 0.8 + cy, l0 + na * 0.8 + cy, Color(1.0, 0.97, 0.78))
+	# cierres de las puntas de los brazos: pared verde (la salida)
+	if city.s_prev[si] < 0:
+		tn.quad(a - na * wx, a - na * wx + up, a + na * wx + up, a + na * wx, Color(0.18, 0.62, 0.34))
+	if city.s_next[ni] < 0:
+		tn.quad(b - nb * wx, b - nb * wx + up, b + nb * wx + up, b + nb * wx, Color(0.18, 0.62, 0.34))
+
+## Marca circular del suelo (el círculo verde de los locales y de las salidas)
+func _circle_mesh(r_in: float, r_out: float, col_in: Color, col_out: Color) -> MeshInstance3D:
+	var cv := PackedVector3Array()
+	var cc := PackedColorArray()
+	var n := 28
+	for i in n:
+		var a0 := TAU * float(i) / float(n)
+		var a1 := TAU * float(i + 1) / float(n)
+		var c0 := Vector3(cos(a0) * r_in, 0, sin(a0) * r_in)
+		var c1 := Vector3(cos(a1) * r_in, 0, sin(a1) * r_in)
+		cv.append_array(PackedVector3Array([Vector3.ZERO, c0, c1]))
+		for k in 3:
+			cc.append(col_in)
+		var o0 := Vector3(cos(a0) * r_out, 0, sin(a0) * r_out)
+		var o1 := Vector3(cos(a1) * r_out, 0, sin(a1) * r_out)
+		cv.append_array(PackedVector3Array([c0, o0, o1, c0, o1, c1]))
+		for k in 6:
+			cc.append(col_out)
+	var cm := ArrayMesh.new()
+	PaperKit.add_surface(cm, cv, cc, PaperKit.material(null, 0.0, 0.2, 0.0))
+	var cmi := MeshInstance3D.new()
+	cmi.mesh = cm
+	cmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return cmi
+
+## Sala del estacionamiento subterráneo: piso con rayas, pared redonda con franja, techo con lámparas y el círculo verde de la salida (los pilares y los autos son objetos)
+func _hall(h: Dictionary) -> Node3D:
+	var root := Node3D.new()
+	root.name = "sala"
+	var c: Vector2 = h["pos"]
+	var r: float = h["r"]
+	var hgt: float = h["h"]
+	var s := Soup.new()
+	var n := 40
+	for i in n:
+		var a0 := TAU * float(i) / float(n)
+		var a1 := TAU * float(i + 1) / float(n)
+		var p0 := Vector3(c.x + cos(a0) * r, 0.0, c.y + sin(a0) * r)
+		var p1 := Vector3(c.x + cos(a1) * r, 0.0, c.y + sin(a1) * r)
+		var cen := Vector3(c.x, 0.0, c.y)
+		var cu := Vector3(0, hgt, 0)
+		s.tri(cen + Vector3(0, 0.02, 0), p0 + Vector3(0, 0.02, 0), p1 + Vector3(0, 0.02, 0), Color(0.25, 0.26, 0.30))
+		s.tri(cen + cu, p0 + cu, p1 + cu, Color(0.32, 0.33, 0.38))
+		s.quad(p0, p0 + cu, p1 + cu, p1, Color(0.64, 0.66, 0.70) if i % 2 == 0 else Color(0.56, 0.58, 0.63))
+		s.quad(p0 + Vector3(0, 0.9, 0), p0 + Vector3(0, 1.5, 0), p1 + Vector3(0, 1.5, 0), p1 + Vector3(0, 0.9, 0), Color(0.95, 0.52, 0.14))
+	# rayas de los lugares: líneas radiales entre 29 y 41 m y el borde del pasillo
+	for i in 44:
+		var a := TAU * float(i) / 44.0
+		var d := Vector3(cos(a), 0, sin(a))
+		var t := Vector3(-sin(a), 0, cos(a))
+		var p_in := Vector3(c.x, 0.04, c.y) + d * 30.0
+		var p_out := Vector3(c.x, 0.04, c.y) + d * 41.0
+		s.quad(p_in - t * 0.07, p_out - t * 0.07, p_out + t * 0.07, p_in + t * 0.07, Color(0.92, 0.92, 0.92))
+	for k in [12.0, 24.0, 34.0]:
+		var m_n := 8 if k < 20.0 else (12 if k < 30.0 else 14)
+		for i in m_n:
+			var a := TAU * (float(i) + 0.5) / float(m_n)
+			var lc := Vector3(c.x + cos(a) * k, hgt - 0.02, c.y + sin(a) * k)
+			s.quad(lc + Vector3(-1.4, 0, -0.5), lc + Vector3(1.4, 0, -0.5), lc + Vector3(1.4, 0, 0.5), lc + Vector3(-1.4, 0, 0.5), Color(1.0, 0.97, 0.78))
+	var m := ArrayMesh.new()
+	_surface(m, s, _tunnel_mat)
+	var mi := MeshInstance3D.new()
+	mi.mesh = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	return root
+
+## La boca de un túnel (en la superficie) o del estacionamiento: una masa de papel con la entrada oscura
+func _mouth(mo: Dictionary) -> Node3D:
+	var root := Node3D.new()
+	root.name = "boca_" + str(mo["id"])
+	var pos: Vector2 = mo["pos"]
+	var d: Vector2 = mo["dir"]
+	var y := city.height(pos.x, pos.y)
+	var xf := Transform3D(Basis(Vector3.UP, atan2(d.x, d.y)), Vector3(pos.x, y, pos.y)) # +z local = hacia adentro de la boca
+	var v := PackedVector3Array()
+	var c := PackedColorArray()
+	if str(mo["kind"]) == "park":
+		CityProps.box(v, c, xf, Vector3(0, 2.2, 5.0), Vector3(17.0, 4.4, 10.0), Color(0.64, 0.66, 0.70))
+		CityProps.box(v, c, xf, Vector3(0, 1.6, -0.08), Vector3(8.4, 3.2, 0.3), Color(0.07, 0.07, 0.09))
+		CityProps.box(v, c, xf, Vector3(0, 4.9, -0.1), Vector3(7.0, 1.7, 0.4), Color(0.14, 0.34, 0.80))
+		for k in 8:
+			CityProps.box(v, c, xf, Vector3(-3.5 + 1.0 * float(k), 3.4, -0.1), Vector3(0.9, 0.35, 0.3), Color(0.95, 0.80, 0.15) if k % 2 == 0 else Color(0.12, 0.12, 0.14))
+	else:
+		# la ladera: un cerro de papel (tronco de cono con lomas) con el frente de roca alrededor de la boca y algunos árboles arriba
+		CityProps.frustum(v, c, xf, Vector3(0, 0, 16.0), 30.0, 11.0, 14.0, 9, Color(0.46, 0.60, 0.40), 0.3)
+		CityProps.frustum(v, c, xf, Vector3(-14.0, 0, 11.0), 12.0, 4.0, 8.5, 7, Color(0.52, 0.62, 0.42), 0.1)
+		CityProps.frustum(v, c, xf, Vector3(15.0, 0, 9.0), 10.0, 3.5, 6.5, 7, Color(0.50, 0.58, 0.40), 0.5)
+		CityProps.box(v, c, xf, Vector3(0, 4.0, 2.0), Vector3(22.0, 8.0, 4.0), Color(0.58, 0.58, 0.54))
+		CityProps.box(v, c, xf, Vector3(-9.0, 7.6, 3.0), Vector3(6.0, 1.2, 5.0), Color(0.66, 0.66, 0.62))
+		for tk in 5:
+			CityProps.emit(CityProps.TREE, float(pos.x) + (float(tk) - 2.0) * 3.5 * cos(atan2(d.x, d.y)) + d.x * 14.0, y + 12.5 - absf(float(tk) - 2.0) * 0.8, float(pos.y) - (float(tk) - 2.0) * 3.5 * sin(atan2(d.x, d.y)) + d.y * 14.0, 0.0, 0.2 * float(tk), Vector2.ZERO, v, c)
+		CityProps.box(v, c, xf, Vector3(0, 2.7, -0.1), Vector3(10.4, 5.4, 0.3), Color(0.05, 0.05, 0.07))
+		for k in 10:
+			CityProps.box(v, c, xf, Vector3(-4.5 + 1.0 * float(k), 5.9, -0.1), Vector3(0.9, 0.7, 0.4), Color(0.95, 0.52, 0.14) if k % 2 == 0 else Color(0.10, 0.10, 0.12))
+		for sgn in [-1.0, 1.0]:
+			CityProps.box(v, c, xf, Vector3(6.1 * float(sgn), 1.6, -7.0), Vector3(0.8, 3.2, 14.0), Color(0.72, 0.72, 0.74))
+	var m := ArrayMesh.new()
+	PaperKit.add_surface(m, v, c, PaperKit.material(null, 0.0, 0.2, 0.3))
+	var mi := MeshInstance3D.new()
+	mi.mesh = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	if str(mo["kind"]) == "park":
+		var lab := Label3D.new()
+		lab.text = "P  " + Tr.t("ESTACIONAMIENTO")
+		lab.font_size = 64
+		lab.pixel_size = 0.012
+		lab.modulate = Color(1, 1, 1)
+		lab.outline_size = 12
+		lab.outline_modulate = Color(0.05, 0.12, 0.35)
+		lab.position = Vector3(pos.x - d.x * 0.35, y + 4.9, pos.y - d.y * 0.35)
+		lab.rotation = Vector3(0, atan2(-d.x, -d.y), 0)
+		root.add_child(lab)
+	return root
+
+## Cartel «SALIDA» de las puntas de los brazos del túnel y de la sala del estacionamiento
+func _link_label(l: Dictionary) -> Node3D:
+	var root := Node3D.new()
+	var lp: Vector2 = l["label_pos"]
+	var lab := Label3D.new()
+	lab.text = Tr.t(str(l["label"]))
+	lab.font_size = 96
+	lab.pixel_size = 0.014
+	lab.modulate = Color(0.75, 1.0, 0.8)
+	lab.outline_size = 16
+	lab.outline_modulate = Color(0.02, 0.2, 0.08)
+	var yw: float = l["label_yaw"]
+	lab.position = Vector3(lp.x + sin(yw) * 0.4, 3.6, lp.y + cos(yw) * 0.4)
+	lab.rotation = Vector3(0, yw, 0)
+	root.add_child(lab)
+	if str(l["id"]).begins_with("salida_"):
+		var ring := _circle_mesh(3.0, 3.5, Color(0.20, 0.85, 0.35), Color(0.97, 0.97, 0.97))
+		ring.position = Vector3(float((l["pos"] as Vector2).x), 0.1, float((l["pos"] as Vector2).y))
+		root.add_child(ring)
+	return root
+
+## El frente de un local: el cartel, el portón de garage (que se abre), la boca oscura de adentro y el círculo verde donde hay que frenar para entrar
+func _shop_front(b: Dictionary) -> Node3D:
+	var root := Node3D.new()
+	root.name = "shop_" + str(b["poi"])
+	root.add_child(_sign(b))
+	var p: Dictionary = {}
+	for q in city.pois:
+		if str(q["id"]) == str(b["poi"]):
+			p = q
+	if p.is_empty() or str(p["shop"]) == "":
+		return root
+	var col: Color = p["color"]
+	var door_p: Vector2 = p["door"]
+	var dir: Vector2 = p["dir"]
+	var y := city.height(door_p.x, door_p.y) + 0.15
+	var yaw := atan2(-dir.x, -dir.y) # +z local mira hacia la calle
+	# la boca (lo que se ve cuando el portón sube) y el dintel
+	var v := PackedVector3Array()
+	var c := PackedColorArray()
+	var xf := Transform3D(Basis(Vector3.UP, yaw), Vector3(door_p.x - dir.x * 0.06, y, door_p.y - dir.y * 0.06))
+	CityProps.box(v, c, xf, Vector3(0, 2.1, 0), Vector3(7.2, 4.2, 0.1), Color(0.09, 0.08, 0.10))
+	CityProps.box(v, c, xf, Vector3(0, 4.55, 0.05), Vector3(8.0, 0.5, 0.3), col)
+	CityProps.box(v, c, xf, Vector3(-3.75, 2.1, 0.05), Vector3(0.4, 4.2, 0.3), col.darkened(0.15))
+	CityProps.box(v, c, xf, Vector3(3.75, 2.1, 0.05), Vector3(0.4, 4.2, 0.3), col.darkened(0.15))
+	var m := ArrayMesh.new()
+	PaperKit.add_surface(m, v, c, PaperKit.material(null, 0.0, 0.2, 0.3))
+	var mouth := MeshInstance3D.new()
+	mouth.mesh = m
+	mouth.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mouth)
+	# el portón: tablillas de papel que suben (el pivote está arriba, el escalado en y lo recoge)
+	var door := Node3D.new()
+	door.name = "door"
+	door.position = Vector3(door_p.x - dir.x * 0.16, y + 4.2, door_p.y - dir.y * 0.16)
+	door.rotation = Vector3(0, yaw, 0)
+	var dv := PackedVector3Array()
+	var dc := PackedColorArray()
+	var slat := 0.6
+	for k in 7:
+		CityProps.box(dv, dc, Transform3D.IDENTITY, Vector3(0, -(float(k) + 0.5) * slat, 0), Vector3(6.9, slat - 0.04, 0.12), col.lightened(0.18) if k % 2 == 0 else col)
+	var dm := ArrayMesh.new()
+	PaperKit.add_surface(dm, dv, dc, PaperKit.material(null, 0.0, 0.2, 0.3))
+	var dmi := MeshInstance3D.new()
+	dmi.mesh = dm
+	dmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	door.add_child(dmi)
+	root.add_child(door)
+	# círculo verde sobre el asfalto
+	var front: Vector2 = p["front"]
+	var circle := Node3D.new()
+	circle.name = "circle"
+	circle.position = Vector3(front.x, city.height(front.x, front.y) + 0.1, front.y)
+	var cv := PackedVector3Array()
+	var cc := PackedColorArray()
+	var green := Color(0.20, 0.85, 0.35)
+	var n := 28
+	for i in n:
+		var a0 := TAU * float(i) / float(n)
+		var a1 := TAU * float(i + 1) / float(n)
+		var r0 := 3.0
+		var r1 := 3.5
+		var c0 := Vector3(cos(a0) * r0, 0, sin(a0) * r0)
+		var c1 := Vector3(cos(a1) * r0, 0, sin(a1) * r0)
+		cv.append_array(PackedVector3Array([Vector3.ZERO, c0, c1]))
+		for k in 3:
+			cc.append(green)
+		var o0 := Vector3(cos(a0) * r1, 0, sin(a0) * r1)
+		var o1 := Vector3(cos(a1) * r1, 0, sin(a1) * r1)
+		cv.append_array(PackedVector3Array([c0, o0, o1, c0, o1, c1]))
+		for k in 6:
+			cc.append(Color(0.97, 0.97, 0.97))
+	# la rampa de entrada: una franja de asfalto sobre la vereda, del círculo al portón, con bordes amarillos
+	var ap_v := PackedVector3Array()
+	var ap_c := PackedColorArray()
+	var lat := Vector2(-dir.y, dir.x)
+	var a0 := front + dir * 3.4
+	var a1 := door_p + dir * 0.4
+	var hwb := 3.2
+	var ya0 := city.height(a0.x, a0.y) + 0.2
+	var ya1 := city.height(a1.x, a1.y) + 0.2
+	var q00 := Vector3(a0.x - lat.x * hwb, ya0, a0.y - lat.y * hwb)
+	var q01 := Vector3(a0.x + lat.x * hwb, ya0, a0.y + lat.y * hwb)
+	var q10 := Vector3(a1.x - lat.x * hwb, ya1, a1.y - lat.y * hwb)
+	var q11 := Vector3(a1.x + lat.x * hwb, ya1, a1.y + lat.y * hwb)
+	ap_v.append_array(PackedVector3Array([q00, q01, q11, q00, q11, q10]))
+	for k in 6:
+		ap_c.append(Color(0.30, 0.34, 0.42))
+	var sidec := Color(0.98, 0.85, 0.15)
+	for side_s in [-1.0, 1.0]:
+		var o0 := Vector3(a0.x + lat.x * (hwb - 0.35) * side_s, ya0 + 0.01, a0.y + lat.y * (hwb - 0.35) * side_s)
+		var o1 := Vector3(a1.x + lat.x * (hwb - 0.35) * side_s, ya1 + 0.01, a1.y + lat.y * (hwb - 0.35) * side_s)
+		var i0 := Vector3(a0.x + lat.x * (hwb - 0.1) * side_s, ya0 + 0.01, a0.y + lat.y * (hwb - 0.1) * side_s)
+		var i1 := Vector3(a1.x + lat.x * (hwb - 0.1) * side_s, ya1 + 0.01, a1.y + lat.y * (hwb - 0.1) * side_s)
+		ap_v.append_array(PackedVector3Array([o0, i0, i1, o0, i1, o1]))
+		for k in 6:
+			ap_c.append(sidec)
+	var apm := ArrayMesh.new()
+	PaperKit.add_surface(apm, ap_v, ap_c, PaperKit.material(load(TEX + "asphalt.png") as Texture2D, 0.28, 0.22, 0.07))
+	var api := MeshInstance3D.new()
+	api.mesh = apm
+	api.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(api)
+	var cm := ArrayMesh.new()
+	PaperKit.add_surface(cm, cv, cc, PaperKit.material(null, 0.0, 0.2, 0.0))
+	var cmi := MeshInstance3D.new()
+	cmi.mesh = cm
+	cmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	circle.add_child(cmi)
+	root.add_child(circle)
+	return root
 
 ## Cartel de un edificio especial (concesionario, taller)
 func _sign(b: Dictionary) -> Node3D:

@@ -31,6 +31,7 @@ var _mini: Control
 var _big: Control
 var _toast_cb: Callable
 var _exit_warned := {}
+var arrive_r := 28.0 # a esta distancia del destino se da por llegado
 
 func setup(p_track, toast_cb: Callable) -> void:
 	track = p_track
@@ -38,6 +39,8 @@ func setup(p_track, toast_cb: Callable) -> void:
 	_toast_cb = toast_cb
 	gps = CityGps.new(city)
 	for rd in city.roads:
+		if str(rd["kind"]) in ["tunnel", "bay"]:
+			continue # los túneles están ocultos y las entradas de los locales son muy cortas
 		var pts: PackedVector3Array = rd["pts"]
 		var step := 3
 		var i := 0
@@ -83,6 +86,18 @@ func setup(p_track, toast_cb: Callable) -> void:
 	gps_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(gps_l)
 	_build_big()
+	_fade = ColorRect.new()
+	_fade.color = Color(0, 0, 0, 0)
+	_fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_fade)
+
+var _fade: ColorRect
+
+## Fundido a negro (entrar a un taller o a un túnel): 0 = nada · 1 = negro
+func set_fade(a: float) -> void:
+	if _fade != null:
+		_fade.color = Color(0, 0, 0, clampf(a, 0.0, 1.0))
 
 func _build_big() -> void:
 	_big = Control.new()
@@ -204,7 +219,7 @@ func update_hud(dt: float, car) -> void:
 		_off_t += step
 		_gps_text()
 		var to_dest := car_pos.distance_to(dest)
-		if to_dest < 28.0:
+		if to_dest < arrive_r:
 			if _toast_cb.is_valid():
 				_toast_cb.call(Tr.t("🏁 ¡Llegaste a %s!") % route_name)
 			_clear_dest()

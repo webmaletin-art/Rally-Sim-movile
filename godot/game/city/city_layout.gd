@@ -16,6 +16,10 @@ const PARK_R := 44.0 # radio de la calle que rodea al Parque del Drift
 const AVE := [[12.0, 1.0], [30.0, 1.0], [9.0, 2.0], [36.0, 1.0], [14.0, 2.0], [26.0, 1.0], [10.0, 2.0], [32.0, 1.0]] # por avenida: [desvío máximo (m), vueltas de curva cada 260 m]: no todas salen igual
 const GRID_A0 := 135.0 # el barrio de manzanas cuadradas ocupa el sector entre la avenida 4 (135°) y la 5 (180°)
 const GRID_A1 := 180.0
+const POCKET := Vector2(6000.0, 0.0) # centro del túnel en cruz: un «bolsillo» del mundo, lejos de la ciudad (se entra y se sale por las bocas, con un fundido)
+const HALL_C := Vector2(6000.0, 3000.0) # centro del estacionamiento subterráneo (otro bolsillo)
+const HALL_R := 42.0
+const TUNNEL_HALF := 900.0 # cada brazo de la cruz mide 900 m desde el centro
 const RINGS := [130.0, 260.0, 390.0, 520.0, 650.0, 780.0, 910.0, 1040.0]
 const COAST_R := 1120.0
 const RURAL_END := 2300.0
@@ -36,6 +40,10 @@ var pois: Array = [] # {id, kind, name, pos, yaw, size, color}
 var exits: Array = [] # {num, name, pos, yaw, road}
 var buildings: Dictionary = {} # Vector2i (cuadra) -> Array de {x, z, y, yaw, w, d, h, wall: Color, roof: Color, kind, seed, hip}
 var building_count := 0
+# bocas de túnel y estacionamiento: lugares donde el auto «pasa» a otro lado (con un fundido a negro)
+var links: Array = [] # {id, pos: Vector2, r: float, to: [x, z, yaw], label: String}
+var mouths: Array = [] # estructuras de entrada: {id, pos: Vector2, dir: Vector2 (hacia adentro de la boca), kind: "tunnel" | "park"}
+var halls: Array = [] # {pos, r, h}
 # objetos de la calle (farolas, árboles, semáforos, bolardos): el id es el índice; salen igual en todos los teléfonos
 var prop_type := PackedByteArray()
 var prop_x := PackedFloat32Array()
@@ -60,6 +68,8 @@ var _rng := RandomNumberGenerator.new()
 # ───────────────────────── el suelo de todo el mundo ─────────────────────────
 ## Altura del terreno en (x, z): una meseta (la ciudad), el mar al sur, lomas suaves afuera y una colina al noroeste
 func height(x: float, z: float) -> float:
+	if x > 3000.0:
+		return 0.0 # el bolsillo de los túneles y del estacionamiento es plano
 	var r := sqrt(x * x + z * z)
 	var h := 9.0 * smoothstep(SEA_Z, SEA_Z - 220.0, z)
 	h += 1.4 * sin(x * 0.0021 + 1.0) * cos(z * 0.0017)
@@ -234,7 +244,80 @@ func _make_park(id: int) -> int:
 	_sample_road(id, "Parque del Drift", 0, "plaza", 5.0, 2.5, pl)
 	roads[roads.size() - 1]["center"] = cen
 	open_areas.append({"pos": cen, "r": PARK_R, "name": "Parque del Drift", "paving": true})
+	id += 1
+	# una calle atraviesa el parque y lo une con los anillos 130 y 260 (la plaza tiene una calle adentro)
+	var ang := deg_to_rad(22.5)
+	_sample_road(id, "Calle 100", 100, "minor", 4.2, 2.4, _radial(130.0, 260.0, ang, 0.0, 0.0))
 	return id + 1
+
+## Túnel subterráneo en cruz: dos calles cubiertas que se cruzan en el centro, con curvas, de 1,8 km cada una. Se entra por cuatro bocas escondidas fuera del centro de la
+## ciudad (este, oeste, norte y sur) y se sale por la boca del otro brazo. Es un tubo cerrado (piso, paredes y techo) y no figura en el mapa.
+func _make_tunnels(id: int) -> int:
+	var ends: Array = [] # por brazo: [punta, dirección hacia afuera]
+	for axis in 2:
+		var plan := PackedVector2Array()
+		var n := int(ceil(2.0 * TUNNEL_HALF / STEP))
+		for i in n + 1:
+			var sp := -TUNNEL_HALF + 2.0 * TUNNEL_HALF * float(i) / float(n)
+			var off := 55.0 * sin(TAU * sp / 760.0 + (0.0 if axis == 0 else 1.1)) * smoothstep(0.0, 140.0, absf(sp)) # cero en el centro: ahí las dos calles se cruzan derecho
+			plan.append(POCKET + (Vector2(sp, off) if axis == 0 else Vector2(off, sp)))
+		_sample_road(id, "Túnel Oeste-Este" if axis == 0 else "Túnel Norte-Sur", 0, "tunnel", 5.5, 0.0, plan)
+		id += 1
+		ends.append([plan[0], (plan[0] - plan[1]).normalized()])
+		ends.append([plan[plan.size() - 1], (plan[plan.size() - 1] - plan[plan.size() - 2]).normalized()])
+	# las cuatro bocas de la superficie: una calle cortita que sale de una ruta (o de la costanera) y termina en la boca
+	var spurs: Array = []
+	for k in [[0, Vector2(0, -1)], [4, Vector2(0, -1)], [6, Vector2(1, 0)]]:
+		var r0 := _rural_pos(int(k[0]), 1150.0)
+		spurs.append([r0, k[1]])
+	var coast := road_named("Costanera 90")
+	var cp: PackedVector3Array = roads[coast]["pts"]
+	var cmid := Vector2(cp[cp.size() >> 1].x, cp[cp.size() >> 1].z)
+	spurs.append([cmid, Vector2(0, 1)])
+	# orden de los brazos: 0 oeste, 1 este, 2 norte, 3 sur (el brazo del eje 1 apunta de norte a sur)
+	var names := ["oeste", "este", "norte", "sur"]
+	var surf_for := [spurs[1], spurs[0], spurs[2], spurs[3]] # oeste ↔ ruta 40 · este ↔ ruta 20 · norte ↔ ruta 60 · sur ↔ costanera
+	var surf_end: Array = []
+	for i in 4:
+		var st: Vector2 = surf_for[i][0]
+		var dr: Vector2 = surf_for[i][1]
+		var en := st + dr * 75.0
+		var plan := PackedVector3Array()
+		var cum_b := PackedFloat32Array()
+		var nn := 25
+		for j in nn + 1:
+			var q := st + dr * (75.0 * float(j) / float(nn))
+			plan.append(Vector3(q.x, height(q.x, q.y), q.y))
+			cum_b.append(75.0 * float(j) / float(nn))
+		roads.append({"id": roads.size(), "name": "Boca del túnel %s" % names[i], "num": 0, "kind": "bay", "hw": 4.2, "sw": 0.0, "pts": plan, "cum": cum_b, "nj": PackedByteArray()})
+		var nj_b := PackedByteArray()
+		nj_b.resize(plan.size())
+		roads[roads.size() - 1]["nj"] = nj_b
+		surf_end.append([en, dr, st])
+	# enlaces: la boca de la superficie lleva a la punta de su brazo y la punta lleva de vuelta a la boca
+	for i in 4:
+		var tip: Vector2 = ends[i][0]
+		var out_d: Vector2 = ends[i][1]
+		var en: Vector2 = surf_end[i][0]
+		var dr: Vector2 = surf_end[i][1]
+		var st: Vector2 = surf_end[i][2]
+		var inward := -out_d
+		links.append({"id": "boca_" + names[i], "pos": en - dr * 4.0, "r": 4.5, "to": [tip.x + inward.x * 36.0, tip.y + inward.y * 36.0, atan2(inward.x, inward.y)], "label": ""})
+		links.append({"id": "punta_" + names[i], "pos": tip + inward * 13.0, "r": 6.0, "to": [en.x - dr.x * 16.0, en.y - dr.y * 16.0, atan2(-dr.x, -dr.y)], "label": "SALIDA", "label_pos": tip, "label_yaw": atan2(inward.x, inward.y)})
+		mouths.append({"id": "boca_" + names[i], "pos": en, "dir": dr, "kind": "tunnel"})
+	return id
+
+## Estacionamiento subterráneo: una sala redonda con pilares y autos de papel. La boca está en el Parque del Drift y adentro se maneja libre; se sale por el círculo verde del sur.
+func _make_hall(id: int) -> int:
+	var park := Vector2(cos(deg_to_rad(22.5)), sin(deg_to_rad(22.5))) * 195.0
+	var mouth := park + Vector2(-26.0, 0.0)
+	var d_in := Vector2(-1.0, 0.0)
+	mouths.append({"id": "boca_estacionamiento", "pos": mouth, "dir": d_in, "kind": "park"})
+	links.append({"id": "entrada_estacionamiento", "pos": mouth + d_in * 4.0, "r": 4.0, "to": [HALL_C.x, HALL_C.y - 14.0, 0.0], "label": ""})
+	links.append({"id": "salida_estacionamiento", "pos": HALL_C + Vector2(0.0, 33.0), "r": 4.0, "to": [mouth.x - d_in.x * 16.0, mouth.y - d_in.y * 16.0, atan2(-d_in.x, -d_in.y)], "label": "SALIDA", "label_pos": HALL_C + Vector2(0.0, 40.0), "label_yaw": PI})
+	halls.append({"pos": HALL_C, "r": HALL_R, "h": 5.2})
+	open_areas.append({"pos": HALL_C, "r": HALL_R - 0.6, "name": "Estacionamiento subterráneo", "paving": true, "dark": true})
+	return id
 
 func _make_roads() -> void:
 	var id := 0
@@ -313,6 +396,8 @@ func _make_roads() -> void:
 	# camino de la colina: sale de la avenida 6 y sube en tres cuchillas
 	_sample_road(id, "Camino de la Colina 300", 300, "hill", 4.4, 1.8, _hill_plan())
 	id += 1
+	id = _make_tunnels(id)
+	id = _make_hall(id)
 
 ## Trazado del camino de la colina: waypoints en polares (radio, ángulo) alrededor del centro de la colina, con el radio siempre bajando (así el camino nunca baja
 ## para volver a subir) y las cuchillas redondeadas (Chaikin en polares). Antes arranca el tramo de la avenida 6 hasta el pie de la colina.
@@ -351,20 +436,24 @@ func _hill_plan() -> PackedVector2Array:
 # ───────────────────────── índice y cruces ─────────────────────────
 func _index() -> void:
 	for ri in roads.size():
-		var pts: PackedVector3Array = roads[ri]["pts"]
-		var base := s_x.size()
-		for i in pts.size():
-			s_x.append(pts[i].x)
-			s_y.append(pts[i].y)
-			s_z.append(pts[i].z)
-			s_road.append(ri)
-			s_next.append(base + i + 1 if i + 1 < pts.size() else -1)
-			s_prev.append(base + i - 1 if i > 0 else -1)
-		# las calles cerradas (anillos) cierran el círculo
-		if str(roads[ri]["kind"]) in ["ring", "plaza"]:
-			s_next[base + pts.size() - 1] = base
-			s_prev[base] = base + pts.size() - 1
-	for si in s_x.size():
+		_index_road(ri)
+
+## Agrega los puntos de una calle al índice espacial (también sirve para calles que se suman después, como las entradas de los talleres)
+func _index_road(ri: int) -> void:
+	var pts: PackedVector3Array = roads[ri]["pts"]
+	var base := s_x.size()
+	for i in pts.size():
+		s_x.append(pts[i].x)
+		s_y.append(pts[i].y)
+		s_z.append(pts[i].z)
+		s_road.append(ri)
+		s_next.append(base + i + 1 if i + 1 < pts.size() else -1)
+		s_prev.append(base + i - 1 if i > 0 else -1)
+	# las calles cerradas (anillos) cierran el círculo
+	if str(roads[ri]["kind"]) in ["ring", "plaza"]:
+		s_next[base + pts.size() - 1] = base
+		s_prev[base] = base + pts.size() - 1
+	for si in range(base, s_x.size()):
 		var key := Vector2i(int(floor(s_x[si] / HC)), int(floor(s_z[si] / HC)))
 		var cell: PackedInt32Array = _hash.get(key, PackedInt32Array())
 		cell.append(si)
@@ -653,7 +742,7 @@ func _place_facades() -> void:
 	for ri in roads.size():
 		var rd: Dictionary = roads[ri]
 		var kind := str(rd["kind"])
-		if kind == "rural" or kind == "shortcut":
+		if kind == "rural" or kind == "shortcut" or kind == "bay" or kind == "tunnel":
 			continue
 		var pts: PackedVector3Array = rd["pts"]
 		var hw := float(rd["hw"])
@@ -800,7 +889,10 @@ func _add_prop(t: int, x: float, z: float, to_road: Vector2) -> void:
 	prop_type.append(t)
 	prop_x.append(x)
 	prop_z.append(z)
-	prop_y.append(height(x, z) if pr[0] < 0.0 else float(pr[4]) + 0.16) # sobre la vereda (el cordón sube 16 cm)
+	var py := height(x, z)
+	if pr[0] >= 0.0:
+		py = float(pr[4]) + (0.16 if pr[6] >= 0.0 else 0.0) # sobre la vereda (el cordón sube 16 cm); en una plaza abierta, a ras del suelo
+	prop_y.append(py)
 	prop_yaw.append(atan2(to_road.x, to_road.y) if t != 1 else _rng.randf() * TAU)
 	prop_seed.append(_rng.randf())
 	var key := chunk_of(x, z)
@@ -813,7 +905,7 @@ func _place_props() -> void:
 	for ri in roads.size():
 		var rd: Dictionary = roads[ri]
 		var kind := str(rd["kind"])
-		if kind == "rural" or kind == "shortcut":
+		if kind == "rural" or kind == "shortcut" or kind == "bay" or kind == "tunnel":
 			continue
 		var pts: PackedVector3Array = rd["pts"]
 		var nj: PackedByteArray = rd["nj"]
@@ -867,6 +959,26 @@ func _place_props() -> void:
 	for i in 10:
 		var a := TAU * (float(i) + 0.5) / 10.0
 		_add_prop(1, cos(a) * 30.0, sin(a) * 30.0, Vector2(0, 1))
+	# boca del estacionamiento: dos postes a cada lado (que no se rompen)
+	for mo in mouths:
+		if str(mo["kind"]) == "park":
+			var d_in: Vector2 = mo["dir"]
+			var lat := Vector2(-d_in.y, d_in.x)
+			for sg in [-1.0, 1.0]:
+				for off in [5.6, 8.6]:
+					_add_prop(5, (mo["pos"] as Vector2).x + d_in.x * 3.0 + lat.x * float(sg) * float(off), (mo["pos"] as Vector2).y + d_in.y * 3.0 + lat.y * float(sg) * float(off), d_in)
+	# estacionamiento subterráneo: pilares y autos de papel (con huecos al azar y libre el camino a la salida del sur)
+	for i in 12:
+		var a := TAU * (float(i) + 0.5) / 12.0
+		_add_prop(5, HALL_C.x + cos(a) * 26.0, HALL_C.y + sin(a) * 26.0, Vector2(0, 1))
+	for ring in [[37.0, 22], [17.0, 10]]:
+		var rr: float = ring[0]
+		var cn: int = ring[1]
+		for i in cn:
+			var a := TAU * float(i) / float(cn) + 0.1
+			if absf(angle_difference(a, PI * 0.5)) < 0.32 or _rng.randf() < 0.3:
+				continue
+			_add_prop(6, HALL_C.x + cos(a) * rr, HALL_C.y + sin(a) * rr, Vector2(-cos(a), -sin(a)))
 	# semáforos: cuatro por cruce grande (dos por cada calle, en esquinas opuestas)
 	for j in junctions:
 		if not bool(j["major"]):
@@ -894,12 +1006,18 @@ func _place_props() -> void:
 				_add_prop(2, jp.x + (ta.x * along + na.x * offs) * sg, jp.y + (ta.y * along + na.y * offs) * sg, -na * sg)
 
 # ───────────────────────── puntos de interés ─────────────────────────
-## Cada uno es un edificio especial pegado a una calle: [id, tipo, nombre, calle, distancia sobre la calle (m), lado, ancho, fondo, alto, color]
+## Cada uno es un edificio especial pegado a una calle: [id, tipo, nombre, calle, distancia sobre la calle (m), lado, ancho, fondo, alto, color, local (ver data/shops.gd)]
+## Los locales se entran: frente a cada uno hay un círculo verde; si frenás ahí se abre el portón y el auto entra al taller.
 const POI_SPECS := [
-	["concesionario", "dealer", "Concesionario Dream City", "Avenida 7", 150.0, 1.0, 34.0, 22.0, 9.6, Color(0.20, 0.45, 0.85)],
-	["taller_centro", "garage", "Taller Central", "Avenida 1", 170.0, -1.0, 26.0, 18.0, 8.0, Color(0.95, 0.45, 0.10)],
-	["taller_puerto", "garage", "Taller del Puerto", "Costanera 90", 420.0, -1.0, 26.0, 18.0, 8.0, Color(0.95, 0.45, 0.10)],
-	["mirador", "view", "Mirador de la Colina", "Camino de la Colina 300", -1.0, 1.0, 18.0, 14.0, 6.4, Color(0.95, 0.80, 0.25)],
+	["concesionario", "dealer", "Concesionario Dream City", "Avenida 7", 150.0, 1.0, 34.0, 22.0, 9.6, Color(0.20, 0.45, 0.85), "dealer"],
+	["taller_reglaje_a", "garage", "Reglaje Central", "Avenida 1", 170.0, -1.0, 26.0, 18.0, 8.0, Color(0.95, 0.50, 0.12), "tune_a"],
+	["taller_pintura", "garage", "Taller de Pintura", "Avenida 3", 142.0, 1.0, 26.0, 18.0, 8.0, Color(0.85, 0.30, 0.65), "paint"],
+	["taller_motor", "garage", "Taller de Motor", "Avenida 2", 277.0, -1.0, 26.0, 18.0, 8.0, Color(0.88, 0.25, 0.20), "engine"],
+	["taller_transmision", "garage", "Taller de Transmisión", "Avenida 4", 142.0, 1.0, 26.0, 18.0, 8.0, Color(0.22, 0.62, 0.62), "gearbox"],
+	["taller_suspension", "garage", "Suspensión y Frenos", "Avenida 6", 142.0, -1.0, 26.0, 18.0, 8.0, Color(0.30, 0.65, 0.35), "susp"],
+	["taller_ruedas", "garage", "Taller de Ruedas", "Avenida 8", 142.0, 1.0, 26.0, 18.0, 8.0, Color(0.95, 0.80, 0.20), "wheels"],
+	["taller_reglaje_b", "garage", "Reglaje del Puerto", "Costanera 90", 420.0, -1.0, 26.0, 18.0, 8.0, Color(0.95, 0.65, 0.15), "tune_b"],
+	["mirador", "view", "Mirador de la Colina", "Camino de la Colina 300", -1.0, 1.0, 18.0, 14.0, 6.4, Color(0.95, 0.80, 0.25), ""],
 ]
 
 func road_named(nm: String) -> int:
@@ -947,7 +1065,24 @@ func _place_pois() -> void:
 		if str(sp[1]) == "view":
 			cen = Vector2(a.x, a.z) # el mirador es la plazoleta del final del camino
 		var yaw := atan2(tn.x, tn.y)
+		var lane := Vector2(a.x, a.z) + nrm * (float(rd["hw"]) * 0.5)
+		var door := Vector2(a.x, a.z) + nrm * (float(rd["hw"]) + float(rd["sw"]) + LINE_GAP + back) # el plano del frente del local
 		pois.append({"id": str(sp[0]), "kind": str(sp[1]), "name": str(sp[2]), "pos": cen, "yaw": yaw, "size": Vector2(float(sp[6]), float(sp[7])), "color": sp[9],
-			"y": height(cen.x, cen.y), "road": ri, "front": Vector2(a.x, a.z) + nrm * (float(rd["hw"]) * 0.5)})
+			"y": height(cen.x, cen.y), "road": ri, "front": lane, "shop": str(sp[10]), "door": door, "dir": nrm, "road_yaw": yaw})
+		if str(sp[10]) != "":
+			# la entrada: una calle cortita desde el círculo verde hasta adentro del local (así el auto puede entrar)
+			var plan := PackedVector3Array()
+			var dist := lane.distance_to(door) + 7.0
+			var n := int(ceil(dist / 3.0))
+			var cum_b := PackedFloat32Array()
+			for bi2 in n + 1:
+				var q := lane + nrm * (dist * float(bi2) / float(n))
+				plan.append(Vector3(q.x, height(q.x, q.y), q.y))
+				cum_b.append(dist * float(bi2) / float(n))
+			roads.append({"id": roads.size(), "name": "Entrada %s" % str(sp[2]), "num": 0, "kind": "bay", "hw": 3.2, "sw": 0.0, "pts": plan, "cum": cum_b, "nj": PackedByteArray([0]).duplicate()})
+			var nj_b := PackedByteArray()
+			nj_b.resize(plan.size())
+			roads[roads.size() - 1]["nj"] = nj_b
+			_index_road(roads.size() - 1)
 		if str(sp[1]) != "view":
 			_add_building(cen, float(sp[6]), float(sp[7]), float(sp[8]), yaw, sp[9], sp[9].darkened(0.3), zone_of(cen.x, cen.y), false, ri, {"poi": str(sp[0]), "side": -side})

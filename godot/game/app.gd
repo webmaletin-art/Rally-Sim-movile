@@ -93,6 +93,7 @@ func start_race(cfg: Dictionary) -> void:
 	_start_race(cfg)
 
 var last_cfg: Dictionary
+var city_return: Dictionary = {} # cfg de Dream City al entrar a un taller o concesionario (para volver a la calle)
 
 var pending_result: Dictionary
 
@@ -120,4 +121,8 @@ func _submit_online(cfg: Dictionary, result: Dictionary) -> void:
 	online.submit_score(str(cfg.get("track", "")), board, v, str(cfg.get("car", "")), int(result.get("laps", 1)), build)
 
 func _on_race_exit(back: String) -> void:
+	if back.begins_with("shop:") and race != null:
+		city_return = (race.cfg as Dictionary).duplicate(true) # el auto queda frente al local: se vuelve ahí
+	else:
+		city_return = {}
 	show_menu(back)

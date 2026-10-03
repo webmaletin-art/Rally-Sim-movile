@@ -10,6 +10,8 @@ const DriftTrack := preload("res://game/track/drift_track.gd")
 const CityTrack := preload("res://game/track/city_track.gd")
 const CitySession := preload("res://game/city_session.gd")
 const CityDriver := preload("res://game/ai/city_driver.gd")
+const CityShops := preload("res://game/city/city_shops.gd")
+const CityLinks := preload("res://game/city/city_links.gd")
 const DriftSession := preload("res://game/drift_session.gd")
 const PaperTrack := preload("res://game/track/paper_track.gd")
 const Drag := preload("res://game/data/drag.gd")
@@ -183,6 +185,8 @@ func _ready() -> void:
 			shot_path = a.substr(7)
 		elif a.begins_with("--frames="):
 			shot_frames = int(a.substr(9))
+		elif a.begins_with("--shopshot="):
+			shopshot = a.substr(11) # prueba: al volver de un taller se saca una captura y se cierra
 		elif a.begins_with("--audiorec="):
 			audiorec_path = a.substr(11)
 		elif a == "--autobench":
@@ -561,7 +565,10 @@ func _build_track_nodes() -> void:
 		var cw: Node3D = track.build_world()
 		cw.view_k = _view_k()
 		track_root.add_child(cw)
-		cw.warm(Vector3(0.0, 0.0, 48.0)) # las cuadras de la plaza ya armadas antes de largar
+		var wp := Vector3(0.0, 0.0, 48.0)
+		if cfg.has("resume"):
+			wp = Vector3(float(cfg["resume"][0]), 0.0, float(cfg["resume"][1])) # se vuelve de un taller: las cuadras de ese lugar
+		cw.warm(wp) # las cuadras de alrededor ya armadas antes de largar
 		road_mat = track.road_mat
 		ground_mat = track.ground_mat
 		return
@@ -1008,6 +1015,8 @@ func _rebuild_cars() -> void:
 		if menu_mode and cars_n > 1 and str(cfg.get("type")) == "race":
 			slot = cars_n - 1 if i == 0 else i - 1
 		var sp: Array = track.start_pose(slot, s0) if route else track.start_pose(slot)
+		if track is CityTrack and cfg.has("resume") and i == 0:
+			sp = [float(cfg["resume"][0]), float(cfg["resume"][1]), float(cfg["resume"][2])]
 		if adv_mode:
 			sp = Adventure.start_pose(track, i, cfg)
 		car.place(sp[0], sp[1], sp[2])
@@ -1083,6 +1092,10 @@ func _start_session() -> void:
 			race_hud.setup(session, cfg, rival_info)
 			if cfg.has("gpsdrive") and race_hud.city_hud != null: # prueba: el auto va solo por el GPS hasta ese lugar
 				_city_drive_test(str(cfg["gpsdrive"]))
+			shops = CityShops.new()
+			shops.setup(self, track.world_node, track.city)
+			links = CityLinks.new()
+			links.setup(self, track.world_node, track.city)
 			if cfg.has("bigmap") and race_hud.city_hud != null:
 				race_hud.city_hud.set_dest(race_hud.city_hud.city.pois[0]["front"], str(race_hud.city_hud.city.pois[0]["name"]))
 				race_hud.city_hud.call_deferred("_set_big", true)
@@ -1485,6 +1498,25 @@ func _pace_rivals(dt: float) -> void:
 ## Prueba de manejo de Dream City: el auto sigue el GPS hasta un lugar y se informa si llegó o se trabó
 func _city_drive_test(poi_id: String) -> void:
 	var ch = race_hud.city_hud
+	if poi_id.begins_with("link:"):
+		# prueba de las bocas: el auto va hasta la primera; ya adentro sigue por el túnel hasta la segunda (formato link:boca_este>punta_oeste)
+		var ids := poi_id.substr(5).split(">")
+		_link_test = ids
+		ch.arrive_r = 2.0
+		for l in ch.city.links:
+			if str(l["id"]) == str(ids[0]):
+				ch.set_dest(l["pos"], str(l["id"]))
+		var d0 := CityDriver.new()
+		d0.hud = ch
+		for l in ch.city.links:
+			if str(l["id"]) == str(ids[0]):
+				d0.goal = l["pos"] # al terminar el camino, derecho hasta la boca
+		cars[0].driver = d0
+		_cd_t = 0.0
+		return
+	if poi_id.begins_with("shop:"):
+		poi_id = poi_id.substr(5)
+		ch.arrive_r = 2.0 # prueba de entrar a un local: el auto llega hasta el círculo verde y se detiene encima
 	for p in ch.city.pois:
 		if str(p["id"]) == poi_id:
 			ch.set_dest(p["front"], str(p["name"]))
@@ -1497,15 +1529,79 @@ func _city_drive_test(poi_id: String) -> void:
 	_cd_t = 0.0
 
 var _cd_t := 0.0
+var _link_test: PackedStringArray = PackedStringArray()
+var _link_stage := 0
+var shops # CityShops (solo en Dream City)
+var links # CityLinks: bocas de túnel y estacionamiento
+var _ug := 0.0 # 0 = afuera · 1 = bajo tierra (el sol y el cielo se apagan)
+var _ug_base: Array = [] # luz del sol, luz ambiente, niebla (color, inicio, fin) de afuera
+var shopshot := ""
+var _shopshot_f := 0
+
+## Se entra a un local (taller o concesionario): se sale al menú de ese local y después se vuelve a la calle (ver app.gd)
+func enter_shop(id: String, resume: Array) -> void:
+	cfg["resume"] = resume
+	cfg.erase("gpsdrive") # (la prueba automática no sigue al volver)
+	exit_requested.emit("shop:" + id)
+
+## Luz de afuera ↔ luz de túnel: abajo el sol casi se apaga y la niebla es oscura y corta
+func _underground_light(dt: float) -> void:
+	if cars.is_empty() or env == null:
+		return
+	if _ug_base.is_empty():
+		_ug_base = [sun.light_energy, env.ambient_light_energy, env.fog_light_color, env.fog_depth_begin, env.fog_depth_end]
+	var inside: bool = cars[0].phys.px > 3000.0
+	_ug = move_toward(_ug, 1.0 if inside else 0.0, dt * 3.0)
+	sun.light_energy = lerpf(float(_ug_base[0]), 0.10, _ug)
+	env.ambient_light_energy = lerpf(float(_ug_base[1]), 0.30, _ug)
+	env.fog_light_color = (_ug_base[2] as Color).lerp(Color(0.03, 0.03, 0.04), _ug)
+	env.fog_depth_begin = lerpf(float(_ug_base[3]), 25.0, _ug)
+	env.fog_depth_end = lerpf(float(_ug_base[4]), 170.0, _ug)
+
+func on_teleport() -> void:
+	_ug_base = _ug_base # (la luz cambia sola con la posición)
 
 func _tick_session(dt: float) -> void:
-	if session is CitySession and cfg.has("gpsdrive"):
+	if shops != null:
+		shops.update(dt)
+		links.update(dt)
+		_underground_light(dt)
+	if shopshot != "" and cfg.has("resume"):
+		_shopshot_f += 1
+		if _shopshot_f == 90:
+			get_viewport().get_texture().get_image().save_png(shopshot)
+			print("SHOPBACK pos=(%d,%d)" % [int(cars[0].phys.px), int(cars[0].phys.pz)])
+			get_tree().quit()
+	if _link_test.size() > 1 and session is CitySession:
+		var chl = race_hud.city_hud
+		var phl = cars[0].phys
+		_cd_t += dt
+		if int(_cd_t) % 5 == 0 and fmod(_cd_t, 1.0) < dt:
+			print("LINKTEST t=%d pos=(%d,%d) v=%d km/h calle=%s" % [int(_cd_t), int(phl.px), int(phl.pz), int(sqrt(phl.vx * phl.vx + phl.vz * phl.vz) * 3.6), chl.street_l.text])
+		if _link_stage == 0 and phl.px > 3000.0:
+			_link_stage = 1
+			for l in chl.city.links:
+				if str(l["id"]) == str(_link_test[1]):
+					chl.set_dest(l["pos"], str(l["id"]))
+					if cars[0].driver != null and cars[0].driver.get("goal") != null:
+						cars[0].driver.goal = l["pos"]
+					chl.arrive_r = 2.0
+			print("LINKTEST entró al subsuelo en t=%d s" % int(_cd_t))
+		elif _link_stage == 1 and phl.px < 3000.0:
+			print("LINKTEST salió a la superficie en (%d,%d) t=%d s" % [int(phl.px), int(phl.pz), int(_cd_t)])
+			get_tree().quit()
+		elif _cd_t > 400.0:
+			print("LINKTEST no terminó: pos=(%d,%d) etapa %d" % [int(phl.px), int(phl.pz), _link_stage])
+			get_tree().quit()
+	if session is CitySession and cfg.has("gpsdrive") and _link_test.is_empty():
 		_cd_t += dt
 		var ch = race_hud.city_hud
 		var ph = cars[0].phys
 		if int(_cd_t * 2.0) != int((_cd_t - dt) * 2.0) and int(_cd_t) % 4 == 0 and fmod(_cd_t, 1.0) < dt:
 			print("CITYDRIVE t=%d pos=(%d,%d) v=%d km/h calle=%s" % [int(_cd_t), int(ph.px), int(ph.pz), int(sqrt(ph.vx * ph.vx + ph.vz * ph.vz) * 3.6), ch.street_l.text])
-		if not ch.has_dest and _cd_t > 3.0:
+		if not ch.has_dest and _cd_t > 3.0 and ch.arrive_r < 5.0:
+			pass # prueba de un local: el auto se queda en el círculo y los locales hacen el resto
+		elif not ch.has_dest and _cd_t > 3.0:
 			print("CITYDRIVE LLEGÓ en %.0f s, recorrió %.0f m, golpes %d" % [_cd_t, session.odo, session.hits])
 			get_tree().quit()
 		elif _cd_t > 240.0:

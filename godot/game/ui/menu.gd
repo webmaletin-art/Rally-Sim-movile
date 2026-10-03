@@ -296,6 +296,8 @@ func _process(dt: float) -> void:
 		if toast_t <= 0.0:
 			toast_l.text = ""
 	frames += 1
+	if frames == 25 and OS.get_cmdline_user_args().has("--shopback") and not app.city_return.is_empty():
+		return_to_city() # prueba: sale del taller y vuelve a la calle
 	if shot_frames > 0 and frames >= shot_frames:
 		if shot_path != "":
 			get_viewport().get_texture().get_image().save_png(shot_path)
@@ -304,6 +306,8 @@ func _process(dt: float) -> void:
 ## Abre una pantalla. Cada una arma su contenido dentro del panel de la izquierda.
 var adv_car_shown := false
 func go(name: String, arg = null, push := true) -> void:
+	if name == "home":
+		garage.shop = ""
 	if adv_car_shown and not name.begins_with("adv"):
 		adv_car_shown = false
 		refresh_car()
@@ -329,7 +333,8 @@ func go(name: String, arg = null, push := true) -> void:
 	var head := Kit.hbox(8)
 	col.add_child(head)
 	if name != "home" and name != "consent" and not (name == "account" and arg == "welcome"):
-		head.add_child(Kit.button("← ATRÁS", back, false, 16, Vector2(104, 40)))
+		var leaving: bool = stack.is_empty() and not app.city_return.is_empty()
+		head.add_child(Kit.button("🚪 SALIR" if leaving else "← ATRÁS", back, false, 16, Vector2(104, 40)))
 	title_l = Kit.label("", 26, Kit.ACCENT)
 	title_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_l.clip_text = true
@@ -353,7 +358,7 @@ func go(name: String, arg = null, push := true) -> void:
 		"goals": _goals()
 		"results": _results()
 		"career", "events", "event", "quick", "fantasy": career.build(name, arg)
-		"garage", "dealer", "workshop", "tune", "paint": garage.build(name, arg)
+		"garage", "dealer", "workshop", "tune", "paint", "shop": garage.build(name, arg)
 		"about", "privacy", "terms", "credits": about.build(name, arg)
 		"consent": about.consent_screen()
 		"account": account.build(arg)
@@ -429,10 +434,24 @@ func _level_screen(cfg) -> void:
 func back() -> void:
 	sfx.play("click")
 	if stack.is_empty():
+		if not app.city_return.is_empty():
+			return_to_city() # se entró desde Dream City: se sale del local y se vuelve a la calle
+			return
 		go("home", null, false)
 		return
 	var prev: Array = stack.pop_back()
 	go(prev[0], prev[1], false)
+
+## Sale del taller o del concesionario de Dream City y vuelve a la calle, con el auto como quedó
+func return_to_city() -> void:
+	var c: Dictionary = app.city_return.duplicate(true)
+	app.city_return = {}
+	garage.shop = ""
+	var pid: String = profile.current_id()
+	c["car"] = pid
+	c["state"] = profile.car()
+	c["sim"] = str(profile.setting("simLevel"))
+	app.start_race(c)
 
 func update_credits() -> void:
 	if credits_l != null:
