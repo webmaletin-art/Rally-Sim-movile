@@ -150,6 +150,7 @@ func build() -> void:
 	_place_facades()
 	_place_props()
 	_place_roadside()
+	_place_guardrails()
 	_place_drift_plaza()
 
 func _sample_road(id: int, name_s: String, num: int, kind: String, hw: float, sw: float, plan: PackedVector2Array) -> void:
@@ -1281,7 +1282,7 @@ func _build_garage(ri: int, fy: float, p0: Vector2, tn: Vector2, nrm: Vector2, c
 # ───────────────────────── objetos de la calle ─────────────────────────
 var _lot_props := false # se están poniendo los objetos de una gasolinera (los demás no pueden caer dentro de un playón ni de un peaje)
 
-func _add_prop(t: int, x: float, z: float, to_road: Vector2) -> void:
+func _add_prop(t: int, x: float, z: float, to_road: Vector2, y_over := NAN) -> void:
 	# nunca sobre el asfalto de ninguna calle
 	var pr := probe(x, z)
 	if pr[6] >= 0.0 and float(pr[1]) <= float(pr[5]) + 0.2:
@@ -1305,6 +1306,8 @@ func _add_prop(t: int, x: float, z: float, to_road: Vector2) -> void:
 	var py := height(x, z)
 	if pr[0] >= 0.0:
 		py = float(pr[4]) + (0.16 if pr[6] >= 0.0 else 0.0) # sobre la vereda (el cordón sube 16 cm); en una plaza abierta, a ras del suelo
+	if not is_nan(y_over):
+		py = y_over
 	prop_y.append(py)
 	prop_yaw.append(atan2(to_road.x, to_road.y) if (t == 13 or t >= 14 or not (t == 1 or t >= 7)) else _rng.randf() * TAU)
 	prop_seed.append(_rng.randf())
@@ -1464,6 +1467,42 @@ func _place_props() -> void:
 				var along_s := along + 5.0
 				for sg2 in [1.0, -1.0]:
 					_add_prop(14, jp.x + (ta.x * along_s + na.x * offs) * sg2, jp.y + (ta.y * along_s + na.y * offs) * sg2, ta * sg2)
+
+## Guardarrailes donde el camino corre al borde de un barranco (el terreno cae más de CLIFF_DROP m a pocos metros del asfalto): caminos de la colina, atajos, rutas y la costanera.
+## Cada tramo de 4 m es un objeto sólido (dos postes y la baranda), a ras de la calle y justo al borde de la banquina.
+const CLIFF_DROP := 1.3
+const GUARD_STEP := 4.0
+func _place_guardrails() -> void:
+	for ri in roads.size():
+		var rd: Dictionary = roads[ri]
+		var kind := str(rd["kind"])
+		if not (kind in ["hill", "shortcut", "rural", "coast"]):
+			continue
+		var pts: PackedVector3Array = rd["pts"]
+		var nj: PackedByteArray = rd["nj"]
+		var base := float(rd["hw"]) + float(rd["sw"]) + 0.4
+		var acc := GUARD_STEP
+		for i in range(1, pts.size() - 1):
+			var tn := Vector2(pts[i + 1].x - pts[i - 1].x, pts[i + 1].z - pts[i - 1].z)
+			if tn.length() < 0.1:
+				continue
+			tn = tn.normalized()
+			var nrm := Vector2(-tn.y, tn.x)
+			var p := Vector2(pts[i].x, pts[i].z)
+			var step := Vector2(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z).length()
+			acc += step
+			if acc < GUARD_STEP or (nj.size() > i and nj[i] != 0):
+				continue
+			var placed := false
+			for sg in [-1.0, 1.0]:
+				var q := p + nrm * float(sg) * base
+				var far := p + nrm * float(sg) * (base + 6.0)
+				var drop := float(pts[i].y) - height(far.x, far.y)
+				if drop > CLIFF_DROP:
+					_add_prop(17, q.x, q.y, tn, float(pts[i].y))
+					placed = true
+			if placed:
+				acc = 0.0
 
 ## Bordes de las rutas rurales y de los atajos: una tirada de árboles del pack (varias especies, dos filas), con pasto, flores y algún arbusto abajo. No chocan: el auto no sale del camino.
 func _place_roadside() -> void:

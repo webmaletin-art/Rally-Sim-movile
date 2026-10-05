@@ -3,8 +3,8 @@ extends RefCounted
 ## todos los de una cuadra se juntan en una sola malla (una llamada de dibujo) y se rearma cuando uno se rompe: el objeto queda tirado en el piso.
 ## Espacio local del objeto: +y arriba y +z hacia la calle (hacia donde apunta el brazo de la farola o del semáforo).
 
-enum { LAMP, TREE, LIGHT, BOLLARD, MONUMENT, PILLAR, PARKED, FLOWERS, BUSH, GRASS, RTREE, PUMP, BLOCK, FENCE, STOP, CURVE, LIMIT }
-const RADIUS := [0.30, 0.45, 0.30, 0.20, 3.6, 1.0, 1.5, 0.0, 0.0, 0.0, 0.0, 0.9, 3.0, 0.0, 0.25, 0.25, 0.25] # 0 = decoración: no choca ni se rompe
+enum { LAMP, TREE, LIGHT, BOLLARD, MONUMENT, PILLAR, PARKED, FLOWERS, BUSH, GRASS, RTREE, PUMP, BLOCK, FENCE, STOP, CURVE, LIMIT, GUARD }
+const RADIUS := [0.30, 0.45, 0.30, 0.20, 3.6, 1.0, 1.5, 0.0, 0.0, 0.0, 0.0, 0.9, 3.0, 0.0, 0.25, 0.25, 0.25, 1.25] # 0 = decoración: no choca ni se rompe
 const PieceBatch := preload("res://game/city/piece_batch.gd")
 const STREET_TREES := ["tree_birch", "tree_tree", "tree_sassafras", "tree_quaking_aspen", "sc_acacia", "tree_weeping_willow", "abedul", "sc_cypress"]
 const ROAD_TREES := ["alamo", "pino", "sc_pine", "tree_tree", "tree_birch", "tree_lombardy_poplar", "sc_cypress", "tree_sassafras", "arbol_hoja_ancha", "tree_quaking_aspen"]
@@ -233,6 +233,14 @@ static func emit(kind: int, x: float, y: float, z: float, yaw: float, seed_v: fl
 			box(v, c, xf, Vector3(0, 0.65, 0), Vector3(0.14, 1.3, 0.14), Color(0.52, 0.42, 0.30))
 			box(v, c, xf, Vector3(0, 0.55, 3.0), Vector3(0.03, 0.03, 6.0), Color(0.62, 0.64, 0.68))
 			box(v, c, xf, Vector3(0, 0.95, 3.0), Vector3(0.03, 0.03, 6.0), Color(0.62, 0.64, 0.68))
+		GUARD:
+			# guardarrail: tramo de 4 m a lo largo de la calle (+z local = rumbo de la calle): dos postes, la baranda ondulada (dos fajas) y un reflector
+			var gsteel := Color(0.72, 0.74, 0.77)
+			for gz in [-1.8, 1.8]:
+				box(v, c, xf, Vector3(0.0, 0.45, float(gz)), Vector3(0.12, 0.9, 0.12), Color(0.45, 0.47, 0.5))
+			box(v, c, xf, Vector3(0.0, 0.72, 0.0), Vector3(0.1, 0.3, 4.0), gsteel)
+			box(v, c, xf, Vector3(0.0, 0.5, 0.0), Vector3(0.08, 0.12, 4.0), gsteel.darkened(0.15))
+			box(v, c, xf, Vector3(0.0, 0.72, 1.8), Vector3(0.14, 0.12, 0.14), Color(0.95, 0.42, 0.10)) # reflector
 		STOP:
 			_sign_plate(v, c, xf, Color(0.84, 0.12, 0.10), Color(0.92, 0.18, 0.15), true, false)
 			box(v, c, xf, Vector3(0, 2.75, 0.07), Vector3(0.52, 0.12, 0.03), Color(0.98, 0.97, 0.95)) # la franja blanca del PARE

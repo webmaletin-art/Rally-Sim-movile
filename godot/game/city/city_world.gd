@@ -532,8 +532,13 @@ func _terrain(s: Soup, x0: float, z0: float) -> void:
 			var h := city.height(wx, wz)
 			# donde hay una calle el terreno se hunde un poco para que el asfalto quede por encima aunque la ladera suba al costado
 			var pr := city.probe(wx, wz)
-			if pr[6] >= 0.0 and pr[0] > (-20.0 if float(pr[4]) < -0.3 else -7.0):
-				h = minf(h, float(pr[4]) - 0.5) # (bajo tierra se hunde más lejos: si no, las lomas del terreno asoman por adentro de la rampa)
+			if pr[6] >= 0.0:
+				# el hundimiento se desvanece con la distancia al borde de la vereda (antes era todo o nada por vértice y en las banquinas se veían escalones de 16 m);
+				# bajo tierra se hunde más lejos: si no, las lomas del terreno asoman por adentro de la rampa
+				var lim := 20.0 if float(pr[4]) < -0.3 else 7.0
+				var wcut := smoothstep(-lim - 9.0, -lim + 3.0, float(pr[0]))
+				if wcut > 0.0:
+					h = lerpf(h, minf(h, float(pr[4]) - 0.5), wcut)
 			for oa in city.open_areas:
 				# las salas del estacionamiento a distinta altura: el suelo queda por debajo (y bastante más allá de la pared)
 				if (oa as Dictionary).has("y") and Vector2(wx, wz).distance_to(oa["pos"]) < float(oa["r"]) + 22.0:

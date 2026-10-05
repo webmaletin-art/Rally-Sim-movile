@@ -126,3 +126,9 @@ Código: `game/online/online_social.gd` (cliente), `game/ui/online_panel.gd` (pa
 - **Coordenadas:** cada jugador publica (x, z, rumbo, velocidad, auto/pintura) ~10 veces por segundo por Supabase Realtime (canal por sala); los demás lo dibujan como un auto de papel interpolado. Solo se pide la presencia de quienes están a menos de ~400 m (las mismas cuadras que se cargan).
 - **Objetos rotos** (semáforos, árboles): estado por cuadra, mínimo (lista de ids rotos con hora de reaparición), sin física compartida.
 - **Autoridad:** cada cliente maneja su auto; no hay choques autoritativos entre jugadores (solo empujón visual) para que ande bien con mala señal.
+
+## Etapa 12 — bordes y guardarrailes
+- **Banquinas con escalones (visto en las capturas del teléfono)**: el terreno se hunde bajo las calles para que el asfalto quede por encima de la ladera, pero lo hacía todo-o-nada por cada vértice de 16 m, así que en las banquinas el borde subía y bajaba como una escalera. Ahora el hundimiento se desvanece con la distancia al borde de la vereda (`CityWorld._terrain`, `smoothstep`), sin escalones.
+- **Guardarrailes en barrancos** (`CityLayout._place_guardrails`, tipo de objeto `GUARD`): donde el terreno cae más de 1,3 m a 6 m del borde de la banquina (hoy: el camino de la colina, 135 tramos) se pone un guardarrail de 4 m, sólido (círculo de choque de 1,25 m), que no se rompe, a la altura de la calle y fuera del asfalto y de los cruces. Si se agrega otra ruta con barrancos, los pone solo.
+- Prueba: `tests/guardrail_test.gd`.
+- **Pendiente de ver en el APK** (no se pudo reproducir sin el teléfono): esquinas de edificios donde el auto se «engancha», y postes en lugares raros. Cuando pase, mandar la calle/cuadra que muestra el HUD y el momento.
