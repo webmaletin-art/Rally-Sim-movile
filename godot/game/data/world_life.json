@@ -10,9 +10,9 @@
   "sync": {"resync_seconds": 120.0, "max_slew": 0.08, "snap_seconds": 45.0},
   "tick_hz": 10.0,
   "profiles": {
-    "LOW": {"dist_scale": 0.7, "max_active_vehicles": 12, "max_simplified_vehicles": 8, "max_parked": 24, "max_pedestrians": 0, "update_hz_active": 20.0, "update_hz_simplified": 4.0},
-    "MEDIUM": {"dist_scale": 1.0, "max_active_vehicles": 24, "max_simplified_vehicles": 14, "max_parked": 48, "max_pedestrians": 6, "update_hz_active": 30.0, "update_hz_simplified": 6.0},
-    "HIGH": {"dist_scale": 1.25, "max_active_vehicles": 36, "max_simplified_vehicles": 20, "max_parked": 80, "max_pedestrians": 12, "update_hz_active": 30.0, "update_hz_simplified": 8.0}
+    "LOW": {"dist_scale": 0.7, "max_active_vehicles": 12, "max_simplified_vehicles": 8, "max_parked": 24, "max_pedestrians": 16, "update_hz_active": 20.0, "update_hz_simplified": 4.0},
+    "MEDIUM": {"dist_scale": 1.0, "max_active_vehicles": 24, "max_simplified_vehicles": 14, "max_parked": 48, "max_pedestrians": 32, "update_hz_active": 30.0, "update_hz_simplified": 6.0},
+    "HIGH": {"dist_scale": 1.25, "max_active_vehicles": 36, "max_simplified_vehicles": 20, "max_parked": 80, "max_pedestrians": 56, "update_hz_active": 30.0, "update_hz_simplified": 8.0}
   },
   "systems": {}
 }

@@ -58,6 +58,7 @@ const Session := preload("res://game/session.gd")
 const RaceHud := preload("res://game/ui/race_hud.gd")
 const UiSfx := preload("res://game/audio/ui_sfx.gd")
 const WorldAmbient := preload("res://game/audio/world_ambient.gd")
+const AmbientPeds := preload("res://game/world/ambient_peds.gd")
 const AdvTrack := preload("res://game/adventure/adv_track.gd")
 const AdvWorld := preload("res://game/adventure/adv_world.gd")
 const AdvData := preload("res://game/adventure/adv_data.gd")
@@ -1147,6 +1148,9 @@ func _start_session() -> void:
 			var ct = CivilTraffic.new() # tránsito civil cinemático (Etapa 9)
 			ct.attach(track.city, track, track.world_node)
 			world_life.register_system(ct)
+			var pdx = AmbientPeds.new() # peatones de papel 2.5D por las veredas (Etapa 21)
+			pdx.attach(track.city, track, track.world_node)
+			world_life.register_system(pdx)
 			world_life.set_enabled(profile.setting("worldLife") != false)
 			ambient = WorldAmbient.new() # ambiente, tránsito en 3D, truenos y eco bajo tierra (Etapa 20)
 			add_child(ambient)
@@ -1721,6 +1725,11 @@ func _tick_session(dt: float) -> void:
 			var tsys = world_life.get_system("traffic")
 			if tsys != null:
 				tsys.player_vel = Vector2(wp.vx, wp.vz) # para que el tránsito reaccione al jugador (frena, esquiva, se golpea)
+			var psys = world_life.get_system("peds")
+			if psys != null:
+				psys.player_vel = Vector2(wp.vx, wp.vz)
+				psys.night = float(clock.night) if clock != null else 0.0
+				psys.weather_on = profile.setting("worldWeather") != false
 			world_life.update(dt, Vector2(wp.px, wp.pz))
 			if ambient != null:
 				ambient.enabled = audio_on
