@@ -1,6 +1,6 @@
 extends RefCounted
-## Cuenta con correo del modo online (opcional). Se ofrece una sola vez al abrir el juego por primera vez («welcome») y queda siempre
-## disponible en Modo online. El juego anda igual sin cuenta: la cuenta solo mantiene tus marcas del ranking si cambiás de teléfono.
+## Cuenta con correo del modo online. El modo online REQUIERE una cuenta; el resto del juego anda sin conexión y sin cuenta (por eso ya no se ofrece al abrir el juego:
+## se crea desde Modo online).
 ## Los textos de resultado vienen de online.gd como claves en español (con «arg» si llevan %s).
 
 const Kit := preload("res://game/ui/ui_kit.gd")
@@ -15,9 +15,9 @@ var first_run := false # la pantalla de bienvenida del primer inicio (sin botón
 func _online() -> Node:
 	return m.app.online
 
-## ¿Hay que ofrecer la cuenta? (versión con modo online, primer inicio ya aceptado y todavía no se ofreció)
-static func should_offer(profile: RefCounted, online: Node) -> bool:
-	return online != null and online.configured() and profile.d.get("accountAsked") != true and not online.is_account()
+## La cuenta ya no se ofrece al abrir el juego (sólo hace falta para el modo online)
+static func should_offer(_profile: RefCounted, _online: Node) -> bool:
+	return false
 
 func build(arg) -> void:
 	var mode := str(arg) if arg != null else "menu"
@@ -38,8 +38,8 @@ func _skip() -> void:
 func _intro(first: bool) -> void:
 	first_run = first
 	m.set_title("TU CUENTA")
-	m.body.add_child(Kit.label("Guardá tus marcas", 24, Kit.ACCENT))
-	m.body.add_child(Kit.wrap("Con una cuenta tus marcas de los rankings quedan a tu nombre aunque cambies de teléfono. Es opcional: el juego anda igual sin cuenta, y tu progreso (autos y créditos) se sigue guardando en este teléfono.", 15, Kit.TEXT, 300))
+	m.body.add_child(Kit.label("Cuenta para el modo online", 24, Kit.ACCENT))
+	m.body.add_child(Kit.wrap("El modo online (rankings y, más adelante, carreras contra otros pilotos) necesita una cuenta con tu correo. El resto del juego funciona sin conexión y sin cuenta, y tu progreso (autos y créditos) se guarda en este teléfono.", 15, Kit.TEXT, 300))
 	m.body.add_child(Kit.button("✉ CREAR CUENTA CON CORREO", func() -> void: m.go("account", "signup"), true, 19, Vector2(0, 58)))
 	m.body.add_child(Kit.button("Ya tengo cuenta · Iniciar sesión", func() -> void: m.go("account", "login"), false, 17, Vector2(0, 50)))
 	if first:
@@ -148,7 +148,7 @@ func _form(kind: String) -> void:
 	if kind == "login":
 		m.body.add_child(Kit.button("Olvidé mi contraseña", func() -> void: m.go("account", "recover", false), false, 15, Vector2(0, 44)))
 	if kind == "signup":
-		m.body.add_child(Kit.wrap("Es posible que te pidamos confirmar el correo con un enlace. Usamos tu correo solo para la cuenta del ranking, y al crearla se activan los rankings online (los podés apagar en Modo online).", 13, Kit.MUTED, 300))
+		m.body.add_child(Kit.wrap("Es posible que te pidamos confirmar el correo con un enlace. Usamos tu correo solo para la cuenta del modo online, y al crearla se activan los rankings online (los podés apagar en Modo online).", 13, Kit.MUTED, 300))
 
 func _say(r: Dictionary) -> void:
 	if msg == null or not is_instance_valid(msg):

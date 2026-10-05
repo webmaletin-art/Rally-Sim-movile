@@ -1,6 +1,6 @@
 extends Node
-## Cliente del modo online (Supabase). Habla con la API REST de Supabase por HTTPS: entra sin cuenta con un usuario anónimo, manda
-## las mejores marcas y trae los rankings. Solo usa la clave PÚBLICA (anon); la seguridad está en la base (supabase/migrations: RLS y funciones).
+## Cliente del modo online (Supabase). Habla con la API REST de Supabase por HTTPS. El modo online REQUIERE una cuenta con correo (el resto del juego anda sin conexión
+## y sin cuenta): con la cuenta se mandan las mejores marcas y se traen los rankings. Solo usa la clave PÚBLICA (anon); la seguridad está en la base (supabase/migrations: RLS y funciones).
 ##
 ## La dirección y la clave pública se escriben en game/online/online_config.json al compilar (workflows, a partir de los secretos
 ## SUPABASE_URL y SUPABASE_ANON_KEY). Sin eso, o con «Rankings online» apagado en Opciones, no se conecta a nada.
@@ -16,7 +16,7 @@ var token := ""
 var refresh_token := ""
 var uid := ""
 var expires_at := 0 # segundos unix
-var email := "" # correo de la cuenta ("" = jugador anónimo)
+var email := "" # correo de la cuenta ("" = sin cuenta: el modo online no anda)
 var last_error := ""
 
 func _ready() -> void:
@@ -46,9 +46,9 @@ static func origin_of(u: String) -> String:
 func configured() -> bool:
 	return (url.begins_with("https://") or url.begins_with("http://127.0.0.1")) and anon_key.length() > 20 # http solo para el servidor de prueba local
 
-## ¿Se puede usar? (hay configuración y el jugador aceptó participar en los rankings)
+## ¿Se puede usar? (hay configuración, el jugador tiene cuenta y aceptó participar en los rankings)
 func enabled() -> bool:
-	return configured() and profile != null and profile.setting("onlineScores") == true
+	return configured() and is_account() and profile != null and profile.setting("onlineScores") == true
 
 # ───────────────────────── armado de pedidos (puro, sin red: se prueba aparte) ─────────────────────────
 static func headers(key: String, bearer: String) -> PackedStringArray:
@@ -103,7 +103,7 @@ func request(method: int, path: String, body: Variant = null, bearer := "") -> D
 		last_error = msg
 	return {"ok": ok, "code": code, "data": data, "error": msg}
 
-## Entra sin cuenta (usuario anónimo). Reusa la sesión guardada y la renueva si venció.
+## Reusa la sesión de la cuenta y la renueva si venció. Sin cuenta (sin sesión guardada) no entra: el modo online necesita iniciar sesión o crear la cuenta.
 func sign_in() -> bool:
 	var now := int(Time.get_unix_time_from_system())
 	if token != "" and expires_at > now:
@@ -113,10 +113,8 @@ func sign_in() -> bool:
 		if r["ok"] and r["data"] is Dictionary:
 			_set_session(parse_session(r["data"] as Dictionary))
 			return token != ""
-	var a := await request(HTTPClient.METHOD_POST, "/auth/v1/signup", {})
-	if a["ok"] and a["data"] is Dictionary:
-		_set_session(parse_session(a["data"] as Dictionary))
-		return token != ""
+		return false
+	last_error = "sin sesión"
 	return false
 
 func _set_session(s: Dictionary) -> void:
@@ -136,6 +134,12 @@ func _load_session() -> void:
 			refresh_token = str((d as Dictionary).get("refresh", ""))
 			uid = str((d as Dictionary).get("uid", ""))
 			email = str((d as Dictionary).get("email", ""))
+	if email == "" and refresh_token != "":
+		# una sesión anónima de una versión anterior: ya no sirve (el modo online pide cuenta)
+		refresh_token = ""
+		uid = ""
+		if FileAccess.file_exists(SESSION_PATH):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(SESSION_PATH))
 
 ## Llama a una función de la base (RPC) con sesión
 func call_fn(fn: String, args: Dictionary, need_session := true) -> Dictionary:
@@ -144,8 +148,7 @@ func call_fn(fn: String, args: Dictionary, need_session := true) -> Dictionary:
 	return await request(HTTPClient.METHOD_POST, "/rest/v1/rpc/" + fn, args, token if need_session else "")
 
 # ───────────────────────── cuenta con correo (opcional) ─────────────────────────
-## El jugador entra sin cuenta (anónimo). Si quiere, le suma correo y contraseña: es el MISMO usuario, así que conserva sus marcas, y
-## en otro teléfono vuelve a entrar con «iniciar sesión». El progreso del juego (autos, créditos) sigue guardado en el teléfono.
+## Para jugar online hace falta una cuenta con correo y contraseña; en otro teléfono se vuelve a entrar con «iniciar sesión». El progreso del juego (autos, créditos) sigue guardado en el teléfono.
 static func valid_email(e: String) -> bool:
 	var parts := e.strip_edges().split("@")
 	return parts.size() == 2 and parts[0].length() > 0 and parts[1].length() >= 3 and "." in parts[1] and not parts[1].begins_with(".") and not parts[1].ends_with(".") and not " " in e
@@ -191,7 +194,7 @@ static func error_result(raw: String, extra := {}) -> Dictionary:
 func is_account() -> bool:
 	return email != ""
 
-## Crea la cuenta. Si ya hay un usuario anónimo, le agrega el correo y la contraseña (mismas marcas). Devuelve {ok, text, confirm}.
+## Crea la cuenta (usuario nuevo con correo y contraseña). Devuelve {ok, text, confirm}.
 ## confirm = true si el servidor pide confirmar el correo antes de usarla. «text» es la clave en español para traducir (con «arg» si lleva %s).
 func create_account(mail: String, pw: String) -> Dictionary:
 	mail = mail.strip_edges().to_lower()
@@ -201,13 +204,10 @@ func create_account(mail: String, pw: String) -> Dictionary:
 		return {"ok": false, "text": "Ese correo no parece válido.", "confirm": false}
 	if not valid_password(pw):
 		return {"ok": false, "text": "La contraseña tiene que tener al menos 8 caracteres.", "confirm": false}
-	var r: Dictionary
-	if refresh_token != "" and await sign_in():
-		r = await request(HTTPClient.METHOD_PUT, "/auth/v1/user", {"email": mail, "password": pw}, token)
-	else:
-		r = await request(HTTPClient.METHOD_POST, "/auth/v1/signup", {"email": mail, "password": pw})
-		if r["ok"] and r["data"] is Dictionary and str((r["data"] as Dictionary).get("access_token", "")) != "":
-			_set_session(parse_session(r["data"] as Dictionary))
+	_clear_session() # (si quedara una sesión vieja, no se mezcla con la cuenta nueva)
+	var r: Dictionary = await request(HTTPClient.METHOD_POST, "/auth/v1/signup", {"email": mail, "password": pw})
+	if r["ok"] and r["data"] is Dictionary and str((r["data"] as Dictionary).get("access_token", "")) != "":
+		_set_session(parse_session(r["data"] as Dictionary))
 	if not r["ok"]:
 		return error_result(str(r["error"]), {"confirm": false})
 	var d: Dictionary = r["data"] if r["data"] is Dictionary else {}
@@ -219,7 +219,7 @@ func create_account(mail: String, pw: String) -> Dictionary:
 		return {"ok": true, "text": "¡Cuenta creada! Ya podés entrar con este correo desde cualquier teléfono.", "confirm": false}
 	return {"ok": true, "text": "Te mandamos un mensaje a %s. Tocá el enlace para confirmar la cuenta y después volvé al juego.", "arg": mail, "confirm": true}
 
-## Entra con una cuenta existente (reemplaza al usuario anónimo de este teléfono)
+## Entra con una cuenta existente
 func login(mail: String, pw: String) -> Dictionary:
 	mail = mail.strip_edges().to_lower()
 	if not configured():
@@ -257,10 +257,13 @@ func delete_account() -> Dictionary:
 	logout()
 	return {"ok": true, "text": "Listo: se borraron tu cuenta y tus marcas."}
 
-## Cierra la sesión de este teléfono (vuelve a ser un jugador anónimo la próxima vez que mande una marca)
+## Cierra la sesión de este teléfono (para el modo online hay que volver a iniciar sesión)
 func logout() -> void:
 	if token != "":
 		request(HTTPClient.METHOD_POST, "/auth/v1/logout", {}, token) # no hace falta esperar la respuesta
+	_clear_session()
+
+func _clear_session() -> void:
 	token = ""
 	refresh_token = ""
 	uid = ""
@@ -278,12 +281,16 @@ func submit_score(track: String, board: String, value: float, car: String, laps:
 	return await call_fn("submit_score", score_payload(track, board, value, car, laps, build, nm))
 
 func leaderboard(track: String, board: String, limit := 50) -> Dictionary:
-	return await call_fn("get_leaderboard", {"p_track": track, "p_board": board, "p_limit": limit}, await sign_in())
+	if not is_account():
+		return {"ok": false, "code": 0, "data": null, "error": "sin sesión"} # los rankings también piden cuenta
+	return await call_fn("get_leaderboard", {"p_track": track, "p_board": board, "p_limit": limit})
 
 ## Prueba de conexión (para el modo desarrollador): entra, pide un ranking y cuenta las filas
 func ping() -> Dictionary:
 	if not configured():
 		return {"ok": false, "text": "Falta configurar la dirección y la clave de Supabase (secretos del repositorio)."}
+	if not is_account():
+		return {"ok": false, "text": "Para probar la conexión iniciá sesión con tu cuenta."}
 	var ok := await sign_in()
 	if not ok:
 		return {"ok": false, "text": "No pude entrar (%s)." % (last_error if last_error != "" else "sin respuesta")}

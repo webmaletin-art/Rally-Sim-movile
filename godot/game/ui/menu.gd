@@ -588,16 +588,25 @@ func _soon_screen(kind: String) -> void:
 	if online and app.online != null and app.online.configured():
 		_online_options()
 
-## Conexión con Supabase ya preparada: el jugador elige si participa en los rankings (apagado de fábrica) y, en modo desarrollador, se prueba la conexión
+## Modo online: hace falta una cuenta con correo (el resto del juego anda sin conexión y sin cuenta). Con cuenta, el jugador elige si participa en los rankings (se activa al crearla)
+## y, en modo desarrollador, se prueba la conexión
 func _online_options() -> void:
-	body.add_child(Kit.wrap("Rankings online: se envían tu nombre de piloto y tus mejores marcas (tiempo y puntos). La cuenta con correo es opcional. No se envía nada más.", 13, Kit.MUTED, 300))
+	if not app.online.is_account():
+		body.add_child(Kit.wrap("Para jugar online necesitás una cuenta con tu correo. El resto del juego funciona sin conexión y sin cuenta.", 15, Kit.TEXT, 300))
+		body.add_child(Kit.button("✉ " + tr("CREAR CUENTA CON CORREO"), func() -> void:
+			sfx.play("click")
+			go("account", "signup"), true, 18, Vector2(0, 54)))
+		body.add_child(Kit.button(tr("Ya tengo cuenta · Iniciar sesión"), func() -> void:
+			sfx.play("click")
+			go("account", "login"), false, 16, Vector2(0, 46)))
+		return
+	body.add_child(Kit.wrap("Rankings online: se envían tu nombre de piloto y tus mejores marcas (tiempo y puntos). No se envía nada más.", 13, Kit.MUTED, 300))
 	var on: bool = profile.setting("onlineScores") == true
 	body.add_child(Kit.button(("☑ " if on else "☐ ") + tr("Participar en los rankings online"), func() -> void:
 		sfx.play("click")
 		profile.set_setting("onlineScores", not on)
 		go("soon", "online", false), on, 16, Vector2(0, 46)))
-	var acct: String = app.online.email if app.online.is_account() else ""
-	body.add_child(Kit.button(("👤 " + acct) if acct != "" else "👤 " + tr("Cuenta con correo (opcional)"), func() -> void:
+	body.add_child(Kit.button("👤 " + app.online.email, func() -> void:
 		sfx.play("click")
 		go("account"), false, 16, Vector2(0, 46)))
 	if Release.dev(profile):

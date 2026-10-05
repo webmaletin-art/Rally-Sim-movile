@@ -1,4 +1,4 @@
-## Prueba del cliente online contra un servidor de mentira que imita Supabase (tools/online/mock_supabase.py): sesión anónima, renovación,
+## Prueba del cliente online contra un servidor de mentira que imita Supabase (tools/online/mock_supabase.py): cuenta, renovación,
 ## envío de marcas, ranking y errores. Sin internet. Uso: godot --headless --path godot --script res://tests/online_test.gd
 extends SceneTree
 
@@ -44,8 +44,9 @@ func _init() -> void:
 	var bad: Dictionary = await on.request(HTTPClient.METHOD_POST, "/auth/v1/signup", {})
 	check(not bad["ok"] and bad["code"] == 401 and str(bad["error"]) != "", "una clave equivocada da error claro (%s)" % str(bad["error"]))
 	on.anon_key = KEY
-	check(on.enabled(), "con configuración y participación activada queda habilitado")
-	check(await on.sign_in() and on.uid != "" and on.token != "", "entra con un usuario anónimo")
+	check(not on.enabled() and not await on.sign_in(), "sin cuenta el modo online no anda (no entra como anónimo)")
+	var made: Dictionary = await on.create_account("ana@correo.com", "clave-larga-1")
+	check(made["ok"] and on.is_account() and on.enabled() and on.uid != "" and on.token != "", "con la cuenta creada y participación activada queda habilitado")
 	var first_uid := on.uid
 	on.expires_at = 0 # token vencido: se renueva con el refresh token y es el mismo usuario
 	check(await on.sign_in() and on.uid == first_uid, "renueva la sesión sin cambiar de usuario")
@@ -75,16 +76,18 @@ func _account_tests(on: Node) -> void:
 	check(Online.valid_email("ana@correo.com") and not Online.valid_email("ana@correo") and not Online.valid_email("ana correo@x.com") and not Online.valid_email("@x.com"), "valida los correos")
 	check(Online.valid_password("12345678") and not Online.valid_password("1234567"), "la contraseña pide 8 caracteres")
 	check("ya tiene una cuenta" in Online.friendly_error("User already registered") and "incorrectos" in Online.friendly_error("Invalid login credentials"), "traduce los errores del servidor")
-	var anon_uid: String = on.uid
-	check(not on.is_account(), "arranca como jugador anónimo")
+	var anon_uid: String = on.uid # (el usuario de la cuenta creada arriba)
+	check(on.is_account(), "arranca con la cuenta creada")
 	var bad: Dictionary = await on.create_account("ana@correo", "12345678")
 	check(not bad["ok"], "no crea una cuenta con un correo inválido")
 	var short: Dictionary = await on.create_account("ana@correo.com", "123")
 	check(not short["ok"], "no crea una cuenta con una contraseña corta")
-	var c: Dictionary = await on.create_account("Ana@Correo.com", "clave-larga-1")
-	check(c["ok"] and not c["confirm"] and on.is_account() and on.email == "ana@correo.com" and on.uid == anon_uid, "suma el correo al mismo usuario (%s)" % str(c["text"]))
+	check(on.email == "ana@correo.com", "la cuenta guarda el correo en minúsculas")
 	var dup: Dictionary = await on.create_account("ana@correo.com", "otra-clave-1")
 	check(not dup["ok"], "no deja repetir un correo (%s)" % str(dup["text"]))
+	# (el intento fallido borró la sesión: se vuelve a entrar)
+	var relog: Dictionary = await on.login("ana@correo.com", "clave-larga-1")
+	check(relog["ok"] and on.uid == anon_uid, "vuelve a entrar con la misma cuenta")
 	# otro teléfono: sesión limpia + inicio de sesión
 	on.logout()
 	check(not on.is_account() and on.token == "" and on.refresh_token == "" and not FileAccess.file_exists(Online.SESSION_PATH), "cerrar sesión borra todo lo guardado")
@@ -102,11 +105,11 @@ func _account_tests(on: Node) -> void:
 	check(del["ok"] and not on.is_account() and on.token == "" and on.uid == "", "borra la cuenta y cierra la sesión")
 	var gone: Dictionary = await on.login("ana@correo.com", "clave-larga-1")
 	check(not gone["ok"], "después de borrarla ya no se puede entrar (%s)" % str(gone["text"]))
-	check(await on.sign_in() and on.uid != del_uid, "queda como un jugador anónimo nuevo")
+	check(not await on.sign_in() and not on.is_account(), "sin cuenta no hay sesión (no vuelve a entrar como anónimo)")
+	var c2: Dictionary = await on.create_account("ana@correo.com", "clave-larga-1")
+	check(c2["ok"] and on.uid != del_uid, "el mismo correo se puede volver a usar, como usuario nuevo (%s)" % str(c2["text"]))
 	var lb2: Dictionary = await on.leaderboard("dream", "race", 10)
 	check(lb2["ok"] and (lb2["data"] as Array).is_empty(), "sus marcas ya no están en el ranking")
-	var c2: Dictionary = await on.create_account("ana@correo.com", "clave-larga-1")
-	check(c2["ok"], "el mismo correo se puede volver a usar (%s)" % str(c2["text"]))
 	# después de reiniciar el juego la cuenta sigue
 	var again := Online.new()
 	again.profile = on.profile
@@ -129,6 +132,5 @@ func _account_tests(on: Node) -> void:
 	cf.url = "http://127.0.0.1:54331"
 	cf.anon_key = KEY
 	cf.logout()
-	check(await cf.sign_in(), "(servidor con confirmación) entra anónimo")
 	var cc: Dictionary = await cf.create_account("carla@correo.com", "clave-larga-3")
 	check(cc["ok"] and cc["confirm"] == true and not cf.is_account() and "confirmar" in str(cc["text"]), "pide confirmar el correo y todavía no queda como cuenta (%s)" % str(cc["text"]))
