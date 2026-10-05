@@ -133,7 +133,20 @@ static func _build_node(p: Dictionary, lo: bool) -> Node3D:
 				return null
 			var sc: Variant = load(path)
 			if sc is PackedScene:
-				return (sc as PackedScene).instantiate() as Node3D
+				return _mark_tint((sc as PackedScene).instantiate() as Node3D, p)
+			return null
+		"obj", "mesh":
+			var mpath := str(src.get("path", ""))
+			if not ResourceLoader.exists(mpath):
+				return null
+			var mr: Variant = load(mpath)
+			if mr is Mesh:
+				var mi0 := MeshInstance3D.new()
+				mi0.mesh = mr as Mesh
+				mi0.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				var root0 := Node3D.new()
+				root0.add_child(mi0)
+				return _mark_tint(root0, p)
 			return null
 		"boxes":
 			var root := Node3D.new()
@@ -149,5 +162,22 @@ static func _build_node(p: Dictionary, lo: bool) -> Node3D:
 				mi.material_override = mat
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 				root.add_child(mi)
-			return root
+			return _mark_tint(root, p)
 	return null
+
+## Las piezas con "tint": "body" toman el color de la carrocería (se repintan con tint())
+static func _mark_tint(root: Node3D, p: Dictionary) -> Node3D:
+	if str(p.get("tint", "")) == "body":
+		root.set_meta("tint_body", true)
+	return root
+
+## Pinta las piezas marcadas con el color de la carrocería (no toca las demás)
+static func tint(nodes: Array, color: Color, rough := 0.35, metal := 0.4) -> void:
+	for n in nodes:
+		if is_instance_valid(n) and (n as Node).has_meta("tint_body"):
+			for c in (n as Node).find_children("*", "MeshInstance3D", true, false):
+				var mat := StandardMaterial3D.new()
+				mat.albedo_color = color
+				mat.roughness = rough
+				mat.metallic = metal
+				(c as MeshInstance3D).material_override = mat

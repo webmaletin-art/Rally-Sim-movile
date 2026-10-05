@@ -5,8 +5,8 @@ extends RefCounted
 const SHOPS := {
 	"dealer": {"name": "Concesionario Dream City", "short": "Concesionario", "icon": "🚗", "color": Color(0.20, 0.45, 0.85), "kind": "dealer",
 		"info": "Autos nuevos y tu garaje."},
-	"paint": {"name": "Taller de Pintura", "short": "Pintura", "icon": "🎨", "color": Color(0.85, 0.30, 0.65), "kind": "workshop", "tabs": [3],
-		"info": "Colores, acabados, llantas, pinzas y discos."},
+	"paint": {"name": "Taller de Pintura", "short": "Pintura", "icon": "🎨", "color": Color(0.85, 0.30, 0.65), "kind": "workshop", "tabs": [3, 5],
+		"info": "Colores, acabados, llantas, pinzas, discos y estética."},
 	"engine": {"name": "Taller de Motor", "short": "Motor", "icon": "⚙️", "color": Color(0.88, 0.25, 0.20), "kind": "workshop", "tabs": [0], "parts": ["engine", "turbo", "weight", "nitro"],
 		"info": "Motor, turbo, aligerado y nitro."},
 	"gearbox": {"name": "Taller de Transmisión", "short": "Transmisión", "icon": "🕹️", "color": Color(0.22, 0.62, 0.62), "kind": "workshop", "tabs": [0, 2], "parts": ["gearbox", "diff"], "tune": ["Transmisión"],

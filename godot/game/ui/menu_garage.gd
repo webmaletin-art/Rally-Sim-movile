@@ -21,6 +21,8 @@ var m # menu.gd
 var shop_i := 0
 var mine_i := -1
 var ws_tab := 0
+var body_cat := 0
+const BODY_CATS := ["spoiler", "front_bumper", "rear_bumper", "side_skirt", "hood"]
 var shop := "" # taller de Dream City en el que se está (vacío: el taller completo del menú)
 var up_cat := 0
 var tune_grp := 0
@@ -282,8 +284,8 @@ func _workshop() -> void:
 	hl.clip_text = true
 	hl.custom_minimum_size.x = 40
 	head.add_child(hl)
-	var tab_names := ["⚙ PIEZAS", "⚪ GOMAS", "🎚 AJUSTE", "🎨 PINTURA", "🛞 LLANTAS"]
-	var allowed: Array = sd["tabs"] if not sd.is_empty() else [0, 1, 2, 3, 4]
+	var tab_names := ["⚙ PIEZAS", "⚪ GOMAS", "🎚 AJUSTE", "🎨 PINTURA", "🛞 LLANTAS", "🔩 ESTÉTICA"]
+	var allowed: Array = sd["tabs"] if not sd.is_empty() else [0, 1, 2, 3, 4, 5]
 	if not allowed.has(ws_tab):
 		ws_tab = int(allowed[0])
 	if allowed.size() > 1:
@@ -302,6 +304,7 @@ func _workshop() -> void:
 		2: _ws_tune(id, st)
 		3: _ws_paint(id, st)
 		4: _ws_rims(id, st)
+		5: _ws_body(id, st)
 
 func _after_change() -> void:
 	m.refresh_car()
@@ -382,20 +385,42 @@ func _ws_tires(id: String, st: Dictionary) -> void:
 
 ## Llantas modulares: se ven puestas en el auto de la sala al instante. Comprar = pagar una vez por auto; cambiar entre las compradas es gratis.
 func _ws_rims(id: String, st: Dictionary) -> void:
+	_ws_part_grid(id, st, "wheel")
+
+## Estética modular (alerones, paragolpes, faldones…): una categoría por chip
+func _ws_body(id: String, st: Dictionary) -> void:
+	var cats: Array = []
+	for c in BODY_CATS:
+		if not PartCatalog.parts_in(str(c)).is_empty():
+			cats.append(str(c))
+	if cats.is_empty():
+		m.body.add_child(Kit.wrap(tr("Todavía no hay piezas de estética para este taller."), 14, Kit.MUTED, 300))
+		return
+	body_cat = clampi(body_cat, 0, cats.size() - 1)
+	var names: Array = []
+	for c in cats:
+		names.append(tr(str(PartCatalog.category(str(c)).get("name", c))))
+	m.body.add_child(Kit.tabs(names, body_cat, func(i: int) -> void:
+		body_cat = i
+		m.sfx.play("click")
+		m.go("workshop", null, false), 15, 36.0))
+	_ws_part_grid(id, st, str(cats[body_cat]))
+
+func _ws_part_grid(id: String, st: Dictionary, cat: String) -> void:
 	var ctx := VehicleCustomization.context(id, m.vehicles, st)
-	var cur := str((VehicleCustomization.installed(st).get("wheel", {}) as Dictionary).get("id", ""))
+	var cur := str((VehicleCustomization.installed(st).get(cat, {}) as Dictionary).get("id", ""))
 	if not VehicleCustomization.supports(id):
-		m.body.add_child(Kit.wrap(tr("Este auto todavía no admite llantas modulares."), 14, Kit.MUTED, 300))
+		m.body.add_child(Kit.wrap(tr("Este auto todavía no admite piezas modulares."), 14, Kit.MUTED, 300))
 		return
 	var own: Array = st.get("partsOwned", [])
 	var g := Kit.grid(2, 8, 8)
 	m.body.add_child(g)
-	var stock := Kit.card_button(tr("ORIGINALES"), tr("Las que trae el auto"), tr("EQUIPADO") if cur == "" else tr("PONER"), func() -> void:
-		m.profile.remove_part(id, "wheel")
+	var stock := Kit.card_button(tr("ORIGINAL"), tr("Como viene de fábrica"), tr("EQUIPADO") if cur == "" else tr("PONER"), func() -> void:
+		m.profile.remove_part(id, cat)
 		m.sfx.play("click")
 		_after_change(), cur == "", true, 64.0, 16)
 	g.add_child(stock)
-	for pid in PartCatalog.parts_in("wheel"):
+	for pid in PartCatalog.parts_in(cat, bool(m.profile.d["settings"].get("dev", false))):
 		var p := PartCatalog.part(str(pid))
 		var ok: bool = bool(VehicleCustomization.can_install(str(pid), id, ctx["V"], ctx["meta"])["ok"])
 		var eq: bool = cur == str(pid)

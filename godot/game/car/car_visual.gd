@@ -126,6 +126,7 @@ func _setup_own(paint: Color, rim: Color, finish: String) -> void:
 	var safe := VehicleCustomization.sanitize(mods, vt, V, meta) if not mods.is_empty() else {}
 	parts.build(body, V, meta, lo, rim, VehicleCustomization.wheel_override(vt, V, meta, safe))
 	mod_nodes = VehicleCustomization.attach(body, vt, V, meta, safe, lo)
+	VehicleCustomization.tint(mod_nodes, paint)
 	parts.set_colors({"rim": rim.to_html(false)})
 	wheels = parts.wheels
 	tire_mat = parts.mats["tire"]
@@ -343,6 +344,7 @@ func set_livery(pattern: int, paint: Color, accent: Color, finish := "gloss", ac
 		return
 	if parts != null:
 		_apply_own_mats(pattern, paint, accent, finish, accent2)
+		VehicleCustomization.tint(mod_nodes, paint)
 		return
 	for mi in _mesh_instances(shell):
 		var mesh: Mesh = mi.mesh

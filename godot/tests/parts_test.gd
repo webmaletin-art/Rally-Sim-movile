@@ -34,7 +34,18 @@ func _init() -> void:
 			print("   ", id, " → ", errs)
 	check(all_ok, "todas las piezas del catálogo son válidas")
 	check(not PartCatalog.validate("x", {"category": "nada", "source": {"type": "glb", "path": "res://no_existe.glb"}}).is_empty(), "una pieza mal registrada se detecta")
-	check(PartCatalog.parts_in("spoiler").is_empty() and not PartCatalog.parts_in("spoiler", true).is_empty(), "las piezas de prueba quedan ocultas")
+	check(not PartCatalog.parts_in("spoiler").has("dev_spoiler_wing") and PartCatalog.parts_in("spoiler", true).has("dev_spoiler_wing"), "las piezas de prueba quedan ocultas")
+	var fit_all := true
+	var vehs_all: Array = ["pickup", "truck", "hatch", "suv", "buggy", "muscle", "gt", "gt3", "hyper"]
+	for cat in ["spoiler", "front_bumper", "rear_bumper", "side_skirt"]:
+		check(not PartCatalog.parts_in(cat).is_empty(), "hay piezas de estética en %s" % cat)
+		for pid in PartCatalog.parts_in(cat):
+			for vid in vehs_all:
+				var cv := VehicleCustomization.context(str(vid), JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json")), {"upg": {}, "tires": "street", "tune": {}})
+				if not bool(VehicleCustomization.can_install(str(pid), str(vid), cv["V"], cv["meta"])["ok"]):
+					fit_all = false
+					print("   no entra: ", pid, " en ", vid)
+	check(fit_all, "las piezas de estética entran en los 9 autos")
 	# montajes y ajuste en todos los autos con carrocería propia
 	var own := ["pickup", "truck", "hatch", "suv", "buggy", "muscle", "gt", "gt3", "hyper"]
 	var dev := PartCatalog.part("dev_spoiler_wing")

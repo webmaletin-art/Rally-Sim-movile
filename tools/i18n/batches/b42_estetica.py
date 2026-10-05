@@ -1,0 +1,20 @@
+# Etapa 4: piezas de estética modulares
+T = {
+'Alerón GT': ('GT wing', 'Aerofólio GT', 'Aileron GT', 'Alettone GT', 'GT-Heckflügel'),
+'Colita de pato': ('Ducktail', 'Rabo de pato', 'Becquet canard', 'Codino', 'Entenbürzel'),
+'Alerón rally doble': ('Double rally wing', 'Aerofólio rally duplo', 'Aileron rallye double', 'Alettone rally doppio', 'Doppelter Rallyeflügel'),
+'Labio frontal': ('Front splitter', 'Spoiler dianteiro', 'Lame avant', 'Splitter anteriore', 'Frontsplitter'),
+'Paragolpes deportivo': ('Sport bumper', 'Para-choque esportivo', 'Pare-chocs sport', 'Paraurti sportivo', 'Sport-Stoßfänger'),
+'Difusor trasero': ('Rear diffuser', 'Difusor traseiro', 'Diffuseur arrière', 'Diffusore posteriore', 'Heckdiffusor'),
+'Faldones deportivos': ('Sport side skirts', 'Saias laterais esportivas', 'Bas de caisse sport', 'Minigonne sportive', 'Sport-Seitenschweller'),
+'Paragolpes delantero': ('Front bumper', 'Para-choque dianteiro', 'Pare-chocs avant', 'Paraurti anteriore', 'Frontstoßfänger'),
+'Paragolpes trasero': ('Rear bumper', 'Para-choque traseiro', 'Pare-chocs arrière', 'Paraurti posteriore', 'Heckstoßfänger'),
+'Alerón': ('Spoiler', 'Aerofólio', 'Aileron', 'Alettone', 'Spoiler'),
+'Capó': ('Hood', 'Capô', 'Capot', 'Cofano', 'Motorhaube'),
+'Faldones': ('Side skirts', 'Saias laterais', 'Bas de caisse', 'Minigonne', 'Seitenschweller'),
+'🔩 ESTÉTICA': ('🔩 STYLING', '🔩 ESTÉTICA', '🔩 STYLING', '🔩 ESTETICA', '🔩 STYLING'),
+'Todavía no hay piezas de estética para este taller.': ('There are no styling parts for this shop yet.', 'Ainda não há peças de estética para esta oficina.', 'Pas encore de pièces de style pour cet atelier.', 'Non ci sono ancora pezzi estetici per questa officina.', 'Für diese Werkstatt gibt es noch keine Styling-Teile.'),
+'Este auto todavía no admite piezas modulares.': ("This car doesn't support modular parts yet.", 'Este carro ainda não aceita peças modulares.', "Cette voiture n'accepte pas encore les pièces modulaires.", 'Questa auto non supporta ancora i pezzi modulari.', 'Dieses Auto unterstützt noch keine modularen Teile.'),
+'ORIGINAL': ('STOCK', 'ORIGINAL', "D'ORIGINE", 'ORIGINALE', 'SERIE'),
+'Como viene de fábrica': ('As it comes from the factory', 'Como vem de fábrica', "Comme à la sortie d'usine", 'Come da fabbrica', 'Wie ab Werk'),
+}

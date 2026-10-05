@@ -40,3 +40,11 @@
 - Offline: taller de ruedas → pestaña **🛞 LLANTAS**. Se ve puesta en el auto de la sala al instante; se paga una vez por auto (`state["partsOwned"]`) y cambiar entre las compradas es gratis (`state["mods"]["wheel"]`). «ORIGINALES» vuelve a las de fábrica. Lógica en `Profile.buy_part` / `remove_part` (valida con `VehicleCustomization.can_install`).
 - La llanta se adapta al radio de rueda de cada auto (escala 0,85–1,15); si no entra, se marca «No entra en este auto».
 - Online: **todavía no** se instala desde el servidor. Cuando se hagan las instancias de auto online (`instance_id`, Etapa 19 y migración de economía), la misma configuración `mods` se validará en un RPC del servidor (dueño, compatibilidad, precio). Hasta entonces el online muestra las llantas de fábrica.
+
+## Estética: paragolpes, alerones, faldones, modelos externos (Etapa 4)
+- Pestaña **🔩 ESTÉTICA** del taller de pintura: una categoría por chip (alerón, paragolpes delantero/trasero, faldones, capó). Aparece sólo si hay piezas visibles registradas en esa categoría; con modo desarrollador se ven también las de prueba.
+- Piezas incluidas hoy (armadas con cajas simples, sirven de ejemplo y de relleno hasta tener modelos reales): Alerón GT, Colita de pato, Alerón rally doble, Labio frontal, Paragolpes deportivo, Difusor trasero, Faldones deportivos. Entran en los 9 autos con carrocería propia (el test lo comprueba).
+- **Modelos externos**: `source: {"type": "glb"|"obj", "path": "res://game/models/parts/<archivo>"}`. Se instancian en el punto de montaje del auto, se escalan proporcionalmente según `fit` (ancho/largo/alto/rueda) y, si la escala sale de `[min, max]`, la pieza queda incompatible para ese auto (no se deforma). Excepción por auto: `fit_overrides` / `base` en la pieza o `data/vehicle_mounts.json`.
+- `"tint": "body"` hace que la pieza tome el color de la carrocería y se repinte al cambiar el color.
+- **Paquetes**: cualquier `data/parts/*.json` (`{"parts": {...}}`) suma piezas al catálogo sin tocar `parts.json`; un id repetido se ignora con aviso.
+- Cómo agregar una pieza: 1) poner el GLB/OBJ en `game/models/parts/` (origen en el centro de la pieza, +Z hacia adelante del auto, +Y arriba, tamaño 1 = ancho de referencia); 2) una entrada en un pack JSON; 3) correr `parts_test.gd`.

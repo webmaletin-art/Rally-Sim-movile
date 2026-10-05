@@ -6,11 +6,32 @@ extends RefCounted
 const PATH := "res://game/data/parts.json"
 static var _data: Dictionary = {}
 
+const PACK_DIR := "res://game/data/parts/"
+
 static func data() -> Dictionary:
 	if _data.is_empty():
 		var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(PATH))
 		_data = d if d is Dictionary else {"version": 1, "categories": {}, "parts": {}, "defaults": {}}
+		_merge_packs()
 	return _data
+
+## Paquetes de piezas: cada archivo game/data/parts/*.json ({"parts": {id: def}}) suma piezas al catálogo SIN tocar parts.json (un pack nuevo = un JSON + sus modelos).
+## Una pieza de un pack no puede pisar una del catálogo base (se ignora y se avisa).
+static func _merge_packs() -> void:
+	var parts: Dictionary = _data.get("parts", {})
+	for f in DirAccess.get_files_at(PACK_DIR):
+		if not f.ends_with(".json"):
+			continue
+		var j: Variant = JSON.parse_string(FileAccess.get_file_as_string(PACK_DIR + f))
+		if not (j is Dictionary):
+			push_warning("pack de piezas inválido: %s" % f)
+			continue
+		for id in ((j as Dictionary).get("parts", {}) as Dictionary):
+			if parts.has(id):
+				push_warning("pieza repetida en %s: %s (se ignora)" % [f, id])
+				continue
+			parts[id] = j["parts"][id]
+	_data["parts"] = parts
 
 static func categories() -> Dictionary:
 	return data().get("categories", {})
@@ -60,7 +81,7 @@ static func validate(id: String, def: Dictionary) -> Array:
 		"rim":
 			if str(src.get("style", "")) == "":
 				errs.append("falta source.style")
-		"glb":
+		"glb", "obj", "mesh":
 			if not ResourceLoader.exists(str(src.get("path", ""))):
 				errs.append("no existe el modelo %s" % str(src.get("path", "")))
 		"boxes":

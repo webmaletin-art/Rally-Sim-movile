@@ -402,6 +402,471 @@
     "min": 0.8,
     "max": 3.5
    }
+  },
+  "spoiler_gt": {
+   "category": "spoiler",
+   "name": "Alerón GT",
+   "price": 1800,
+   "tier": 1,
+   "workshop": "sport",
+   "tint": "body",
+   "source": {
+    "type": "boxes",
+    "boxes": [
+     {
+      "pos": [
+       0,
+       0.14,
+       0
+      ],
+      "size": [
+       1.0,
+       0.02,
+       0.18
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       -0.44,
+       0.06,
+       0
+      ],
+      "size": [
+       0.02,
+       0.14,
+       0.12
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       0.44,
+       0.06,
+       0
+      ],
+      "size": [
+       0.02,
+       0.14,
+       0.12
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       -0.5,
+       0.15,
+       0
+      ],
+      "size": [
+       0.012,
+       0.07,
+       0.2
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       0.5,
+       0.15,
+       0
+      ],
+      "size": [
+       0.012,
+       0.07,
+       0.2
+      ],
+      "color": "#17191d"
+     }
+    ]
+   },
+   "fit": {
+    "mode": "width",
+    "ref": 1.0,
+    "ratio": 0.8,
+    "min": 0.8,
+    "max": 3.2
+   }
+  },
+  "spoiler_duck": {
+   "category": "spoiler",
+   "name": "Colita de pato",
+   "price": 900,
+   "tier": 0,
+   "workshop": "basic",
+   "tint": "body",
+   "source": {
+    "type": "boxes",
+    "boxes": [
+     {
+      "pos": [
+       0,
+       0.03,
+       0
+      ],
+      "size": [
+       1.0,
+       0.02,
+       0.12
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       0,
+       0.0,
+       -0.05
+      ],
+      "size": [
+       0.96,
+       0.04,
+       0.03
+      ],
+      "color": "#17191d"
+     }
+    ]
+   },
+   "fit": {
+    "mode": "width",
+    "ref": 1.0,
+    "ratio": 0.82,
+    "min": 0.8,
+    "max": 3.2
+   }
+  },
+  "spoiler_rally": {
+   "category": "spoiler",
+   "name": "Alerón rally doble",
+   "price": 2600,
+   "tier": 2,
+   "workshop": "rally",
+   "tint": "body",
+   "source": {
+    "type": "boxes",
+    "boxes": [
+     {
+      "pos": [
+       0,
+       0.17,
+       0
+      ],
+      "size": [
+       1.0,
+       0.02,
+       0.16
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       0,
+       0.23,
+       -0.06
+      ],
+      "size": [
+       1.0,
+       0.02,
+       0.12
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       -0.48,
+       0.09,
+       -0.02
+      ],
+      "size": [
+       0.02,
+       0.2,
+       0.18
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       0.48,
+       0.09,
+       -0.02
+      ],
+      "size": [
+       0.02,
+       0.2,
+       0.18
+      ],
+      "color": "#17191d"
+     }
+    ]
+   },
+   "fit": {
+    "mode": "width",
+    "ref": 1.0,
+    "ratio": 0.86,
+    "min": 0.8,
+    "max": 3.2
+   }
+  },
+  "front_splitter": {
+   "category": "front_bumper",
+   "name": "Labio frontal",
+   "price": 1100,
+   "tier": 0,
+   "workshop": "basic",
+   "source": {
+    "type": "boxes",
+    "boxes": [
+     {
+      "pos": [
+       0,
+       0,
+       0
+      ],
+      "size": [
+       1.0,
+       0.025,
+       0.09
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       0,
+       0.02,
+       -0.02
+      ],
+      "size": [
+       0.9,
+       0.03,
+       0.03
+      ],
+      "color": "#17191d"
+     }
+    ]
+   },
+   "base": {
+    "offset": [
+     0,
+     -0.035,
+     -0.05
+    ]
+   },
+   "fit": {
+    "mode": "width",
+    "ref": 1.0,
+    "ratio": 0.9,
+    "min": 0.8,
+    "max": 3.2
+   }
+  },
+  "front_bumper_sport": {
+   "category": "front_bumper",
+   "name": "Paragolpes deportivo",
+   "price": 2200,
+   "tier": 1,
+   "workshop": "sport",
+   "tint": "body",
+   "source": {
+    "type": "boxes",
+    "boxes": [
+     {
+      "pos": [
+       0,
+       0,
+       0
+      ],
+      "size": [
+       1.0,
+       0.09,
+       0.05
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       0,
+       -0.05,
+       0.03
+      ],
+      "size": [
+       0.8,
+       0.02,
+       0.08
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       -0.4,
+       0.01,
+       0.01
+      ],
+      "size": [
+       0.14,
+       0.06,
+       0.06
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       0.4,
+       0.01,
+       0.01
+      ],
+      "size": [
+       0.14,
+       0.06,
+       0.06
+      ],
+      "color": "#17191d"
+     }
+    ]
+   },
+   "fit": {
+    "mode": "width",
+    "ref": 1.0,
+    "ratio": 0.94,
+    "min": 0.8,
+    "max": 3.2
+   },
+   "base": {
+    "offset": [
+     0,
+     0,
+     -0.06
+    ]
+   }
+  },
+  "rear_diffuser": {
+   "category": "rear_bumper",
+   "name": "Difusor trasero",
+   "price": 1400,
+   "tier": 1,
+   "workshop": "sport",
+   "source": {
+    "type": "boxes",
+    "boxes": [
+     {
+      "pos": [
+       0,
+       0,
+       0
+      ],
+      "size": [
+       1.0,
+       0.03,
+       0.1
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       -0.3,
+       0.03,
+       -0.01
+      ],
+      "size": [
+       0.015,
+       0.05,
+       0.09
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       0,
+       0.03,
+       -0.01
+      ],
+      "size": [
+       0.015,
+       0.05,
+       0.09
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       0.3,
+       0.03,
+       -0.01
+      ],
+      "size": [
+       0.015,
+       0.05,
+       0.09
+      ],
+      "color": "#17191d"
+     }
+    ]
+   },
+   "base": {
+    "offset": [
+     0,
+     -0.04,
+     -0.02
+    ]
+   },
+   "fit": {
+    "mode": "width",
+    "ref": 1.0,
+    "ratio": 0.88,
+    "min": 0.8,
+    "max": 3.2
+   }
+  },
+  "skirt_sport": {
+   "category": "side_skirt",
+   "name": "Faldones deportivos",
+   "price": 1200,
+   "tier": 1,
+   "workshop": "sport",
+   "tint": "body",
+   "source": {
+    "type": "boxes",
+    "boxes": [
+     {
+      "pos": [
+       0,
+       0,
+       0
+      ],
+      "size": [
+       0.03,
+       0.045,
+       1.0
+      ],
+      "color": "#17191d"
+     },
+     {
+      "pos": [
+       0.012,
+       -0.015,
+       0
+      ],
+      "size": [
+       0.025,
+       0.015,
+       1.0
+      ],
+      "color": "#17191d"
+     }
+    ]
+   },
+   "base": {
+    "offset": [
+     0,
+     -0.02,
+     0
+    ]
+   },
+   "fit": {
+    "mode": "length",
+    "ref": 1.0,
+    "ratio": 0.48,
+    "min": 0.8,
+    "max": 3.5
+   }
   }
  }
 }
