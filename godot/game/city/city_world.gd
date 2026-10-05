@@ -665,7 +665,7 @@ func _road_segment(rd: Soup, mk: Soup, si: int, ni: int, tn: Soup) -> void:
 	var curb := 0.16
 	var cu := Vector3(0, curb, 0)
 	var side_col := C_SIDE
-	if kind == "rural" or kind == "shortcut":
+	if kind == "rural" or kind == "shortcut" or kind == "scenic":
 		side_col = Color(0.66, 0.62, 0.50)
 	elif kind == "alley":
 		side_col = Color(0.72, 0.46, 0.42) # veredas de ladrillo rojo
@@ -695,7 +695,7 @@ func _road_segment(rd: Soup, mk: Soup, si: int, ni: int, tn: Soup) -> void:
 	if not junc and kind != "plaza" and kind != "bay":
 		var lw := 0.11
 		var mu := Vector3(0, 0.11, 0) # a 7 cm del asfalto: más cerca (1,5 cm) las rayas parpadeaban a la distancia (z-fighting)
-		if kind in ["major", "ring", "coast", "hill", "rural"] and hw >= 4.0:
+		if kind in ["major", "ring", "coast", "hill", "rural", "scenic"] and hw >= 4.0:
 			if local_i % 3 != 2: # raya del medio cortada
 				var cc := C_YEL if kind != "ring" else C_WHT
 				mk.quad_up(a - na * lw + mu, b - nb * lw + mu, b + nb * lw + mu, a + na * lw + mu, cc)

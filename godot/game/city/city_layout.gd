@@ -27,13 +27,15 @@ const RINGS := [130.0, 260.0, 390.0, 520.0, 650.0, 780.0, 910.0, 1040.0]
 const COAST_R := 1120.0
 const RURAL_END := 2300.0
 const EXIT_TO := {20: "adventure", 60: "plaza"} # las salidas abiertas: la Ruta 20 sigue por la Ruta de los Sueños (Aventura); la Ruta 60 termina en la Plaza de Drift (está ahí mismo: no hay otro mapa)
-const WORLD_VERSION := 4 # sube cuando cambia el mapa (la «última ubicación» guardada de una versión anterior ya no sirve)
+const WORLD_VERSION := 5 # sube cuando cambia el mapa (la «última ubicación» guardada de una versión anterior ya no sirve)
 const DRIFT_GATE := 0.996 # la abertura de la plaza donde entra la ruta (coseno del ángulo: unos 8 m a cada lado)
 const DRIFT_R := 90.0 # radio de la Plaza de Drift, al final de la Ruta 60
 const HILL_C := Vector2(-1086.0, -1086.0) # centro de la colina (al noroeste)
 const HILL_R := 430.0
 const HILL_H := 72.0
 const SEA_Z := 1260.0
+const MT_A := Vector4(1950.0, 880.0, 1050.0, 72.0) # la sierra de la Ruta Panorámica: (x, z, radio, altura); cada loma es un montículo de borde suave
+const MT_B := Vector4(2790.0, 1190.0, 520.0, 40.0)
 
 const WALLS := [Color(0.93, 0.78, 0.52), Color(0.96, 0.90, 0.76), Color(0.82, 0.47, 0.34), Color(0.93, 0.70, 0.66), Color(0.70, 0.80, 0.88),
 	Color(0.72, 0.86, 0.76), Color(0.95, 0.94, 0.92), Color(0.70, 0.38, 0.30), Color(0.88, 0.78, 0.64), Color(0.98, 0.84, 0.55)]
@@ -82,6 +84,13 @@ const HC := 32.0
 var _rng := RandomNumberGenerator.new()
 
 # ───────────────────────── el suelo de todo el mundo ─────────────────────────
+## Altura de un montículo de borde suave (0 fuera de su radio)
+static func _mount(x: float, z: float, m: Vector4) -> float:
+	var md := Vector2(x, z).distance_to(Vector2(m.x, m.y))
+	if md >= m.z:
+		return 0.0
+	return m.w * (1.0 - smoothstep(0.0, m.z, md))
+
 ## Altura del terreno en (x, z): una meseta (la ciudad), el mar al sur, lomas suaves afuera y una colina al noroeste
 func height(x: float, z: float) -> float:
 	if x > 3000.0:
@@ -95,6 +104,9 @@ func height(x: float, z: float) -> float:
 	h -= 12.0 * smoothstep(SEA_Z + 40.0, SEA_Z + 260.0, z) # el fondo del mar
 	if d < HILL_R:
 		h += HILL_H * (1.0 - d / HILL_R)
+	var mh := _mount(x, z, MT_A)
+	mh = maxf(mh, _mount(x, z, MT_B))
+	h += mh
 	if _flat_r > 0.0:
 		var fd := Vector2(x, z).distance_to(_flat_c)
 		if fd < _flat_r + 150.0:
@@ -475,7 +487,61 @@ func _make_roads() -> void:
 	# camino de la colina: sale de la avenida 6 y sube en tres cuchillas
 	_sample_road(id, "Camino de la Colina 300", 300, "hill", 4.4, 1.8, _hill_plan())
 	id += 1
+	# Ruta Panorámica: sale del extremo este de la costanera, trepa la sierra con curvas y baja a la costa
+	_sample_road(id, "Ruta Panorámica 70", 70, "scenic", 4.6, 3.6, _scenic_plan())
+	id += 1
 	id = _make_tunnels(id)
+
+## Trazado de la Ruta Panorámica: waypoints suavizados (Chaikin) con ondulación; arranca 2,5 m antes del extremo de la costanera para cruzarla y termina antes de x = 3000 (el bolsillo plano de los túneles)
+const SCENIC_C := Vector2(1950.0, 880.0) # centro de la sierra: el camino la rodea en espiral subiendo
+func _scenic_plan() -> PackedVector2Array:
+	var pts: Array = []
+	var a0 := deg_to_rad(35.0)
+	pts.append(Vector2(cos(a0), sin(a0)) * COAST_R + Vector2(-sin(a0), cos(a0)) * 2.5) # 2,5 m adentro de la costanera
+	pts.append(Vector2(960.0, 690.0))
+	# espiral: de 190° a 514° (casi una vuelta) con el radio bajando de 950 a 150 m
+	var a := 190.0
+	while a <= 514.0:
+		var r := 950.0 - 800.0 * (a - 190.0) / 324.0
+		pts.append(SCENIC_C + Vector2(cos(deg_to_rad(a)), sin(deg_to_rad(a))) * r)
+		a += 6.0
+	# bajada: la espiral sigue en sentido contrario al reloj... al revés: gira hacia el sur-este y se abre (el radio crece despacio al principio para no meterse en el mar)
+	var da := 154.0
+	while da >= 18.0:
+		var u := (154.0 - da) / 136.0
+		var rr := 150.0 + 560.0 * pow(u, 1.9)
+		pts.append(SCENIC_C + Vector2(cos(deg_to_rad(da)), sin(deg_to_rad(da))) * rr)
+		da -= 6.0
+	for wp in [[2680.0, 1090.0], [2790.0, 1130.0], [2900.0, 1085.0]]: # y el tramo de costa hasta el final
+		pts.append(Vector2(float(wp[0]), float(wp[1])))
+	for it in 2: # Chaikin: redondea las esquinas
+		var nxt: Array = [pts[0]]
+		for i in range(pts.size() - 1):
+			var p0: Vector2 = pts[i]
+			var p1: Vector2 = pts[i + 1]
+			nxt.append(p0.lerp(p1, 0.25))
+			nxt.append(p0.lerp(p1, 0.75))
+		nxt.append(pts[pts.size() - 1])
+		pts = nxt
+	var cum: Array = [0.0]
+	for i in range(1, pts.size()):
+		cum.append(float(cum[i - 1]) + (pts[i] as Vector2).distance_to(pts[i - 1]))
+	var total := float(cum[cum.size() - 1])
+	# remuestreo a STEP metros con una ondulación suave (nula en las puntas)
+	var out := PackedVector2Array()
+	var k := 1
+	var d := 0.0
+	while d <= total:
+		while k < pts.size() - 1 and float(cum[k]) < d:
+			k += 1
+		var t := clampf((d - float(cum[k - 1])) / maxf(float(cum[k]) - float(cum[k - 1]), 0.001), 0.0, 1.0)
+		var p: Vector2 = (pts[k - 1] as Vector2).lerp(pts[k], t)
+		var tn: Vector2 = ((pts[k] as Vector2) - (pts[k - 1] as Vector2)).normalized()
+		var env := smoothstep(0.0, 120.0, d) * smoothstep(0.0, 120.0, total - d)
+		p += Vector2(-tn.y, tn.x) * (9.0 * env * sin(d / 55.0))
+		out.append(p)
+		d += STEP
+	return out
 
 ## Trazado del camino de la colina: waypoints en polares (radio, ángulo) alrededor del centro de la colina, con el radio siempre bajando (así el camino nunca baja
 ## para volver a subir) y las cuchillas redondeadas (Chaikin en polares). Antes arranca el tramo de la avenida 6 hasta el pie de la colina.
@@ -575,6 +641,12 @@ func _mark_junction_samples() -> void:
 					var rb: Dictionary = roads[s_road[sj]]
 					junctions.append({"pos": hp, "y": height(hp.x, hp.y), "roads": [int(s_road[si]), int(s_road[sj])],
 						"major": float(ra["hw"]) >= 6.0 and float(rb["hw"]) >= 6.0, "hw": maxf(float(ra["hw"]), float(rb["hw"]))})
+	# la Ruta Panorámica arranca en el extremo de la costanera (que termina ahí): el cruce se agrega a mano
+	var sc := road_named("Ruta Panorámica 70")
+	var co := road_named("Costanera 90")
+	if sc >= 0 and co >= 0:
+		var sp0: Vector3 = (roads[sc]["pts"] as PackedVector3Array)[0]
+		junctions.append({"pos": Vector2(sp0.x, sp0.z), "y": sp0.y, "roads": [co, sc], "major": false, "hw": 6.0})
 	for j in junctions:
 		for rid in j["roads"]:
 			var pts: PackedVector3Array = roads[rid]["pts"]
@@ -822,7 +894,7 @@ func _place_facades() -> void:
 	for ri in roads.size():
 		var rd: Dictionary = roads[ri]
 		var kind := str(rd["kind"])
-		if kind == "rural" or kind == "shortcut" or kind == "bay" or kind == "tunnel":
+		if kind == "rural" or kind == "shortcut" or kind == "scenic" or kind == "bay" or kind == "tunnel":
 			continue
 		var pts: PackedVector3Array = rd["pts"]
 		var hw := float(rd["hw"])
@@ -991,6 +1063,8 @@ const STATION_SPECS := [
 	["gas_norte", "Gasolinera Norte", "Avenida 7", 520.0, -1.0, Color(0.88, 0.20, 0.15), "mid", false],
 	["gas_oeste", "Gasolinera Oeste", "Avenida 6", 560.0, 1.0, Color(0.20, 0.68, 0.36), "mid", false],
 	["gas_ruta", "Gasolinera Ruta 20", "Avenida 1", 930.0, -1.0, Color(0.16, 0.52, 0.86), "small", false],
+	["gas_sierra", "Gasolinera Pie de Sierra", "Ruta Panorámica 70", 900.0, -1.0, Color(0.92, 0.45, 0.12), "small", false],
+	["gas_mirador", "Gasolinera Mirador", "Ruta Panorámica 70", 4400.0, -1.0, Color(0.55, 0.30, 0.78), "small", false],
 ]
 # R: radio de cada círculo del playón · cu: posición (x) de cada círculo · pumps/pillars/blocks/bays: [x, z] locales · canopy: [ancho, fondo] · kiosk: [ancho, fondo, z]
 const STATION_KINDS := {
@@ -1321,7 +1395,7 @@ func _place_props() -> void:
 	for ri in roads.size():
 		var rd: Dictionary = roads[ri]
 		var kind := str(rd["kind"])
-		if kind == "rural" or kind == "shortcut" or kind == "bay" or kind == "tunnel":
+		if kind == "rural" or kind == "shortcut" or kind == "scenic" or kind == "bay" or kind == "tunnel":
 			continue
 		var pts: PackedVector3Array = rd["pts"]
 		var nj: PackedByteArray = rd["nj"]
@@ -1476,7 +1550,7 @@ func _place_guardrails() -> void:
 	for ri in roads.size():
 		var rd: Dictionary = roads[ri]
 		var kind := str(rd["kind"])
-		if not (kind in ["hill", "shortcut", "rural", "coast"]):
+		if not (kind in ["hill", "shortcut", "rural", "coast", "scenic"]):
 			continue
 		var pts: PackedVector3Array = rd["pts"]
 		var nj: PackedByteArray = rd["nj"]
@@ -1503,13 +1577,22 @@ func _place_guardrails() -> void:
 					placed = true
 			if placed:
 				acc = 0.0
+		if kind == "scenic":
+			# el final del camino (hoy sin salida): tres bloques de hormigón cruzados
+			var pe := pts[pts.size() - 1]
+			var pe0 := pts[pts.size() - 3]
+			var te := Vector2(pe.x - pe0.x, pe.z - pe0.z).normalized()
+			var ne := Vector2(-te.y, te.x)
+			for k in [-1.0, 0.0, 1.0]:
+				var q := Vector2(pe.x, pe.z) + te * 1.5 + ne * float(k) * 3.4
+				_add_prop(12, q.x, q.y, te, pe.y)
 
 ## Bordes de las rutas rurales y de los atajos: una tirada de árboles del pack (varias especies, dos filas), con pasto, flores y algún arbusto abajo. No chocan: el auto no sale del camino.
 func _place_roadside() -> void:
 	for ri in roads.size():
 		var rd: Dictionary = roads[ri]
 		var kind := str(rd["kind"])
-		if kind != "rural" and kind != "shortcut":
+		if kind != "rural" and kind != "shortcut" and kind != "scenic":
 			continue
 		var pts: PackedVector3Array = rd["pts"]
 		var base := float(rd["hw"]) + float(rd["sw"])

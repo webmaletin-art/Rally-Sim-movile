@@ -23,7 +23,7 @@ func _init() -> void:
 	cones.setup(PackedVector2Array())
 	samples = [Vector3(0, 0, 0)]
 	n = 1
-	map_bounds = Rect2(-RURAL_END_X, -RURAL_END_X, RURAL_END_X * 2.0, RURAL_END_X * 2.0)
+	map_bounds = Rect2(-RURAL_END_X, -RURAL_END_X, RURAL_END_X + 3000.0, RURAL_END_X * 2.0) # (llega hasta x = 3000: la Ruta Panorámica sale al este)
 
 const RURAL_END_X := 2300.0
 
@@ -47,7 +47,7 @@ func camera_clear(a: Vector2, b: Vector2) -> float:
 		var q := a.lerp(b, float(i) / float(n))
 		var pr := city.probe(q.x, q.y)
 		if float(pr[0]) < -0.2 and int(pr[6]) >= 0:
-			if str((city.roads[int(pr[6])] as Dictionary)["kind"]) in ["rural", "shortcut"]:
+			if str((city.roads[int(pr[6])] as Dictionary)["kind"]) in ["rural", "shortcut", "scenic"]:
 				continue
 			return maxf(0.0, (float(i) - 1.0) / float(n))
 	return 1.0

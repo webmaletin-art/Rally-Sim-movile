@@ -132,3 +132,11 @@ Código: `game/online/online_social.gd` (cliente), `game/ui/online_panel.gd` (pa
 - **Guardarrailes en barrancos** (`CityLayout._place_guardrails`, tipo de objeto `GUARD`): donde el terreno cae más de 1,3 m a 6 m del borde de la banquina (hoy: el camino de la colina, 135 tramos) se pone un guardarrail de 4 m, sólido (círculo de choque de 1,25 m), que no se rompe, a la altura de la calle y fuera del asfalto y de los cruces. Si se agrega otra ruta con barrancos, los pone solo.
 - Prueba: `tests/guardrail_test.gd`.
 - **Pendiente de ver en el APK** (no se pudo reproducir sin el teléfono): esquinas de edificios donde el auto se «engancha», y postes en lugares raros. Cuando pase, mandar la calle/cuadra que muestra el HUD y el momento.
+
+## Etapa 13 — Ruta Panorámica 70 (montaña + costa) y gasolineras
+- **Sierra**: dos lomas de borde suave sumadas a `CityLayout.height()` (`MT_A` 72 m de alto y 1050 m de radio, al este; `MT_B` 40 m junto al mar). Desnivel total del camino ≈ 85 m.
+- **Ruta Panorámica 70** (`kind: "scenic"`, calzada de 4,6 m de semiancho y banquina de 3,6 m, **4,6 km**): sale del extremo este de la costanera (cruce agregado a mano), toma una espiral de casi una vuelta alrededor de la sierra subiendo con pendiente suave, baja por el lado sur y termina en un tramo costero con guardarrailes, antes de x = 3000 (el bolsillo plano de los túneles). Pendiente máxima 12 %. El final es un callejón sin salida con tres bloques de hormigón. Tiene alambrado y árboles como las rutas rurales y guardarrailes sólidos en los tramos con barranco (245 tramos).
+- **Gasolineras en la ruta**: *Pie de Sierra* (a 900 m, cerca de la subida) y *Mirador* (a 4400 m, en la costa); las dos de tamaño chico con 3 puntos de carga. El `ov` del playón exige banquina ≥ 3,3 m para que entre una gasolinera: por eso la banquina de 3,6 m.
+- **«La otra ciudad»**: todavía no existe (las Salidas 40 y 80 siguen cerradas), así que por ahora no hay gasolineras ahí; cuando se genere esa ciudad se pueden poner con el mismo mecanismo (`STATION_SPECS`).
+- `WORLD_VERSION` pasó a 5 (el mapa cambió: una «última ubicación» vieja ya no sirve).
+- ⚠ Aprendido: no iterar una constante `Array` dentro de `height()` (se llama desde los hilos de física y daba errores de acceso); por eso las lomas son dos constantes `Vector4`.

@@ -45,7 +45,7 @@ func _init() -> void:
 	check(c.junctions.size() > 140, "%d cruces" % c.junctions.size())
 	check(c.slab_count > 3000 and c.building_count == 8, "%d frentes de edificios y %d lugares especiales (el concesionario y siete talleres)" % [c.slab_count, c.building_count])
 	# gasolineras: cuatro, con 3 a 6 puntos de carga; ningún punto de carga sobre una calle y ningún punto del playón sobre el asfalto
-	check(c.stations.size() == 4, "hay %d gasolineras" % c.stations.size())
+	check(c.stations.size() == 6, "hay %d gasolineras (4 de la ciudad y 2 en la Ruta Panorámica)" % c.stations.size())
 	var fast_n := 0
 	for st in c.stations:
 		var fp0: Vector2 = st["fuel_points"][0]
@@ -133,12 +133,31 @@ func _init() -> void:
 			if (j["roads"] as Array).has(int(rd["id"])):
 				nj += 1
 		check(mg < 0.12 and nj >= 2, "%s: pendiente máxima %.1f %%, %d cruces, %d m" % [nm, mg * 100.0, nj, int(rd["cum"][rd["cum"].size() - 1])])
+	# Ruta Panorámica: larga, con subida de montaña y bajada a la costa, unida a la costanera
+	var scr := c.road_named("Ruta Panorámica 70")
+	check(scr >= 0, "existe la Ruta Panorámica 70")
+	if scr >= 0:
+		var sp: PackedVector3Array = c.roads[scr]["pts"]
+		var scum: PackedFloat32Array = c.roads[scr]["cum"]
+		var ymin := 1e9
+		var ymax := -1e9
+		for q in sp:
+			ymin = minf(ymin, q.y)
+			ymax = maxf(ymax, q.y)
+		var joined := false
+		for j in c.junctions:
+			if (j["roads"] as Array).has(scr) and (j["roads"] as Array).has(c.road_named("Costanera 90")):
+				joined = true
+		check(float(scum[scum.size() - 1]) > 4000.0, "la Ruta Panorámica mide %d m" % int(scum[scum.size() - 1]))
+		check(ymax - ymin > 55.0, "sube y baja la sierra (%.0f m de desnivel)" % (ymax - ymin))
+		check(joined, "arranca en la costanera")
+		check(sp[sp.size() - 1].x < 2990.0, "termina antes del bolsillo plano de x = 3000")
 	# frentes continuos: a lo largo de la línea de edificación de cada calle no hay huecos (o hay otra calle, un lugar especial o una zona abierta)
 	var gaps := 0
 	var tested := 0
 	for ri in c.roads.size():
 		var rd: Dictionary = c.roads[ri]
-		if str(rd["kind"]) in ["rural", "shortcut", "plaza", "bay", "tunnel"]:
+		if str(rd["kind"]) in ["rural", "shortcut", "scenic", "plaza", "bay", "tunnel"]:
 			continue
 		var pp: PackedVector3Array = rd["pts"]
 		for i in range(2, pp.size() - 2, 2):

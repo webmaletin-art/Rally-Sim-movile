@@ -30,8 +30,10 @@ func _init() -> void:
 			on_asphalt += 1
 		else:
 			var ry := float(pr[4])
-			if pr[6] >= 0.0 and absf(float(c.prop_y[id]) - ry) > 1.5:
+			if pr[6] >= 0.0 and absf(float(c.prop_y[id]) - ry) > 3.0:
 				floating += 1
+				if floating < 4:
+					print('     flota: ', Vector2(x, z), ' y ', c.prop_y[id], ' eje ', ry, ' calle ', c.roads[int(pr[6])]['name'])
 		var k := str(c.roads[int(pr[6])]["kind"]) if pr[6] >= 0.0 else "?"
 		by_kind[k] = int(by_kind.get(k, 0)) + 1
 	print("     guardarrailes: ", n, " ", by_kind)

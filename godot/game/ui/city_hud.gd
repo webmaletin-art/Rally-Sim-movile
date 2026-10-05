@@ -480,7 +480,7 @@ class MapView extends Control:
 				var wpx := maxf(hw * 2.0 + (3.0 if pass_i == 0 else 0.0), (4.5 if big else 3.0) / s)
 				if not big:
 					wpx = maxf(wpx, 3.2 / s)
-				var col := Color(0.92, 0.94, 0.97, 0.9) if pass_i == 0 else (Color(0.42, 0.46, 0.54) if str(sg["kind"]) in ["rural", "hill"] else Color(0.30, 0.34, 0.42))
+				var col := Color(0.92, 0.94, 0.97, 0.9) if pass_i == 0 else (Color(0.42, 0.46, 0.54) if str(sg["kind"]) in ["rural", "hill", "scenic"] else Color(0.30, 0.34, 0.42))
 				draw_polyline(sg["pts"], col, wpx if big else minf(wpx, 11.0 / s), false)
 		if hud.has_dest and hud.route.size() > 1:
 			draw_polyline(hud.route, Color(0.05, 0.12, 0.2, 0.9), 12.0 / s, false)
