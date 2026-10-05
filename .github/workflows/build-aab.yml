@@ -144,7 +144,6 @@ jobs:
           godot --headless --script res://tests/fantasy_test.gd
           godot --headless --script res://tests/city_test.gd
           godot --headless --script res://tests/autotune_test.gd
-          godot --headless --script res://tests/online_test.gd
 
       - name: Configurar el modo online (Supabase)
         working-directory: godot

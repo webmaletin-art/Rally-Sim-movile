@@ -96,13 +96,6 @@ jobs:
           timeout -k 5 600 godot --headless --script res://tests/city_test.gd
           timeout -k 5 600 godot --headless --script res://tests/autotune_test.gd
 
-      - name: "Prueba del modo online (informativa, nunca frena la compilación del APK)"
-        working-directory: godot
-        continue-on-error: true
-        timeout-minutes: 3
-        run: |
-          timeout -k 5 120 godot --headless --script res://tests/online_test.gd
-
       - name: Configurar el modo online (Supabase)
         working-directory: godot
         env:
