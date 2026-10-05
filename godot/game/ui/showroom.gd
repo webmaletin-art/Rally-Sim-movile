@@ -100,7 +100,7 @@ func set_car(id: String, state: Dictionary, vehicles: Dictionary) -> void:
 		car = null
 	var d: Dictionary = CarBuild.build_params(vehicles[id], state)
 	var pp: Dictionary = state.get("paint", {"body": "#1a4fe0", "rim": "#ff6a08"})
-	car = Car.new(FlatTrack.new(), VehicleParams.from_dict(d), false, false, Color(str(pp["body"])), Color(str(pp.get("rim", "#2a2d33"))), str(pp.get("finish", "gloss")))
+	car = Car.new(FlatTrack.new(), VehicleParams.from_dict(d), false, false, Color(str(pp["body"])), Color(str(pp.get("rim", "#2a2d33"))), str(pp.get("finish", "gloss")), state.get("mods", {}))
 	car.visual.set_livery(int(pp.get("livery", 0)), Color(str(pp["body"])), Color(str(pp.get("accent", "#ff6a08"))), str(pp.get("finish", "gloss")))
 	if pp.has("tire"):
 		car.visual.set_tire_color(Color(str(pp["tire"])))

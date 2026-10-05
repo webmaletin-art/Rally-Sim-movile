@@ -1,0 +1,1 @@
+{"vehicles": {}, "_nota": "Sólo EXCEPCIONES: {auto: {front_bumper: {pos: [x,y,z], rot: [gx,gy,gz]}}}. El resto se calcula de las medidas del auto."}

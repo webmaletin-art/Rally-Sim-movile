@@ -15,10 +15,13 @@ var meta: Dictionary = {}
 var _susp_type := "car"
 
 ## defs: [[x, z, delantera]]; V: parámetros del auto; body: nodo al que cuelga todo
-func build(body: Node3D, V: RefCounted, p_meta: Dictionary, p_lo: bool, rim_col: Color) -> void:
+func build(body: Node3D, V: RefCounted, p_meta: Dictionary, p_lo: bool, rim_col: Color, wheel_over := {}) -> void:
 	lo = p_lo
 	meta = p_meta
-	var W: Dictionary = meta["wheel"]
+	var W: Dictionary = (meta["wheel"] as Dictionary).duplicate()
+	if not wheel_over.is_empty(): # una llanta instalada (vehicle_customization.gd): cambia el modelo y, un poco, el tamaño
+		W["style"] = str(wheel_over["style"])
+		W["rim"] = float(W["rim"]) * float(wheel_over.get("rim_scale", 1.0))
 	_susp_type = str(W.get("susp", "car"))
 	_make_mats(rim_col)
 	var R: float = V.wheelRadius

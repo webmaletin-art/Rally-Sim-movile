@@ -1010,7 +1010,7 @@ func _rebuild_cars() -> void:
 		var lo := (i > 0) or not hi_model
 		var route := track is RouteTrack
 		var car_view = (player_view() if (adv_mode and i == 0) else track.make_view()) if route else track
-		var car := Car.new(car_view, VehicleParams.from_dict(d), i == 0, lo, paint, su["rim"], str(su.get("finish", "gloss")))
+		var car := Car.new(car_view, VehicleParams.from_dict(d), i == 0, lo, paint, su["rim"], str(su.get("finish", "gloss")), (cfg.get("state", {}) as Dictionary).get("mods", {}) if i == 0 and cfg.get("state") is Dictionary else {})
 		rival_info.append({"name": su["name"], "color": paint})
 		for a in OS.get_cmdline_user_args():
 			if a.begins_with("--livery=") and i == 0:

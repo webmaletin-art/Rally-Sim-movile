@@ -6,6 +6,7 @@ extends Node3D
 const CarSnapshot := preload("res://game/car/car_snapshot.gd")
 const VehicleParams := preload("res://game/physics/vehicle_params.gd")
 const CarParts := preload("res://game/car/car_parts.gd")
+const VehicleCustomization := preload("res://game/car/vehicle_customization.gd")
 const VOLT_WHEEL_R := 0.40 # radio de la rueda con la que se modeló el GLB
 
 var V: VehicleParams
@@ -17,6 +18,8 @@ var tire_mat: StandardMaterial3D
 var parts: CarParts # ruedas, frenos y suspensión por código (autos con carrocería propia); null = Volt
 var meta: Dictionary = {} # medidas del GLB propio (models/cars/<id>.json)
 var vt := ""
+var mods: Dictionary = {} # piezas modulares instaladas (state["mods"]): se ponen ANTES de setup()
+var mod_nodes: Array = []
 var _own_mats: Array = [] # [{mi, surface, out, inn}] materiales de la carrocería propia (de afuera y de adentro)
 var blob: MeshInstance3D # sombrita suave en el piso (no hace falta una sombra de verdad)
 static var _blob_mat: StandardMaterial3D
@@ -120,7 +123,9 @@ func _setup_own(paint: Color, rim: Color, finish: String) -> void:
 	_apply_own_mats(0, paint, Color(1.0, 0.5, 0.1), finish, Color(0.95, 0.95, 0.93))
 	_make_blob()
 	parts = CarParts.new()
-	parts.build(body, V, meta, lo, rim)
+	var safe := VehicleCustomization.sanitize(mods, vt, V, meta) if not mods.is_empty() else {}
+	parts.build(body, V, meta, lo, rim, VehicleCustomization.wheel_override(vt, V, meta, safe))
+	mod_nodes = VehicleCustomization.attach(body, vt, V, meta, safe, lo)
 	parts.set_colors({"rim": rim.to_html(false)})
 	wheels = parts.wheels
 	tire_mat = parts.mats["tire"]

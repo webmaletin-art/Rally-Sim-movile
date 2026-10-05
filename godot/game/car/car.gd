@@ -22,10 +22,11 @@ var in_shift := 0 # cambio pedido (se consume en el primer paso)
 var solid := false # la pista tiene obstáculos (paredes, edificios, islas): track.push() los consulta
 var wall := 0.0 # límite lateral (m desde el centro del camino): más allá hay un "muro de árboles" que lo devuelve; 0 = sin límite
 
-func _init(track: TrackBase, params: VehicleParams, player: bool, lo: bool, paint: Color, rim: Color, finish := "gloss") -> void:
+func _init(track: TrackBase, params: VehicleParams, player: bool, lo: bool, paint: Color, rim: Color, finish := "gloss", mods := {}) -> void:
 	phys = VehiclePhysics.new(track, params)
 	is_player = player
 	visual = CarVisual.new()
+	visual.mods = mods
 	visual.setup(params, lo, paint, rim, finish)
 	snap.reset_to(0.0, phys)
 
