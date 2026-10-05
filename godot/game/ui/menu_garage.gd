@@ -10,6 +10,7 @@ const CarBuild := preload("res://game/data/car_build.gd")
 const Release := preload("res://game/data/release.gd")
 const Shops := preload("res://game/data/shops.gd")
 const PartCatalog := preload("res://game/car/part_catalog.gd")
+const TireWear := preload("res://game/car/tire_wear.gd")
 const VehicleCustomization := preload("res://game/car/vehicle_customization.gd")
 
 const DARK := Color(0.05, 0.06, 0.08)
@@ -367,6 +368,20 @@ func _buy_upgrade(id: String, uid: String, lvl: int) -> void:
 		m.toast(tr("No te alcanza el dinero"))
 
 func _ws_tires(id: String, st: Dictionary) -> void:
+	# desgaste del juego de gomas puesto y cambio (Etapa 13)
+	var cur_t := str(st["tires"])
+	var wear: float = m.profile.tire_wear(id)
+	var rcost := TireWear.replace_cost(float(CarBuild.tire(cur_t).get("cost", 0)))
+	var fam := TireWear.family(cur_t)
+	var wb := Kit.card_button("🛞 %s · %s %d%%" % [tr(TireWear.state_name(wear)), tr("desgaste"), roundi(wear * 100.0)], tr("Tipo %s · el agarre baja a %d%% cuando están lisas") % [tr(str(TireWear.NAMES[fam])), roundi(float(TireWear.GRIP_MIN[fam]) * 100.0)], tr("CAMBIAR") + " " + Kit.fmt_cr(float(rcost)), func() -> void:
+		var paid: int = m.profile.replace_tires(id)
+		if paid >= 0:
+			m.sfx.play("buy")
+			_after_change()
+		else:
+			m.sfx.play("error")
+			m.toast(tr("No te alcanza el dinero")), false, wear >= 0.03, 66.0, 16)
+	m.body.add_child(wb)
 	var g := Kit.grid(2, 8, 8)
 	m.body.add_child(g)
 	for t in _cat()["tires"]:
@@ -374,13 +389,15 @@ func _ws_tires(id: String, st: Dictionary) -> void:
 		var have: bool = (st["tiresOwned"] as Array).has(tid)
 		var eq: bool = str(st["tires"]) == tid
 		var rt := tr("EQUIPADO") if eq else (tr("PONER") if have else Kit.fmt_cr(float(t["cost"])))
-		var b := Kit.card_button("%s %s" % [t["icon"], t["n"]], str(t["info"]), rt, func() -> void:
+		var wset: float = m.profile.tire_wear(id, tid)
+		var sub_t := str(t["info"]) if not (have and wset > 0.01) else "%s · %s %d%%" % [tr(TireWear.state_name(wset)), tr("desgaste"), roundi(wset * 100.0)]
+		var b := Kit.card_button("%s %s" % [t["icon"], t["n"]], sub_t, rt, func() -> void:
 			if m.profile.buy_tires(id, tid):
 				m.sfx.play("buy")
 				_after_change()
 			else:
 				m.sfx.play("error")
-				m.toast(tr("No te alcanza el dinero")), eq, true, 74.0, 16)
+				m.toast(tr("No te alcanza el dinero")), eq, true, 62.0, 16)
 		g.add_child(b)
 
 ## Llantas modulares: se ven puestas en el auto de la sala al instante. Comprar = pagar una vez por auto; cambiar entre las compradas es gratis.

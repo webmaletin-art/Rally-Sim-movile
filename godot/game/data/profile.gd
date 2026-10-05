@@ -5,6 +5,7 @@ extends RefCounted
 signal changed
 
 const CarBuild := preload("res://game/data/car_build.gd")
+const TireWear := preload("res://game/car/tire_wear.gd")
 const PartCatalog := preload("res://game/car/part_catalog.gd")
 const VehicleCustomization := preload("res://game/car/vehicle_customization.gd")
 const PATH := "user://profile.json"
@@ -173,6 +174,29 @@ func buy_tires(id: String, tid: String) -> bool:
 	car_d["tires"] = tid
 	save()
 	return true
+
+## Desgaste de un juego de gomas del auto id (0 = nuevas … 1 = lisas); cada juego comprado guarda el suyo
+func tire_wear(id: String, tid := "") -> float:
+	if not owns(id):
+		return 0.0
+	var car_d: Dictionary = d["owned"][id]
+	var t := tid if tid != "" else str(car_d.get("tires", "street"))
+	return float((car_d.get("tireWear", {}) as Dictionary).get(t, 0.0))
+
+## Cambiar el juego de gomas puesto por uno nuevo (del mismo tipo): cuesta la mitad de lo que valen. Devuelve el precio pagado, o -1 si no alcanzó el dinero.
+func replace_tires(id: String) -> int:
+	if not owns(id):
+		return -1
+	var car_d: Dictionary = d["owned"][id]
+	var t := str(car_d.get("tires", "street"))
+	var cost := TireWear.replace_cost(float(CarBuild.tire(t).get("cost", 0)))
+	if not spend(cost):
+		return -1
+	var tw: Dictionary = car_d.get("tireWear", {})
+	tw[t] = 0.0
+	car_d["tireWear"] = tw
+	save()
+	return cost
 
 ## Piezas modulares (llantas, etc.): se compran una vez por auto y se pueden cambiar gratis. Offline = estado local; el online usa su propia instancia validada por el servidor.
 func buy_part(id: String, part_id: String, vehicles: Dictionary) -> Dictionary:

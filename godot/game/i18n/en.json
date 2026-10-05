@@ -230,7 +230,7 @@
 "Buggy Dakar · liviano y saltarín": "Dakar buggy · light and jumpy",
 "Buscando tus compras…": "Looking for your purchases…",
 "Bóxer 4.0 · 560 cv · 9000 rpm": "Flat-six 4.0 · 560 hp · 9000 rpm",
-"CAMBIAR": "CHANGE",
+"CAMBIAR": "REPLACE",
 "CANCELAR": "CANCEL",
 "CARGA RÁPIDA": "FAST CHARGE",
 "CARGANDO ETAPA": "LOADING STAGE",
@@ -1871,5 +1871,15 @@
 "Como viene de fábrica": "As it comes from the factory",
 "Ruta Panorámica": "Scenic Route",
 "Gasolinera Pie de Sierra": "Foothill Gas Station",
-"Gasolinera Mirador": "Viewpoint Gas Station"
+"Gasolinera Mirador": "Viewpoint Gas Station",
+"🛞 ¡Gomas casi lisas! Cambialas en un taller de ruedas": "🛞 Tires almost bald! Replace them at a wheel shop",
+"🛞 Las gomas están gastadas: pierden agarre": "🛞 Your tires are worn: they lose grip",
+"Nuevas": "New",
+"Buenas": "Good",
+"Gastadas": "Worn",
+"Muy gastadas": "Very worn",
+"Lisas": "Bald",
+"desgaste": "wear",
+"Tipo %s · el agarre baja a %d%% cuando están lisas": "Type %s · grip drops to %d%% when bald",
+"Deportiva": "Sport"
 }

@@ -230,7 +230,7 @@
 "Buggy Dakar · liviano y saltarín": "Dakar-Buggy · leicht und sprunghaft",
 "Buscando tus compras…": "Deine Käufe werden gesucht…",
 "Bóxer 4.0 · 560 cv · 9000 rpm": "Sechszylinder-Boxer 4.0 · 560 PS · 9000 U/min",
-"CAMBIAR": "ÄNDERN",
+"CAMBIAR": "WECHSELN",
 "CANCELAR": "ABBRECHEN",
 "CARGA RÁPIDA": "SCHNELLLADUNG",
 "CARGANDO ETAPA": "ETAPPE WIRD GELADEN",
@@ -1871,5 +1871,15 @@
 "Como viene de fábrica": "Wie ab Werk",
 "Ruta Panorámica": "Panoramastraße",
 "Gasolinera Pie de Sierra": "Tankstelle am Bergfuß",
-"Gasolinera Mirador": "Aussichts-Tankstelle"
+"Gasolinera Mirador": "Aussichts-Tankstelle",
+"🛞 ¡Gomas casi lisas! Cambialas en un taller de ruedas": "🛞 Reifen fast glatt! Wechsle sie in einer Reifenwerkstatt",
+"🛞 Las gomas están gastadas: pierden agarre": "🛞 Die Reifen sind abgenutzt: sie verlieren Grip",
+"Nuevas": "Neu",
+"Buenas": "Gut",
+"Gastadas": "Abgenutzt",
+"Muy gastadas": "Stark abgenutzt",
+"Lisas": "Glatt",
+"desgaste": "Verschleiß",
+"Tipo %s · el agarre baja a %d%% cuando están lisas": "Typ %s · der Grip sinkt auf %d%%, wenn sie glatt sind",
+"Deportiva": "Sport"
 }

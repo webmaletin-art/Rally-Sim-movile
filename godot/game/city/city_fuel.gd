@@ -99,6 +99,8 @@ func update(dt: float) -> void:
 func save() -> void:
 	_saved_t = 0.0
 	race.profile.d["fuel"] = level
+	if race.get("tires") != null:
+		race.tires.save()
 	if race.clock != null:
 		race.clock.save() # (la hora del día se guarda junto con la nafta)
 	race.profile.save()

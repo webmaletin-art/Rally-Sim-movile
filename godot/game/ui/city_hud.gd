@@ -119,6 +119,7 @@ func setup(p_track, toast_cb: Callable) -> void:
 
 var _fade: ColorRect
 var fuel_l: Label
+var tire_txt := "" # desgaste de las gomas (lo pone CityTires): se muestra junto a la nafta
 var clock_l: Label
 var fuel_bar: ColorRect
 var fuel_fill: ColorRect
@@ -132,7 +133,7 @@ func set_fuel(level: float, fill := -1.0) -> void:
 		col = Color(0.3, 0.8, 1.0)
 		fuel_l.text = "⛽ %d%% · %s %d%%" % [roundi(level * 100.0), Tr.t("cargando"), roundi(fill * 100.0)]
 	else:
-		fuel_l.text = "⛽ %d%%" % roundi(level * 100.0)
+		fuel_l.text = "⛽ %d%%" % roundi(level * 100.0) + (("  " + tire_txt) if tire_txt != "" else "")
 	fuel_fill.size.x = (MINI - 2.0) * clampf(level, 0.0, 1.0)
 	fuel_fill.color = col
 

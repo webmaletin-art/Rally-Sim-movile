@@ -230,7 +230,7 @@
 "Buggy Dakar · liviano y saltarín": "Buggy Dakar · leve e saltitante",
 "Buscando tus compras…": "Procurando suas compras…",
 "Bóxer 4.0 · 560 cv · 9000 rpm": "Boxer 4.0 · 560 cv · 9000 rpm",
-"CAMBIAR": "ALTERAR",
+"CAMBIAR": "TROCAR",
 "CANCELAR": "CANCELAR",
 "CARGA RÁPIDA": "CARGA RÁPIDA",
 "CARGANDO ETAPA": "CARREGANDO ETAPA",
@@ -1871,5 +1871,15 @@
 "Como viene de fábrica": "Como vem de fábrica",
 "Ruta Panorámica": "Rota Panorâmica",
 "Gasolinera Pie de Sierra": "Posto Pé da Serra",
-"Gasolinera Mirador": "Posto Mirante"
+"Gasolinera Mirador": "Posto Mirante",
+"🛞 ¡Gomas casi lisas! Cambialas en un taller de ruedas": "🛞 Pneus quase carecas! Troque numa oficina de rodas",
+"🛞 Las gomas están gastadas: pierden agarre": "🛞 Os pneus estão gastos: perdem aderência",
+"Nuevas": "Novos",
+"Buenas": "Bons",
+"Gastadas": "Gastos",
+"Muy gastadas": "Muito gastos",
+"Lisas": "Carecas",
+"desgaste": "desgaste",
+"Tipo %s · el agarre baja a %d%% cuando están lisas": "Tipo %s · a aderência cai para %d%% quando carecas",
+"Deportiva": "Esportivo"
 }

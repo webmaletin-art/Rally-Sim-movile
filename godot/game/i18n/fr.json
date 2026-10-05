@@ -273,7 +273,7 @@
 "Calidad de la captura": "Qualité de capture",
 "Calidad de texturas": "Qualité des textures",
 "Calidad general": "Qualité générale",
-"Calle": "Rue",
+"Calle": "Route",
 "Calle %d": "",
 "Calle 100": "",
 "Calle Vieja %d": "",
@@ -1871,5 +1871,15 @@
 "Como viene de fábrica": "Comme à la sortie d'usine",
 "Ruta Panorámica": "Route Panoramique",
 "Gasolinera Pie de Sierra": "Station Pied de la Sierra",
-"Gasolinera Mirador": "Station Belvédère"
+"Gasolinera Mirador": "Station Belvédère",
+"🛞 ¡Gomas casi lisas! Cambialas en un taller de ruedas": "🛞 Pneus presque lisses ! Change-les dans un atelier de roues",
+"🛞 Las gomas están gastadas: pierden agarre": "🛞 Les pneus sont usés : ils perdent de l'adhérence",
+"Nuevas": "Neufs",
+"Buenas": "Bons",
+"Gastadas": "Usés",
+"Muy gastadas": "Très usés",
+"Lisas": "Lisses",
+"desgaste": "usure",
+"Tipo %s · el agarre baja a %d%% cuando están lisas": "Type %s · l'adhérence tombe à %d%% quand elles sont lisses",
+"Deportiva": "Sport"
 }
