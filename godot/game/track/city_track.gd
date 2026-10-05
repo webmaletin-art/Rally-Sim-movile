@@ -12,6 +12,7 @@ var props := {} # Vector2i (16 m) -> PackedFloat32Array [x, z, r, id, …] de co
 var _prop_alive := {} # id -> true
 var broken := {} # id -> Vector2 (hacia dónde cayó): lo roto queda tirado y ya no choca
 var _fresh := PackedInt32Array() # rotos desde la última vez que el mundo los miró
+var _dyn := PackedFloat32Array() # círculos de choque que se mueven (autos del tránsito): x, z, r, …
 var _mx := Mutex.new() # la física corre en hilos aparte: los objetos se tocan de a uno
 
 func _init() -> void:
@@ -88,6 +89,17 @@ func _push_locked(x: float, z: float, r: float) -> Vector3:
 				var pen := dl + r - (rr - 1.0) if dl < rr else (rr + 1.0) - (dl - r)
 				if pen > best.z:
 					best = Vector3(-u.x if dl < rr else u.x, -u.y if dl < rr else u.y, pen)
+	var di := 0
+	while di < _dyn.size(): # autos del tránsito: sólidos (no se rompen)
+		var ox2 := x - _dyn[di]
+		var oz2 := z - _dyn[di + 1]
+		var rs2 := r + _dyn[di + 2]
+		di += 3
+		var e22 := ox2 * ox2 + oz2 * oz2
+		if e22 < rs2 * rs2:
+			var e2 := sqrt(e22)
+			if rs2 - e2 > best.z:
+				best = Vector3(ox2 / e2 if e2 > 0.001 else 1.0, oz2 / e2 if e2 > 0.001 else 0.0, rs2 - e2)
 	var kx := int(floor(x / 16.0))
 	var kz := int(floor(z / 16.0))
 	var hit_id := -1
@@ -142,6 +154,12 @@ func take_broken() -> PackedInt32Array:
 	_fresh = PackedInt32Array()
 	_mx.unlock()
 	return out
+
+## Los círculos de choque de los autos del tránsito (se reemplazan enteros cada vez: x, z, r por auto)
+func set_dynamic_circles(c: PackedFloat32Array) -> void:
+	_mx.lock()
+	_dyn = c
+	_mx.unlock()
 
 func add_prop(id: int, x: float, z: float, r: float) -> void:
 	_mx.lock()
