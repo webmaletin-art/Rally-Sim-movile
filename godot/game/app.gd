@@ -77,6 +77,7 @@ func _start_race(cfg: Dictionary) -> void:
 	race = RACE_SCENE.instantiate()
 	race.cfg = cfg
 	race.profile = profile
+	race.online = online
 	race.finished.connect(_on_race_finished)
 	race.exit_requested.connect(_on_race_exit)
 	if loading != null:

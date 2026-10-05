@@ -40,9 +40,35 @@ Se definen en `godot/game/data/shops.gd` (qué pestañas, mejoras y grupos de aj
 - Cómo se hace: el túnel y la sala están en un «bolsillo» del mundo (x > 3000, plano) y las bocas son enlaces (`links` de `city_layout.gd`, `city_links.gd`) que mueven el auto con un fundido a negro. Abajo la luz del sol casi se apaga y la niebla es oscura y corta (`race.gd`, `_underground_light`).
 - Las puntas de los brazos todavía salen a la ciudad; en la próxima actualización pueden conectar con otras ciudades.
 
-## Estacionamientos y aparición
-- **El jugador siempre aparece dentro de un estacionamiento** (uno distinto cada vez, rotan): el subterráneo del Parque del Drift, la planta baja del Estacionamiento Central o su subsuelo (`CityTrack.start_pose`, `city.spawns`, contador `spawn_n` del perfil). Se sale manejando hasta el círculo verde «SALIDA» y se aparece en la calle.
-- **Estacionamiento Central** (edificio de la Avenida 5, con un gran cartel «P»): se entra frenando en el círculo verde, el portón se abre y el auto entra solo (igual que los talleres, pero en vez de un menú se funde a negro y se aparece en la planta baja). Adentro hay **tres niveles**: planta baja (a nivel de la calle), **subsuelo** (−4,4 m) y **un solo piso alto** (+4,4 m), unidos por dos rampas curvas de 10 % de pendiente; no hay más pisos para que nadie pueda ver qué hay detrás de los edificios. El interior vive en el «bolsillo» del mundo (x > 3000) como salas redondas que no se superponen en planta (así el suelo de cada una es una altura simple: `open_areas` con `y` y las rampas son calles con altura propia), con techo cerrado, pilares y rayas de lugares. Sin autos: sólo los de los jugadores (`city_layout.gd`: `_make_garage`; `city_world.gd`: `_hall` con `y` y aberturas en la pared donde empiezan las rampas).
+## Estacionamiento Central y aparición
+- **Un solo estacionamiento, unido a la calle:** el **Estacionamiento Central** está junto a una ruta rural (Ruta 40/60/20/80, entre 140 y 300 m de la ciudad), con un gran cartel «P» azul. Se entra **manejando** por un carril de entrada («Entrada Estacionamiento Central»): no hay círculo verde ni teletransporte (los círculos verdes quedan sólo para los talleres y el concesionario).
+- Son **tres salas redondas planas a distinta altura** (planta baja a nivel de la calle, subsuelo −4,4 m y planta alta +4,4 m) unidas por dos rampas («Rampa …», calles tipo túnel) de 10 %; no se superponen en planta, así el suelo de cada una es una altura simple (`open_areas` con `y`; `city_layout.gd`: `_place_garage`/`_build_garage`; `city_world.gd`: `_hall` y `_garage_sign`).
+- **Al entrar al mundo se elige dónde aparecer** (`menu.gd`, pantalla «¿DÓNDE APARECER?»): a nivel de la calle, un piso arriba o un piso abajo. Se pasa `spawn` en el cfg y `race.gd` lo usa como `track.spawn_i`.
+- Los túneles ocultos (bolsillo) siguen existiendo en los 4 brazos con las bocas de `city_links.gd`.
+
+## Salidas de la ciudad
+- **Ruta 20 → Modo aventura** y **Ruta 60 → Plaza de drift**: el portón está abierto (sin barrera, con cartel AVENTURA / DRIFT). Al cruzarlo (a menos de 12 m del portón, `race.gd: _check_gates`) el mundo se cierra y se abre la pantalla del modo (`app.gd: _on_race_exit` con `gate:`), y al terminar se vuelve al menú. Ruta 40 y 80 siguen «próximamente». *Todavía no es una fusión física de los mapas (siguen siendo escenas separadas).*
+
+## Paisaje y calles (papel)
+- **Dentro de la ciudad:** sólo farolas, carteles y canteros de flores en el centro lujoso; **sin árboles** (los árboles quedan para plazas, colinas y rutas). Fachadas con caras de papel, huecos angostos tapados por farola + flores en lugar de edificios apretados.
+- **Rutas rurales:** franja delgada de árboles, segunda hilera más atrás, pasto, **cerco de postes** a cada 6 m, carteles de curva, límite de velocidad y **PARE** en los cruces de calles menores; **horizonte falso** de colinas de papel que sigue a la cámara (`city_world.gd: _horizon`).
+- **Cámara que no entra en los edificios** (`camera_rig.gd: _clearance`, `city_track.gd: camera_clear`): muestrea cada 1,5 m entre el auto y la cámara y la acerca (rápido) o la aleja (lento) y la sube un poco.
+- **Faros** más realistas (`city_clock.gd: _build_beam`: dos conos anidados con bordes suaves y charco de luz en el piso, una sola malla aditiva) y **sin parpadeo** en las rayas amarillas (marcas 0,11 m arriba) y en los edificios claro/oscuro (normal de la fachada tomada de la malla, no de derivadas de pantalla).
+
+## Mapa grande y GPS
+- Zoom (＋ − y pellizco), arrastrar para mover, 🎯 MI AUTO, tocar un lugar o cualquier punto para marcar el destino. El GPS se actualiza solo: recorta la ruta a medida que avanzás y recalcula si te salís (>24 m).
+
+## Controles y FPS
+- Pausa → **MODIFICAR CONTROLES**: cada control se arrastra con un dedo y se agranda/achica con dos; GUARDAR / RESTABLECER / CANCELAR; se guarda en el perfil (`ctrlLayout`).
+- Opciones → Gráficos → **Mostrar FPS** (apagado de fábrica), arriba a la derecha.
+
+## Online del mundo (con cuenta)
+Desde **Modo online → INGRESAR A LA CIUDAD** el mundo se abre con `cfg.online`. En la **pausa** aparece **ONLINE · CHAT, JUGADORES, MERCADO** (sin salir del mundo) y **MAPA / GPS**:
+- **Chat mundial** y **privados** (tocar el nombre de alguien), con filtro de insultos, bloqueo creciente y aviso de tiempo restante.
+- **Jugadores conectados** y **Amigos** (seguir / dejar de seguir, «IR HASTA ÉL (GPS)»).
+- **Reportar**: guarda la evidencia para revisar a mano (sin castigos automáticos).
+- **Mercado de autos**: vender un auto con sus mejoras al precio que quieras, comprar, retirar de la venta y cobrar.
+Código: `game/online/online_social.gd` (cliente), `game/ui/online_panel.gd` (pantallas), SQL y reglas en `docs/ONLINE_SUPABASE.md`.
 
 ## Nafta y gasolineras
 - **4 gasolineras de papel**, cada una un **playón** que ocupa el lugar de una manzana (varios círculos que se pisan, con una pared de edificios por detrás), con techo sobre islas de surtidores, carriles con **3 a 6 puntos de carga** (círculo verde), kiosco con vidriera, poste de precios y carteles (`_place_stations`/`STATION_KINDS` en `city_layout.gd`, `_station` en `city_world.gd`). El generador busca un lugar libre cerca del pedido (sin pisar calles, locales ni zonas abiertas):
@@ -85,7 +111,7 @@ Se definen en `godot/game/data/shops.gd` (qué pestañas, mejoras y grupos de aj
 2. Rutas rurales con bordes de fotos de árboles y paredes invisibles; plaza con monumento.
 3. Autovía elevada + tren de alta velocidad y de carga (imágenes), túnel por la montaña, puentes, campos de girasoles, estacionamiento subterráneo.
 4. Concesionarios y talleres con puerta de garage que se abre y menú del taller visto de costado (suspensión y pintura; las piezas de carrocería las trae el dueño).
-5. Conexión con la plaza de drift, carteles y publicidad de empresas.
+5. Fusión física con la plaza de drift y la aventura (hoy las salidas abren sus pantallas), carteles y publicidad de empresas.
 6. Online: ver abajo.
 
 ## Diseño online

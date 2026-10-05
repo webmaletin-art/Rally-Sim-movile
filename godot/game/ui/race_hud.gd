@@ -7,6 +7,7 @@ const OptionsUi := preload("res://game/ui/options_ui.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const LabPanel := preload("res://game/ui/lab_panel.gd")
 const CityHud := preload("res://game/ui/city_hud.gd")
+const OnlinePanel := preload("res://game/ui/online_panel.gd")
 
 signal resume_pressed
 signal restart_pressed
@@ -14,6 +15,7 @@ signal quit_pressed
 signal tests_pressed
 signal camera_pressed
 signal cine_pressed
+signal edit_controls_pressed # «Modificar controles» de la pausa
 signal options_changed(key: String)
 signal cam_step(d: int) # cambiar de cámara desde el panel de ajuste (−1 anterior, 1 siguiente)
 signal camadj_changed # se movió una barra del ajuste de cámara (race.gd lo guarda)
@@ -50,6 +52,7 @@ var opts_page := ""
 var opts_arg = null
 var opts_panel: PanelContainer
 var opts_scroll: ScrollContainer
+var online_panel # online_panel.gd: chat, jugadores, amigos, reportes y mercado (sólo en el mundo online)
 var rig: RefCounted # CameraRig del jugador (null en la aventura, que tiene sus propias cámaras)
 var lab_on := false # ¿hay taller de prueba? (prueba de autos, Carrera rápida y drift)
 var lab: Dictionary = {} # estado del auto de la prueba
@@ -364,6 +367,19 @@ func _fill_pause() -> void:
 	pair.call(cam_b, adj_b)
 	cine_btn = Kit.button("🎬  MODO CINE", func(): cine_pressed.emit(), false, 19, sz)
 	pair.call(cine_btn, Kit.button("⚙  OPCIONES", func(): open_options(), false, 19, sz))
+	if online_panel != null:
+		var on_b := Kit.button("🌐  ONLINE  ·  CHAT, JUGADORES, MERCADO", func(): open_page("on_home"), true, 19, sz)
+		on_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pause_col.add_child(on_b)
+		if city_hud != null:
+			var map_b := Kit.button("🗺  MAPA / GPS", func() -> void:
+				resume_pressed.emit()
+				city_hud.call_deferred("_set_big", true), false, 19, sz)
+			map_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			pause_col.add_child(map_b)
+	var ed_b := Kit.button("🕹  MODIFICAR CONTROLES", func(): edit_controls_pressed.emit(), false, 19, sz)
+	ed_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pause_col.add_child(ed_b)
 	if lab_on:
 		var lb := Kit.button("🔧  TALLER DE PRUEBA  (grip, suspensión, potencia…)", func(): open_page("lab"), false, 19, sz)
 		lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -406,6 +422,11 @@ func setup_options(profile: RefCounted, sfx: Node) -> void:
 	opts_box.visible = false
 	add_child(opts_box)
 
+## Activa las páginas online de la pausa (sólo si el mundo se abrió desde Modo online con cuenta)
+func setup_online(social: Node, profile: RefCounted) -> void:
+	online_panel = OnlinePanel.new()
+	online_panel.setup(social, profile, self)
+
 func open_options() -> void:
 	pause_box.visible = false
 	opts_box.visible = true
@@ -422,6 +443,8 @@ func open_page(name: String) -> void:
 	_opts_go(name, null, false)
 
 func _opts_close() -> void:
+	if online_panel != null:
+		online_panel.closed()
 	opts_box.visible = false
 	pause_box.visible = true
 
@@ -462,7 +485,11 @@ func _opts_go(name: String, arg, push := true) -> void:
 	opts_body = Kit.vbox(8)
 	opts_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	opts_scroll.add_child(opts_body)
-	if name == "fx":
+	if online_panel != null and not name.begins_with("on_"):
+		online_panel.closed()
+	if name.begins_with("on_") and online_panel != null:
+		online_panel.build(name, arg, opts_body)
+	elif name == "fx":
 		opts.fx_page(opts_body, opts_col)
 	elif name == "camadj":
 		_cam_page()

@@ -9,9 +9,12 @@ Para el dueño. Todo lo que se puede hacer desde el repositorio ya está hecho (
 | **ID de usuario** (un número anónimo que crea Supabase) | solo si el jugador **participa en los rankings** o crea una cuenta | identificar sus marcas; frenar abusos |
 | **Nombre de piloto** (apodo que elige) | solo si participa en los rankings | se muestra en el ranking |
 | **Marcas** (tiempo/puntos, pista, auto) | solo si participa en los rankings | armar el ranking |
+| **Mensajes de chat** (mundial y privados) | solo en el **mundo online** (con cuenta), al escribirlos | chat entre jugadores; se guardan para revisar abusos |
+| **Posición en el mapa del juego, velocidad y auto** | solo en el **mundo online**, cada pocos segundos | mostrar quién está conectado; el rastro dura minutos; **no es la ubicación real del teléfono** |
+| **Amigos, reportes y autos en venta** | solo en el mundo online, cuando el jugador los usa | lista de amigos, revisión de abusos (evidencia guardada), mercado entre jugadores |
 | Registro de envíos (`score_log`: ID + hora) | cada vez que manda una marca | limitar a 40 envíos por hora (antiabuso) |
 
-**Todo lo demás se queda en el teléfono** (autos, mejoras, créditos, nafta, opciones, capturas) y nunca se envía. No hay anuncios, ni analytics, ni ID de publicidad, ni ubicación, ni contactos. Las **compras** las procesa Google Play (el juego no ve datos de pago). Los rankings vienen **apagados de fábrica**.
+**Todo lo demás se queda en el teléfono** (autos, mejoras, créditos, nafta, opciones, capturas) y nunca se envía. No hay anuncios, ni analytics, ni ID de publicidad, ni ubicación **real** del teléfono, ni contactos. (Las coordenadas del mundo online son del mapa del juego.) Las **compras** las procesa Google Play (el juego no ve datos de pago). Los rankings vienen **apagados de fábrica**.
 
 ## Paso 0 · Tres comprobaciones antes de tocar Play Console
 1. **Que las dos páginas web abran** (GitHub → Settings → Pages → Source: «GitHub Actions», y que el flujo «Deploy static content to Pages» salga verde):
@@ -39,15 +42,17 @@ Ruta: *Play Console → tu app → **Política y programas → Contenido de la a
 | ¿Ofreces a los usuarios una forma de solicitar que se borren sus datos? | **Sí** |
 | URL para solicitar el borrado | `https://webmaletin-art.github.io/Rally-Sim-movile/docs/eliminar-cuenta.html` |
 
-**Pantalla «Tipos de datos»** — tildá **solo** estos cuatro (dejá todo lo demás sin tildar):
+**Pantalla «Tipos de datos»** — tildá **solo** estos (dejá todo lo demás sin tildar). Con el chat y la posición del mundo online hay que sumar los de abajo:
 | Categoría | Tipo | 
 |---|---|
 | Información personal | **Dirección de correo electrónico** |
 | Información personal | **Nombre** (el apodo de piloto) |
 | Información personal | **ID de usuario** («Identificadores de usuario») |
 | Actividad en la app | **Otras acciones** (las marcas/puntajes de juego) |
+| Mensajes | **Otros mensajes dentro de la app** (el chat del mundo online) |
+| Ubicación | **Ubicación aproximada** (coordenadas del mapa del juego; Play pide declararla igual porque se manda al servidor y se ve en el mundo online) — marcala como **Opcional**, finalidad «Funciones de la app», **no compartida**, y aclaralo en la descripción |
 
-*No* tildes: ubicación, contactos, fotos/videos, audio, archivos, información financiera (las compras las maneja Google), identificadores de dispositivo o de publicidad, historial de navegación, diagnósticos de fallas.
+*No* tildes: ubicación **precisa**, contactos, fotos/videos, audio, archivos, información financiera (las compras las maneja Google), identificadores de dispositivo o de publicidad, historial de navegación, diagnósticos de fallas.
 
 **Pantalla de cada tipo de dato** (te la hace para cada uno de los cuatro):
 | Tipo | ¿Se recopila? | ¿Se comparte? | ¿Efímero? | ¿Obligatorio u opcional? | Finalidades |
@@ -75,7 +80,7 @@ Play pide dos cosas y las dos ya están: **borrar desde la app** (MODO ONLINE �
 - **Acceso a la app:** *«Toda la funcionalidad está disponible sin restricciones de acceso especiales»* (la cuenta es opcional).
 - **Anuncios:** No. **ID de publicidad:** No.
 - **Público objetivo:** 13 años o más (la cuenta con correo es para mayores de 13).
-- **Clasificación de contenido (IARC):** carreras, sin violencia ni apuestas, sin chat; en «interacción de usuarios» marcá que **se comparte información de usuario** (el apodo se ve en los rankings), pero **no** hay chat ni contenido generado por usuarios libre.
+- **Clasificación de contenido (IARC):** carreras, sin violencia ni apuestas; con el mundo online hay **chat entre usuarios** (con filtro de insultos, bloqueos automáticos y botón de reportar): en «interacción de usuarios» marcá que **los usuarios pueden interactuar / intercambiar contenido** y que se **comparte información de usuario** (el apodo se ve en rankings y en el mundo online). Si la versión de Play sale sin el mundo online, mantené «sin chat».
 
 ## Paso 5 · Cuando alguien pide borrar su cuenta por correo (a roldanhr98@gmail.com)
 Prometimos hacerlo en **30 días como máximo**. Pasos (Supabase → tu proyecto):

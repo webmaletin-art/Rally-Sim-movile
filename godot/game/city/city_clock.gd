@@ -108,19 +108,44 @@ func _apply() -> void:
 func _build_beam() -> void:
 	var v := PackedVector3Array()
 	var c := PackedColorArray()
-	# dos conos de luz (uno por faro): trapecios que van de 1,2 m a 3,4 m de ancho en 24 m
-	for side in [-0.7, 0.7]:
-		var near_a := Vector3(side - 0.35, 0.0, 2.2)
-		var near_b := Vector3(side + 0.35, 0.0, 2.2)
-		var far_a := Vector3(side * 2.4 - 1.7, 0.0, 26.0)
-		var far_b := Vector3(side * 2.4 + 1.7, 0.0, 26.0)
-		var mid_a := Vector3(side * 1.4 - 0.95, 0.0, 12.0)
-		var mid_b := Vector3(side * 1.4 + 0.95, 0.0, 12.0)
-		var cn := Color(1, 1, 1, 0.9)
-		var cm := Color(1, 1, 1, 0.45)
-		var cf := Color(1, 1, 1, 0.0)
-		v.append_array(PackedVector3Array([near_a, near_b, mid_b, near_a, mid_b, mid_a, mid_a, mid_b, far_b, mid_a, far_b, far_a]))
-		c.append_array(PackedColorArray([cn, cn, cm, cn, cm, cm, cm, cm, cf, cm, cf, cf]))
+	# dos conos de luz por faro, uno dentro del otro: el de afuera es ancho y suave (se apaga hacia el borde y hacia el fondo) y el de adentro, más angosto, concentra la luz;
+	# más un charco de luz delante del paragolpes. Todo es un solo mesh aditivo plano (sin luces dinámicas, sin sombras).
+	for side_v in [-0.7, 0.7]:
+		var side: float = side_v
+		for layer in 2:
+			var w0 := 0.40 if layer == 0 else 0.22 # medio ancho cerca del faro
+			var w1 := 3.6 if layer == 0 else 1.5 # medio ancho a 28 m
+			var zf := 28.0 if layer == 0 else 20.0
+			var ow := side * (2.2 if layer == 0 else 1.5) # el haz se abre un poco hacia afuera
+			var a_n := 0.55 if layer == 0 else 0.85
+			var near_a := Vector3(side - w0, 0.0, 2.2)
+			var near_b := Vector3(side + w0, 0.0, 2.2)
+			var mid_a := Vector3(side + ow * 0.35 - (w0 + (w1 - w0) * 0.4), 0.0, zf * 0.42)
+			var mid_b := Vector3(side + ow * 0.35 + (w0 + (w1 - w0) * 0.4), 0.0, zf * 0.42)
+			var far_a := Vector3(side + ow - w1, 0.0, zf)
+			var far_b := Vector3(side + ow + w1, 0.0, zf)
+			var cn := Color(1, 0.96, 0.82, a_n * 0.5 if layer == 0 else a_n)
+			var cm := Color(1, 0.96, 0.82, a_n * 0.36)
+			var cf := Color(1, 0.96, 0.82, 0.0)
+			# bordes de afuera transparentes: el haz se difumina hacia los costados
+			var cn_e := Color(1, 0.96, 0.82, 0.0)
+			var cm_e := Color(1, 0.96, 0.82, 0.0)
+			v.append_array(PackedVector3Array([near_a, near_b, (mid_a + mid_b) * 0.5, near_a, (mid_a + mid_b) * 0.5, mid_a, near_b, mid_b, (mid_a + mid_b) * 0.5,
+				mid_a, (mid_a + mid_b) * 0.5, (far_a + far_b) * 0.5, mid_a, (far_a + far_b) * 0.5, far_a, mid_b, far_b, (far_a + far_b) * 0.5,
+				(mid_a + mid_b) * 0.5, mid_b, (far_a + far_b) * 0.5]))
+			c.append_array(PackedColorArray([cn, cn, cm, cn_e, cm, cm_e, cn_e, cm_e, cm,
+				cm_e, cm, cf, cm_e, cf, cf, cm_e, cf, cf,
+				cm, cm_e, cf]))
+	# charco delante del auto (la luz que cae sobre el piso justo adelante de los faros)
+	for k in 12:
+		var a0 := TAU * float(k) / 12.0
+		var a1 := TAU * float(k + 1) / 12.0
+		v.append(Vector3(0.0, 0.0, 4.5))
+		v.append(Vector3(cos(a0) * 3.4, 0.0, 4.5 + sin(a0) * 3.0))
+		v.append(Vector3(cos(a1) * 3.4, 0.0, 4.5 + sin(a1) * 3.0))
+		c.append(Color(1, 0.95, 0.8, 0.30))
+		c.append(Color(1, 0.95, 0.8, 0.0))
+		c.append(Color(1, 0.95, 0.8, 0.0))
 	var m := ArrayMesh.new()
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)

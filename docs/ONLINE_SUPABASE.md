@@ -78,3 +78,14 @@ El jugador entra **sin cuenta** (usuario anónimo). Al abrir el juego por primer
 
 ## Lo que sigue (cuando quieras)
 Carreras uno contra uno en tiempo real (Supabase Realtime), eventos mensuales (tabla de eventos + función), nombres con filtro, y borrado de datos desde el juego. Todo se apoya en lo que ya quedó conectado.
+
+
+## Mundo online: chat, jugadores, amigos, reportes y mercado
+Migración `supabase/migrations/20261005000000_chat_social_market.sql` (se aplica con el mismo flujo de migraciones). Todo vive en tablas con RLS y **sin acceso directo**: el juego sólo usa funciones (RPC) con sesión de cuenta.
+- **Presencia** (`presence_beat/leave/list`): posición (x, z del mapa del juego), velocidad y auto cada 6 s; quien lleva más de 45 s sin avisar deja de figurar. `presence_trail` guarda el rastro de los últimos 10 minutos (sirve de evidencia).
+- **Chat** (`chat_send/fetch/threads`): canal `world` y privados `dm:<uuid>:<uuid>`. Un mensaje por segundo, 200 caracteres. `mask_bad_words` tapa con asteriscos los insultos (diccionario ES/EN, sin tildes ni mayúsculas, palabras de 4+ letras; se edita en la propia función). Cada **mensaje con insultos** suma una falta; **a las 10 faltas** se bloquea el chat 10 minutos, la próxima vez 20, 30… (nivel creciente). El insulto nunca se publica.
+- **Amigos** (`follow_set/list`): seguir y dejar de seguir; en el juego «IR HASTA ÉL (GPS)» traza la ruta hasta donde está.
+- **Reportes** (`report_submit`): guarda en `reports.evidence` (JSON) los últimos mensajes del reportado, su rastro y el de quien reporta, sus faltas de chat y lo que vio el teléfono (chat visto, posición, velocidad, golpes). **No castiga a nadie**: se revisa a mano. Máximo 5 reportes por hora y por jugador. Para leerlos: exportá la tabla `reports` a JSON y corré `python3 tools/online/report_view.py reportes.json` (explica quién reportó a quién, mensajes tapados, velocidades máximas, saltos raros de posición y si estuvieron cerca).
+- **Mercado** (`market_list/browse/cancel/buy/collect`): el auto sale del garaje del vendedor al publicarse (con mejoras y pintura), el precio lo pone el dueño, se reserva para quien compra primero y el comprador paga con créditos de su teléfono. El vendedor cobra al abrir el mercado (`market_collect`). Los créditos viven en cada teléfono (no hay billetera en el servidor): es una economía de confianza, sin dinero real.
+- Borrar la cuenta (`delete_my_account`) borra todo lo anterior.
+- **Falta** (próxima etapa): ver a los demás autos en el mapa (hoy sólo se ven en la lista y se puede ir por GPS), moderación en la web (marcar reportes como revisados desde un panel).

@@ -35,6 +35,21 @@ func ground_info(x: float, z: float) -> Vector2:
 		return Vector2(float(pr[4]), 0.0 if float(pr[1]) <= float(pr[5]) else 2.0)
 	return Vector2(city.height(x, z), 4.0)
 
+## Cámara: de a hacia b (en el plano), ¿qué parte del camino está libre? 1 = toda; menos: ahí empiezan los edificios (fuera del corredor de la calle, que no sea ruta ni campo)
+func camera_clear(a: Vector2, b: Vector2) -> float:
+	var d := a.distance_to(b)
+	if d < 0.5:
+		return 1.0
+	var n := int(ceil(d / 1.5))
+	for i in range(1, n + 1):
+		var q := a.lerp(b, float(i) / float(n))
+		var pr := city.probe(q.x, q.y)
+		if float(pr[0]) < -0.2 and int(pr[6]) >= 0:
+			if str((city.roads[int(pr[6])] as Dictionary)["kind"]) in ["rural", "shortcut"]:
+				continue
+			return maxf(0.0, (float(i) - 1.0) / float(n))
+	return 1.0
+
 func ground_smooth(x: float, z: float) -> float:
 	return ground_info(x, z).x
 

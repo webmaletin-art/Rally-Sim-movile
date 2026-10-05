@@ -30,9 +30,10 @@ Dream City sale en la versión 1 con la ciudad base y las rutas hacia otras ciud
 - Conexión con el modo aventura.
 
 ## 6. Online
-- Servidores de 10–20 jugadores sobre el mismo mapa (semilla compartida): presencia por Supabase Realtime, autos de papel interpolados, objetos rotos por cuadra. Detalle en `docs/MUNDO_ABIERTO.md`.
+- ✅ Hecho: cuenta obligatoria para el mundo online, presencia (lista y GPS hasta un amigo), chat mundial y privado con filtro, amigos, reportes con evidencia y mercado de autos (`docs/ONLINE_SUPABASE.md`).
+- Falta: **ver a los demás autos en el mapa** (presencia por Supabase Realtime, autos de papel interpolados, sólo los de a menos de ~400 m), objetos rotos por cuadra, panel web para revisar reportes. Detalle en `docs/MUNDO_ABIERTO.md`.
 
 ## 7. Cosas de tienda y legales (antes de publicar)
-- Play Console: actualizar la «Seguridad de los datos» (correo, ID de usuario, puntajes) y la URL de eliminación de cuenta.
+- Play Console: actualizar la «Seguridad de los datos» (correo, ID de usuario, puntajes, **mensajes de chat y posición del mundo online**; ver `docs/PLAY_SEGURIDAD_DATOS.md`), la URL de eliminación de cuenta, las credenciales de prueba para «Acceso a la app» y la clasificación de contenido (ahora hay chat entre usuarios).
 - Voz del copiloto en el idioma elegido.
 - Publicidad y carteles de empresas en la ciudad (más adelante).

@@ -16,6 +16,7 @@ signal pause_pressed
 signal shot_pressed
 signal cam_drag(rel: Vector2) # dedo arrastrado sobre la pantalla (cámara libre)
 signal cam_zoom(factor: float) # pellizco con dos dedos
+signal edit_done(saved: bool) # se cerró el modo «Modificar controles» (saved = hay que guardar controls.layout)
 
 # ── opciones (las carga el juego) ──
 var steer_mode := "wheel" # "wheel" | "slider"
@@ -134,6 +135,10 @@ func _active_items() -> Array:
 
 # ───────────────────────── entrada táctil ─────────────────────────
 func _unhandled_input(event: InputEvent) -> void:
+	if editing:
+		_edit_input(event)
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventScreenTouch:
 		var ev := event as InputEventScreenTouch
 		if ev.pressed:
@@ -381,7 +386,7 @@ func _draw() -> void:
 	if gyro_on:
 		draw_string(font, Vector2(vs.x * 0.5 - 150.0 * u, vs.y - 12.0 * u), "ACELERÓMETRO ACTIVADO", HORIZONTAL_ALIGNMENT_CENTER, 300.0 * u, int(12.0 * u), Color(0.6, 1.0, 0.6, 0.9))
 	_draw_pedal(rect_of("pedal"), font, u)
-	if manual:
+	if manual or editing:
 		_draw_gears(rect_of("gears"), font, u)
 	_draw_round_button(rect_of("cam"), "CAM", false, Color(1.0, 0.8, 0.4), Color(0.2, 0.16, 0.08), Color(1.0, 0.82, 0.54), font, u * 0.5)
 	_draw_round_button(rect_of("pause"), "II", false, Color(0.7, 0.75, 0.85), Color(0.12, 0.14, 0.18), Color(0.8, 0.85, 0.95), font, u * 0.6)
@@ -397,8 +402,143 @@ func _draw() -> void:
 		draw_rect(Rect2(cc.x - w * 0.22, cc.y - h * 0.65, w * 0.44, h * 0.25), col, true)
 		draw_arc(cc + Vector2(0, h * 0.1), h * 0.28, 0.0, TAU, 20, col, maxf(1.5, u * 1.4))
 	_draw_round_button(rect_of("handbrake"), "H", handbrake, Color(1.0, 0.24, 0.19), Color(0.35, 0.12, 0.12), Color(1.0, 0.47, 0.43), font, u)
-	if has_nitro:
+	if has_nitro or editing:
 		_draw_round_button(rect_of("nitro"), "N₂O", nitro, Color(0.3, 0.65, 1.0), Color(0.07, 0.19, 0.35), Color(0.31, 0.7, 1.0), font, u, nitro_frac)
+	if editing:
+		_draw_edit_marks(font, u)
+
+# ───────────────────────── modo «Modificar controles» ─────────────────────────
+## Un dedo sobre un control lo arrastra adonde quieras (incluso al centro del volante); dos dedos (pinza) lo agrandan o lo achican. Se guarda con GUARDAR y el cambio queda para siempre.
+var editing := false
+var _edit_touch := {} # índice de dedo → id del control que arrastra
+var _edit_pinch_d := 0.0
+var _edit_bar: Control
+
+func _edit_ids() -> Array:
+	var a := ["cam", "pause", "handbrake", "nitro", "gears", "pedal", "wheel" if steer_mode == "wheel" else "slider"]
+	if show_shot:
+		a.insert(2, "shot")
+	return a
+
+func set_editing(on: bool) -> void:
+	editing = on
+	_edit_touch.clear()
+	if _edit_bar != null:
+		_edit_bar.queue_free()
+		_edit_bar = null
+	if on:
+		_touch.clear()
+		_drags.clear()
+		wheel_target = 0.0
+		_build_edit_bar()
+	queue_redraw()
+
+func _build_edit_bar() -> void:
+	_edit_bar = Control.new()
+	_edit_bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_edit_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_edit_bar)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	row.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	row.position = Vector2(_vs().x * 0.5 - 330.0, 14.0)
+	_edit_bar.add_child(row)
+	for spec in [["✔ " + Tr.t("GUARDAR"), 0], ["↺ " + Tr.t("RESTABLECER"), 1], ["✕ " + Tr.t("CANCELAR"), 2]]:
+		var b := Button.new()
+		b.text = str(spec[0])
+		b.custom_minimum_size = Vector2(200, 60)
+		b.add_theme_font_size_override("font_size", 20)
+		b.mouse_filter = Control.MOUSE_FILTER_STOP
+		var which: int = int(spec[1])
+		b.pressed.connect(func() -> void:
+			if which == 1:
+				layout = {}
+				queue_redraw()
+				return
+			edit_done.emit(which == 0))
+		row.add_child(b)
+	var hint := Label.new()
+	hint.text = Tr.t("Arrastrá cada control con un dedo · con dos dedos lo agrandás o lo achicás")
+	hint.add_theme_font_size_override("font_size", 18)
+	hint.add_theme_color_override("font_color", Color(1.0, 0.95, 0.6))
+	hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+	hint.add_theme_constant_override("outline_size", 6)
+	hint.position = Vector2(_vs().x * 0.5 - 330.0, 84.0)
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_edit_bar.add_child(hint)
+
+func _edit_hit(pos: Vector2) -> String:
+	for id in _edit_ids():
+		if id == "wheel":
+			var r := rect_of("wheel")
+			if pos.distance_to(r.get_center()) <= r.size.x * 0.56:
+				return "wheel"
+		elif rect_of(str(id)).grow(8.0 * _u()).has_point(pos):
+			return str(id)
+	return ""
+
+func _edit_layout_of(id: String) -> Dictionary:
+	var d: Dictionary = layout.get(id, {})
+	if d.is_empty():
+		d = {"x": 0.0, "y": 0.0, "s": 1.0}
+	layout[id] = d
+	return d
+
+func _edit_clamp(id: String) -> void:
+	var vs := _vs()
+	var d := _edit_layout_of(id)
+	var c := rect_of(id).get_center()
+	var cc := c.clamp(vs * 0.04, vs * 0.96)
+	d["x"] = float(d["x"]) + (cc.x - c.x) / vs.x
+	d["y"] = float(d["y"]) + (cc.y - c.y) / vs.y
+
+func _edit_input(event: InputEvent) -> void:
+	var vs := _vs()
+	if event is InputEventScreenTouch:
+		var ev := event as InputEventScreenTouch
+		_edit_pinch_d = 0.0
+		if ev.pressed:
+			_edit_pos[ev.index] = ev.position
+			var id := _edit_hit(ev.position)
+			if id != "":
+				_edit_touch[ev.index] = id
+		else:
+			_edit_pos.erase(ev.index)
+			_edit_touch.erase(ev.index)
+		return
+	if not (event is InputEventScreenDrag):
+		return
+	var ed := event as InputEventScreenDrag
+	_edit_pos[ed.index] = ed.position
+	if _edit_pos.size() >= 2 and not _edit_touch.is_empty():
+		# pinza: el control que sostiene un dedo cambia de tamaño con la distancia entre los dos dedos
+		var ks := _edit_pos.keys()
+		var d_now: float = (_edit_pos[ks[0]] as Vector2).distance_to(_edit_pos[ks[1]])
+		var id2: String = str(_edit_touch.values()[0])
+		if _edit_pinch_d > 12.0 and d_now > 12.0:
+			var dd := _edit_layout_of(id2)
+			dd["s"] = clampf(float(dd["s"]) * d_now / _edit_pinch_d, 0.45, 2.8)
+			_edit_clamp(id2)
+		_edit_pinch_d = d_now
+	elif _edit_touch.has(ed.index):
+		var id3: String = _edit_touch[ed.index]
+		var d3 := _edit_layout_of(id3)
+		d3["x"] = float(d3["x"]) + ed.relative.x / vs.x
+		d3["y"] = float(d3["y"]) + ed.relative.y / vs.y
+		_edit_clamp(id3)
+	queue_redraw()
+
+var _edit_pos := {} # posición actual de cada dedo en el editor
+
+func _draw_edit_marks(font: Font, u: float) -> void:
+	for id in _edit_ids():
+		var r := rect_of(str(id))
+		var held := false
+		for k in _edit_touch:
+			if _edit_touch[k] == id:
+				held = true
+		var col := Color(1.0, 0.9, 0.3, 0.95) if held else Color(1.0, 1.0, 1.0, 0.55)
+		draw_rect(r.grow(3.0), col, false, maxf(2.0, u * 1.6))
 
 func _draw_speed_panel(font: Font, u: float, vs: Vector2) -> void:
 	var w := 150.0 * u

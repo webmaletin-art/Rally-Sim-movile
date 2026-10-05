@@ -9,6 +9,7 @@ const RouteTrack := preload("res://game/track/route_track.gd")
 const DriftTrack := preload("res://game/track/drift_track.gd")
 const CityTrack := preload("res://game/track/city_track.gd")
 const CitySession := preload("res://game/city_session.gd")
+const OnlineSocial := preload("res://game/online/online_social.gd")
 const CityDriver := preload("res://game/ai/city_driver.gd")
 const CityShops := preload("res://game/city/city_shops.gd")
 const CityLinks := preload("res://game/city/city_links.gd")
@@ -65,6 +66,8 @@ signal loaded
 var is_loaded := false
 var cfg: Dictionary = {}
 var profile: RefCounted
+var online: Node # app.gd: la conexión online (sólo se usa en el mundo online)
+var social: Node # online_social.gd: chat, presencia, amigos, reportes y mercado
 var menu_mode := false
 var session # Session (carreras) o DriftSession
 var race_hud: Control
@@ -272,6 +275,7 @@ func _ready() -> void:
 		race_hud.quit_pressed.connect(_quit)
 		race_hud.camera_pressed.connect(_next_camera)
 		race_hud.cine_pressed.connect(_toggle_cine)
+		race_hud.edit_controls_pressed.connect(_edit_controls)
 		race_hud.cam_step.connect(func(d: int) -> void:
 			if cam_rig != null:
 				cam_rig.next(d)
@@ -1110,6 +1114,12 @@ func _start_session() -> void:
 			fuel.setup(self, track.city)
 			tolls = CityToll.new()
 			tolls.setup(self, track.world_node, track.city)
+			if cfg.get("online", false) == true and online != null and profile != null:
+				social = OnlineSocial.new()
+				add_child(social)
+				social.setup(online, profile)
+				if social.active:
+					race_hud.setup_online(social, profile)
 			if cfg.has("bigmap") and race_hud.city_hud != null:
 				race_hud.city_hud.set_dest(race_hud.city_hud.city.pois[0]["front"], str(race_hud.city_hud.city.pois[0]["name"]))
 				race_hud.city_hud.call_deferred("_set_big", true)
@@ -1555,6 +1565,30 @@ var _ug_base: Array = [] # luz del sol, luz ambiente, niebla (color, inicio, fin
 var shopshot := ""
 var _shopshot_f := 0
 
+var _fps_l: Label
+
+## Contador de FPS en una esquina (opción «Mostrar FPS» de Gráficos; viene apagado)
+func _update_fps_label(fps: float) -> void:
+	var on: bool = profile != null and profile.setting("showFps") == true
+	if not on:
+		if _fps_l != null:
+			_fps_l.visible = false
+		return
+	if _fps_l == null:
+		var cl := CanvasLayer.new()
+		cl.layer = 60
+		add_child(cl)
+		_fps_l = Label.new()
+		_fps_l.add_theme_font_size_override("font_size", 20)
+		_fps_l.add_theme_color_override("font_color", Color(0.6, 1.0, 0.6))
+		_fps_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		_fps_l.add_theme_constant_override("outline_size", 6)
+		_fps_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cl.add_child(_fps_l)
+	_fps_l.visible = true
+	_fps_l.position = Vector2(get_viewport().get_visible_rect().size.x - 190.0, 118.0)
+	_fps_l.text = "%d FPS" % int(fps)
+
 var _gate_go := false
 
 ## Las salidas abiertas de las rutas: al llegar al final de la ruta se pasa a otro mapa (Aventura o Drift)
@@ -1602,6 +1636,10 @@ func _underground_light(dt: float) -> void:
 func on_teleport() -> void:
 	_ug_base = _ug_base # (la luz cambia sola con la posición)
 
+func _exit_tree() -> void:
+	if social != null and is_instance_valid(social):
+		social.leave()
+
 func _tick_session(dt: float) -> void:
 	if shops != null:
 		shops.update(dt)
@@ -1609,6 +1647,9 @@ func _tick_session(dt: float) -> void:
 		fuel.update(dt)
 		tolls.update(dt)
 		_check_gates()
+		if social != null and not cars.is_empty():
+			var sp0 = cars[0].phys
+			social.set_state(sp0.px, sp0.pz, sqrt(sp0.vx * sp0.vx + sp0.vz * sp0.vz) * 3.6)
 		if clock != null:
 			clock.update(dt)
 		_underground_light(dt)
@@ -1805,6 +1846,8 @@ func _apply_controls_settings() -> void:
 	controls.use_mph = str(profile.setting("units")) == "mph"
 	controls.wheel_scale = float(profile.setting("wheelSize")) / 100.0
 	controls.pedal_scale = float(profile.setting("pedalSize")) / 100.0
+	var lay: Variant = profile.setting("ctrlLayout")
+	controls.layout = (lay as Dictionary).duplicate(true) if lay is Dictionary else {}
 	if controls.gyro_on:
 		controls.recalibrate_gyro()
 
@@ -1927,6 +1970,28 @@ func _toggle_pause() -> void:
 	controls.set_process_unhandled_input(not paused)
 	if not paused:
 		_show_tests(false)
+
+## «Modificar controles» (desde la pausa): los controles se muestran y se arrastran / agrandan con los dedos; GUARDAR los deja así para siempre
+func _edit_controls() -> void:
+	race_hud.pause_box.visible = false
+	controls.visible = true
+	controls.set_process_input(true)
+	controls.set_process_unhandled_input(true)
+	if not controls.edit_done.is_connected(_edit_controls_done):
+		controls.edit_done.connect(_edit_controls_done)
+	controls.set_editing(true)
+
+func _edit_controls_done(saved: bool) -> void:
+	controls.set_editing(false)
+	if saved:
+		profile.set_setting("ctrlLayout", controls.layout.duplicate(true))
+	else:
+		var old_l: Variant = profile.setting("ctrlLayout")
+		controls.layout = (old_l as Dictionary).duplicate(true) if old_l is Dictionary else {}
+	controls.visible = false
+	controls.set_process_input(false)
+	controls.set_process_unhandled_input(false)
+	race_hud.pause_box.visible = true
 
 func _show_tests(on := true) -> void:
 	hud.visible = on
@@ -2205,6 +2270,8 @@ func _step_physics(dt: float) -> void:
 		if c.wall_hit > 0.0:
 			if c.is_player:
 				pl_impact = maxf(pl_impact, c.wall_hit * 0.55)
+				if social != null and c.wall_hit > 6.0:
+					social.note_event("golpe")
 				if session != null and track is DriftTrack:
 					session.on_wall(c.wall_hit)
 				if adv != null:
@@ -2534,6 +2601,7 @@ func _frame(dt: float) -> void:
 	frame_count += 1
 	if stat_timer >= 0.5:
 		var fps := Engine.get_frames_per_second()
+		_update_fps_label(fps)
 		if phys_frames > 0:
 			shown_phys_ms = float(phys_us + phys_wait_us) / 1000.0 / float(phys_frames)
 		hud.stats_text = "FPS %d · cuadro %.1f ms · física %.2f ms/cuadro (%s)\nAutos %d · pilotos %s · árboles %d · sombras %s\nLlamadas %d · objetos %d · triángulos %dk" % [

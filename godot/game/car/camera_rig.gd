@@ -93,6 +93,19 @@ func next(d := 1) -> void:
 func _ground(x: float, z: float) -> float:
 	return (track.ground_info(x, z) as Vector2).x
 
+var _clear := 1.0 # 1 = la cámara está a su distancia normal · menos: se acercó porque había un edificio en el medio
+
+## ¿Hasta dónde llega la cámara sin meterse en un edificio? (la pista lo sabe: hoy solo Dream City; en las demás siempre 1). Se acerca de golpe y vuelve despacio, sin tirones.
+func _clearance(dt: float, p: CarSnapshot, tx: float, tz: float) -> float:
+	var t := 1.0
+	if track != null and track.has_method("camera_clear"):
+		t = clampf(float(track.call("camera_clear", Vector2(p.px, p.pz), Vector2(tx, tz))), 0.22, 1.0)
+	if t < _clear:
+		_clear = t
+	else:
+		_clear += (t - _clear) * (1.0 - exp(-dt * 1.4))
+	return _clear
+
 ## p: estado del auto interpolado (CarSnapshot). rough: 0..1 rugosidad del camino. Devuelve true si la cámara está adentro.
 func update(dt: float, p: CarSnapshot, rough_surface: bool) -> void:
 	time += dt
@@ -138,6 +151,11 @@ func _chase(dt: float, p: CarSnapshot, c: Dictionary) -> void:
 	var rz := -sin(yaw)
 	ix += rx * adj_of("side")
 	iz += rz * adj_of("side")
+	var cl := _clearance(dt, p, ix, iz)
+	if cl < 0.999:
+		ix = p.px + (ix - p.px) * cl # con un edificio en el medio la cámara se acerca y mira desde más arriba
+		iz = p.pz + (iz - p.pz) * cl
+		iy += (1.0 - cl) * 3.2
 	var gy := _ground(ix, iz) + 0.7
 	if iy < gy:
 		iy = gy
@@ -182,6 +200,11 @@ func _custom(dt: float, p: CarSnapshot, c: Dictionary) -> void:
 	var tx := p.px + ox + pan_x
 	var tz := p.pz + oz + pan_z
 	var ty := p.py + oy + custom_pan_u + adj_of("height")
+	var clc := _clearance(dt, p, tx, tz)
+	if clc < 0.999:
+		tx = p.px + (tx - p.px) * clc
+		tz = p.pz + (tz - p.pz) * clc
+		ty += (1.0 - clc) * 3.2
 	var gy := _ground(tx, tz) + 0.25
 	if ty < gy:
 		ty = gy

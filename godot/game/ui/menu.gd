@@ -389,10 +389,12 @@ func go(name: String, arg = null, push := true) -> void:
 
 ## Antes de largar una carrera se elige el nivel de simulación (arcade / intermedio / simulador total / personalizado)
 ## Mundo abierto: Dream City, a recorrer libre con el auto elegido (antes se elige el nivel de simulación)
+var world_online := false # el mundo se abre desde Modo online (con cuenta): se activan el chat, los jugadores y el mercado
+
 func _start_city(spawn := 0) -> void:
 	var pid: String = profile.current_id()
 	profile.select(pid)
-	launch({"type": "city", "track": "aurelia", "ai": 0, "sky": "day", "car": pid, "state": profile.car(), "seed": 7, "back": "home", "quick": true, "spawn": spawn})
+	launch({"type": "city", "track": "aurelia", "ai": 0, "sky": "day", "car": pid, "state": profile.car(), "seed": 7, "back": "home", "quick": true, "spawn": spawn, "online": world_online and app.online != null and app.online.is_account()})
 
 const SPAWN_PLACES := [["Estacionamiento Central", "a nivel de la calle: salís directo a la ruta"], ["Estacionamiento Central · Planta alta", "un piso arriba: bajás por la rampa"], ["Estacionamiento Central · Subsuelo", "un piso abajo: subís por la rampa"]]
 
@@ -413,11 +415,13 @@ func _online_home() -> void:
 		body.add_child(Kit.wrap(tr("El modo online todavía no está disponible en esta versión. Mientras tanto podés recorrer Dream City sin conexión."), 15, Kit.TEXT, 300))
 		body.add_child(menu_button("🏙 " + tr("DREAM CITY"), tr("recorrer sin conexión"), func() -> void:
 			sfx.play("click")
+			world_online = false
 			go("spawn"), true))
 		return
 	if app.online.is_account():
 		body.add_child(menu_button("🏙 " + tr("INGRESAR A LA CIUDAD"), tr("elegí dónde aparecer"), func() -> void:
 			sfx.play("click")
+			world_online = true
 			go("spawn"), true))
 	_online_options()
 
@@ -583,7 +587,9 @@ func _home() -> void:
 	body.add_child(soon)
 	soon.add_child(tile("🌌", "FANTASÍA", "mapas de ensueño", func(): go("fantasy"), false, 70.0))
 	soon.add_child(tile("🌐", "MODO ONLINE", "mundo abierto", func(): go("online"), false, 70.0))
-	soon.add_child(tile("🗺", "MUNDO ABIERTO", "Dream City", func(): go("spawn"), false, 70.0))
+	soon.add_child(tile("🗺", "MUNDO ABIERTO", "Dream City", func() -> void:
+		world_online = false
+		go("spawn"), false, 70.0))
 	var g := Kit.grid(3, 8, 8)
 	body.add_child(g)
 	var tiles := [
