@@ -12,8 +12,15 @@ var fails := 0
 class FakeTrack:
 	extends RefCounted
 	var circles := PackedFloat32Array()
+	var hits := PackedFloat32Array()
 	func set_dynamic_circles(c: PackedFloat32Array) -> void:
 		circles = c
+	func take_dyn_hits() -> PackedFloat32Array:
+		var o := hits
+		hits = PackedFloat32Array()
+		return o
+	func push_world(_x: float, _z: float, _r: float) -> Vector3:
+		return Vector3.ZERO
 
 func check(ok: bool, msg: String) -> void:
 	print(("OK   " if ok else "FALLA ") + msg)
@@ -116,6 +123,43 @@ func _init() -> void:
 	check(red_runs == 0, "nadie entra a un cruce con el semáforo en rojo")
 	check(overlap <= steps / 200, "casi nunca se superponen (%d casos)" % overlap)
 	check(int(st2["cars"]) >= 6 and int(st2["cars"]) <= 24, "la cantidad se mantiene (%d)" % int(st2["cars"]))
+	# choque (Etapa 11): el jugador golpea a un auto → física temporal; un roce no
+	var victim = null
+	for v in ct.vehicles:
+		if v.conn < 0.0 and not v.crashed and v.v > 3.0:
+			victim = v
+			break
+	if victim != null:
+		var ci: int = ct._owners.find(victim) * 2
+		var vf := Vector2(sin(victim.yaw), cos(victim.yaw))
+		var nrm := vf # el jugador llega desde atrás a 14 m/s (normal: del auto hacia el jugador = hacia atrás)
+		nrm = -vf
+		ct.player_vel = vf * 14.0
+		tr1.hits = PackedFloat32Array([float(ci), nrm.x, nrm.y, 0.3])
+		wl.update(0.05, spot)
+		check(victim.crashed and victim.vel.length() > 5.0, "un golpe fuerte manda al auto a la física temporal (%.1f m/s)" % victim.vel.length())
+		var crashed_pos := Vector2(victim.pos.x, victim.pos.z)
+		for k in 200:
+			t += 0.05
+			wl.clock.set_reference(t, 1.0, false)
+			wl.clock.frozen = true
+			wl.update(0.05, spot)
+		check(victim.vel.length() < 0.2 and Vector2(victim.pos.x, victim.pos.z).distance_to(crashed_pos) > 3.0, "el auto chocado se desliza %.1f m y frena" % Vector2(victim.pos.x, victim.pos.z).distance_to(crashed_pos))
+		check(int(ct.stats()["crashed"]) >= 1, "queda como obstáculo en la calle")
+		var calm = null
+		for v in ct.vehicles:
+			if not v.crashed and v.conn < 0.0 and v.v > 3.0:
+				calm = v
+				break
+		if calm != null:
+			var ci2: int = ct._owners.find(calm) * 2
+			var vf2 := Vector2(sin(calm.yaw), cos(calm.yaw))
+			ct.player_vel = vf2 * 1.0
+			var sp0: float = calm.v
+			tr1.hits = PackedFloat32Array([float(ci2), -vf2.x, -vf2.y, 0.2])
+			wl.update(0.05, spot)
+			check(not calm.crashed, "un roce suave no lo manda a la física temporal")
+	ct.player_vel = Vector2.ZERO
 	# alejarse: se sueltan; volver: se reconstruyen
 	wl.update(0.05, Vector2(2500.0, 2500.0))
 	check(int(ct.stats()["cars"]) == 0 or true, "lejos casi no hay autos")

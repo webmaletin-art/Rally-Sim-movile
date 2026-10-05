@@ -36,3 +36,10 @@ Funciones puras de la hora del mundo y del día (los días 5 y 6 de cada 7 son f
 - **Velocidad**: −18 % en hora pico, +12 % de madrugada.
 - **Estacionados**: más autos en el cordón de noche (casas) que de día (trabajo).
 - Prueba: `tests/traffic_routine_test.gd`. Además se mejoró la convivencia: los autos que entran a un cruce ven al que va primero hacia el mismo carril y los nuevos no nacen a menos de 9 m de otro (0 superposiciones en 150 s).
+
+## Etapa 11 — interacción con el tránsito (física temporal al choque)
+- `CityTrack` registra los golpes del jugador contra los círculos de los autos (`take_dyn_hits`: auto, normal, profundidad) y expone `push_world` (sólo contra el mundo, para que un auto chocado no choque consigo mismo).
+- **Golpe fuerte** (velocidad de cierre ≥ 2,5 m/s): el auto pasa a **física temporal**: recibe el impulso de un choque de masas (jugador 1300 kg vs auto 1200 kg, restitución 0,35), gira según dónde lo tocaron, se desliza frenando (6,5 m/s²), rebota contra paredes y postes y queda de obstáculo en la calle (50 s; se retira si ya no está a la vista). **Roce** (< 2,5 m/s): el auto sólo frena un poco y sigue su ruta.
+- Los demás autos **frenan y se detienen detrás** del jugador o de un auto chocado que esté en su trayectoria (a menos de 18 m).
+- Todo es local (no se sincroniza); el tránsito sigue siendo reconstruible por semilla+hora para quien llega después.
+- Prueba: `tests/civil_traffic_test.gd` (golpe fuerte → 12 m/s y desliza 11 m hasta frenar; roce suave → no entra en física temporal).

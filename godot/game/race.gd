@@ -1697,6 +1697,9 @@ func _tick_session(dt: float) -> void:
 			social.set_state(sp0.px, sp0.pz, sqrt(sp0.vx * sp0.vx + sp0.vz * sp0.vz) * 3.6)
 		if world_life != null and not cars.is_empty():
 			var wp = cars[0].phys
+			var tsys = world_life.get_system("traffic")
+			if tsys != null:
+				tsys.player_vel = Vector2(wp.vx, wp.vz) # para que el tránsito reaccione al jugador (frena, esquiva, se golpea)
 			world_life.update(dt, Vector2(wp.px, wp.pz))
 		if clock != null:
 			clock.update(dt)

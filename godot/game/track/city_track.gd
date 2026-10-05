@@ -12,6 +12,7 @@ var props := {} # Vector2i (16 m) -> PackedFloat32Array [x, z, r, id, …] de co
 var _prop_alive := {} # id -> true
 var broken := {} # id -> Vector2 (hacia dónde cayó): lo roto queda tirado y ya no choca
 var _fresh := PackedInt32Array() # rotos desde la última vez que el mundo los miró
+var _dyn_hits := PackedFloat32Array() # choques del jugador con autos del tránsito desde la última consulta: índice del círculo, normal (x, z), profundidad
 var _dyn := PackedFloat32Array() # círculos de choque que se mueven (autos del tránsito): x, z, r, …
 var _mx := Mutex.new() # la física corre en hilos aparte: los objetos se tocan de a uno
 
@@ -71,7 +72,14 @@ func push(x: float, z: float, r: float) -> Vector3:
 	_mx.unlock()
 	return res
 
-func _push_locked(x: float, z: float, r: float) -> Vector3:
+## Como push() pero sólo contra el mundo (calles, paredes, objetos), no contra los autos del tránsito: lo usan los autos chocados para no chocarse con sí mismos
+func push_world(x: float, z: float, r: float) -> Vector3:
+	_mx.lock()
+	var res := _push_locked(x, z, r, false)
+	_mx.unlock()
+	return res
+
+func _push_locked(x: float, z: float, r: float, use_dyn := true) -> Vector3:
 	var pr := city.probe(x, z)
 	var best := Vector3.ZERO
 	if pr[6] >= 0.0:
@@ -90,7 +98,7 @@ func _push_locked(x: float, z: float, r: float) -> Vector3:
 				if pen > best.z:
 					best = Vector3(-u.x if dl < rr else u.x, -u.y if dl < rr else u.y, pen)
 	var di := 0
-	while di < _dyn.size(): # autos del tránsito: sólidos (no se rompen)
+	while use_dyn and di < _dyn.size(): # autos del tránsito: sólidos (no se rompen)
 		var ox2 := x - _dyn[di]
 		var oz2 := z - _dyn[di + 1]
 		var rs2 := r + _dyn[di + 2]
@@ -98,6 +106,8 @@ func _push_locked(x: float, z: float, r: float) -> Vector3:
 		var e22 := ox2 * ox2 + oz2 * oz2
 		if e22 < rs2 * rs2:
 			var e2 := sqrt(e22)
+			if _dyn_hits.size() < 256:
+				_dyn_hits.append_array(PackedFloat32Array([float(di / 3 - 1), ox2 / e2 if e2 > 0.001 else 1.0, oz2 / e2 if e2 > 0.001 else 0.0, rs2 - e2]))
 			if rs2 - e2 > best.z:
 				best = Vector3(ox2 / e2 if e2 > 0.001 else 1.0, oz2 / e2 if e2 > 0.001 else 0.0, rs2 - e2)
 	var kx := int(floor(x / 16.0))
@@ -160,6 +170,14 @@ func set_dynamic_circles(c: PackedFloat32Array) -> void:
 	_mx.lock()
 	_dyn = c
 	_mx.unlock()
+
+## Los choques con autos del tránsito desde la última vez (de a 4: índice del círculo, nx, nz, profundidad); la normal apunta del auto hacia el jugador
+func take_dyn_hits() -> PackedFloat32Array:
+	_mx.lock()
+	var out := _dyn_hits
+	_dyn_hits = PackedFloat32Array()
+	_mx.unlock()
+	return out
 
 func add_prop(id: int, x: float, z: float, r: float) -> void:
 	_mx.lock()

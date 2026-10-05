@@ -22,6 +22,8 @@ const DECEL := 3.8
 const ACCEL := 2.4
 const SPAWN_SAFE := 95.0 # los autos que se agregan «de a uno» nacen al menos a esta distancia del jugador
 const KIND_SPEED := {"plaza": 7.0, "ring": 9.5, "minor": 9.0, "major": 13.5, "coast": 12.0, "rural": 17.0, "shortcut": 13.0, "hill": 9.0}
+const HIT_MIN := 2.5 # m/s de velocidad relativa para que el golpe lo mande a la física temporal (menos que eso: sólo un roce)
+const WRECK_LIFE := 50.0 # s que un auto chocado queda en la calle antes de retirarse (si no está a la vista)
 const DENSITY_M := 240.0 # un auto cada tanto de carril (en el centro)
 
 class Veh:
@@ -42,6 +44,12 @@ class Veh:
 	var yaw := 0.0
 	var pitch := 0.0
 	var acc := 0.0 # tiempo acumulado (autos lejanos: se calculan por tandas)
+	# choque: el auto pasa a física temporal (se desliza y gira hasta frenar) y queda de obstáculo un rato
+	var crashed := false
+	var vel := Vector2.ZERO
+	var yaw_rate := 0.0
+	var crash_t := 0.0
+	var mass := 1200.0
 
 var layout: RefCounted
 var graph: RefCounted
@@ -58,6 +66,8 @@ var _mesh: ArrayMesh
 var _cap := 24 # tope del perfil
 var _topup_t := 0.0
 var _next_id := 0
+var _owners: Array = [] # Veh de cada par de círculos de choque (en el orden de los círculos del CityTrack)
+var player_vel := Vector2.ZERO # velocidad del auto del jugador (la pone race.gd)
 var _t_now := 0.0 # hora del mundo del cálculo en curso (para las rutinas)
 
 func _init() -> void:
@@ -405,9 +415,18 @@ func update(dt: float) -> void:
 	var pl: Vector2 = wl.sectors.player
 	var r_act: float = wl.sectors.r_active
 	var r_drop: float = wl.sectors.r_simplified * 1.2
+	_process_hits()
+	# obstáculos fijos o a la deriva: autos chocados y el jugador (los demás autos frenan o se detienen detrás)
+	var obst: Array = [] # [pos Vector2, vel Vector2, radio]
+	for v in vehicles:
+		if v.crashed:
+			obst.append([Vector2(v.pos.x, v.pos.z), v.vel, 2.0])
+	obst.append([pl, player_vel, 1.6])
 	# autos por carril, ordenados por distancia, para el de adelante
 	var occ: Dictionary = {}
 	for v in vehicles:
+		if v.crashed:
+			continue
 		if v.conn < 0.0:
 			if not occ.has(v.lane):
 				occ[v.lane] = []
@@ -416,6 +435,13 @@ func update(dt: float) -> void:
 		(occ[k] as Array).sort_custom(func(a: Veh, b: Veh) -> bool: return a.d < b.d)
 	var dead: Array = []
 	for v in vehicles:
+		if v.crashed:
+			_step_crashed(v, dt, pl)
+			if v.crash_t > WRECK_LIFE and v.vel.length() < 0.3 and Vector2(v.pos.x, v.pos.z).distance_to(pl) > SPAWN_SAFE:
+				dead.append(v)
+			elif Vector2(v.pos.x, v.pos.z).distance_to(pl) > r_drop:
+				dead.append(v)
+			continue
 		var far := Vector2(v.pos.x, v.pos.z).distance_to(pl) > r_act
 		v.acc += dt
 		if far and v.acc < 0.25:
@@ -449,6 +475,18 @@ func update(dt: float) -> void:
 				var o2: Veh = (occ[v.next] as Array)[0]
 				ga = (float(graph.lanes[v.lane]["len"]) - v.d) + o2.d - CAR_LEN
 				va = o2.v
+		# jugador y autos chocados por delante (en mi trayectoria, a menos de 18 m)
+		var fwd := Vector2(sin(v.yaw), cos(v.yaw))
+		var rgt := Vector2(fwd.y, -fwd.x)
+		var vp := Vector2(v.pos.x, v.pos.z)
+		for o in obst:
+			var rel: Vector2 = (o[0] as Vector2) - vp
+			var ahead := rel.dot(fwd)
+			if ahead > 0.5 and ahead < 18.0 and absf(rel.dot(rgt)) < 2.2 + float(o[2]) * 0.3:
+				var gg := ahead - CAR_LEN * 0.5 - float(o[2])
+				if gg < ga:
+					ga = gg
+					va = maxf((o[1] as Vector2).dot(fwd), 0.0)
 		if not _advance(v, step, t, ga, va):
 			dead.append(v)
 			continue
@@ -507,6 +545,65 @@ func _top_up(t: float, pl: Vector2) -> void:
 		if spawned >= 2 or vehicles.size() >= cn:
 			break
 
+## Golpes del jugador contra los autos (los reporta el CityTrack): si la velocidad de choque alcanza, el auto pasa a la física temporal
+func _process_hits() -> void:
+	if track == null or not track.has_method("take_dyn_hits"):
+		return
+	var h: PackedFloat32Array = track.take_dyn_hits()
+	var i := 0
+	while i + 3 < h.size():
+		var ci := int(h[i])
+		var n := Vector2(h[i + 1], h[i + 2]) # del auto hacia el jugador
+		i += 4
+		if ci < 0 or ci / 2 >= _owners.size():
+			continue
+		var v: Veh = _owners[ci / 2]
+		if not is_instance_valid(v) or not vehicles.has(v):
+			continue
+		var fwd := Vector2(sin(v.yaw), cos(v.yaw))
+		var vn := v.vel if v.crashed else fwd * v.v
+		var closing := -((player_vel - vn).dot(n)) # > 0: se están acercando
+		if closing <= 0.3:
+			continue
+		if not v.crashed and closing < HIT_MIN:
+			v.v = maxf(v.v - 1.5, 0.0) # roce: sólo frena
+			continue
+		var jmag := 1.35 * closing / (1.0 / 1300.0 + 1.0 / v.mass)
+		var f := -n * jmag # impulso sobre el auto golpeado
+		# punto de contacto: el círculo golpeado (a -1,2 o +1,2 m del centro) más el radio hacia el jugador
+		var off := (-1.2 if ci % 2 == 0 else 1.2)
+		var rpt := fwd * off + n * 1.0
+		var torque := -(rpt.x * f.y - rpt.y * f.x) # el yaw crece de +z hacia +x
+		if not v.crashed:
+			v.crashed = true
+			v.vel = vn
+			v.crash_t = 0.0
+		v.vel += f / v.mass
+		v.yaw_rate = clampf(v.yaw_rate + torque / (v.mass * 1.8), -4.0, 4.0)
+
+## Física temporal de un auto chocado: se desliza y gira frenando, rebota en lo que encuentre y queda de obstáculo
+func _step_crashed(v: Veh, dt: float, _pl: Vector2) -> void:
+	v.crash_t += dt
+	var sp := v.vel.length()
+	if sp > 0.0:
+		v.vel = v.vel.normalized() * maxf(sp - 6.5 * dt, 0.0)
+	v.yaw += v.yaw_rate * dt
+	v.yaw_rate *= exp(-1.6 * dt)
+	var x: float = v.pos.x + v.vel.x * dt
+	var z: float = v.pos.z + v.vel.y * dt
+	if track != null and track.has_method("push_world"):
+		var hh: Vector3 = track.push_world(x, z, 1.0)
+		if hh.z > 0.0:
+			x += hh.x * hh.z
+			z += hh.y * hh.z
+			var vnn := v.vel.x * hh.x + v.vel.y * hh.y
+			if vnn < 0.0:
+				v.vel -= Vector2(hh.x, hh.y) * vnn * 1.5 # rebota contra lo que chocó
+				v.vel *= 0.8
+				v.yaw_rate *= 0.8
+	v.pos = Vector3(x, layout.height(x, z), z)
+	v.pitch = 0.0
+
 ## ¿Hay lugar para un auto nuevo (ningún otro a menos de 9 m en el mismo carril)?
 func _spot_free(nv: Veh) -> bool:
 	for o in vehicles:
@@ -522,8 +619,10 @@ func _refresh_all() -> void:
 	var n := mini(vehicles.size(), _mm.instance_count)
 	_mm.visible_instance_count = n
 	var circles := PackedFloat32Array()
+	_owners.clear()
 	for i in n:
 		var v: Veh = vehicles[i]
+		_owners.append(v)
 		var sc := Vector3(1.0, 1.0, 1.0)
 		match v.variant:
 			1: sc = Vector3(1.0, 1.0, 0.9)
@@ -540,7 +639,11 @@ func _refresh_all() -> void:
 		track.set_dynamic_circles(circles)
 
 func stats() -> Dictionary:
+	var crashed_n := 0
+	for v in vehicles:
+		if v.crashed:
+			crashed_n += 1
 	var spd := 0.0
 	for v in vehicles:
 		spd += v.v
-	return {"cars": vehicles.size(), "cap": _cap, "sectors": _filled.size(), "avg_speed": spd / maxf(float(vehicles.size()), 1.0)}
+	return {"cars": vehicles.size(), "crashed": crashed_n, "cap": _cap, "sectors": _filled.size(), "avg_speed": spd / maxf(float(vehicles.size()), 1.0)}
