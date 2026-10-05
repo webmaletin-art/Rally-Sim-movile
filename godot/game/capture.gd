@@ -60,7 +60,7 @@ static func list() -> Array:
 	if d == null:
 		return out
 	for f in d.get_files():
-		if f.ends_with(".jpg") or f.ends_with(".png"):
+		if f.ends_with(".jpg") or f.ends_with(".png") or f.ends_with(".avi"):
 			out.append(DIR + "/" + f)
 	out.sort()
 	out.reverse()
@@ -73,9 +73,24 @@ static func delete(path: String) -> void:
 		var p2 := pd + "/" + path.get_file()
 		if FileAccess.file_exists(p2):
 			DirAccess.remove_absolute(p2)
+		var p3 := pd.replace("Pictures", "Movies") + "/" + path.get_file()
+		if FileAccess.file_exists(p3):
+			DirAccess.remove_absolute(p3)
+
+## Primer cuadro de un video AVI (Motion-JPEG): se busca el primer bloque «00dc» y se decodifica
+static func video_frame(path: String) -> Image:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null or f.get_length() < 300:
+		return null
+	f.seek(224) # justo después de la cabecera, donde empieza el primer cuadro
+	if f.get_buffer(4).get_string_from_ascii() != "00dc":
+		return null
+	var n := f.get_32()
+	var img := Image.new()
+	return img if img.load_jpg_from_buffer(f.get_buffer(n)) == OK else null
 
 static func thumb(path: String, w := 168, h := 94) -> Texture2D:
-	var img := Image.load_from_file(ProjectSettings.globalize_path(path))
+	var img: Image = video_frame(path) if path.ends_with(".avi") else Image.load_from_file(ProjectSettings.globalize_path(path))
 	if img == null or img.is_empty():
 		return null
 	img.resize(w, h, Image.INTERPOLATE_BILINEAR)

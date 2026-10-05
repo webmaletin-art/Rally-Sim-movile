@@ -11,7 +11,7 @@ extends Node3D
 const CarSnapshot := preload("res://game/car/car_snapshot.gd")
 const TEX_DIR := "res://game/fx/tex/"
 
-const MARKS := 500
+const MARKS := 3000 # (con 500 las marcas del drift se borraban en 3-4 s: se veían como si no hubiera)
 
 var intensity := 1.0 # 0 sin partículas … 1 todas (opción «Partículas» 0–10)
 var qk := 1.0 # 0.5 baja · 1.0 media · 1.5 alta (cantidad de partículas)
@@ -353,7 +353,7 @@ func emit_from(key: int, s: CarSnapshot, dt: float, tire_w: float, detail := 1.0
 				var b := Basis.from_euler(Vector3(-atan2(y1 - L.y, dd), atan2(dx, dz), 0.0), EULER_ORDER_YXZ)
 				b = b * Basis.from_scale(Vector3(tire_w * (0.9 if mark else 1.1), 1.0, sqrt(dd * dd + (y1 - L.y) * (y1 - L.y))))
 				_marks.set_instance_transform(_mk, Transform3D(b, Vector3((pos.x + L.x) * 0.5, (y1 + L.y) * 0.5 + 0.06, (pos.z + L.z) * 0.5)))
-				_marks.set_instance_color(_mk, Color(0.03, 0.03, 0.03, 0.55) if mark else Color(0.16, 0.12, 0.08, 0.26))
+				_marks.set_instance_color(_mk, Color(0.03, 0.03, 0.03, 0.62) if mark else Color(0.16, 0.12, 0.08, 0.26))
 				_mk = (_mk + 1) % MARKS
 				last[i] = Vector3(pos.x, y1, pos.z)
 			elif dd >= 3.0:

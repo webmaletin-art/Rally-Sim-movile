@@ -14,6 +14,7 @@ const Tr := preload("res://game/i18n/tr.gd")
 signal camera_pressed
 signal pause_pressed
 signal shot_pressed
+signal rec_pressed
 signal cam_drag(rel: Vector2) # dedo arrastrado sobre la pantalla (cámara libre)
 signal cam_zoom(factor: float) # pellizco con dos dedos
 signal edit_done(saved: bool) # se cerró el modo «Modificar controles» (saved = hay que guardar controls.layout)
@@ -30,6 +31,7 @@ var gyro_curve := 1.0 # 1 = lineal · >1 = progresiva (poco giro al principio, m
 var gyro_smooth := 15.0 # reacción del filtro (1/s): más alto = más rápido
 var use_mph := false
 var show_shot := true # botón de captura (opción «Botón de captura»)
+var recording := false # grabando video (el botón se ve rojo)
 var show_speed := true # el panel de velocidad de arriba se oculta con las cámaras interiores (ya está en el tablero)
 var wheel_scale := 1.0 # tamaño del volante/barra (opción «Tamaño del volante»)
 var pedal_scale := 1.0 # tamaño del pedal
@@ -108,6 +110,8 @@ func rect_of(id: String) -> Rect2:
 			r = Rect2(vs.x - 18.0 * u - 80.0 * u, 10.0 * u, 40.0 * u, 40.0 * u)
 		"shot":
 			r = Rect2(vs.x - 26.0 * u - 120.0 * u, 10.0 * u, 40.0 * u, 40.0 * u)
+		"rec":
+			r = Rect2(vs.x - 34.0 * u - 160.0 * u, 10.0 * u, 40.0 * u, 40.0 * u)
 	if id == "wheel" or id == "slider":
 		r = Rect2(r.position.x, r.end.y - r.size.y * wheel_scale, r.size.x * wheel_scale, r.size.y * wheel_scale) # crece hacia arriba y a la derecha
 	elif id == "gears":
@@ -150,8 +154,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_touch_move(ev2.index, ev2.position)
 
 func _hit(pos: Vector2) -> String:
-	for id in ["cam", "pause", "shot"]:
-		if id == "shot" and not show_shot:
+	for id in ["cam", "pause", "shot", "rec"]:
+		if (id == "shot" or id == "rec") and not show_shot:
 			continue
 		if rect_of(id).grow(4.0 * _u()).has_point(pos):
 			return id
@@ -189,6 +193,8 @@ func _touch_down(idx: int, pos: Vector2) -> void:
 			pause_pressed.emit()
 		"shot":
 			shot_pressed.emit()
+		"rec":
+			rec_pressed.emit()
 		"wheel":
 			var c := rect_of("wheel").get_center()
 			wheel_touch_angle = atan2(pos.y - c.y, pos.x - c.x)
@@ -401,6 +407,14 @@ func _draw() -> void:
 		draw_rect(Rect2(cc.x - w * 0.5, cc.y - h * 0.4, w, h), col, false, maxf(1.5, u * 1.4))
 		draw_rect(Rect2(cc.x - w * 0.22, cc.y - h * 0.65, w * 0.44, h * 0.25), col, true)
 		draw_arc(cc + Vector2(0, h * 0.1), h * 0.28, 0.0, TAU, 20, col, maxf(1.5, u * 1.4))
+	if show_shot:
+		var rr := rect_of("rec")
+		_draw_round_button(rr, "", recording, Color(1.0, 0.3, 0.3), Color(0.25, 0.08, 0.08), Color(1.0, 0.5, 0.5), font, u * 0.6)
+		var rc := rr.get_center()
+		if recording:
+			draw_rect(Rect2(rc - Vector2(rr.size.x * 0.17, rr.size.x * 0.17), Vector2(rr.size.x * 0.34, rr.size.x * 0.34)), Color(1.0, 0.35, 0.35), true) # parar
+		else:
+			draw_circle(rc, rr.size.x * 0.2, Color(1.0, 0.3, 0.3)) # grabar
 	_draw_round_button(rect_of("handbrake"), "H", handbrake, Color(1.0, 0.24, 0.19), Color(0.35, 0.12, 0.12), Color(1.0, 0.47, 0.43), font, u)
 	if has_nitro or editing:
 		_draw_round_button(rect_of("nitro"), "N₂O", nitro, Color(0.3, 0.65, 1.0), Color(0.07, 0.19, 0.35), Color(0.31, 0.7, 1.0), font, u, nitro_frac)
@@ -418,6 +432,7 @@ func _edit_ids() -> Array:
 	var a := ["cam", "pause", "handbrake", "nitro", "gears", "pedal", "wheel" if steer_mode == "wheel" else "slider"]
 	if show_shot:
 		a.insert(2, "shot")
+		a.insert(3, "rec")
 	return a
 
 func set_editing(on: bool) -> void:

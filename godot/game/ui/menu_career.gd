@@ -332,7 +332,7 @@ func _quick() -> void:
 			car_ids.append(str(id)) # Carrera rápida: solo con tus autos (los de la tienda se prueban desde la tienda)
 	if str(quick.get("car", "cur")) == "cur" or not car_ids.has(str(quick.get("car", "cur"))):
 		quick["car"] = str(m.profile.current_id())
-	if not adv and m.profile.owns(str(quick["car"])):
+	if m.profile.owns(str(quick["car"])):
 		m.refresh_car(str(quick["car"]), m.profile.d["owned"][str(quick["car"])]) # tu auto en la escena, junto a los pilotos
 	var stages: Array = []
 	for i in mini(AdvRoute.STAGES.size(), Release.adventure_limit(m.profile)):
@@ -344,7 +344,7 @@ func _quick() -> void:
 		defs.append(["Etapa", "stage", stages, func(v): return "%d · %s" % [int(v) + 1, str(AdvRoute.STAGES[int(v)]["name"])]])
 	else:
 		defs.append(["Modo", "mode", ["race", "timetrial"], func(v): return tr("Carrera") if v == "race" else tr("Contrarreloj")])
-	if not adv and car_ids.size() > 0:
+	if car_ids.size() > 0:
 		defs.append(["Auto", "car", car_ids, func(v): return _quick_car_name(v)])
 	if not adv:
 		if not is_fantasy(str(quick["map"])): # los mapas fantasía tienen su propio cielo
@@ -377,7 +377,7 @@ func _quick() -> void:
 	if fantasy:
 		m.body.add_child(Kit.wrap(tr(str(_maps()[str(quick["map"])].get("tagline", ""))) + " " + tr("Los rivales te siguen el ritmo. No pertenece a ninguna copa."), 13, Kit.MUTED, 300))
 	if adv:
-		m.body.add_child(Kit.wrap(tr("Práctica: corrés la etapa con el DR Bisonte de la aventura; no cuenta para tu avance ni da premios."), 13, Kit.MUTED, 300))
+		m.body.add_child(Kit.wrap(tr("Práctica: corrés la etapa con el auto que elijas; no cuenta para tu avance ni da premios. La aventura de verdad sigue con el DR Bisonte."), 13, Kit.MUTED, 300))
 	m.body.add_child(Kit.button("¡CORRER!", func(): _start_quick(), true, 26, Vector2(0, 58)))
 
 ## Familia del mapa de la Carrera rápida: cambia qué ajustes se muestran
@@ -396,7 +396,7 @@ func _start_quick() -> void:
 	var test_car := false
 	var pi := _player_pi()
 	if str(q["map"]) == "adventure":
-		var ac := {"type": "adventure", "stage": int(q.get("stage", 0)), "back": "quick", "practice": true, "intro": false}
+		var ac := {"type": "adventure", "stage": int(q.get("stage", 0)), "back": "quick", "practice": true, "intro": false, "pcar": pid}
 		m.app.start_race(ac)
 		return
 	var is_drift := str(q["map"]) == "drift"

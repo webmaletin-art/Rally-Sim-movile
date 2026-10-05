@@ -67,8 +67,13 @@ static func prepare_cfg(cfg: Dictionary, profile: RefCounted) -> void:
 	var si: int = clampi(int(cfg.get("stage", stv["stage"])), 0, AdvRoute.STAGES.size() - 1)
 	cfg["stage"] = si
 	var S0: Dictionary = AdvRoute.STAGES[si]
-	cfg["car"] = AdvData.CAR
-	cfg["state"] = AdvData.car_state(stv)
+	var pcar := str(cfg.get("pcar", ""))
+	if cfg.get("practice", false) == true and pcar != "" and profile != null and profile.owns(pcar):
+		cfg["car"] = pcar # práctica de Carrera rápida: se corre con el auto que elegís (la aventura de verdad sigue con el DR Bisonte)
+		cfg["state"] = (profile.d["owned"][pcar] as Dictionary).duplicate(true)
+	else:
+		cfg["car"] = AdvData.CAR
+		cfg["state"] = AdvData.car_state(stv)
 	cfg["sky"] = {"dia": "day", "nublado": "overcast", "lluvia": "rain", "atardecer": "sunset", "ocaso": "dusk", "nieve": "snow"}.get(str(S0["sky"]), "day")
 	cfg["ai"] = 2 if S0.has("rival2") else 1
 	cfg["sim"] = "adv"
@@ -93,15 +98,26 @@ static func car_setups(race) -> Array:
 	var sa: Dictionary = race._sim_assists()
 	var assists := {"abs": sa["abs"], "tc": sa["tc"], "stab": sa["stab"]}
 	var pst: Dictionary = cfg["state"]
-	var P: Dictionary = CarBuild.build_params(vehicles[AdvData.CAR], pst, assists)
-	AdvData.apply_skills(P, stv)
-	var dm := AdvData.damage_mul(stv)
-	P["powerScale"] = float(P["powerScale"]) * float(dm["power"])
-	P["gripFront"] = float(P["gripFront"]) * float(dm["grip"])
-	P["gripRear"] = float(P["gripRear"]) * float(dm["grip"])
+	var own: bool = cfg.get("practice", false) == true and str(cfg.get("pcar", "")) != "" and str(cfg["car"]) != AdvData.CAR
+	var pcid: String = str(cfg["car"]) if own else AdvData.CAR
+	var P: Dictionary = CarBuild.build_params(vehicles[pcid], pst, assists)
+	if not own:
+		AdvData.apply_skills(P, stv)
+		var dm := AdvData.damage_mul(stv)
+		P["powerScale"] = float(P["powerScale"]) * float(dm["power"])
+		P["gripFront"] = float(P["gripFront"]) * float(dm["grip"])
+		P["gripRear"] = float(P["gripRear"]) * float(dm["grip"])
 	var pname := str(profile.d["name"]) if profile != null else "Piloto"
-	var out: Array = [{"params": P, "paint": Color(str(AdvData.PAINT["body"])), "rim": Color(str(AdvData.PAINT["rim"])), "name": pname, "finish": str(AdvData.PAINT["finish"]), "visual_type": str(vehicles[AdvData.CAR].get("visualType", AdvData.CAR)), "ai": {},
+	var out: Array = [{"params": P, "paint": Color(str(AdvData.PAINT["body"])), "rim": Color(str(AdvData.PAINT["rim"])), "name": pname, "finish": str(AdvData.PAINT["finish"]), "visual_type": str(vehicles[pcid].get("visualType", pcid)), "ai": {},
 		"livery": int(AdvData.PAINT["livery"]), "accent": Color(str(AdvData.PAINT["accent"]))}]
+	if own: # con tu propio auto: tu pintura, tu rotulado y tus gomas
+		var pp: Dictionary = pst.get("paint", {})
+		out[0]["paint"] = Color(str(pp.get("body", "#1a4fe0")))
+		out[0]["rim"] = Color(str(pp.get("rim", "#2a2d33")))
+		out[0]["finish"] = str(pp.get("finish", "gloss"))
+		out[0]["livery"] = int(pp.get("livery", 0))
+		out[0]["accent"] = Color(str(pp.get("accent", "#ff6a08")))
+		out[0]["parts"] = pp
 	var S0: Dictionary = AdvRoute.STAGES[int(cfg["stage"])]
 	var rv: Array = [S0["rival"]]
 	if S0.has("rival2"):

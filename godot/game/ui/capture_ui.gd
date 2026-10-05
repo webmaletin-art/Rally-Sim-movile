@@ -31,7 +31,7 @@ static func options_block(body: VBoxContainer, profile: RefCounted, sfx: Node, n
 		page = 0
 		nav.call("options", "galeria"), true, 20, Vector2(0, 52))
 	body.add_child(gb)
-	body.add_child(Kit.wrap("Para grabar video: en la pausa tocá «MODO CINE» (se esconde casi todo el HUD) y usá la grabadora de pantalla de tu teléfono.", 12, Kit.MUTED, 300))
+	body.add_child(Kit.wrap("Para grabar video tocá el botón 🎥 (arriba, junto a la cámara): graba sin audio hasta 3 minutos y queda en la galería como .avi (Motion-JPEG: se abre con VLC o MX Player). Con «MODO CINE» de la pausa se esconde casi todo el HUD.", 12, Kit.MUTED, 300))
 
 static func gallery(body: VBoxContainer, nav: Callable, sfx: Node) -> void:
 	var files := Capture.list()
@@ -52,6 +52,10 @@ static func gallery(body: VBoxContainer, nav: Callable, sfx: Node) -> void:
 		tr_.texture = Capture.thumb(path)
 		tr_.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr_.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		if path.ends_with(".avi"):
+			var tag := Kit.label("🎥", 20, Kit.GOLD)
+			tag.position = Vector2(4, 2)
+			tr_.add_child(tag)
 		tr_.custom_minimum_size = Vector2(0, 92)
 		tr_.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		box.add_child(tr_)

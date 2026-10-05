@@ -12,15 +12,15 @@ const MixamoClips := preload("res://game/car/mixamo_clips.gd")
 
 ## Qué clips de Mixamo se usan para cada pose del guion del menú (si el archivo de clips no está, quedan las poses procedurales)
 const CLIPS := {
-	"idle": ["Standing_Idle", "Breathing_Idle", "Idle_2", "weight_shift"],
-	"chin": ["Thinking", "Thoughtful_Head_Nod", "Looking_Down", "Looking_3"],
-	"crossed": ["Bored", "weight_shift", "Looking_Around", "Happy_Idle_2"],
-	"hip": ["Male_Standing_Pose_11", "Happy_Idle", "Standing_Idle"],
-	"pocket": ["Idle_2", "Looking_Around", "Breathing_Idle"],
-	"point": ["Pointing_Forward", "Pointing_2", "Pointing_Gesture_2", "Reaching_Out"],
+	"idle": ["Standing_Idle", "Breathing_Idle", "Idle_2", "weight_shift", "Neck_Stretching", "Arm_Stretching", "Looking_Behind", "Happy_Idle"],
+	"chin": ["Thinking", "Thoughtful_Head_Nod", "Looking_Down", "Looking_3", "Counting_2", "thoughtful_head_shake", "Looking"],
+	"crossed": ["Bored", "weight_shift", "Looking_Around", "Happy_Idle_2", "being_cocky", "One_Shoulder_Lean", "Leaning", "Leaning_2", "relieved_sigh", "Shrugging"],
+	"hip": ["Male_Standing_Pose_11", "Male_Standing_Pose_2", "Male_Standing_Pose_4", "Male_Standing_Pose_5", "Male_Standing_Pose_7", "Happy_Idle", "Standing_Idle", "Standing_Thumbs_Up"],
+	"pocket": ["Idle_2", "Looking_Around", "Breathing_Idle", "Looking", "acknowledging", "head_nod_yes", "look_away_gesture"],
+	"point": ["Pointing_Forward", "Pointing_2", "Pointing_Gesture_2", "Reaching_Out", "Pointing"],
 	"paint": ["Reaching_Out", "Taking_Item", "Kneeling_Inspecting"],
-	"talk": ["Talking_7", "Talking_4", "Talking_6", "Talking_3", "Arm_Gesture", "Hands_Forward_Gesture"],
-	"read": ["Texting_While_Standing"],
+	"talk": ["Talking_7", "Talking_4", "Talking_6", "Talking_3", "Talking_5", "Arm_Gesture", "Hands_Forward_Gesture", "Agreeing_2", "happy_hand_gesture", "dismissing_gesture", "Telling_A_Secret", "Laughing", "Standing_Fist_Pump", "Standing_Greeting", "Shaking_Hands_1"],
+	"read": ["Texting_While_Standing", "Texting", "Talking_On_A_Cell_Phone"],
 }
 
 
@@ -301,8 +301,8 @@ func _pose_def(name: String, k: float, ph: float, tl := Vector3.ZERO) -> Diction
 
 ## caminando: pasos con apoyo y vuelo de cada pie, cadera que sube y baja, brazos que se balancean al revés de las piernas
 func _walk_pose(k: float, phi: float, spd: float) -> Dictionary:
-	var o := _base_pose(k, 0.905)
-	var A := 0.30 * clampf(spd / 1.1, 0.4, 1.2)
+	var o := _base_pose(k, 0.915)
+	var A := 0.21 * clampf(spd / 1.1, 0.4, 1.1) # paso más corto: con 0,30 las piernas se estiraban de más y se deformaba la cadera
 	var feet: Array = []
 	for si in 2:
 		var ph := fposmod(phi + 0.5 * float(si), 1.0)
@@ -318,10 +318,10 @@ func _walk_pose(k: float, phi: float, spd: float) -> Dictionary:
 		feet.append({"side": "Left" if si == 0 else "Right", "pos": Vector3(0.10 if si == 0 else -0.10, y, z), "pole": Vector3(0.0, 1.0, 0.45)})
 	o["feet"] = feet
 	var swing := cos(TAU * phi) * 0.13 * clampf(spd / 1.1, 0.4, 1.2)
-	o["hips"] = Vector3(0.012 * sin(TAU * phi), 0.905 * k - 0.014 * absf(sin(TAU * phi)), 0.0)
+	o["hips"] = Vector3(0.006 * sin(TAU * phi), 0.915 * k - 0.008 * absf(sin(TAU * phi)), 0.0)
 	o["head"] = Vector3(0.0, 1.46 * k, 0.03)
 	o["lean1"] = 0.08
-	o["roll"] = 0.02 * sin(TAU * phi)
+	o["roll"] = 0.01 * sin(TAU * phi)
 	o["hands"] = [_hand("Left", Vector3(0.22, 0.86 * k, 0.04 + swing), Vector3(0, -1, 0.1), Vector3(1, 0, 0), Vector3(0.6, -1, -0.1)),
 		_hand("Right", Vector3(-0.22, 0.86 * k, 0.04 - swing), Vector3(0, -1, 0.1), Vector3(-1, 0, 0), Vector3(0.6, -1, -0.1))]
 	return o

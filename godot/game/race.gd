@@ -37,6 +37,7 @@ const Weather := preload("res://game/fx/weather.gd")
 const Lens := preload("res://game/fx/lens.gd")
 const Cockpit := preload("res://game/car/cockpit.gd")
 const Capture := preload("res://game/capture.gd")
+const CaptureVideo := preload("res://game/capture_video.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CarAudio := preload("res://game/audio/car_audio.gd")
 const CameraRig := preload("res://game/car/camera_rig.gd")
@@ -300,6 +301,7 @@ func _ready() -> void:
 		if cam_rig != null and not paused:
 			cam_rig.zoom(f))
 	controls.shot_pressed.connect(_take_shot)
+	controls.rec_pressed.connect(_toggle_rec)
 	controls.show_shot = menu_mode and profile != null and profile.setting("capBtn") == true
 	load_progress.emit(0.44, "Clima y efectos…")
 	await get_tree().process_frame
@@ -1660,6 +1662,8 @@ func on_teleport() -> void:
 	_ug_base = _ug_base # (la luz cambia sola con la posición)
 
 func _exit_tree() -> void:
+	if rec != null and rec.active:
+		rec.stop() # el video queda cerrado y reproducible aunque se salga grabando
 	if social != null and is_instance_valid(social):
 		social.leave()
 	if track is CityTrack and profile != null and not cars.is_empty() and str(cfg.get("type", "")) == "city":
@@ -1981,6 +1985,29 @@ func _take_shot() -> void:
 	if race_hud != null:
 		race_hud.toast("📷 Captura guardada" if path != "" else "No se pudo guardar la captura")
 
+## Grabación de video (botón 🎥): AVI Motion-JPEG sin audio, ver capture_video.gd
+var rec: CaptureVideo
+func _toggle_rec() -> void:
+	if profile == null:
+		return
+	if rec != null and rec.active:
+		var p := rec.stop()
+		controls.recording = false
+		controls.queue_redraw()
+		if race_hud != null:
+			race_hud.toast("🎥 Video guardado (%d s)" % int(rec.seconds) if p != "" else "No se grabó nada")
+		return
+	rec = CaptureVideo.new()
+	if rec.start(self, profile):
+		controls.recording = true
+		controls.queue_redraw()
+		if race_hud != null:
+			race_hud.toast("🎥 Grabando… tocá de nuevo para parar (máx. 3 min)")
+	else:
+		rec = null
+		if race_hud != null:
+			race_hud.toast("No se pudo empezar a grabar")
+
 ## Modo cine: casi todo el HUD se esconde (los controles quedan casi invisibles pero siguen andando) para grabar con la grabadora del teléfono
 var cine := false
 func _toggle_cine() -> void:
@@ -2053,6 +2080,7 @@ func restart_with(c: Dictionary) -> void:
 	AudioServer.set_bus_mute(0, false)
 	if cfg.get("practice", false) == true and str(c.get("type", "")) == "adventure":
 		c["practice"] = true # práctica de Carrera rápida: sigue siendo práctica y vuelve a la Carrera rápida
+		c["pcar"] = str(cfg.get("pcar", ""))
 		c["back"] = "quick"
 	var a := get_parent()
 	if a.has_method("start_race"):
@@ -2470,6 +2498,12 @@ func _step_car(i: int) -> void:
 		c.step_and_record(1.0 / 120.0, batch_t0 + float(k + 1) / 120.0)
 
 func _process(dt: float) -> void:
+	if rec != null and rec.active:
+		rec.tick(self, dt)
+		if not rec.active: # llegó al tope de tiempo
+			controls.recording = false
+			if race_hud != null:
+				race_hud.toast("🎥 Video guardado (tope de 3 minutos)")
 	if not is_loaded:
 		return
 	var t0 := Time.get_ticks_usec()
