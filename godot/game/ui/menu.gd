@@ -22,6 +22,8 @@ const Release := preload("res://game/data/release.gd")
 const Autotune := preload("res://game/autotune.gd")
 const AdvData := preload("res://game/adventure/adv_data.gd")
 const AdvRoute := preload("res://game/adventure/adv_route.gd")
+const OnlineSocial := preload("res://game/online/online_social.gd")
+const CityLayout := preload("res://game/city/city_layout.gd")
 
 var app: Node
 var profile: RefCounted
@@ -384,6 +386,7 @@ func go(name: String, arg = null, push := true) -> void:
 		"soon": _soon_screen(str(arg))
 		"online": _online_home()
 		"spawn": _spawn_screen()
+		"nick": _nick_screen()
 		"adventure", "adv_skills", "adv_help", "adv_stages", "adv_start": adventure.build(name, arg)
 		_: _home()
 
@@ -394,7 +397,16 @@ var world_online := false # el mundo se abre desde Modo online (con cuenta): se 
 func _start_city(spawn := 0) -> void:
 	var pid: String = profile.current_id()
 	profile.select(pid)
-	launch({"type": "city", "track": "aurelia", "ai": 0, "sky": "day", "car": pid, "state": profile.car(), "seed": 7, "back": "home", "quick": true, "spawn": spawn, "online": world_online and app.online != null and app.online.is_account()})
+	var cfg := {"type": "city", "track": "aurelia", "ai": 0, "sky": "day", "car": pid, "state": profile.car(), "seed": 7, "back": "home", "quick": true, "spawn": spawn, "online": world_online and app.online != null and app.online.is_account()}
+	if spawn < 0: # última ubicación
+		var lp: Array = profile.d["lastPos"]
+		cfg["resume"] = [float(lp[0]), float(lp[1]), float(lp[2])]
+	launch(cfg)
+
+## ¿Hay una última ubicación guardada y sirve en esta versión del mapa?
+func _has_last_pos() -> bool:
+	var lp: Variant = profile.d.get("lastPos", null)
+	return lp is Array and (lp as Array).size() >= 4 and int((lp as Array)[3]) == CityLayout.WORLD_VERSION
 
 const SPAWN_PLACES := [["Estacionamiento Central", "a nivel de la calle: salís directo a la ruta"], ["Estacionamiento Central · Planta alta", "un piso arriba: bajás por la rampa"], ["Estacionamiento Central · Subsuelo", "un piso abajo: subís por la rampa"]]
 
@@ -402,13 +414,17 @@ const SPAWN_PLACES := [["Estacionamiento Central", "a nivel de la calle: salís 
 func _spawn_screen() -> void:
 	set_title(tr("¿DÓNDE APARECER?"))
 	body.add_child(Kit.wrap(tr("Elegí el estacionamiento donde empezás. Todos se conectan con la calle: se entra y se sale manejando."), 15, Kit.MUTED, 300))
+	if _has_last_pos():
+		body.add_child(menu_button("📍 " + tr("ÚLTIMA UBICACIÓN"), tr("seguís desde donde dejaste el auto"), func() -> void:
+			sfx.play("click")
+			_start_city(-1), false))
 	for i in SPAWN_PLACES.size():
 		var idx: int = i
 		body.add_child(menu_button("🅿 " + tr(str(SPAWN_PLACES[i][0])), tr(str(SPAWN_PLACES[i][1])), func() -> void:
 			sfx.play("click")
 			_start_city(idx), i == 0))
 
-## Modo online: sin cuenta se pide una (ver _online_options); con cuenta, el menú del mundo online
+## Modo online: sin cuenta se pide una (ver _online_options); con cuenta pide el apodo la primera vez y muestra el hub del mundo online
 func _online_home() -> void:
 	set_title(tr("MODO ONLINE"))
 	if app.online == null or not app.online.configured():
@@ -418,12 +434,94 @@ func _online_home() -> void:
 			world_online = false
 			go("spawn"), true))
 		return
-	if app.online.is_account():
-		body.add_child(menu_button("🏙 " + tr("INGRESAR A LA CIUDAD"), tr("elegí dónde aparecer"), func() -> void:
-			sfx.play("click")
-			world_online = true
-			go("spawn"), true))
+	if not app.online.is_account():
+		_online_options()
+		return
+	if profile.d.get("nickSet", false) != true:
+		go("nick", null, false)
+		return
+	_online_hub()
+
+## El hub del mundo online: quién sos, cómo está la conexión, cuánta gente hay y el botón de entrar
+func _online_hub() -> void:
+	var nick := str(profile.d.get("name", "Piloto"))
+	var card := Kit.panel(12, Kit.PANEL2)
+	body.add_child(card)
+	var cv := Kit.vbox(4)
+	card.add_child(cv)
+	var head := Kit.hbox(8)
+	cv.add_child(head)
+	var nl := Kit.label("👤 " + nick, 26, Kit.GOLD)
+	nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(nl)
+	head.add_child(Kit.button(tr("CAMBIAR"), func() -> void:
+		sfx.play("click")
+		go("nick"), false, 14, Vector2(100, 38)))
+	var cid: String = profile.current_id()
+	var cm: Dictionary = CarBuild.catalog()["cars"].get(cid, {})
+	cv.add_child(Kit.label("🚗 %s %s" % [str(cm.get("brand", "")), str(cm.get("model", ""))], 15, Kit.TEXT))
+	cv.add_child(Kit.label("🏙 " + tr("MUNDO ABIERTO") + " · Dream City", 15, Kit.MUTED))
+	var st_l := Kit.label("● " + tr("Conectando…"), 15, Kit.MUTED)
+	cv.add_child(st_l)
+	var pl_l := Kit.label("", 15, Kit.MUTED)
+	cv.add_child(pl_l)
+	body.add_child(menu_button("🌍 " + tr("ENTRAR AL MUNDO"), tr("elegí dónde aparecer"), func() -> void:
+		sfx.play("click")
+		world_online = true
+		go("spawn"), true))
 	_online_options()
+	# estado de la conexión y jugadores (sin trabar la pantalla)
+	var on: Node = app.online
+	var r: Dictionary = await on.call_fn("presence_list", {"p_limit": 60})
+	if not is_instance_valid(st_l):
+		return
+	if r["ok"] and r["data"] is Array:
+		st_l.text = "● " + tr("Conectado")
+		st_l.add_theme_color_override("font_color", Kit.GREEN)
+		var n := 0
+		var fr := 0
+		for p in (r["data"] as Array):
+			if bool(p.get("is_me", false)):
+				continue
+			n += 1
+			if bool(p.get("is_friend", false)):
+				fr += 1
+		pl_l.text = "👥 %s · ⭐ %s" % [tr("%d jugadores online") % n, tr("%d amigos") % fr]
+	else:
+		st_l.text = "● " + tr("Sin conexión con el servidor: se puede entrar igual, sin chat ni jugadores.")
+		st_l.add_theme_color_override("font_color", Kit.RED)
+
+## Apodo del jugador (se muestra en la lista de jugadores, el chat, los amigos, los reportes y el mercado)
+func _nick_screen() -> void:
+	set_title(tr("NOMBRE DEL JUGADOR"))
+	var first: bool = profile.d.get("nickSet", false) != true
+	body.add_child(Kit.wrap(tr("Elegí el nombre con el que te van a ver los demás jugadores. Entre 3 y 16 letras, sin insultos."), 15, Kit.TEXT, 300))
+	var le := LineEdit.new()
+	le.text = "" if first else str(profile.d.get("name", ""))
+	le.placeholder_text = tr("Tu nombre de piloto")
+	le.max_length = 16
+	le.custom_minimum_size = Vector2(0, 58)
+	le.add_theme_font_size_override("font_size", 24)
+	body.add_child(le)
+	var msg := Kit.wrap("", 14, Kit.RED, 300)
+	var ok := func() -> void:
+		var t := le.text.strip_edges()
+		var e: String = OnlineSocial.nick_error(t)
+		if e != "":
+			msg.text = tr(e)
+			return
+		sfx.play("click")
+		profile.d["name"] = t
+		profile.d["nickSet"] = true
+		profile.save()
+		go("online", null, false)
+	body.add_child(Kit.button("✔ " + tr("CONFIRMAR"), ok, true, 22, Vector2(0, 60)))
+	body.add_child(msg)
+	le.text_submitted.connect(func(_s: String) -> void: ok.call())
+	if not first:
+		body.add_child(Kit.button(tr("← Volver"), func() -> void:
+			sfx.play("click")
+			go("online", null, false), false, 16, Vector2(0, 46)))
 
 func launch(cfg: Dictionary, ask := true) -> void:
 	if ask:

@@ -9,8 +9,8 @@ const CityNames := preload("res://game/city/city_names.gd")
 
 const MINI := 176.0 # lado del minimapa (px)
 const MINI_R := 230.0 # metros que muestra de radio
-const KIND_COL := {"dealer": Color(0.35, 0.65, 1.0), "garage": Color(1.0, 0.6, 0.15), "view": Color(1.0, 0.88, 0.3), "fuel": Color(0.95, 0.32, 0.28), "toll": Color(0.95, 0.95, 0.95), "parking": Color(0.30, 0.55, 0.95)}
-const KIND_ICON := {"dealer": "🚗", "garage": "🔧", "view": "⛰", "fuel": "⛽", "toll": "🛣", "parking": "🅿"}
+const KIND_COL := {"dealer": Color(0.35, 0.65, 1.0), "garage": Color(1.0, 0.6, 0.15), "view": Color(1.0, 0.88, 0.3), "fuel": Color(0.95, 0.32, 0.28), "toll": Color(0.95, 0.95, 0.95), "parking": Color(0.30, 0.55, 0.95), "drift": Color(0.55, 0.85, 1.0)}
+const KIND_ICON := {"dealer": "🚗", "garage": "🔧", "view": "⛰", "fuel": "⛽", "toll": "🛣", "parking": "🅿", "drift": "🌀"}
 
 var city
 var track
@@ -335,7 +335,9 @@ func update_hud(dt: float, car) -> void:
 		_exit_warned[ex["num"]] = true
 		if not _toast_cb.is_valid():
 			continue
-		if str(ex.get("to", "")) != "":
+		if str(ex.get("to", "")) == "plaza":
+			_toast_cb.call(Tr.t("%s: seguí derecho hasta la Plaza de Drift") % CityNames.t(str(ex["name"])))
+		elif str(ex.get("to", "")) != "":
 			_toast_cb.call(Tr.t("%s: seguí derecho para salir de la ciudad") % CityNames.t(str(ex["name"])))
 		else:
 			_toast_cb.call(Tr.t("%s: esa ciudad abre en la próxima actualización") % CityNames.t(str(ex["name"])))

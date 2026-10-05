@@ -13,6 +13,9 @@ const OnlineSocial := preload("res://game/online/online_social.gd")
 const CityDriver := preload("res://game/ai/city_driver.gd")
 const CityShops := preload("res://game/city/city_shops.gd")
 const CityLinks := preload("res://game/city/city_links.gd")
+const CityDrift := preload("res://game/city/city_drift.gd")
+const RemoteCars := preload("res://game/online/remote_cars.gd")
+const CityLayout := preload("res://game/city/city_layout.gd")
 const CityFuel := preload("res://game/city/city_fuel.gd")
 const CityClock := preload("res://game/city/city_clock.gd")
 const CityToll := preload("res://game/city/city_toll.gd")
@@ -1114,12 +1117,17 @@ func _start_session() -> void:
 			fuel.setup(self, track.city)
 			tolls = CityToll.new()
 			tolls.setup(self, track.world_node, track.city)
+			city_drift = CityDrift.new()
+			city_drift.setup(self, track.world_node, track.city)
 			if cfg.get("online", false) == true and online != null and profile != null:
 				social = OnlineSocial.new()
 				add_child(social)
 				social.setup(online, profile)
 				if social.active:
 					race_hud.setup_online(social, profile)
+					var rc := RemoteCars.new() # los autos de los otros jugadores
+					rc.setup(self, social, track.city)
+					add_child(rc)
 			if cfg.has("bigmap") and race_hud.city_hud != null:
 				race_hud.city_hud.set_dest(race_hud.city_hud.city.pois[0]["front"], str(race_hud.city_hud.city.pois[0]["name"]))
 				race_hud.city_hud.call_deferred("_set_big", true)
@@ -1559,6 +1567,7 @@ var shops # CityShops (solo en Dream City)
 var links # CityLinks: bocas de túnel y estacionamiento
 var fuel # CityFuel: nafta y gasolineras
 var tolls # CityToll: peajes de las rutas
+var city_drift # CityDrift: la Plaza de Drift al final de la Ruta 60
 var clock # CityClock: ciclo de día y noche
 var _ug := 0.0 # 0 = afuera · 1 = bajo tierra (el sol y el cielo se apagan)
 var _ug_base: Array = [] # luz del sol, luz ambiente, niebla (color, inicio, fin) de afuera
@@ -1599,7 +1608,7 @@ func _check_gates() -> void:
 	var pos := Vector2(ph.px, ph.pz)
 	for ex in (track as CityTrack).city.exits:
 		var to := str(ex.get("to", ""))
-		if to != "" and pos.distance_to(ex["pos"]) < 12.0:
+		if to != "" and to != "plaza" and pos.distance_to(ex["pos"]) < 12.0:
 			_gate_go = true
 			if fuel != null:
 				fuel.save()
@@ -1639,6 +1648,10 @@ func on_teleport() -> void:
 func _exit_tree() -> void:
 	if social != null and is_instance_valid(social):
 		social.leave()
+	if track is CityTrack and profile != null and not cars.is_empty() and str(cfg.get("type", "")) == "city":
+		var lp = cars[0].phys # la última ubicación: se puede volver a aparecer ahí desde el menú
+		profile.d["lastPos"] = [snappedf(lp.px, 0.1), snappedf(lp.pz, 0.1), snappedf(lp.yaw, 0.01), CityLayout.WORLD_VERSION]
+		profile.save()
 
 func _tick_session(dt: float) -> void:
 	if shops != null:
@@ -1646,6 +1659,8 @@ func _tick_session(dt: float) -> void:
 		links.update(dt)
 		fuel.update(dt)
 		tolls.update(dt)
+		if city_drift != null:
+			city_drift.update(dt)
 		_check_gates()
 		if social != null and not cars.is_empty():
 			var sp0 = cars[0].phys
@@ -2274,6 +2289,8 @@ func _step_physics(dt: float) -> void:
 					social.note_event("golpe")
 				if session != null and track is DriftTrack:
 					session.on_wall(c.wall_hit)
+				if city_drift != null:
+					city_drift.on_wall(c.wall_hit)
 				if adv != null:
 					adv.on_hit(c.wall_hit, "wall")
 			c.wall_hit = 0.0

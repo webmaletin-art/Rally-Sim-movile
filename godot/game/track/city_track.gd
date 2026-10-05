@@ -77,6 +77,17 @@ func _push_locked(x: float, z: float, r: float) -> Vector3:
 		var pen := r - float(pr[0])
 		if pen > 0.0:
 			best = Vector3(float(pr[2]), float(pr[3]), minf(pen, 6.0))
+	if not city.drift.is_empty(): # la pared invisible de la plaza de drift (el cerco), con una abertura donde entra la ruta
+		var dc: Vector2 = city.drift["c"]
+		var dd := Vector2(x, z) - dc
+		var dl := dd.length()
+		var rr: float = city.drift["r"]
+		if dl > rr - 3.0 - r and dl < rr + 3.0 + r and dl > 0.001:
+			var u := dd / dl
+			if u.dot(-(city.drift["dir"] as Vector2)) < CityLayout.DRIFT_GATE:
+				var pen := dl + r - (rr - 1.0) if dl < rr else (rr + 1.0) - (dl - r)
+				if pen > best.z:
+					best = Vector3(-u.x if dl < rr else u.x, -u.y if dl < rr else u.y, pen)
 	var kx := int(floor(x / 16.0))
 	var kz := int(floor(z / 16.0))
 	var hit_id := -1

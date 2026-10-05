@@ -70,6 +70,7 @@ func setup(p_track) -> void:
 	_tunnel_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_ground_plane()
 	_horizon()
+	_drift_disc()
 
 ## Un plano enorme y plano bajo todo el mundo (el color de la lejanía): lo que todavía no se armó no deja un hueco
 func _ground_plane() -> void:
@@ -128,6 +129,50 @@ func _horizon() -> void:
 	_hz.extra_cull_margin = 4000.0
 	_hz.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_hz)
+
+## Triángulo que mira hacia arriba sea cual sea el orden de los puntos
+func _up_tri(s: Soup, a: Vector3, b: Vector3, c: Vector3, col: Color) -> void:
+	if (b - a).cross(c - a).y < 0.0:
+		s.tri(a, c, b, col)
+	else:
+		s.tri(a, b, c, col)
+
+## La Plaza de Drift (al final de la Ruta 60): un disco de asfalto parejo con anillos pintados donde van los conos. Es un solo objeto chico que se oculta lejos.
+func _drift_disc() -> void:
+	if city.drift.is_empty():
+		return
+	var cen: Vector2 = city.drift["c"]
+	var r: float = city.drift["r"]
+	var y := float(city.drift["h"]) + 0.13
+	var s := Soup.new()
+	var seg := 56
+	var asph := Color(0.46, 0.47, 0.52)
+	for i in seg:
+		var a0 := TAU * float(i) / float(seg)
+		var a1 := TAU * float(i + 1) / float(seg)
+		var col := asph.lerp(Color(0.50, 0.51, 0.56), 0.5 + 0.5 * sin(float(i) * 1.9) * 0.4)
+		_up_tri(s, Vector3(cen.x, y, cen.y), Vector3(cen.x + cos(a0) * r, y, cen.y + sin(a0) * r), Vector3(cen.x + cos(a1) * r, y, cen.y + sin(a1) * r), col)
+	for rr in [62.0, 34.0, 10.0, r - 1.2]: # anillos blancos (los conos están sobre ellos) y el borde
+		for i in seg:
+			var a0 := TAU * float(i) / float(seg)
+			var a1 := TAU * float(i + 1) / float(seg)
+			var i0 := Vector3(cen.x + cos(a0) * (rr - 0.18), y + 0.02, cen.y + sin(a0) * (rr - 0.18))
+			var i1 := Vector3(cen.x + cos(a1) * (rr - 0.18), y + 0.02, cen.y + sin(a1) * (rr - 0.18))
+			var o0 := Vector3(cen.x + cos(a0) * (rr + 0.18), y + 0.02, cen.y + sin(a0) * (rr + 0.18))
+			var o1 := Vector3(cen.x + cos(a1) * (rr + 0.18), y + 0.02, cen.y + sin(a1) * (rr + 0.18))
+			_up_tri(s, i0, i1, o1, C_WHT)
+			_up_tri(s, i0, o1, o0, C_WHT)
+	var m := ArrayMesh.new()
+	var dm := StandardMaterial3D.new()
+	dm.vertex_color_use_as_albedo = true
+	dm.roughness = 1.0
+	dm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_surface(m, s, dm)
+	var mi := MeshInstance3D.new()
+	mi.mesh = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.visibility_range_end = 900.0
+	add_child(mi)
 
 # ───────────────────────── carga por cuadras ─────────────────────────
 func _process(_dt: float) -> void:
@@ -367,6 +412,8 @@ const TC := 16.0 # lado de una celda del terreno
 func _ground_color(x: float, z: float, y: float) -> Color:
 	for oa in city.open_areas:
 		if Vector2(x, z).distance_to(oa["pos"]) < float(oa["r"]) + 6.0:
+			if oa.get("flat", false):
+				continue # la plaza de drift tiene su propio disco: el suelo de alrededor es campo
 			if oa.get("dark", false):
 				return Color(0.22, 0.23, 0.27)
 			if oa.get("station", false):
@@ -402,6 +449,8 @@ func _terrain(s: Soup, x0: float, z0: float) -> void:
 				# las salas del estacionamiento a distinta altura: el suelo queda por debajo (y bastante más allá de la pared)
 				if (oa as Dictionary).has("y") and Vector2(wx, wz).distance_to(oa["pos"]) < float(oa["r"]) + 22.0:
 					h = minf(h, float(oa["y"]) - 0.5)
+				if (oa as Dictionary).get("flat", false) and Vector2(wx, wz).distance_to(oa["pos"]) < float(oa["r"]) + 22.0:
+					h = minf(h, float(city.drift["h"]) - 0.2) # el terreno queda un poco por debajo del disco de asfalto
 			hs[iz * (n + 1) + ix] = h
 	for iz in n:
 		for ix in n:
@@ -691,7 +740,7 @@ func _gate(ex: Dictionary) -> Node3D:
 	var lab := Label3D.new()
 	var dest_txt := Tr.t("PRÓXIMAMENTE")
 	if open_gate:
-		dest_txt = Tr.t("AVENTURA") if str(ex["to"]) == "adventure" else Tr.t("DRIFT")
+		dest_txt = Tr.t("AVENTURA") if str(ex["to"]) == "adventure" else Tr.t("PLAZA DE DRIFT")
 	lab.text = "%s\n%s" % [Tr.t("SALIDA %d") % int(ex["num"]), dest_txt]
 	lab.font_size = 80
 	lab.pixel_size = 0.012

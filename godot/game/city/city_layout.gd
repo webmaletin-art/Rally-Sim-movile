@@ -26,7 +26,10 @@ const TUNNEL_HALF := 900.0 # cada brazo de la cruz mide 900 m desde el centro
 const RINGS := [130.0, 260.0, 390.0, 520.0, 650.0, 780.0, 910.0, 1040.0]
 const COAST_R := 1120.0
 const RURAL_END := 2300.0
-const EXIT_TO := {20: "adventure", 60: "drift"} # las salidas abiertas: la Ruta 20 sigue por la Ruta de los Sueños (Aventura) y la Ruta 60 llega a la plaza de Drift
+const EXIT_TO := {20: "adventure", 60: "plaza"} # las salidas abiertas: la Ruta 20 sigue por la Ruta de los Sueños (Aventura); la Ruta 60 termina en la Plaza de Drift (está ahí mismo: no hay otro mapa)
+const WORLD_VERSION := 4 # sube cuando cambia el mapa (la «última ubicación» guardada de una versión anterior ya no sirve)
+const DRIFT_GATE := 0.996 # la abertura de la plaza donde entra la ruta (coseno del ángulo: unos 8 m a cada lado)
+const DRIFT_R := 90.0 # radio de la Plaza de Drift, al final de la Ruta 60
 const HILL_C := Vector2(-1086.0, -1086.0) # centro de la colina (al noroeste)
 const HILL_R := 430.0
 const HILL_H := 72.0
@@ -50,6 +53,10 @@ var mouths: Array = [] # estructuras de entrada: {id, pos: Vector2, dir: Vector2
 var halls: Array = [] # {pos, r, h, y (altura del piso), gaps: [[ángulo, medio ancho]] (aberturas de la pared donde empiezan las rampas)}
 var spawns: Array = [] # lugares donde aparece el jugador al entrar al mundo: dentro de un estacionamiento [x, z, rumbo]
 var spawn_names: Array = [] # el nombre de cada lugar de aparición (el mismo orden que spawns)
+var drift := {} # la Plaza de Drift: {c: centro, r: radio, h: altura (plana), cones: PackedVector2Array con los conos, dir: hacia donde mira la ruta}
+var _flat_c := Vector2.ZERO # suelo plano de la plaza (se mezcla con el terreno alrededor)
+var _flat_r := 0.0
+var _flat_h := 0.0
 var garage := {} # el Estacionamiento Central: {road, p (en la calle), nrm, tn, c: [centros de las tres salas], y: [alturas], r: [radios]}
 var stations: Array = [] # gasolineras: {id, name, center, yaw, dir, tn, color, fuel_points: [Vector2], pumps: [Vector2], front}
 # objetos de la calle (farolas, árboles, semáforos, bolardos): el id es el índice; salen igual en todos los teléfonos
@@ -87,6 +94,10 @@ func height(x: float, z: float) -> float:
 	h -= 12.0 * smoothstep(SEA_Z + 40.0, SEA_Z + 260.0, z) # el fondo del mar
 	if d < HILL_R:
 		h += HILL_H * (1.0 - d / HILL_R)
+	if _flat_r > 0.0:
+		var fd := Vector2(x, z).distance_to(_flat_c)
+		if fd < _flat_r + 150.0:
+			h = lerpf(_flat_h, h, smoothstep(_flat_r, _flat_r + 150.0, fd)) # la plaza de drift es plana y el terreno se une a ella de a poco
 	return h
 
 ## Zona de la ciudad (decide la altura y el estilo de los edificios): 0 centro · 1 intermedio · 2 barrio · 3 costa · 4 colina · 5 afuera
@@ -119,6 +130,7 @@ func build() -> void:
 	_place_facades()
 	_place_props()
 	_place_roadside()
+	_place_drift_plaza()
 
 func _sample_road(id: int, name_s: String, num: int, kind: String, hw: float, sw: float, plan: PackedVector2Array) -> void:
 	var pts := PackedVector3Array()
@@ -247,6 +259,49 @@ func _make_grid(id: int) -> int:
 		num += 1
 	return id
 
+## Plaza de Drift: un playón redondo y plano al final de la Ruta 60 (a la que se llega manejando, sin otro mapa), con conos con física. El terreno se aplana alrededor (height()).
+func _make_drift_plaza() -> void:
+	var r_last := 1040.0 + floorf((RURAL_END - 1040.0) / STEP) * STEP
+	var last := _rural_pos(6, r_last)
+	var dn := (last - _rural_pos(6, r_last - STEP)).normalized()
+	var c := last + dn * (DRIFT_R - 2.0)
+	_flat_r = 0.0
+	_flat_h = height(c.x, c.y)
+	_flat_c = c
+	_flat_r = DRIFT_R
+	var cones := PackedVector2Array()
+	for i in 44:
+		var a := TAU * float(i) / 44.0
+		cones.append(c + Vector2(cos(a), sin(a)) * 62.0)
+	for i in 30:
+		var a := TAU * float(i) / 30.0 + 0.1
+		cones.append(c + Vector2(cos(a), sin(a)) * 34.0)
+	for i in 14:
+		var a := TAU * float(i) / 14.0
+		cones.append(c + Vector2(cos(a), sin(a)) * 10.0)
+	var per := Vector2(-dn.y, dn.x)
+	for i in 12: # un slalom a lo largo de la plaza
+		cones.append(c + dn * (-52.0 + float(i) * 9.0) + per * (4.0 if i % 2 == 0 else -4.0))
+	drift = {"c": c, "r": DRIFT_R, "h": _flat_h, "cones": cones, "dir": dn}
+	open_areas.append({"pos": c, "r": DRIFT_R, "name": "Plaza de Drift", "paving": true, "flat": true, "nb": DRIFT_R + 8.0})
+
+## Cerco de postes alrededor de la plaza (con una abertura donde entra la ruta) y el lugar en el mapa
+func _place_drift_plaza() -> void:
+	if drift.is_empty():
+		return
+	var c: Vector2 = drift["c"]
+	var dn: Vector2 = drift["dir"]
+	var n := int(ceil(TAU * (DRIFT_R - 1.0) / 6.0))
+	for i in n:
+		var a := TAU * float(i) / float(n)
+		var u := Vector2(cos(a), sin(a))
+		if u.dot(-dn) > DRIFT_GATE:
+			continue # por acá entra la ruta
+		_add_prop(13, c.x + u.x * (DRIFT_R - 1.0), c.y + u.y * (DRIFT_R - 1.0), -u)
+	var front := c - dn * (DRIFT_R - 14.0)
+	pois.append({"id": "plaza_drift", "kind": "drift", "name": "Plaza de Drift", "pos": c, "yaw": atan2(dn.x, dn.y), "size": Vector2(2, 2), "color": Color(0.55, 0.85, 1.0), "y": float(drift["h"]), "road": road_named("Ruta 60"),
+		"front": front, "shop": "", "door": c, "dir": Vector2(-dn.y, dn.x), "road_yaw": atan2(dn.x, dn.y)})
+
 ## Parque del Drift: una plaza redonda abierta (se maneja por adentro) con una calle alrededor y edificios que la cierran
 func _make_park(id: int) -> int:
 	var cen := Vector2(cos(deg_to_rad(22.5)), sin(deg_to_rad(22.5))) * 195.0
@@ -342,6 +397,7 @@ func _make_roads() -> void:
 		id += 1
 	# rutas rurales: continúan las avenidas 1, 5, 7 y 8 hacia afuera, con curvas largas, hasta una Salida numerada
 	var rural_ids := {}
+	_make_drift_plaza()
 	var rn := 20
 	for k in [0, 4, 6, 7]:
 		var plan := PackedVector2Array()

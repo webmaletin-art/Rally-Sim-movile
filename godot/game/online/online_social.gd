@@ -3,7 +3,7 @@ extends Node
 ## Todo pasa por funciones de la base (supabase/migrations/20261005000000_chat_social_market.sql); acá no hay ninguna regla de confianza: el servidor filtra los insultos,
 ## aplica los bloqueos del chat y guarda la evidencia de los reportes. Si no hay red, cada llamada devuelve {ok:false} y el juego sigue.
 
-const BEAT_EVERY := 6.0 # segundos entre avisos de posición
+const BEAT_EVERY := 2.0 # segundos entre avisos de posición (los otros jugadores te ven moverte con esa frecuencia)
 const POLL_IDLE := 12.0 # el chat mundial se mira despacio con el panel cerrado (para el globito de mensajes nuevos)
 const POLL_OPEN := 3.0 # y rápido con el panel abierto
 const KEEP := 80 # mensajes que se guardan por canal
@@ -36,6 +36,25 @@ func setup(p_online: Node, p_profile: RefCounted) -> void:
 	set_process(active)
 	if active:
 		_beat_t = 1.0
+
+const BAD_NICK := ["puta", "puto", "mierda", "carajo", "concha", "verga", "pelotud", "forro", "boludo", "culiad", "idiota", "imbecil", "maricon", "trolo", "sorete", "cabron", "fuck", "shit", "bitch", "bastard", "asshole", "dick", "cunt", "whore", "slut", "nigg", "fagg", "retard", "pussy", "cock", "admin", "moderador"]
+
+## Valida un apodo: devuelve "" si está bien o el texto del problema. Entre 3 y 16 letras, números, espacios, guiones o puntos, y sin palabras ofensivas
+static func nick_error(n: String) -> String:
+	var t := n.strip_edges()
+	if t.length() < 3:
+		return "El nombre tiene que tener al menos 3 letras."
+	if t.length() > 16:
+		return "El nombre puede tener hasta 16 letras."
+	var rx := RegEx.new()
+	rx.compile("^[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ _.\\-]+$")
+	if rx.search(t) == null:
+		return "Usá sólo letras, números, espacios, guiones y puntos."
+	var low := t.to_lower().replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u").replace("ñ", "n").replace("0", "o").replace("1", "i").replace("3", "e").replace("4", "a").replace(" ", "").replace("_", "").replace(".", "").replace("-", "")
+	for w in BAD_NICK:
+		if low.contains(w):
+			return "Ese nombre no está permitido. Elegí otro."
+	return ""
 
 func player_name() -> String:
 	return str(profile.d.get("name", "Piloto")) if profile != null else "Piloto"

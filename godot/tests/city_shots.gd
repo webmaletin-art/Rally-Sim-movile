@@ -98,6 +98,15 @@ func _init() -> void:
 			var cam_g := gfr + Vector2(gdr.y, -gdr.x) * 30.0
 			var dvg: Vector2 = (pg["pos"] as Vector2) - cam_g
 			shots.append(["76_garaje_fachada", cam_g.x, cam_g.y, rad_to_deg(atan2(dvg.x, dvg.y)), 3.0, -3.0])
+	if not track.city.drift.is_empty():
+		var dc: Vector2 = track.city.drift["c"]
+		var dd: Vector2 = track.city.drift["dir"]
+		var de := dc - dd * 90.0
+		var cam_d := de - dd * 40.0
+		shots.append(["80_drift_entrada", cam_d.x, cam_d.y, rad_to_deg(atan2(dd.x, dd.y)), 2.6, -2.0])
+		var cam_d2 := dc - dd * 50.0
+		shots.append(["81_drift_dentro", cam_d2.x, cam_d2.y, rad_to_deg(atan2(dd.x, dd.y)), 2.6, -3.0])
+		shots.append(["82_drift_alto", dc.x - dd.x * 120.0, dc.y - dd.y * 120.0, rad_to_deg(atan2(dd.x, dd.y)), 70.0, -35.0])
 	for stn in track.city.stations:
 		var sc: Vector2 = stn["center"]
 		var snr: Vector2 = stn["dir"]

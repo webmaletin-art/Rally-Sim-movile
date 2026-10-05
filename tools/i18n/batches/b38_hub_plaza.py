@@ -1,0 +1,23 @@
+# Hub online, apodo, última ubicación y Plaza de Drift
+T = {
+"ÚLTIMA UBICACIÓN": ("LAST LOCATION", "ÚLTIMA LOCALIZAÇÃO", "DERNIÈRE POSITION", "ULTIMA POSIZIONE", "LETZTE POSITION"),
+"seguís desde donde dejaste el auto": ("continue from where you left the car", "continue de onde você deixou o carro", "reprends là où tu as laissé la voiture", "riparti da dove hai lasciato l'auto", "weiter, wo du das Auto abgestellt hast"),
+"CAMBIAR": ("CHANGE", "ALTERAR", "CHANGER", "CAMBIA", "ÄNDERN"),
+"ENTRAR AL MUNDO": ("ENTER THE WORLD", "ENTRAR NO MUNDO", "ENTRER DANS LE MONDE", "ENTRA NEL MONDO", "WELT BETRETEN"),
+"Conectado": ("Connected", "Conectado", "Connecté", "Connesso", "Verbunden"),
+"%d jugadores online": ("%d players online", "%d jogadores online", "%d joueurs en ligne", "%d giocatori online", "%d Spieler online"),
+"%d amigos": ("%d friends", "%d amigos", "%d amis", "%d amici", "%d Freunde"),
+"Sin conexión con el servidor: se puede entrar igual, sin chat ni jugadores.": ("No connection to the server: you can still enter, without chat or players.", "Sem conexão com o servidor: dá para entrar igual, sem chat nem jogadores.", "Pas de connexion au serveur : tu peux entrer quand même, sans chat ni joueurs.", "Nessuna connessione al server: puoi entrare lo stesso, senza chat né giocatori.", "Keine Verbindung zum Server: Du kannst trotzdem beitreten, ohne Chat und Spieler."),
+"NOMBRE DEL JUGADOR": ("PLAYER NAME", "NOME DO JOGADOR", "NOM DU JOUEUR", "NOME DEL GIOCATORE", "SPIELERNAME"),
+"Elegí el nombre con el que te van a ver los demás jugadores. Entre 3 y 16 letras, sin insultos.": ("Choose the name other players will see. Between 3 and 16 characters, no insults.", "Escolha o nome com o qual os outros jogadores vão ver você. Entre 3 e 16 letras, sem insultos.", "Choisis le nom sous lequel les autres joueurs te verront. Entre 3 et 16 caractères, sans insultes.", "Scegli il nome con cui ti vedranno gli altri giocatori. Tra 3 e 16 caratteri, senza insulti.", "Wähle den Namen, unter dem dich die anderen Spieler sehen. 3 bis 16 Zeichen, keine Beleidigungen."),
+"Tu nombre de piloto": ("Your driver name", "Seu nome de piloto", "Ton nom de pilote", "Il tuo nome da pilota", "Dein Fahrername"),
+"CONFIRMAR": ("CONFIRM", "CONFIRMAR", "CONFIRMER", "CONFERMA", "BESTÄTIGEN"),
+"← Volver": ("← Back", "← Voltar", "← Retour", "← Indietro", "← Zurück"),
+"El nombre tiene que tener al menos 3 letras.": ("The name must have at least 3 characters.", "O nome precisa ter pelo menos 3 letras.", "Le nom doit comporter au moins 3 caractères.", "Il nome deve avere almeno 3 caratteri.", "Der Name muss mindestens 3 Zeichen haben."),
+"El nombre puede tener hasta 16 letras.": ("The name can have up to 16 characters.", "O nome pode ter até 16 letras.", "Le nom peut comporter jusqu'à 16 caractères.", "Il nome può avere fino a 16 caratteri.", "Der Name darf bis zu 16 Zeichen haben."),
+"Usá sólo letras, números, espacios, guiones y puntos.": ("Use only letters, numbers, spaces, hyphens and dots.", "Use apenas letras, números, espaços, hifens e pontos.", "Utilise uniquement des lettres, chiffres, espaces, tirets et points.", "Usa solo lettere, numeri, spazi, trattini e punti.", "Verwende nur Buchstaben, Zahlen, Leerzeichen, Bindestriche und Punkte."),
+"Ese nombre no está permitido. Elegí otro.": ("That name isn't allowed. Choose another one.", "Esse nome não é permitido. Escolha outro.", "Ce nom n'est pas autorisé. Choisis-en un autre.", "Questo nome non è consentito. Scegline un altro.", "Dieser Name ist nicht erlaubt. Wähle einen anderen."),
+"PLAZA DE DRIFT": ("DRIFT PLAZA", "PRAÇA DE DRIFT", "PLACE DE DRIFT", "PIAZZA DRIFT", "DRIFT-PLATZ"),
+"Plaza de Drift": ("Drift Plaza", "Praça de Drift", "Place de Drift", "Piazza Drift", "Drift-Platz"),
+"%s: seguí derecho hasta la Plaza de Drift": ("%s: keep straight to reach the Drift Plaza", "%s: siga reto até a Praça de Drift", "%s : continue tout droit jusqu'à la Place de Drift", "%s: prosegui dritto fino alla Piazza Drift", "%s: geradeaus bis zum Drift-Platz"),
+}
