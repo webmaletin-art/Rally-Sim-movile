@@ -156,6 +156,8 @@ func _apply_weather() -> void:
 			w._splash.emitting = on
 			if race.get("audio") != null:
 				race.audio.rain(on)
+		if race.get("audio") != null and on:
+			race.audio.tgt["rain"] = 0.04 + 0.08 * clampf(float(wx["rain"]), 0.0, 1.0) # la lluvia suena más fuerte cuanto más llueve
 
 # ───────────── faros: un haz plano aditivo sobre el piso, delante del auto ─────────────
 func _build_beam() -> void:

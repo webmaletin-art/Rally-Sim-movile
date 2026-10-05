@@ -57,6 +57,7 @@ const AiCars := preload("res://game/data/ai_cars.gd")
 const Session := preload("res://game/session.gd")
 const RaceHud := preload("res://game/ui/race_hud.gd")
 const UiSfx := preload("res://game/audio/ui_sfx.gd")
+const WorldAmbient := preload("res://game/audio/world_ambient.gd")
 const AdvTrack := preload("res://game/adventure/adv_track.gd")
 const AdvWorld := preload("res://game/adventure/adv_world.gd")
 const AdvData := preload("res://game/adventure/adv_data.gd")
@@ -1147,6 +1148,10 @@ func _start_session() -> void:
 			ct.attach(track.city, track, track.world_node)
 			world_life.register_system(ct)
 			world_life.set_enabled(profile.setting("worldLife") != false)
+			ambient = WorldAmbient.new() # ambiente, tránsito en 3D, truenos y eco bajo tierra (Etapa 20)
+			add_child(ambient)
+			ambient.setup(self, 2 if WorldLifeConfig.profile_for(profile) == "LOW" else (3 if WorldLifeConfig.profile_for(profile) == "MEDIUM" else 4))
+			ambient.set_level(float(profile.setting("volAmb")) / 100.0)
 			if social != null and social.active:
 				world_life.join_online(online)
 			if cfg.has("bigmap") and race_hud.city_hud != null:
@@ -1591,6 +1596,7 @@ var tires # CityTires: desgaste de las gomas puestas
 var acts # CityActivities: radares, contrarreloj panorámica y encargos
 var tolls # CityToll: peajes de las rutas
 var city_drift # CityDrift: la Plaza de Drift al final de la Ruta 60
+var ambient # WorldAmbient: audio del mundo abierto (tránsito en 3D, clima, ecos); sólo en Dream City
 var world_life # WorldLife: la capa de vida del mundo (reloj, semilla, sectores, sistemas de vida); sólo en Dream City
 var clock # CityClock: ciclo de día y noche
 var _ug := 0.0 # 0 = afuera · 1 = bajo tierra (el sol y el cielo se apagan)
@@ -1716,6 +1722,9 @@ func _tick_session(dt: float) -> void:
 			if tsys != null:
 				tsys.player_vel = Vector2(wp.vx, wp.vz) # para que el tránsito reaccione al jugador (frena, esquiva, se golpea)
 			world_life.update(dt, Vector2(wp.px, wp.pz))
+			if ambient != null:
+				ambient.enabled = audio_on
+				ambient.update(dt, Vector2(wp.px, wp.pz), sqrt(wp.vx * wp.vx + wp.vz * wp.vz))
 		if clock != null:
 			clock.update(dt)
 		_underground_light(dt)
@@ -1863,6 +1872,9 @@ func _apply_live_settings(key: String) -> void:
 		"worldLife":
 			if world_life != null:
 				world_life.set_enabled(profile.setting("worldLife") != false)
+		"volAmb":
+			if ambient != null:
+				ambient.set_level(float(profile.setting("volAmb")) / 100.0)
 		"particles":
 			fx.intensity = _particle_level() / 10.0
 		"abs", "tc", "stab", "lineAssist":

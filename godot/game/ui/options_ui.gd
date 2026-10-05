@@ -64,6 +64,7 @@ const OPTION_LIST := [
 	["sonido", "volEngine", "Motor", [0, 50, 75, 100, 130], ["Silencio", "Bajo", "Medio", "Normal", "Fuerte"]],
 	["sonido", "volSurf", "Gomas y tierra", [0, 15, 30, 50, 80], ["Silencio", "Muy bajo", "Normal", "Fuerte", "Muy fuerte"]],
 	["sonido", "volWind", "Viento", [0, 15, 30, 50, 80], ["Silencio", "Muy bajo", "Normal", "Fuerte", "Muy fuerte"]],
+	["sonido", "volAmb", "Ambiente del mundo (ciudad, tránsito, clima)", [0, 40, 70, 100], ["Silencio", "Bajo", "Normal", "Fuerte"]],
 	["sonido", "volTurbo", "Turbo", [0, 50, 100, 140], ["Silencio", "Bajo", "Normal", "Fuerte"]],
 	["sonido", "volGear", "Caja de cambios", [0, 50, 100, 140], ["Silencio", "Bajo", "Normal", "Fuerte"]],
 	["sonido", "copilot", "Voz del copiloto (campeonato)", [false, true], ["No", "Sí"]],
