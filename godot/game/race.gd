@@ -1630,7 +1630,7 @@ func _update_fps_label(fps: float) -> void:
 		cl.add_child(_fps_l)
 	_fps_l.visible = true
 	_fps_l.position = Vector2(get_viewport().get_visible_rect().size.x - 190.0, 118.0)
-	_fps_l.text = "%d FPS" % int(fps) + ((" · VIDA " + ("ON" if world_life.is_enabled() else "OFF")) if world_life != null else "")
+	_fps_l.text = "%d FPS" % int(fps) + ((" · VIDA " + (("%.1fms" % world_life.life_ms) + (" ▼%d" % world_life.throttle if world_life.throttle > 0 else "") if world_life.is_enabled() else "OFF")) if world_life != null else "")
 
 var _gate_go := false
 var _gate_t := 0.0 # fundido a negro al cruzar un portón abierto (en vez de cambiar de pantalla de golpe)

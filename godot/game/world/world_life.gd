@@ -25,6 +25,16 @@ var _resync_t := 0.0
 var _syncing := false
 var _online: Node
 var rebuilds := 0 # cuántas veces se reconstruyó (para comprobar)
+# presupuesto de CPU (Etapa 22): se mide cuánto cuesta la vida del mundo por cuadro y, si pasa el tope del perfil, se achican los topes y las frecuencias solos (y se recuperan al aliviarse)
+const BUDGET_MS := {"LOW": 1.6, "MEDIUM": 2.6, "HIGH": 4.0}
+const MAX_THROTTLE := 3
+var life_ms := 0.0 # costo promedio por cuadro de todos los sistemas (ms)
+var sys_ms: Dictionary = {} # id → costo promedio por cuadro (ms)
+var _frame_acc: Dictionary = {}
+var spike_ms := 0.0 # lo más caro que costó un cambio de sector (ms; baja de a poco)
+var throttle := 0 # 0 = todo normal … 3 = al mínimo
+var _over_t := 0.0
+var _under_t := 0.0
 
 ## profile: perfil del jugador (para la semilla local, la hora guardada y el perfil de rendimiento). cell: lado del sector (el de la cuadrícula de la ciudad).
 func setup(profile: RefCounted, cell := 0.0) -> void:
@@ -118,23 +128,79 @@ func update(dt: float, player_xz: Vector2) -> void:
 	if not state.enabled:
 		return
 	state.player_pos = player_xz
+	var t_frame := Time.get_ticks_usec()
 	if sectors.update(player_xz):
 		state.player_sector = sectors.sector
+		var t_sec := Time.get_ticks_usec()
 		for s in systems:
+			var t_s := Time.get_ticks_usec()
 			s.on_sector_changed()
+			_note(str(s.system_id), float(Time.get_ticks_usec() - t_s) / 1000.0)
+		spike_ms = maxf(spike_ms, float(Time.get_ticks_usec() - t_sec) / 1000.0)
+	var hz_k := hz_scale()
 	for i in systems.size():
 		var sys = systems[i]
 		_sys_acc[i] += dt
-		var period := 1.0 / maxf(float(sys.update_hz), 0.1)
+		var period := 1.0 / maxf(float(sys.update_hz) * hz_k, 0.1)
 		if _sys_acc[i] >= period:
 			var acc: float = _sys_acc[i]
 			_sys_acc[i] = 0.0
+			var t_s := Time.get_ticks_usec()
 			sys.update(acc)
+			_note(str(sys.system_id), float(Time.get_ticks_usec() - t_s) / 1000.0)
+	spike_ms = maxf(0.0, spike_ms - dt * 2.0)
+	govern(float(Time.get_ticks_usec() - t_frame) / 1000.0, dt)
 	if _online != null and not _syncing:
 		_resync_t -= dt
 		if _resync_t <= 0.0:
 			_resync_t = float((cfg.get("sync", {}) as Dictionary).get("resync_seconds", 120.0))
 			_sync_online(false)
+
+func _note(id: String, ms: float) -> void:
+	_frame_acc[id] = float(_frame_acc.get(id, 0.0)) + ms
+
+## Tope de CPU de la vida del mundo (ms por cuadro) para el perfil actual
+func budget_ms() -> float:
+	return float(BUDGET_MS.get(state.profile_name, 2.6))
+
+## Cuánto se achican los topes (autos, estacionados, peatones) con el estrangulamiento actual
+func cap_scale() -> float:
+	return pow(0.8, float(throttle))
+
+func scaled_cap(n: int) -> int:
+	return 0 if n <= 0 else maxi(1, int(round(float(n) * cap_scale())))
+
+func hz_scale() -> float:
+	return 1.0 - 0.15 * float(throttle)
+
+## Decide el estrangulamiento con el costo del cuadro (ms). Más de 2 s pasado del tope → un escalón más; más de 6 s holgado → un escalón menos.
+func govern(frame_ms: float, dt: float) -> void:
+	life_ms = lerpf(life_ms, frame_ms, clampf(dt * 3.0, 0.0, 1.0))
+	for k in _frame_acc.keys():
+		sys_ms[k] = lerpf(float(sys_ms.get(k, 0.0)), float(_frame_acc[k]), clampf(dt * 1.5, 0.0, 1.0)) # costo por cuadro de cada sistema (promedio móvil)
+		_frame_acc[k] = 0.0
+	var b := budget_ms()
+	if life_ms > b:
+		_over_t += dt
+		_under_t = 0.0
+		if _over_t > 2.0 and throttle < MAX_THROTTLE:
+			throttle += 1
+			_over_t = 0.0
+			_budget_changed()
+	elif life_ms < b * 0.5 and throttle > 0:
+		_under_t += dt
+		_over_t = 0.0
+		if _under_t > 6.0 and throttle > 0:
+			throttle -= 1
+			_under_t = 0.0
+			_budget_changed()
+	else:
+		_over_t = 0.0
+		_under_t = 0.0
+
+func _budget_changed() -> void:
+	for s in systems:
+		s.on_sector_changed() # cada sistema vuelve a leer su tope
 
 ## Un número que resume el estado lógico del mundo (huella + lo que digan los sistemas)
 func logical_hash(world_time := -1.0) -> int:
@@ -188,7 +254,8 @@ func apply_server(data: Dictionary, rtt := 0.0, first := true) -> void:
 
 func stats() -> Dictionary:
 	var out := {"enabled": state.enabled, "mode": state.mode, "id": state.world_id, "version": state.world_version, "seed": state.world_seed, "time": snappedf(clock.now(), 0.1),
-		"profile": state.profile_name, "sector": state.player_sector, "active_sectors": sectors.active.size(), "synced": state.server_synced, "rebuilds": rebuilds}
+		"profile": state.profile_name, "sector": state.player_sector, "active_sectors": sectors.active.size(), "synced": state.server_synced, "rebuilds": rebuilds,
+		"life_ms": snappedf(life_ms, 0.01), "throttle": throttle, "spike_ms": snappedf(spike_ms, 0.1)}
 	var sys := {}
 	for s in systems:
 		sys[s.system_id] = s.stats()

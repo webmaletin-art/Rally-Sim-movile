@@ -34,6 +34,7 @@ var _slot_cache: Dictionary = {} # Vector2i → [peatones del sector]
 var _chosen: Array = [] # peatones que se dibujan ahora (ya filtrados por tope y distancia)
 var _pool: Array = [] # todos los de los sectores activos
 var _cap := 32
+var _shown_cap := 32 # lo que se dibuja de verdad (el estrangulamiento por CPU lo achica sin rehacer el MultiMesh)
 var _fade: Dictionary = {} # key → 0..1 (aparecen/desaparecen creciendo)
 var _hit: Dictionary = {} # key → segundos que le quedan tirado
 var _scare: Dictionary = {} # key → 0..1 cuánto se hizo atrás
@@ -157,6 +158,7 @@ func on_sector_changed() -> void:
 	if root == null or not is_instance_valid(root) or wl == null or not wl.state.enabled:
 		return
 	_cap = int(wl.state.rules.get("max_pedestrians", 32))
+	_shown_cap = wl.scaled_cap(_cap)
 	_pool.clear()
 	for s in wl.sectors.active:
 		var list: Array = _slot_cache.get(s, [])
@@ -218,7 +220,7 @@ func update(dt: float) -> void:
 		if dd < SHOW_R:
 			cand.append([dd, p, pos, u])
 	cand.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
-	var n := mini(cand.size(), _cap)
+	var n := mini(cand.size(), _shown_cap)
 	var seen: Dictionary = {}
 	for i in n:
 		var e: Array = cand[i]

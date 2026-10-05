@@ -184,9 +184,15 @@ func _own_paint(pattern: int, paint: Color, accent: Color, finish: String, accen
 static func _glass_material() -> StandardMaterial3D:
 	# vidrio polarizado: desde afuera no se ve la tripulación (ni se dibuja); además no hace falta transparencia
 	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0.035, 0.045, 0.06)
+	m.albedo_color = Color(0.05, 0.065, 0.09)
 	m.metallic = 0.6
 	m.roughness = 0.1
+	m.emission_enabled = true # un reflejo de cielo suave: el vidrio no queda como un agujero negro
+	m.emission = Color(0.12, 0.17, 0.24)
+	m.emission_energy_multiplier = 0.8
+	m.rim_enabled = true
+	m.rim = 0.6
+	m.rim_tint = 0.4
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	return m
 
@@ -307,9 +313,17 @@ void fragment() {
 	if (glass_on > 0.5) {
 		gm = max(max(glass_strip(lp, ln, ws, ws_w), glass_strip(lp, ln, rg, rg_w)), glass_side(lp, ln));
 	}
-	ALBEDO = mix(base, vec3(0.012, 0.016, 0.022), gm);
+	ALBEDO = mix(base, vec3(0.02, 0.03, 0.045), gm);
 	METALLIC = mix(metal, 0.85, gm);
 	ROUGHNESS = mix(rough, 0.06, gm);
+	if (gm > 0.01) { // vidrio polarizado con un reflejo de cielo falso (sin esto se veía como un agujero negro): más claro de costado (fresnel) y hacia arriba
+		vec3 V = normalize(VIEW);
+		vec3 N = normalize(NORMAL);
+		float fr = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 2.5);
+		vec3 R = (INV_VIEW_MATRIX * vec4(reflect(-V, N), 0.0)).xyz;
+		vec3 sky = mix(vec3(0.16, 0.22, 0.30), vec3(0.45, 0.62, 0.85), clamp(R.y * 0.8 + 0.3, 0.0, 1.0));
+		EMISSION = sky * gm * (0.14 + 0.55 * fr);
+	}
 }
 """
 static var _livery_shader: Shader

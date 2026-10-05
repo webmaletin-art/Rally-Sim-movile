@@ -10,7 +10,6 @@ const HIPS_REF := 0.99 # altura de la cadera del Y Bot de Mixamo (para escalar a
 
 static var _index: Dictionary = {} # nombre → {off, len, frames, bones}
 static var _cache: Dictionary = {} # nombre → clip decodificado
-static var _bytes := PackedByteArray()
 static var _tried := false
 
 static func _open() -> void:
@@ -19,12 +18,9 @@ static func _open() -> void:
 	_tried = true
 	if not FileAccess.file_exists(PATH):
 		return
-	_bytes = FileAccess.get_file_as_bytes(PATH)
-	if _bytes.size() < 12 or _bytes.slice(0, 4).get_string_from_ascii() != "MXA1":
-		_bytes = PackedByteArray()
+	var f := FileAccess.open(PATH, FileAccess.READ) # sólo se lee el índice (no los 3 MB enteros en memoria: en el teléfono es tiempo y RAM)
+	if f == null or f.get_length() < 12 or f.get_buffer(4).get_string_from_ascii() != "MXA1":
 		return
-	var f := FileAccess.open(PATH, FileAccess.READ)
-	f.get_buffer(4)
 	var n := f.get_32()
 	f.get_float()
 	for i in n:

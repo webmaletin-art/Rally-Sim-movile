@@ -339,7 +339,7 @@ func logical_hash() -> int:
 func on_sector_changed() -> void:
 	if wl == null or not wl.state.enabled or root == null or not is_instance_valid(root):
 		return
-	_cap = int(wl.state.rules.get("max_active_vehicles", 24))
+	_cap = wl.scaled_cap(int(wl.state.rules.get("max_active_vehicles", 24)))
 	_ensure_render()
 	var near: Dictionary = {}
 	for s in wl.sectors.active:

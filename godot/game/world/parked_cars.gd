@@ -118,7 +118,7 @@ func on_sector_changed() -> void:
 	if root == null or not is_instance_valid(root) or wl == null or not wl.state.enabled:
 		return
 	var ep := epoch()
-	var cap := int(wl.state.rules.get("max_parked", 48))
+	var cap: int = wl.scaled_cap(int(wl.state.rules.get("max_parked", 48))) # (el estrangulamiento por CPU lo achica)
 	var want: Dictionary = {}
 	var all: Array = []
 	for s in wl.sectors.active:
