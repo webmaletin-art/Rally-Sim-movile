@@ -140,3 +140,16 @@ Código: `game/online/online_social.gd` (cliente), `game/ui/online_panel.gd` (pa
 - **«La otra ciudad»**: todavía no existe (las Salidas 40 y 80 siguen cerradas), así que por ahora no hay gasolineras ahí; cuando se genere esa ciudad se pueden poner con el mismo mecanismo (`STATION_SPECS`).
 - `WORLD_VERSION` pasó a 5 (el mapa cambió: una «última ubicación» vieja ya no sirve).
 - ⚠ Aprendido: no iterar una constante `Array` dentro de `height()` (se llama desde los hilos de física y daba errores de acceso); por eso las lomas son dos constantes `Vector4`.
+
+## Etapa 14 — superficies del mundo (`world/world_surfaces.gd`)
+Antes todo lo que no era calle era «afuera» (código 4). Ahora `CityTrack.ground_info` devuelve según dónde se esté (función pura, igual en cliente y servidor):
+| Dónde | Código | Efecto (agarre = `surfGrip` × neumático; polvo y sonido ya distinguen cada código) |
+|---|---|---|
+| Calzada | 0 asfalto | |
+| Vereda / banquina de la calle | 2 | |
+| Playa (z > 1090 y altura < 3,4 m) y **banquina de tierra** a menos de 6 m de una ruta de campo (rural, atajo, panorámica, colina) | 1 tierra/arena | polvo y ruido de tierra suelta |
+| Plaza Aurora, barrios, colina y campo | 3 pasto | |
+| Sierra desde 44 m | 4 roca | poco agarre |
+| Cumbre desde 64 m | 6 nieve pisada | |
+| Entre edificios | 4 | |
+El color del suelo del mapa usa las mismas alturas (`WorldSurfaces.color`): arena clara, roca gris y nieve blanca. `CityLayout.verge_clearance()` mide a cuántos metros de la banquina se está (probe() sólo es confiable adentro del corredor). Costo de `ground_info`: ≈ 17 µs. Prueba: `tests/surfaces_test.gd`. Barro (5) queda libre para la lluvia (Etapa 17).

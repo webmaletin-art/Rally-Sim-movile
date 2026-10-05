@@ -4,6 +4,7 @@ extends Node3D
 ## (cajas de pocas caras; las ventanas las dibuja el shader fx/city_facade.gdshader). Nada lejano se dibuja: hay niebla y un horizonte pintado.
 
 const SIGNAL_SHADER := preload("res://game/fx/city_signal.gdshader")
+const WorldSurfaces := preload("res://game/world/world_surfaces.gd")
 const PaperKit := preload("res://game/fx/paper_kit.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityProps := preload("res://game/city/city_props.gd")
@@ -510,6 +511,9 @@ func _ground_color(x: float, z: float, y: float) -> Color:
 			return Color(0.66, 0.68, 0.72) if bool(oa["paving"]) else Color(0.46, 0.64, 0.36) # parque del drift: pavimento · plaza: pasto
 	var zone := city.zone_of(x, z)
 	var jit := 0.012 * sin(x * 0.011) * cos(z * 0.009)
+	var sc := WorldSurfaces.color(y, z, jit) # playa, roca y nieve (las mismas alturas que ground_info)
+	if sc != Color.TRANSPARENT:
+		return sc
 	match zone:
 		0, 1:
 			return Color(0.80 + jit, 0.76 + jit, 0.68 + jit)

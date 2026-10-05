@@ -725,6 +725,39 @@ func probe(x: float, z: float) -> PackedFloat64Array:
 			out[6] = -2.0 - float(oi)
 	return out
 
+## Holgura al borde (calzada + banquina) de la ruta de campo más cercana (rural, atajo, panorámica, colina); negativa = afuera; -1e9 si no hay ninguna a la vista. A diferencia de probe(),
+## sirve para saber a cuántos metros de la banquina se está (probe sólo es confiable adentro del corredor).
+func verge_clearance(x: float, z: float) -> float:
+	var best := -1e9
+	var kx := int(floor(x / HC))
+	var kz := int(floor(z / HC))
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			var k2 := Vector2i(kx + dx, kz + dz)
+			if not _hash.has(k2):
+				continue
+			for si in (_hash[k2] as PackedInt32Array):
+				var rd: Dictionary = roads[s_road[si]]
+				var kind := str(rd["kind"])
+				if kind != "rural" and kind != "shortcut" and kind != "scenic" and kind != "hill":
+					continue
+				var ni := s_next[si]
+				var ax := s_x[si]
+				var az := s_z[si]
+				var ex := 0.0
+				var ez := 0.0
+				if ni >= 0:
+					ex = s_x[ni] - ax
+					ez = s_z[ni] - az
+				var l2 := ex * ex + ez * ez
+				var t := 0.0
+				if l2 > 1e-6:
+					t = clampf(((x - ax) * ex + (z - az) * ez) / l2, 0.0, 1.0)
+				var ddx := ax + ex * t - x
+				var ddz := az + ez * t - z
+				best = maxf(best, float(rd["hw"]) + float(rd["sw"]) - sqrt(ddx * ddx + ddz * ddz))
+	return best
+
 ## Calle y cuadra de un punto: {road, name, num, cuadra, kind, dist}
 func locate(x: float, z: float) -> Dictionary:
 	var pr := probe(x, z)

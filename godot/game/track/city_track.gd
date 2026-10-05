@@ -3,6 +3,7 @@ extends "res://game/track/drift_track.gd"
 ## calle sale de la capa de la ciudad (city_layout.gd). Hereda de la pista de drift (comparten cómo chocan los autos: track.push) pero no tiene playón ni conos de slalom.
 ## Las consultas son puras, así que los hilos de la física pueden llamarlas a la vez.
 
+const WorldSurfaces := preload("res://game/world/world_surfaces.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityWorld := preload("res://game/city/city_world.gd")
 
@@ -35,7 +36,12 @@ func ground_info(x: float, z: float) -> Vector2:
 	var pr := city.probe(x, z)
 	if pr[0] > -0.05:
 		return Vector2(float(pr[4]), 0.0 if float(pr[1]) <= float(pr[5]) else 2.0)
-	return Vector2(city.height(x, z), 4.0)
+	var gh := city.height(x, z)
+	var zn := city.zone_of(x, z)
+	var vc := -1e9
+	if zn >= 2 and gh < WorldSurfaces.ROCK_H and not (z > WorldSurfaces.SAND_Z and gh < WorldSurfaces.SAND_H):
+		vc = city.verge_clearance(x, z) # sólo en el campo: a cuántos metros de la banquina de una ruta
+	return Vector2(gh, float(WorldSurfaces.outside(x, z, gh, zn, vc)))
 
 ## Cámara: de a hacia b (en el plano), ¿qué parte del camino está libre? 1 = toda; menos: ahí empiezan los edificios (fuera del corredor de la calle, que no sea ruta ni campo)
 func camera_clear(a: Vector2, b: Vector2) -> float:
