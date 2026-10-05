@@ -1,0 +1,150 @@
+<title>Informe de optimización</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@85..100,500..800&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: una sola columna de lectura; las tablas con imágenes se deslizan hacia los costados dentro de su caja. */
+:root {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --ink: #16202b;
+  --muted: #5a6877;
+  --line: #d3dae2;
+  --accent: #d9560b;
+  --accent-ink: #ffffff;
+  --good: #1c7a45;
+  --bar: #c9d3de;
+  --font-display: "Archivo", "Arial Narrow", sans-serif;
+  --font-body: "Source Sans 3", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #10161d; --surface: #18212b; --ink: #e8edf2; --muted: #9aa8b7; --line: #2b3745; --accent: #ff8a3d; --accent-ink: #1a0d03; --good: #52c487; --bar: #2b3745; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #10161d; --surface: #18212b; --ink: #e8edf2; --muted: #9aa8b7; --line: #2b3745; --accent: #ff8a3d; --accent-ink: #1a0d03; --good: #52c487; --bar: #2b3745; color-scheme: dark; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 17px; line-height: 1.55; padding-inline: 16px; padding-block: 20px 56px; }
+main { max-width: 860px; margin-inline: auto; display: flex; flex-direction: column; gap: 34px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.12; margin: 0; }
+h1 { font-size: clamp(2rem, 6vw, 2.9rem); font-weight: 800; font-stretch: 85%; letter-spacing: -0.01em; }
+h2 { font-size: 1.55rem; font-weight: 700; font-stretch: 90%; }
+h3 { font-size: 1.1rem; font-weight: 600; margin-top: 8px; }
+p { margin: 0; }
+.lead { color: var(--muted); font-size: 1.08rem; max-width: 62ch; }
+.kicker { font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+header { display: flex; flex-direction: column; gap: 12px; }
+nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+nav a { font-family: var(--font-display); font-weight: 600; font-size: 0.92rem; padding: 7px 14px; border: 1px solid var(--line); border-radius: 99px; color: var(--ink); text-decoration: none; background: var(--surface); }
+nav a:focus-visible, nav a:hover { border-color: var(--accent); outline: none; }
+section { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; }
+.panel ul { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 9px; }
+.panel li::marker { color: var(--accent); }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 0.93rem; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+thead th { font-family: var(--font-display); font-size: 0.8rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); font-weight: 600; white-space: nowrap; position: sticky; top: 0; background: var(--surface); }
+tbody th { font-family: var(--font-display); font-weight: 600; white-space: nowrap; }
+tr:last-child > * { border-bottom: 0; }
+td.r { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gal td { text-align: center; white-space: nowrap; }
+.gal img { display: block; margin: 0 auto; border-radius: 3px; }
+.gal .n { display: block; font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+.none { color: var(--muted); font-size: 0.8rem; font-style: italic; white-space: normal !important; min-width: 90px; }
+small { color: var(--muted); font-weight: 400; }
+.fig { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.fig figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.fig img { width: 100%; height: auto; border-radius: 4px; display: block; }
+.fig figcaption { display: flex; justify-content: space-between; gap: 8px; font-size: 0.88rem; }
+.fig figcaption span { font-family: var(--font-mono); color: var(--muted); }
+.bar { display: grid; gap: 4px; }
+.bl { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.bl span { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.track { height: 12px; background: var(--bar); border-radius: 2px; overflow: hidden; }
+.track i { display: block; height: 100%; background: var(--accent); }
+.bn { color: var(--muted); font-size: 0.85rem; }
+.note { color: var(--muted); font-size: 0.9rem; max-width: 66ch; }
+.pick { border-left: 4px solid var(--accent); padding: 4px 0 4px 14px; display: flex; flex-direction: column; gap: 6px; }
+.pick b { font-family: var(--font-display); }
+</style>
+
+<main>
+<header>
+  <span class="kicker">Informe · no se aplicó nada al juego</span>
+  <h1>Informe de optimización</h1>
+  <p class="lead">Cómo están los autos, los árboles y los autos civiles hoy, qué estilos más livianos hay y cuánto cuesta cada uno. Las imágenes están dibujadas con los modelos reales del proyecto.</p>
+  <nav aria-label="Secciones"><a href="#resumen">Resumen</a><a href="#autos">Autos</a><a href="#arboles">Árboles</a><a href="#civiles">Autos civiles</a></nav>
+</header>
+
+<section id="resumen">
+  <h2>Resumen</h2>
+  <div class="panel"><ul>
+    <li><b>Autos.</b> El auto del jugador tiene en promedio {{AVG_HI}} triángulos y cada rival {{AVG_LO}}. Más de la mitad de un rival son las ruedas. Un rival en papercraft baja a unos 1 300 triángulos y en cajas con rampas a 188, con la silueta reconocible.</li>
+    <li><b>Árboles.</b> En las carreras ya son livianos: pinos de 132 triángulos cerca y de 44 a media distancia. El modelo pesado del pack (unos 3 000 triángulos) no está en el juego; costaría unas 7 veces más que el papercraft. Lo más barato son las cartas que miran a la cámara.</li>
+    <li><b>Autos civiles.</b> Ya son cajas: 84 triángulos y una sola llamada de dibujo por sector. Es lo más liviano que hay; mejorar la forma cuesta el doble o más.</li>
+    <li><b>Medición.</b> Los tiempos de árboles se midieron en una PC con dibujo por software. Sirven para comparar estilos entre sí, no son FPS de un teléfono.</li>
+  </ul></div>
+</section>
+
+<section id="autos">
+  <h2>Autos</h2>
+  <h3>Cómo están optimizados hoy</h3>
+  <div class="panel"><ul>
+    <li>Cada auto tiene dos carrocerías: <b>alta</b> (24 000 triángulos, para el jugador) y <b>baja</b> (5 000, para los rivales). Las ruedas también tienen dos versiones.</li>
+    <li>La pintura, los vidrios y los rótulos son un solo shader sobre una malla blanca, así que no hay texturas por auto.</li>
+    <li>Sólo el auto del jugador proyecta sombra; los demás usan una sombra suave plana.</li>
+    <li>Un auto completo en alta suma entre 41 000 y 57 000 triángulos y unas 46 a 54 superficies; en baja, entre 10 000 y 13 000 y 14 superficies.</li>
+    <li>Hay cuatro archivos del Genesis sin usar en el juego (carrocería y llantas, alta y baja, unos 1,3 MB). El Genesis y el Volt usan hoy la carrocería del Volt.</li>
+  </ul></div>
+
+  <h3>Las seis versiones</h3>
+  <div class="scroll"><table><thead><tr><th>Versión</th><th>Triángulos</th><th>Qué es</th></tr></thead><tbody>{{LEGEND}}</tbody></table></div>
+
+  <h3>El Genesis en las seis versiones</h3>
+  <p class="note">Es el modelo propio del Genesis (<code>genesis_body.glb</code>) con ruedas simples. El papercraft es la última imagen.</p>
+  <div class="fig">{{GENESIS}}</div>
+
+  <h3>Todos los autos, lado a lado</h3>
+  <p class="note">Debajo de cada imagen va la cantidad de triángulos. Deslizá la tabla hacia los costados para ver todas las versiones.</p>
+  <div class="scroll"><table class="gal"><thead><tr><th>Auto</th><th>Alta</th><th>Baja</th><th>Cajas</th><th>Rampas</th><th>Low-poly</th><th>Papercraft</th></tr></thead><tbody>{{CARS_TABLE}}</tbody></table></div>
+
+  <h3>Peso y consumo de cada auto</h3>
+  <p class="note">Masa es la del auto en la física. El peso en el APK es el de los archivos de modelo (carrocería y cuatro ruedas). Las superficies son una aproximación de las llamadas de dibujo por auto.</p>
+  <div class="scroll"><table><thead><tr><th>Auto</th><th>Masa kg</th><th>Alta KB</th><th>Alta tri</th><th>Alta sup.</th><th>Baja KB</th><th>Baja tri</th><th>Cajas tri</th><th>Papel tri</th></tr></thead><tbody>{{WEIGHTS}}</tbody></table></div>
+
+  <h3>Una carrera con cinco rivales</h3>
+  <div class="scroll"><table><thead><tr><th>Escenario</th><th>Triángulos</th><th>Ahorro</th></tr></thead><tbody>{{SCEN}}</tbody></table></div>
+  <div class="pick"><b>Lo que yo haría</b><p>Dejar el auto del jugador como está, pasar los rivales a papercraft (se ven iguales de lejos y combinan con el mundo Dream) y, aparte, simplificar las ruedas de la versión alta, que son casi el 40 % del auto.</p></div>
+</section>
+
+<section id="arboles">
+  <h2>Árboles</h2>
+  <h3>Dónde se usa cada uno</h3>
+  <div class="panel"><ul>
+    <li><b>Carreras por ruta y aventura:</b> pinos y árboles de hoja ancha armados por código, en tres distancias (132 y 44 triángulos, y conos lejos). Entre 1 500 y 6 000 según la calidad.</li>
+    <li><b>Paper Race, Dream City y mapas fantasía:</b> las piezas de papercraft (80 a 430 triángulos).</li>
+    <li><b>Modelos pesados del pack:</b> sólo están en la biblioteca del repositorio. Sirvieron de origen del papercraft y no se cargan en el juego.</li>
+  </ul></div>
+
+  <h3>Cuánto cuesta cada estilo</h3>
+  <p class="note">Mil quinientos árboles de seis especies, mismo cuadro, descontando la escena vacía (6 ms). Los números son relativos.</p>
+  <div class="panel" style="display:grid;gap:14px">{{BARS}}</div>
+  <div class="panel"><ul>
+    <li><b>Procesador:</b> las llamadas de dibujo son casi las mismas en todos los estilos (de 6 a 13, con instancias). El costo sube sobre todo por la cantidad de triángulos.</li>
+    <li><b>Teléfono:</b> las cartas con transparencia gastan en rellenar píxeles. Con muchos árboles juntos pueden costar más de lo que se ve acá, y el difuminado más que la foto recortada porque mezcla colores.</li>
+    <li><b>Imágenes:</b> la foto recortada sale del modelo pesado; el 2D ilustrado y el difuminado salen del papercraft. Una carta de 256 px con mipmaps pesa unos 350 KB por especie.</li>
+  </ul></div>
+  <div class="pick"><b>Lo que yo haría</b><p>Un solo estilo: papercraft para los árboles cercanos y, de lejos, una carta hecha del mismo papercraft. Se ve como el mismo árbol y cuesta entre el 2 % y el 14 % del modelo pesado.</p></div>
+
+  {{TREES}}
+</section>
+
+<section id="civiles">
+  <h2>Autos civiles</h2>
+  <p class="lead">Los estacionados y los del tránsito de Dream City son un solo cubo de siete cajas (cuerpo, cabina, techo y cuatro ruedas) en tres tamaños y con color por instancia. Se dibujan con una llamada por sector.</p>
+  <div class="scroll"><table class="gal"><thead><tr><th>Tipo</th><th>Actual</th><th>Cajas</th><th>Rampas</th><th>Low-poly</th><th>Papercraft</th></tr></thead><tbody>{{CIVIL_TABLE}}</tbody></table></div>
+  <h3>Con el tope de la calidad alta (116 autos)</h3>
+  <div class="scroll"><table><thead><tr><th>Estilo</th><th>Triángulos</th><th>Contra hoy</th></tr></thead><tbody>{{CIVSCEN}}</tbody></table></div>
+  <div class="pick"><b>Lo que yo haría</b><p>Pasar los civiles a cajas con rampas: el parabrisas y la luneta inclinados cambian mucho la silueta, y los 116 autos suman 22 mil triángulos, menos que un solo auto del jugador en alta.</p></div>
+  <p class="note">Los autos de otros jugadores en el modo online usan el modelo real sólo para los tres más cercanos y papel para el resto.</p>
+</section>
+</main>
