@@ -15,3 +15,9 @@
 - Visual: las tres lámparas de cada poste son una malla aparte por cuadra con un shader que calcula el color activo con la hora del mundo (un solo parámetro global, `CityWorld.set_signal_time`, que pone `CityClock` cada cuadro): costo cero por semáforo. Un poste caído queda con las lámparas apagadas.
 - Para el tránsito (Etapa 9): `lane_state(carril, t)` → ROJO/AMARILLO/VERDE del cruce al final del carril y `time_to_change(carril, t)` para decidir si frenar o pasar.
 - Prueba: `tests/traffic_graph_test.gd` (nunca verde en ambas calles, orden verde→amarillo→rojo, periodicidad).
+
+## Etapa 8 — autos estacionados deterministas (`world/parked_cars.gd`)
+- Sistema de World Life (se registra en `race.gd`). Lugares de 7 m en el cordón de las calles chicas y los anillos (no en avenidas, callejones, costanera ni rutas), a 15 m de los cruces y lejos de las gasolineras. Un lugar está ocupado con 36 % de probabilidad según `WORLD_SEED + calle + lugar + época` (la época cambia cada 2 días del mundo): mismos autos en los mismos lugares para todos, sin guardar nada.
+- Sólo en los sectores **activos** (150 m), con el tope del perfil: 24 / 48 / 80 (LOW / MEDIUM / HIGH). Un `MultiMesh` por sector (una llamada de dibujo) con color por instancia (neutros y de color) y tres tamaños (sedán, hatch, furgón). Dos círculos de choque por auto, sólidos (no se rompen). Al alejarse todo se libera y al volver reaparece idéntico; con World Life en OFF no queda nada.
+- Para dejarles lugar, el carril de las calles de un carril por sentido pasó a 0,40·semiancho del eje.
+- Prueba: `tests/parked_cars_test.gd` (huella igual en dos «teléfonos», otra semilla → otros autos, tope por perfil, choques que se agregan/sacan, liberación al apagar).

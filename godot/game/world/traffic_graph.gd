@@ -14,6 +14,7 @@ const EXCLUDED := ["tunnel", "bay"]
 const STRAIGHT := 0.5 # rad: una diferencia de rumbo menor a esto es «seguir derecho»
 const MAX_TURN := 2.35 # rad: más que esto sería una vuelta en U (no se permite en cruces comunes)
 const ONE_WAY := ["alley"]
+const PARK_LANE := 0.40 # en calles de un carril por sentido, el carril va a 0,40·semiancho del eje (el resto es del estacionamiento)
 
 var layout: RefCounted
 var nodes: Array = [] # {id, pos: Vector2, y, roads: [ids], inl: [carriles que llegan], outl: [carriles que salen], dead: bool}
@@ -150,6 +151,8 @@ func _build_road(r: Dictionary, found: Array) -> void:
 			var cnt := 1 if one_way else per_dir
 			for k in cnt:
 				var off := (float(k) + 0.5) * float(r["hw"]) / float(cnt)
+				if cnt == 1:
+					off = float(r["hw"]) * PARK_LANE # un poco hacia el eje: deja lugar a los autos estacionados del cordón
 				if one_way:
 					off = 0.0
 				var id := lanes.size()
