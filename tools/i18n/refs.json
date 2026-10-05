@@ -9,7 +9,7 @@
 "perf_bench.gd:175"
 ],
 " km/h · marcha ": [
-"race.gd:2641"
+"race.gd:2653"
 ],
 " y Bosque (tierra)": [
 "race.gd:1374"
@@ -166,7 +166,7 @@
 "perf_bench.gd:54"
 ],
 "1 hilo": [
-"race.gd:2625"
+"race.gd:2637"
 ],
 "1-Bit tramado": [
 "fx/lens.gd:274"
@@ -282,11 +282,14 @@
 "adventure/adv_world.gd:1364"
 ],
 "AVENTURA": [
-"city/city_world.gd:743",
+"city/city_world.gd:796",
 "ui/menu_adventure.gd:25"
 ],
 "AVENTURA %s → %s · t=%.1f · prog=%s · fin=%.0f": [
 "adventure/adventure.gd:208"
+],
+"AVENTURA · Ruta de los Sueños": [
+"city/city_world.gd:139"
 ],
 "Aberración cromática": [
 "fx/lens.gd:275"
@@ -305,8 +308,8 @@
 "adventure/adv_data.gd:15"
 ],
 "Acelerómetro calibrado: sostené el teléfono como para jugar": [
-"race.gd:1816",
-"race.gd:2229"
+"race.gd:1828",
+"race.gd:2241"
 ],
 "Acero": [
 "ui/menu_garage.gd:16"
@@ -566,7 +569,7 @@
 "perf_bench.gd:46"
 ],
 "BENCH fps medio %.1f · %s": [
-"race.gd:2646"
+"race.gd:2658"
 ],
 "BIENVENIDO": [
 "ui/menu_about.gd:182"
@@ -725,8 +728,8 @@
 "ui/controls.gd:446"
 ],
 "CARGA RÁPIDA": [
-"city/city_world.gd:988",
-"city/city_world.gd:991"
+"city/city_world.gd:1041",
+"city/city_world.gd:1044"
 ],
 "CARGANDO ETAPA": [
 "ui/loading.gd:57"
@@ -749,13 +752,13 @@
 "ui/online_panel.gd:90"
 ],
 "CITYDRIVE LLEGÓ en %.0f s, recorrió %.0f m, golpes %d": [
-"race.gd:1707"
+"race.gd:1719"
 ],
 "CITYDRIVE NO LLEGÓ en 240 s: pos=(%d,%d)": [
-"race.gd:1710"
+"race.gd:1722"
 ],
 "CITYDRIVE t=%d pos=(%d,%d) v=%d km/h calle=%s": [
-"race.gd:1703"
+"race.gd:1715"
 ],
 "CIUDAD DEL VALLE": [
 "adventure/adv_route.gd:114"
@@ -844,7 +847,7 @@
 "data/catalog.json"
 ],
 "Calidad automática: partículas al %d/10": [
-"race.gd:1952"
+"race.gd:1964"
 ],
 "Calidad de la captura": [
 "ui/capture_ui.gd:16"
@@ -876,10 +879,10 @@
 "ui/menu_account.gd:60"
 ],
 "Cambio tarde: tocaste el limitador": [
-"race.gd:2264"
+"race.gd:2276"
 ],
 "Cambio temprano: esperá a la zona verde": [
-"race.gd:2262"
+"race.gd:2274"
 ],
 "Cambios": [
 "ui/menu_about.gd:50"
@@ -1309,6 +1312,9 @@
 "ui/race_hud.gd:272",
 "ui/menu.gd:432"
 ],
+"DREAM CITY\n%s": [
+"city/city_world.gd:163"
+],
 "DREAM RACING": [
 "race.gd:618",
 "race.gd:647",
@@ -1506,7 +1512,7 @@
 "ui/menu_garage.gd:370"
 ],
 "ESTACIONAMIENTO": [
-"city/city_world.gd:1215"
+"city/city_world.gd:1268"
 ],
 "ESTACIONES DE SERVICIO": [
 "ui/menu_adventure.gd:165"
@@ -1755,9 +1761,9 @@
 "data/routes.json"
 ],
 "Estacionamiento Central": [
+"city/city_world.gd:139",
 "city/city_layout.gd:1197",
-"city/city_layout.gd:1215",
-"city/city_layout.gd:1258"
+"city/city_layout.gd:1215"
 ],
 "Estacionamiento Central · Planta alta": [
 "city/city_layout.gd:1215",
@@ -1834,7 +1840,7 @@
 "perf_bench.gd:169"
 ],
 "FPS %d · cuadro %.1f ms · física %.2f ms/cuadro (%s)\nAutos %d · pilotos %s · árboles %d · sombras %s\nLlamadas %d · objetos %d · triángulos %dk": [
-"race.gd:2624"
+"race.gd:2636"
 ],
 "FRENADA: el peso va adelante": [
 "ui/loading.gd:218"
@@ -1930,8 +1936,8 @@
 "ui/menu.gd:698"
 ],
 "GASOLINERA": [
-"city/city_world.gd:988",
-"city/city_world.gd:991"
+"city/city_world.gd:1041",
+"city/city_world.gd:1044"
 ],
 "GIRO": [
 "ui/loading.gd:233",
@@ -2195,10 +2201,10 @@
 "adventure/adv_route.gd:184"
 ],
 "LAB reset: potencia %.2f": [
-"race.gd:2549"
+"race.gd:2561"
 ],
 "LAB: potencia %.2f resortes %.0f%% pose %s → %s · cars %d": [
-"race.gd:2541"
+"race.gd:2553"
 ],
 "LABTEST: carga lista, sesión ": [
 "race.gd:400"
@@ -2207,16 +2213,16 @@
 "race.gd:647"
 ],
 "LINKTEST entró al subsuelo en t=%d s": [
-"race.gd:1691"
+"race.gd:1703"
 ],
 "LINKTEST no terminó: pos=(%d,%d) etapa %d": [
-"race.gd:1696"
+"race.gd:1708"
 ],
 "LINKTEST salió a la superficie en (%d,%d) t=%d s": [
-"race.gd:1693"
+"race.gd:1705"
 ],
 "LINKTEST t=%d pos=(%d,%d) v=%d km/h calle=%s": [
-"race.gd:1682"
+"race.gd:1694"
 ],
 "LISTO. El informe ya quedó copiado (pegalo en el chat). INFORME lo vuelve a copiar.": [
 "race.gd:1204"
@@ -2920,7 +2926,7 @@
 "online/online.gd:184"
 ],
 "No se pudo guardar la captura": [
-"race.gd:1964"
+"race.gd:1976"
 ],
 "No se pudo iniciar la compra.": [
 "store/billing.gd:73"
@@ -2996,8 +3002,8 @@
 "ui/race_hud.gd:351"
 ],
 "PEAJE": [
-"city/city_world.gd:1081",
-"city/city_world.gd:1083"
+"city/city_world.gd:1134",
+"city/city_world.gd:1136"
 ],
 "PERSONALIZADO": [
 "ui/menu.gd:536"
@@ -3006,7 +3012,8 @@
 "ui/loading.gd:172"
 ],
 "PLAZA DE DRIFT": [
-"city/city_world.gd:743"
+"city/city_world.gd:139",
+"city/city_world.gd:796"
 ],
 "PNG (sin pérdida)": [
 "ui/capture_ui.gd:17"
@@ -3044,7 +3051,8 @@
 "ui/perf_results.gd:26"
 ],
 "PRÓXIMAMENTE": [
-"city/city_world.gd:741"
+"city/city_world.gd:139",
+"city/city_world.gd:794"
 ],
 "PUBLICAR EN EL MERCADO": [
 "ui/online_panel.gd:365"
@@ -3343,7 +3351,7 @@
 "ui/menu_adventure.gd:76"
 ],
 "RENDER triángulos %d · llamadas %d · objetos %d": [
-"race.gd:2642"
+"race.gd:2654"
 ],
 "RENDIMIENTO": [
 "ui/menu.gd:707"
@@ -3369,6 +3377,9 @@
 ],
 "RPM x1000": [
 "car/cockpit.gd:1042"
+],
+"RUTA %d": [
+"city/city_world.gd:162"
 ],
 "Radar": [
 "ui/loading.gd:153",
@@ -3399,8 +3410,8 @@
 "data/catalog.json"
 ],
 "Rampa": [
-"city/city_world.gd:886",
-"city/city_world.gd:901"
+"city/city_world.gd:939",
+"city/city_world.gd:954"
 ],
 "Rampa · Planta alta": [
 "city/city_layout.gd:1247"
@@ -3599,7 +3610,7 @@
 "city/city_layout.gd:375"
 ],
 "SALIDA %d": [
-"city/city_world.gd:744"
+"city/city_world.gd:797"
 ],
 "SAN CAYETANO": [
 "adventure/adv_route.gd:78"
@@ -3612,7 +3623,7 @@
 "adventure/adv_hud.gd:90"
 ],
 "SHOPBACK pos=(%d,%d)": [
-"race.gd:1675"
+"race.gd:1687"
 ],
 "SIGUIENTE ▶": [
 "ui/menu_adventure.gd:182",
@@ -4754,7 +4765,7 @@
 "ui/menu_perf.gd:13"
 ],
 "⚡ ¡CAMBIO PERFECTO!": [
-"race.gd:2260"
+"race.gd:2272"
 ],
 "⚪ GOMAS": [
 "ui/menu_garage.gd:283"
@@ -5009,7 +5020,7 @@
 "ui/options_ui.gd:224"
 ],
 "📷 Captura guardada": [
-"race.gd:1964"
+"race.gd:1976"
 ],
 "📸 RADAR": [
 "race.gd:649"
@@ -5030,7 +5041,7 @@
 "ui/race_hud.gd:384"
 ],
 "🔧 Ajuste aplicado": [
-"race.gd:2110"
+"race.gd:2122"
 ],
 "🔧 El auto tiene daño (motor %d %% · dirección %d %% · suspensión %d %%). Se arregla en los talleres del camino.": [
 "adventure/adv_hud.gd:539"

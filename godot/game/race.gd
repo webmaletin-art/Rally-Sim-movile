@@ -1599,9 +1599,23 @@ func _update_fps_label(fps: float) -> void:
 	_fps_l.text = "%d FPS" % int(fps)
 
 var _gate_go := false
+var _gate_t := 0.0 # fundido a negro al cruzar un portón abierto (en vez de cambiar de pantalla de golpe)
+var _gate_to := ""
 
 ## Las salidas abiertas de las rutas: al llegar al final de la ruta se pasa a otro mapa (Aventura o Drift)
 func _check_gates() -> void:
+	if _gate_go and _gate_to != "":
+		_gate_t -= get_process_delta_time()
+		if race_hud.city_hud != null:
+			race_hud.city_hud.set_fade(clampf(1.0 - _gate_t / 0.6, 0.0, 1.0))
+		if _gate_t <= 0.0:
+			var to := _gate_to
+			_gate_to = ""
+			if fuel != null:
+				fuel.save()
+			cfg.erase("gpsdrive")
+			exit_requested.emit("gate:" + to)
+		return
 	if _gate_go or cars.is_empty() or not (track is CityTrack):
 		return
 	var ph = cars[0].phys
@@ -1610,10 +1624,8 @@ func _check_gates() -> void:
 		var to := str(ex.get("to", ""))
 		if to != "" and to != "plaza" and pos.distance_to(ex["pos"]) < 12.0:
 			_gate_go = true
-			if fuel != null:
-				fuel.save()
-			cfg.erase("gpsdrive")
-			exit_requested.emit("gate:" + to)
+			_gate_t = 0.6
+			_gate_to = to
 			return
 
 ## Se entra a un local (taller o concesionario): se sale al menú de ese local y después se vuelve a la calle (ver app.gd)

@@ -47,10 +47,13 @@ Se definen en `godot/game/data/shops.gd` (qué pestañas, mejoras y grupos de aj
 - Los túneles ocultos (bolsillo) siguen existiendo en los 4 brazos con las bocas de `city_links.gd`.
 
 ## Salidas de la ciudad
-- **Ruta 20 → Modo aventura** y **Ruta 60 → Plaza de drift**: el portón está abierto (sin barrera, con cartel AVENTURA / DRIFT). Al cruzarlo (a menos de 12 m del portón, `race.gd: _check_gates`) el mundo se cierra y se abre la pantalla del modo (`app.gd: _on_race_exit` con `gate:`), y al terminar se vuelve al menú. Ruta 40 y 80 siguen «próximamente». *Todavía no es una fusión física de los mapas (siguen siendo escenas separadas).*
+- **Ruta 60 → Plaza de Drift (física, en el mismo mundo):** la ruta termina en un playón redondo de 90 m de radio, plano (`height()` mezcla el terreno con la altura de la plaza), con disco de asfalto y anillos pintados (`city_world.gd: _drift_disc`), cerco de postes con una sola abertura donde entra la ruta (pared invisible analítica en `city_track.gd: _push_locked`) y **conos con física** (`city_drift.gd`, reutiliza `cone_field.gd`). Adentro suma puntos de derrape como la sesión de drift (combo hasta ×5, chocar pierde el derrape, un cono baja el multiplicador) y guarda el mejor en las estadísticas. Figura en el mapa y se puede ir con el GPS.
+- **Ruta 20 → Modo aventura:** portón abierto (sin barrera, cartel AVENTURA). Al cruzarlo (a menos de 12 m, `race.gd: _check_gates`) la pantalla se funde a negro y se abre la pantalla de la aventura (`app.gd: _on_race_exit` con `gate:`). *La aventura sigue siendo otra escena (12 etapas con su propia pista): la fusión física completa queda pendiente.* Ruta 40 (estacionamiento) y 80 siguen sin otra ciudad.
+- **Carteles de orientación** a ~70 m de la salida de cada ruta: «RUTA 60 · PLAZA DE DRIFT · 1,3 km» de un lado y «DREAM CITY · centro» del otro (`city_world.gd: _route_signs`).
 
 ## Paisaje y calles (papel)
 - **Dentro de la ciudad:** sólo farolas, carteles y canteros de flores en el centro lujoso; **sin árboles** (los árboles quedan para plazas, colinas y rutas). Fachadas con caras de papel, huecos angostos tapados por farola + flores en lugar de edificios apretados.
+- **Árboles de ruta de papel cruzado (estilo PepeCraft):** tres planos verticales cruzados a 60° con degradé (conífera, álamo o copa redonda) y tronco de dos tiras, dibujados por los dos lados: ~50 triángulos por árbol en vez de cientos (`city_props.gd: card_tree`). Sin física ni animación.
 - **Rutas rurales:** franja delgada de árboles, segunda hilera más atrás, pasto, **cerco de postes** a cada 6 m, carteles de curva, límite de velocidad y **PARE** en los cruces de calles menores; **horizonte falso** de colinas de papel que sigue a la cámara (`city_world.gd: _horizon`).
 - **Cámara que no entra en los edificios** (`camera_rig.gd: _clearance`, `city_track.gd: camera_clear`): muestrea cada 1,5 m entre el auto y la cámara y la acerca (rápido) o la aleja (lento) y la sube un poco.
 - **Faros** más realistas (`city_clock.gd: _build_beam`: dos conos anidados con bordes suaves y charco de luz en el piso, una sola malla aditiva) y **sin parpadeo** en las rayas amarillas (marcas 0,11 m arriba) y en los edificios claro/oscuro (normal de la fachada tomada de la malla, no de derivadas de pantalla).
@@ -61,6 +64,10 @@ Se definen en `godot/game/data/shops.gd` (qué pestañas, mejoras y grupos de aj
 ## Controles y FPS
 - Pausa → **MODIFICAR CONTROLES**: cada control se arrastra con un dedo y se agranda/achica con dos; GUARDAR / RESTABLECER / CANCELAR; se guarda en el perfil (`ctrlLayout`).
 - Opciones → Gráficos → **Mostrar FPS** (apagado de fábrica), arriba a la derecha.
+
+## Hub online, apodo y última ubicación
+- **Modo online → (cuenta) → apodo → hub**: la primera vez se pide el nombre del jugador (3–16 letras, sin insultos; es el `name` del perfil, el mismo que usan rankings, chat, amigos, reportes y mercado; se cambia desde el hub con CAMBIAR). El hub muestra apodo, auto elegido, estado de conexión, jugadores y amigos conectados y el botón **ENTRAR AL MUNDO** → dónde aparecer: **ÚLTIMA UBICACIÓN** (se guarda al salir del mundo; se descarta si cambió la versión del mapa: `CityLayout.WORLD_VERSION`) o uno de los tres niveles del Estacionamiento Central.
+- **Se ven los otros jugadores** (`online/remote_cars.gd`): cada auto es un auto de papel liviano con el apodo arriba (dorado si es amigo), sólo los 12 más cercanos y a menos de 700 m. Se piden las posiciones cada ~2 s (`presence_list`) y se avisa la propia cada 2 s (`presence_beat`); entre una lectura y otra el auto se estima (última posición + rumbo × velocidad) y se acerca suave. Sin física compartida: no chocan. Por ahora va por RPC cada 2 s; **Supabase Realtime** (broadcast) queda para una segunda vuelta si hace falta más fluidez.
 
 ## Online del mundo (con cuenta)
 Desde **Modo online → INGRESAR A LA CIUDAD** el mundo se abre con `cfg.online`. En la **pausa** aparece **ONLINE · CHAT, JUGADORES, MERCADO** (sin salir del mundo) y **MAPA / GPS**:

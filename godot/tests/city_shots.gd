@@ -98,6 +98,16 @@ func _init() -> void:
 			var cam_g := gfr + Vector2(gdr.y, -gdr.x) * 30.0
 			var dvg: Vector2 = (pg["pos"] as Vector2) - cam_g
 			shots.append(["76_garaje_fachada", cam_g.x, cam_g.y, rad_to_deg(atan2(dvg.x, dvg.y)), 3.0, -3.0])
+	for rdx in track.city.roads:
+		if str(rdx["kind"]) == "rural":
+			var ptx: PackedVector3Array = rdx["pts"]
+			var cmx: PackedFloat32Array = rdx["cum"]
+			var ix := 0
+			while ix < ptx.size() - 2 and cmx[ix] < 70.0:
+				ix += 1
+			var tnx := Vector2(ptx[ix + 1].x - ptx[ix].x, ptx[ix + 1].z - ptx[ix].z).normalized()
+			var cpx := Vector2(ptx[ix].x, ptx[ix].z) - tnx * 28.0
+			shots.append(["90_cartel_ruta%d" % int(rdx["num"]), cpx.x, cpx.y, rad_to_deg(atan2(tnx.x, tnx.y)), 2.4, -2.0])
 	if not track.city.drift.is_empty():
 		var dc: Vector2 = track.city.drift["c"]
 		var dd: Vector2 = track.city.drift["dir"]

@@ -71,6 +71,7 @@ func setup(p_track) -> void:
 	_ground_plane()
 	_horizon()
 	_drift_disc()
+	_route_signs()
 
 ## Un plano enorme y plano bajo todo el mundo (el color de la lejanía): lo que todavía no se armó no deja un hueco
 func _ground_plane() -> void:
@@ -129,6 +130,58 @@ func _horizon() -> void:
 	_hz.extra_cull_margin = 4000.0
 	_hz.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_hz)
+
+## Carteles de orientación a la salida de la ciudad en cada ruta (sólo una cara mira a quien sale y la otra a quien vuelve): qué ruta es, adónde lleva y cuánto falta.
+func _route_signs() -> void:
+	var v := PackedVector3Array()
+	var c := PackedColorArray()
+	var labels: Array = []
+	var dests := {20: "AVENTURA · Ruta de los Sueños", 60: "PLAZA DE DRIFT", 40: "Estacionamiento Central", 80: "PRÓXIMAMENTE"}
+	for rd in city.roads:
+		if str(rd["kind"]) != "rural":
+			continue
+		var num := int(rd["num"])
+		var pts: PackedVector3Array = rd["pts"]
+		var cum: PackedFloat32Array = rd["cum"]
+		var i := 0
+		while i < pts.size() - 2 and cum[i] < 70.0:
+			i += 1
+		var tn3 := (pts[i + 1] - pts[i]).normalized()
+		var tn := Vector2(tn3.x, tn3.z).normalized()
+		var right := Vector2(tn.y, -tn.x)
+		var off := float(rd["hw"]) + float(rd["sw"]) + 1.6
+		var p := Vector2(pts[i].x, pts[i].z) + right * off
+		var y := city.height(p.x, p.y)
+		var yaw := atan2(tn.x, tn.y)
+		var xf := Transform3D(Basis(Vector3.UP, yaw), Vector3(p.x, y, p.y))
+		CityProps.box(v, c, xf, Vector3(-2.0, 1.5, 0), Vector3(0.16, 3.0, 0.16), Color(0.55, 0.57, 0.62))
+		CityProps.box(v, c, xf, Vector3(2.0, 1.5, 0), Vector3(0.16, 3.0, 0.16), Color(0.55, 0.57, 0.62))
+		CityProps.box(v, c, xf, Vector3(0, 3.2, 0), Vector3(5.0, 1.9, 0.12), Color(0.10, 0.34, 0.20))
+		var km := float(cum[cum.size() - 1]) / 1000.0
+		var dest := Tr.t(str(dests.get(num, "")))
+		var front := "%s\n%s\n%.1f km" % [Tr.t("RUTA %d") % num, dest, km]
+		var back := "DREAM CITY\n%s" % Tr.t("centro")
+		labels.append([Vector3(p.x - sin(yaw) * 0.09, y + 3.2, p.y - cos(yaw) * 0.09), yaw + PI, front])
+		labels.append([Vector3(p.x + sin(yaw) * 0.09, y + 3.2, p.y + cos(yaw) * 0.09), yaw, back])
+	var m := ArrayMesh.new()
+	PaperKit.add_surface(m, v, c, PaperKit.material(null, 0.0, 0.2, 0.3))
+	var mi := MeshInstance3D.new()
+	mi.mesh = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.visibility_range_end = 1400.0
+	add_child(mi)
+	for l in labels:
+		var lab := Label3D.new()
+		lab.text = str(l[2]).replace("\\n", "\n")
+		lab.font_size = 56
+		lab.pixel_size = 0.0105
+		lab.modulate = Color(1, 1, 1)
+		lab.outline_size = 8
+		lab.outline_modulate = Color(0.02, 0.15, 0.08)
+		lab.position = l[0]
+		lab.rotation = Vector3(0, float(l[1]), 0)
+		lab.visibility_range_end = 220.0
+		add_child(lab)
 
 ## Triángulo que mira hacia arriba sea cual sea el orden de los puntos
 func _up_tri(s: Soup, a: Vector3, b: Vector3, c: Vector3, col: Color) -> void:

@@ -13,6 +13,61 @@ const FLOWER_PIECES := ["flor_roja", "flor_amarilla", "flor_violeta", "flor_blan
 const TYPE_NAMES := ["farola", "árbol", "semáforo", "bolardo", "monumento", "pilar", "auto estacionado"]
 const SOLID_FROM := 4 # desde este tipo no se rompen (los de radio 0 son solo adorno)
 
+## Árbol de recortes de papel (estilo «PepeCraft»): tres planos verticales cruzados a 60° con la copa pintada con degradé (oscuro abajo, claro arriba) y un tronco de dos tiras
+## cruzadas. Cada plano se dibuja de los dos lados. Son ~50 triángulos contra cientos de un árbol con volumen. Sin física ni animación.
+static func card_tree(v: PackedVector3Array, c: PackedColorArray, xf: Transform3D, seed_v: float) -> void:
+	var kind := int(seed_v * 977.0) % 10 # 0-2 coníferas · 3 álamo (columna) · 4-9 copa redonda
+	var hgt := 7.5 + 3.5 * fmod(seed_v * 13.7, 1.0)
+	var hue := 0.27 + 0.10 * fmod(seed_v * 31.3, 1.0) - (0.05 if kind < 3 else 0.0)
+	var lo := Color.from_hsv(hue, 0.62, 0.26 + 0.08 * fmod(seed_v * 7.7, 1.0))
+	var hi := Color.from_hsv(hue - 0.01, 0.50, 0.55 + 0.10 * fmod(seed_v * 5.3, 1.0))
+	var trunk := Color(0.36, 0.26, 0.18)
+	var base_yaw := seed_v * TAU
+	for k in 2: # tronco: dos tiras cruzadas
+		var yw := base_yaw + float(k) * PI * 0.5
+		var d := Vector3(cos(yw), 0, sin(yw)) * 0.2
+		_card(v, c, xf, [Vector3(0, 0, 0) - d, Vector3(0, 0, 0) + d, Vector3(0, hgt * 0.5, 0) + d * 0.7, Vector3(0, hgt * 0.5, 0) - d * 0.7], [trunk.darkened(0.2), trunk.darkened(0.2), trunk, trunk])
+	for k in 3: # copa: tres planos cruzados
+		var yw2 := base_yaw + float(k) * PI / 3.0
+		var ax := Vector3(cos(yw2), 0, sin(yw2))
+		var pts: Array = []
+		var cols: Array = []
+		if kind < 3:
+			# conífera: un triángulo ancho abajo y otro más chico arriba
+			var w := hgt * 0.20
+			pts = [ax * -w + Vector3(0, hgt * 0.22, 0), ax * w + Vector3(0, hgt * 0.22, 0), ax * (w * 0.15) + Vector3(0, hgt * 0.68, 0), ax * (-w * 0.15) + Vector3(0, hgt * 0.68, 0)]
+			cols = [lo, lo, hi.lerp(lo, 0.4), hi.lerp(lo, 0.4)]
+			_card(v, c, xf, pts, cols)
+			var w2 := hgt * 0.13
+			_card(v, c, xf, [ax * -w2 + Vector3(0, hgt * 0.55, 0), ax * w2 + Vector3(0, hgt * 0.55, 0), Vector3(0, hgt, 0)], [lo.lerp(hi, 0.4), lo.lerp(hi, 0.4), hi])
+		else:
+			# copa redonda u ovalada (columna si es álamo): polígono de 10 lados con borde irregular
+			var cw := hgt * (0.17 if kind == 3 else 0.28)
+			var ch := hgt * (0.46 if kind == 3 else 0.30)
+			var cy := hgt * (0.58 if kind == 3 else 0.68)
+			var n := 10
+			for i in n:
+				var a0 := TAU * float(i) / float(n)
+				var a1 := TAU * float(i + 1) / float(n)
+				var j0 := 0.86 + 0.14 * sin(seed_v * 91.0 + float(i) * 2.7 + float(k))
+				var j1 := 0.86 + 0.14 * sin(seed_v * 91.0 + float(i + 1) * 2.7 + float(k))
+				var p0 := ax * (cos(a0) * cw * j0) + Vector3(0, cy + sin(a0) * ch * j0, 0)
+				var p1 := ax * (cos(a1) * cw * j1) + Vector3(0, cy + sin(a1) * ch * j1, 0)
+				var cc0 := lo.lerp(hi, clampf(0.5 + 0.5 * sin(a0), 0.0, 1.0))
+				var cc1 := lo.lerp(hi, clampf(0.5 + 0.5 * sin(a1), 0.0, 1.0))
+				_card(v, c, xf, [Vector3(0, cy, 0), p0, p1], [lo.lerp(hi, 0.5), cc0, cc1])
+
+## Un recorte plano (3 o 4 puntos) visible de los dos lados
+static func _card(v: PackedVector3Array, c: PackedColorArray, xf: Transform3D, pts: Array, cols: Array) -> void:
+	var tris := [[0, 1, 2]] if pts.size() == 3 else [[0, 1, 2], [0, 2, 3]]
+	for t in tris:
+		for side in 2:
+			var order := [0, 1, 2] if side == 0 else [0, 2, 1]
+			for oi in order:
+				var idx: int = t[oi]
+				v.append(xf * (pts[idx] as Vector3))
+				c.append(cols[idx])
+
 static func _tri(v: PackedVector3Array, c: PackedColorArray, a: Vector3, b: Vector3, d: Vector3, center: Vector3, col: Color) -> void:
 	# la cara mira hacia afuera del cuerpo (lejos de center)
 	var nr := (b - a).cross(d - a)
@@ -147,8 +202,7 @@ static func emit(kind: int, x: float, y: float, z: float, yaw: float, seed_v: fl
 			var id: String = sp[int(seed_v * 977.0) % sp.size()]
 			PieceBatch.add(id, Vector3.ZERO, seed_v * TAU, 5.5 + 2.5 * fmod(seed_v * 13.7, 1.0), v, c, xf, 1.18)
 		RTREE:
-			var id2: String = ROAD_TREES[int(seed_v * 977.0) % ROAD_TREES.size()]
-			PieceBatch.add(id2, Vector3.ZERO, seed_v * TAU, 7.5 + 3.5 * fmod(seed_v * 13.7, 1.0), v, c, xf, 1.18)
+			card_tree(v, c, xf, seed_v) # los árboles de la ruta son recortes de papel cruzados (2,5D): casi sin triángulos
 		FLOWERS:
 			for k in 5:
 				var a := TAU * (float(k) + fmod(seed_v * 5.1, 1.0)) / 5.0

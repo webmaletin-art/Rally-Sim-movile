@@ -93,6 +93,7 @@
 "AV. DE LOS SUEÑOS": "V.LE DREAM",
 "AVENTURA": "AVVENTURA",
 "AVENTURA %s → %s · t=%.1f · prog=%s · fin=%.0f": "",
+"AVENTURA · Ruta de los Sueños": "AVVENTURA · Via dei Sogni",
 "Aberración cromática": "Aberrazione cromatica",
 "Abriendo %s…": "Apertura di %s…",
 "Acabado": "Arrivo",
@@ -414,6 +415,7 @@
 "DREAM": "DREAM",
 "DREAM  RACING  TEAM": "TEAM  DREAM  RACING",
 "DREAM CITY": "DREAM CITY",
+"DREAM CITY\n%s": "",
 "DREAM RACING": "DREAM RACING",
 "DREAM SHOP · 24 h": "DREAM SHOP · 24 h",
 "DRIFT": "DRIFT",
@@ -1071,6 +1073,7 @@
 "RESULTADOS (mandame una captura de esto)": "",
 "RETIRAR DE LA VENTA": "RITIRA DALLA VENDITA",
 "RPM x1000": "GIRI/MIN x1000",
+"RUTA %d": "STRADA %d",
 "Radar": "Autovelox",
 "Radar de la Montaña": "Autovelox della montagna",
 "Radar de la Recta": "Autovelox del rettilineo",
@@ -1822,5 +1825,6 @@
 "🚗 GARAJE": "",
 "🚧 Completaste la primera parte. Las próximas etapas llegan con una actualización.": "🚧 Hai completato la prima parte. Le prossime tappe arriveranno con un aggiornamento.",
 "🚧 Hasta acá llega la primera parte de la aventura. Las próximas etapas llegan con una actualización; tu avance queda guardado.": "🚧 Qui finisce la prima parte dell'avventura. Le prossime tappe arriveranno con un aggiornamento; i tuoi progressi sono salvati.",
-"🧱 Texturas": ""
+"🧱 Texturas": "",
+"centro": "centro"
 }
