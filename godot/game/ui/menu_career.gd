@@ -301,9 +301,13 @@ func _quick() -> void:
 	if str(m.screen_arg) == "fantasy": # para abrirla directo (pruebas y capturas)
 		quick["fantasy"] = true
 	var fantasy: bool = quick.get("fantasy", false) == true
-	m.set_title("MAPAS FANTASÍA" if fantasy else "CARRERA RÁPIDA")
+	var tv: bool = quick.get("travesia", false) == true and not fantasy
+	m.set_title("MAPAS FANTASÍA" if fantasy else ("TRAVESÍA X" if tv else "CARRERA RÁPIDA"))
 	var route_maps: Array = []
-	if fantasy:
+	if tv:
+		route_maps = ["travesia"] # el modo Travesía X: un solo mapa
+		quick["map"] = "travesia"
+	elif fantasy:
 		route_maps = fantasy_maps()
 		if not route_maps.has(str(quick["map"])):
 			quick["map"] = route_maps[0]
@@ -339,10 +343,13 @@ func _quick() -> void:
 		stages.append(i)
 	if int(quick.get("stage", 0)) >= stages.size():
 		quick["stage"] = 0
+	var convoy: bool = bool(_maps().get(str(quick["map"]), {}).get("convoy", false))
 	var defs := [["Pista", "map", route_maps, func(v): return map_name(str(v))]]
+	if tv:
+		defs.clear()
 	if adv:
 		defs.append(["Etapa", "stage", stages, func(v): return "%d · %s" % [int(v) + 1, str(AdvRoute.STAGES[int(v)]["name"])]])
-	else:
+	elif not convoy:
 		defs.append(["Modo", "mode", ["race", "timetrial"], func(v): return tr("Carrera") if v == "race" else tr("Contrarreloj")])
 	if car_ids.size() > 0:
 		defs.append(["Auto", "car", car_ids, func(v): return _quick_car_name(v)])
@@ -353,7 +360,9 @@ func _quick() -> void:
 			defs.append(["Drift", "dmode", ["free", "duel"], func(v): return tr("Libre (por puntos)") if v == "free" else tr("Duelo contra un bot")])
 			if str(quick["dmode"]) == "duel":
 				defs.append(["Nivel del bot", "skill", [0.85, 1.0, 1.08], func(v): return {0.85: tr("Fácil"), 1.0: tr("Normal"), 1.08: tr("Difícil")}[v]])
-		if str(quick["map"]) == "picada":
+		if convoy:
+			pass # el convoy son 5 autos y camiones fijos, una sola vuelta
+		elif str(quick["map"]) == "picada":
 			defs.append(["Nivel del rival", "skill", [0.85, 1.0, 1.08], func(v): return {0.85: tr("Fácil"), 1.0: tr("Normal"), 1.08: tr("Difícil")}[v]]) # un solo rival, a la par
 		elif str(quick["map"]) != "drift":
 			defs.append(["Vueltas", "laps", [1, 2, 3, 5], func(v): return str(v)])
@@ -376,6 +385,8 @@ func _quick() -> void:
 		g.add_child(sel)
 	if fantasy:
 		m.body.add_child(Kit.wrap(tr(str(_maps()[str(quick["map"])].get("tagline", ""))) + " " + tr("Los rivales te siguen el ritmo. No pertenece a ninguna copa."), 13, Kit.MUTED, 300))
+	if convoy:
+		m.body.add_child(Kit.wrap(tr(str(_maps()[str(quick["map"])].get("tagline", ""))) + " " + tr("Un convoy de 5 autos y camiones va en fila: si acelerás, aceleran; si te quedás, te esperan un poco, pero si te perdés muy lejos los perdés. Hay que llegar a la meta con el grupo."), 13, Kit.MUTED, 300))
 	if adv:
 		m.body.add_child(Kit.wrap(tr("Práctica: corrés la etapa con el auto que elijas; no cuenta para tu avance ni da premios. La aventura de verdad sigue con el DR Bisonte."), 13, Kit.MUTED, 300))
 	m.body.add_child(Kit.button("¡CORRER!", func(): _start_quick(), true, 26, Vector2(0, 58)))
@@ -384,6 +395,8 @@ func _quick() -> void:
 func _map_kind(id: String) -> String:
 	if is_fantasy(id):
 		return "dream"
+	if bool(_maps().get(id, {}).get("convoy", false)):
+		return "convoy"
 	return id if id in ["adventure", "drift", "picada"] else "route"
 
 func _start_quick() -> void:
@@ -401,10 +414,17 @@ func _start_quick() -> void:
 		return
 	var is_drift := str(q["map"]) == "drift"
 	var is_drag := str(q["map"]) == "picada"
+	var is_convoy: bool = bool(_maps().get(str(q["map"]), {}).get("convoy", false))
+	if is_convoy:
+		q["mode"] = "race"
+		q["laps"] = 1
+		q["ai"] = 5
 	var cfg := {"type": "drift" if is_drift else q["mode"], "track": q["map"], "laps": 1 if is_drag else int(q["laps"]), "ai": (1 if is_drag else int(q["ai"])) if (q["mode"] == "race" and not is_drift) else 0, "sky": q["sky"], "maxPI": maxi(560, pi + 20),
 		"skill": 0.9 * float(q["skill"]), "quick": true, "seed": 7, "car": pid, "state": st, "back": "quick"}
 	if test_car:
 		cfg["testCar"] = true
+	if is_convoy:
+		cfg["convoy"] = true
 	if is_drag:
 		cfg["drag"] = true # caja manual obligatoria y ventana de cambio perfecto
 	if is_drift:

@@ -379,7 +379,12 @@ func go(name: String, arg = null, push := true) -> void:
 		"results": _results()
 		"quick_drift":
 			career.quick["fantasy"] = false
+			career.quick["travesia"] = false
 			career.quick["map"] = "drift"
+			career.build("quick", arg)
+		"travesia": # (para abrirla directo en las pruebas)
+			career.quick["fantasy"] = false
+			career.quick["travesia"] = true
 			career.build("quick", arg)
 		"career", "events", "event", "quick", "fantasy": career.build(name, arg)
 		"garage", "dealer", "workshop", "tune", "paint", "shop": garage.build(name, arg)
@@ -563,6 +568,10 @@ func _home() -> void:
 	elif ast["started"] == true:
 		adv_sub = "etapa %d/%d" % [mini(int(ast["stage"]) + 1, AdvRoute.STAGES.size()), AdvRoute.STAGES.size()]
 	body.add_child(menu_button("🌄 AVENTURA", "La Ruta de los Sueños · " + adv_sub, func(): go("adventure"), next_ev.is_empty()))
+	body.add_child(menu_button("🚙 TRAVESÍA X", "convoy off-road · 20 km · barro, lago y colina", func() -> void:
+		career.quick["fantasy"] = false
+		career.quick["travesia"] = true
+		go("quick"), false))
 	# lo que viene: cerrado, con carteles de qué va a traer
 	var soon := Kit.grid(3, 8, 8)
 	body.add_child(soon)
@@ -577,6 +586,7 @@ func _home() -> void:
 		["🏆", "CARRERA", "%d ⭐" % profile.stars(), func(): go("career"), false],
 		["⚡", "RÁPIDA", "pista y rivales", func():
 			career.quick["fantasy"] = false
+			career.quick["travesia"] = false
 			go("quick"), false],
 		["🚗", "GARAJE", "tus autos", func(): go("garage"), false],
 		["🏬", "TIENDA", "comprá autos", func(): go("dealer"), false],
@@ -695,6 +705,9 @@ func _results() -> void:
 	match t:
 		"race": big = "%d° %s" % [int(r["pos"]), tr("puesto")]
 		"trap": big = "%d km/h" % int(r["value"])
+		"convoy":
+			big = tr("¡LLEGASTE CON EL GRUPO!") if r.get("win", false) == true else tr("PERDISTE AL CONVOY")
+			sub = tr("Unión del grupo: %d %%") % int(round(float(r.get("cohesion", 0.0)) * 100.0))
 		"drift":
 			big = "%d pts" % int(r["value"])
 			if r.get("duel", false) == true:
@@ -702,7 +715,7 @@ func _results() -> void:
 		_: big = Kit.fmt_time(float(r["time"]))
 	if r.get("drag", false) == true and int(r.get("shifts", 0)) > 0:
 		sub = tr("⚡ Cambios perfectos: %d de %d") % [int(r["perfect"]), int(r["shifts"])]
-	l0.add_child(Kit.label(big, 44, Kit.GOLD))
+	l0.add_child(Kit.label(big, 44 if big.length() < 14 else 26, Kit.RED if (t == "convoy" and r.get("win", false) != true) else Kit.GOLD))
 	if sub != "":
 		l0.add_child(Kit.label(sub, 18, Kit.GREEN))
 	if bool(r.get("show_medal", false)):

@@ -22,6 +22,8 @@ var mode := "asphalt" # "asphalt" | "dirt"
 var half_width := 5.0
 var shoulder := 2.0
 var dips: Array = []
+var water: Array = [] # lagos/vados: [{"i0","i1","y","half"}] índices de muestra, altura del agua y semiancho (la ruta Travesía X)
+var sections: Array = [] # tramos con nombre [{"i0","i1","name"}] (para el cartel de la Travesía)
 var ctrl: PackedVector3Array = PackedVector3Array()
 var samples: PackedVector3Array = PackedVector3Array()
 var tangents: PackedVector3Array = PackedVector3Array()
@@ -72,6 +74,8 @@ func _init(p_route := "", p_mode := "asphalt", reverse := false, p_hills := 0.0)
 	for p in pts:
 		ctrl.append(Vector3(p[0], p[1], p[2]))
 	_build()
+	if r.has("surf") or r.has("water") or r.has("sections"):
+		_apply_zones(r, reverse)
 
 func center_xz() -> Vector2:
 	return (min_xz + max_xz) * 0.5
@@ -101,6 +105,8 @@ func make_view(register := true) -> Object:
 	v.open = open
 	v.surf_mu = surf_mu
 	v.road_surf = road_surf
+	v.water = water
+	v.sections = sections
 	v.wall_l = wall_l
 	v.wall_r = wall_r
 	_copy_view(v)
@@ -211,6 +217,47 @@ func _build() -> void:
 	min_xz -= Vector2(180, 180)
 	max_xz += Vector2(180, 180)
 
+## Zonas de la ruta (fracciones del recorrido en routes.json): superficie por tramo (tierra/barro), agarre para la IA, lagos y tramos con nombre.
+## En el sentido inverso las fracciones se espejan.
+func _apply_zones(r: Dictionary, reverse: bool) -> void:
+	var fr := func(u: float) -> int:
+		return clampi(int(floor((1.0 - u if reverse else u) * float(n))), 0, n - 1)
+	var base_code := 0 if mode == "asphalt" else 1
+	var surf_list: Array = r.get("surf", [])
+	if not surf_list.is_empty():
+		road_surf.resize(n)
+		road_surf.fill(base_code)
+		surf_mu.resize(n)
+		surf_mu.fill(1.0 if base_code == 0 else 0.6)
+		for z in surf_list:
+			var a: int = fr.call(float(z["from"]))
+			var b: int = fr.call(float(z["to"]))
+			var i0 := mini(a, b)
+			var i1 := maxi(a, b)
+			for i in range(i0, i1 + 1):
+				road_surf[i] = int(z["s"])
+				surf_mu[i] = (1.0 if base_code == 0 else 0.6) * float(z.get("mu", 1.0))
+		# transición suave del agarre de la IA (frena antes de entrar y no acelera de golpe al salir)
+		var sm := surf_mu.duplicate()
+		for i in n:
+			var acc := 0.0
+			for j in range(-6, 7):
+				acc += sm[posmod(i + j, n)]
+			surf_mu[i] = acc / 13.0
+	for wz in r.get("water", []):
+		var a2: int = fr.call(float(wz["from"]))
+		var b2: int = fr.call(float(wz["to"]))
+		var j0 := mini(a2, b2)
+		var j1 := maxi(a2, b2)
+		var low := 1e9
+		for i in range(j0, j1 + 1):
+			low = minf(low, cy[i])
+		water.append({"i0": j0, "i1": j1, "y": low + float(wz.get("above", 0.5)), "half": float(wz.get("half", 40.0))})
+	for sc in r.get("sections", []):
+		var a3: int = fr.call(float(sc["from"]))
+		var b3: int = fr.call(float(sc["to"]))
+		sections.append({"i0": mini(a3, b3), "i1": maxi(a3, b3), "name": str(sc["name"])})
+
 func _apply_dips() -> void:
 	var c := PackedFloat64Array()
 	c.resize(n)
@@ -313,6 +360,22 @@ func nearest(x: float, z: float) -> void:
 	r_lat = (x - (a.x + (b.x - a.x) * _bt)) * lat.x + (z - (a.z + (b.z - a.z) * _bt)) * lat.z
 	r_dist = sqrt(_bd)
 
+## Hondonada del lago (Travesía X): el terreno de los costados baja alrededor del vado para que el agua se vea como un lago y el camino lo cruce
+func _basin(idx: int, d: float) -> float:
+	var depth := 0.0
+	for w in water:
+		var i0: int = int(w["i0"])
+		var i1: int = int(w["i1"])
+		if idx < i0 - 40 or idx > i1 + 40:
+			continue
+		var along := clampf(minf(float(idx - i0 + 40), float(i1 + 40 - idx)) / 40.0, 0.0, 1.0)
+		along = along * along * (3.0 - 2.0 * along)
+		var half: float = float(w["half"])
+		var u := clampf((half - d) / (half * 0.7), 0.0, 1.0)
+		u = u * u * (3.0 - 2.0 * u)
+		depth = maxf(depth, 1.7 * along * u)
+	return depth
+
 func _terrain_base(x: float, z: float, road_y: float) -> float:
 	return road_y - 0.25 + 0.7 * sin(x * 0.020 + z * 0.018) + 0.35 * sin(x * 0.045 - z * 0.038 + 1.3) + 0.18 * sin(x * 0.11 + z * 0.09 + 2.7)
 
@@ -356,6 +419,8 @@ func ground_info(x: float, z: float) -> Vector2:
 			y = r_y - 0.05 * t # la banquina baja apenas hacia la cuneta
 		else:
 			y = _outside_y(d, se, x, z, r_y)
+			if not water.is_empty():
+				y -= _basin(r_idx, d)
 	var surf := _surf_of(d, r_idx)
 	return Vector2(y + _micro_bump(x, z, surf), float(surf))
 
@@ -370,6 +435,8 @@ func ground_smooth(x: float, z: float) -> float:
 	if d <= se:
 		var t := (d - edge) / shoulder
 		return r_y - 0.05 * t
+	if not water.is_empty():
+		return _outside_y(d, se, x, z, r_y) - _basin(r_idx, d)
 	return _outside_y(d, se, x, z, r_y)
 
 # ───────────────────────── largada y progreso ─────────────────────────
@@ -442,6 +509,7 @@ func build_road_mesh() -> ArrayMesh:
 	var verts := PackedVector3Array()
 	var uvs := PackedVector2Array()
 	var idx := PackedInt32Array()
+	var cols := PackedColorArray() # el barro se ve más oscuro y húmedo (si la ruta tiene superficies por tramo)
 	for i in n:
 		var p := samples[i]
 		var lat := laterals[i]
@@ -450,6 +518,10 @@ func build_road_mesh() -> ArrayMesh:
 		verts.append(Vector3(p.x + lat.x * half_width, y, p.z + lat.z * half_width))
 		uvs.append(Vector2(0, float(i) * 0.22))
 		uvs.append(Vector2(1, float(i) * 0.22))
+		if road_surf.size() == n:
+			var sc := Color(1, 1, 1) if int(road_surf[i]) == 0 else (Color(0.62, 0.50, 0.40) if int(road_surf[i]) == 5 else Color(1.0, 0.97, 0.92))
+			cols.append(sc)
+			cols.append(sc)
 	for i in n:
 		var j := (i + 1) % n
 		var a := i * 2
@@ -462,6 +534,8 @@ func build_road_mesh() -> ArrayMesh:
 	arr[Mesh.ARRAY_VERTEX] = verts
 	arr[Mesh.ARRAY_TEX_UV] = uvs
 	arr[Mesh.ARRAY_INDEX] = idx
+	if not cols.is_empty():
+		arr[Mesh.ARRAY_COLOR] = cols
 	var normals := PackedVector3Array()
 	normals.resize(verts.size())
 	normals.fill(Vector3.UP)
@@ -470,6 +544,7 @@ func build_road_mesh() -> ArrayMesh:
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	var mat := StandardMaterial3D.new()
 	mat.albedo_texture = _asphalt_tex()
+	mat.vertex_color_use_as_albedo = not cols.is_empty()
 	mat.roughness = 0.9
 	mat.uv1_scale = Vector3(1, 1, 1)
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED

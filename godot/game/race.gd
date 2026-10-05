@@ -44,6 +44,9 @@ const CameraRig := preload("res://game/car/camera_rig.gd")
 const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const AiCars := preload("res://game/data/ai_cars.gd")
+const Profile := preload("res://game/data/profile.gd")
+const Convoy := preload("res://game/ai/convoy.gd")
+const TravesiaProps := preload("res://game/track/travesia_props.gd")
 const Session := preload("res://game/session.gd")
 const RaceHud := preload("res://game/ui/race_hud.gd")
 const UiSfx := preload("res://game/audio/ui_sfx.gd")
@@ -167,6 +170,8 @@ var cam_index := 1
 var lab_state: Dictionary = {} # taller de prueba de la pausa: estado del auto con ajustes (vacío = el auto tal cual)
 var lab_orig: Dictionary = {}
 var _pausetest_done := false
+var convoy: Convoy = null # Travesía X: el convoy que hay que acompañar (ver ai/convoy.gd)
+var tprops: Node3D = null # agua del vado y piedras de la Travesía
 var wall_on := false # pista solo de camino: límite lateral con árboles (se activa en las carreras del menú)
 var track_arg := ""
 var view_at := -1.0 # prueba (vistas previas de las pistas): pone el auto en esta fracción del recorrido
@@ -228,6 +233,12 @@ func _ready() -> void:
 			cars_n = int(a.substr(7))
 		elif a.begins_with("--trees="):
 			trees_n = int(a.substr(8))
+		elif a.begins_with("--convoy") and cfg.is_empty():
+			# prueba: arranca directo la Travesía X (--convoy o --convoy=0.4 para empezar en esa fracción del recorrido)
+			cfg = {"type": "race", "track": "travesia", "convoy": true, "ai": 5, "laps": 1, "sky": "day", "quick": true, "seed": 7, "car": "pickup",
+				"state": Profile.new_car_state("pickup"), "back": "home", "testCar": true, "sim": "mid", "maxPI": 999}
+			if a.begins_with("--convoy="):
+				view_at = float(a.substr(9))
 		elif a.begins_with("--adv=") and cfg.is_empty():
 			# prueba: arranca directo una etapa de la aventura (--adv=3 o --adv=3:0.4 para empezar en esa fracción)
 			var parts := a.substr(6).split(":")
@@ -665,6 +676,10 @@ func _build_track_nodes() -> void:
 		road.material_override = rm
 		road_mat = rm
 	track_root.add_child(_chunked(road) if track is RouteTrack else road)
+	if track is RouteTrack and (not (track as RouteTrack).water.is_empty() or str(cfg.get("track", "")) == "travesia"):
+		tprops = TravesiaProps.new()
+		tprops.setup(track)
+		track_root.add_child(tprops)
 
 ## Un objeto largo de la pista partido en tramos (el motor descarta los que no se ven): ver MeshChunks
 func _chunked(mi: MeshInstance3D) -> Node3D:
@@ -971,6 +986,9 @@ func _car_setups() -> Array:
 	var pp: Dictionary = pst.get("paint", {"body": "#1a4fe0", "rim": "#ff6a08"})
 	out.append({"params": CarBuild.build_params(vehicles[pid], pst, assists), "paint": Color(str(pp["body"])), "rim": Color(str(pp.get("rim", "#2a2d33"))), "name": str(profile.d["name"]), "finish": str(pp.get("finish", "gloss")), "visual_type": str(vehicles[pid].get("visualType", pid)), "ai": {},
 		"livery": int(pp.get("livery", 0)), "accent": Color(str(pp.get("accent", "#ff6a08"))), "tire": Color(str(pp.get("tire", "#141516"))), "parts": pp})
+	if _is_convoy():
+		out.append_array(_convoy_setups())
+		return out
 	var n_ai := int(cfg.get("ai", 0))
 	if n_ai > 0:
 		var rng := RandomNumberGenerator.new()
@@ -983,6 +1001,50 @@ func _car_setups() -> Array:
 				"name": AiCars.NAMES[(i + int(cfg.get("seed", 7))) % AiCars.NAMES.size()], "visual_type": str(vehicles[pk["id"]].get("visualType", pk["id"])),
 				"ai": {"skill": minf(1.08, float(cfg.get("skill", 0.9)) * (0.96 + rng.randf() * 0.06)), "lane": (float(i % 3) - 1.0) * 1.6, "aggr": rng.randf()}})
 	return out
+
+## ¿Esta carrera es una Travesía (convoy)? Lo dice el mapa (routes.json: "convoy") o la configuración
+func _is_convoy() -> bool:
+	return menu_mode and (cfg.get("convoy", false) == true or (track_maps.has(track_id) and (track_maps[track_id] as Dictionary).get("convoy", false) == true)) and track is RouteTrack
+
+const CONVOY_CARS := [["pickup", "Don Ramón", 0], ["truck", "La Tana", 0], ["suv", "El Gallego", 0], ["camo", "Pochi", 6], ["buggy", "Mono", 0]]
+const CONVOY_PAINTS := ["#c8402a", "#e7d8b0", "#3f6b3a", "#ffffff", "#e0a526"]
+
+## Los 5 del convoy: autos y camiones de trabajo, de serie, con gomas todo terreno
+func _convoy_setups() -> Array:
+	var out: Array = []
+	for k in CONVOY_CARS.size():
+		var cc: Array = CONVOY_CARS[k]
+		var id := str(cc[0])
+		if not vehicles.has(id):
+			id = "pickup"
+		var st: Dictionary = Profile.new_car_state(id)
+		st["tires"] = "gravel"
+		var col := Color(str(CONVOY_PAINTS[k % CONVOY_PAINTS.size()]))
+		out.append({"params": CarBuild.build_params(vehicles[id], st, AiCars.ASSISTS), "paint": col, "rim": Color("#2a2d33"), "name": str(cc[1]),
+			"visual_type": str(vehicles[id].get("visualType", id)), "livery": int(cc[2]), "accent": Color(0.2, 0.2, 0.2), "finish": "matte",
+			"ai": {"skill": 0.9, "lane": (float(k % 2) - 0.5) * 1.0, "aggr": 0.25}})
+	return out
+
+## Lugar en la fila de largada (0 = adelante): el jugador sale tercero, los demás se reparten adelante y atrás
+func _convoy_rank(i: int) -> int:
+	if i == 0:
+		return 2
+	return i - 1 if i - 1 < 2 else i
+
+## Pose en fila india, cada 11 m, un poco escalonados
+func _convoy_pose(rank: int, from_idx := 0) -> Array:
+	var back := 6.0 + float(rank) * 11.0
+	var i := from_idx
+	var acc := 0.0
+	while acc < back:
+		var j := posmod(i - 1, track.n)
+		acc += track.samples[i].distance_to(track.samples[j])
+		i = j
+	var sm: Vector3 = track.samples[i]
+	var l: Vector3 = track.laterals[i]
+	var t: Vector3 = track.tangents[i]
+	var side := 0.9 if rank % 2 == 0 else -0.9
+	return [sm.x + l.x * side, sm.z + l.z * side, atan2(t.x, t.z), i]
 
 func _rebuild_cars() -> void:
 	_finish_physics()
@@ -1031,6 +1093,8 @@ func _rebuild_cars() -> void:
 		if menu_mode and cars_n > 1 and str(cfg.get("type")) == "race":
 			slot = cars_n - 1 if i == 0 else i - 1
 		var sp: Array = track.start_pose(slot, s0) if route else track.start_pose(slot)
+		if _is_convoy():
+			sp = _convoy_pose(_convoy_rank(i), s0)
 		if track is CityTrack and cfg.has("resume") and i == 0:
 			sp = [float(cfg["resume"][0]), float(cfg["resume"][1]), float(cfg["resume"][2])]
 		if adv_mode:
@@ -1146,6 +1210,12 @@ func _start_session() -> void:
 	for i in cars.size():
 		session.names[i] = rival_info[i]["name"]
 	session.init_cars(cars)
+	convoy = null
+	if _is_convoy():
+		convoy = Convoy.new()
+		convoy.setup(cars, session)
+		if race_hud != null:
+			race_hud.convoy = convoy
 	if OS.get_cmdline_user_args().has("--finishtest"):
 		session.race_len = 120.0 # prueba: meta a los 120 m
 	session.beep.connect(_on_beep)
@@ -1170,6 +1240,9 @@ func _on_go() -> void:
 
 func _on_player_finished(_v: float) -> void:
 	done_t = 0.0
+	if convoy != null:
+		race_hud.big("¡LLEGASTE CON EL GRUPO!" if not convoy.lost else "¡LOS PERDISTE!", Color(0.5, 1.0, 0.6) if not convoy.lost else Color(1.0, 0.35, 0.3))
+		return
 	race_hud.big("META" if str(cfg.get("type")) != "race" else "%d°" % session.position_of(0, cars.size()))
 
 ## Prueba automática: recorre varias cargas (cada una 6 s, descartando el primer segundo y medio) y muestra la tabla.
@@ -1727,13 +1800,20 @@ func _tick_session(dt: float) -> void:
 			print("CITYDRIVE NO LLEGÓ en 240 s: pos=(%d,%d)" % [int(ph.px), int(ph.pz)])
 			get_tree().quit()
 	session.update(dt, cars)
+	if convoy != null:
+		convoy.update(dt)
+		if convoy.lost and session.state == "run":
+			session.state = "done" # perdiste al convoy: fin de la travesía
+			session.finished[0] = true
+			session.finish_time[0] = session.time
+			race_hud.big("¡LOS PERDISTE!", Color(1.0, 0.35, 0.3))
 	if track is DriftTrack:
 		var cf = (track as DriftTrack).cones
 		cf.update(dt, cars)
 		if cf.new_hits > 0:
 			session.on_cones(cf.new_hits)
 			cf.new_hits = 0
-	if session.state == "run" and str(cfg.get("type")) == "race":
+	if session.state == "run" and str(cfg.get("type")) == "race" and convoy == null:
 		# goma elástica suave: nadie se escapa demasiado
 		for i in range(1, cars.size()):
 			var d = cars[i].driver
@@ -1773,6 +1853,13 @@ func _make_result() -> Dictionary:
 				r["win"] = session.duel_won
 		_:
 			r["value"] = session.finish_time[0]
+	if convoy != null:
+		r["type"] = "convoy"
+		r["convoy"] = true
+		r["lost"] = convoy.lost
+		r["win"] = not convoy.lost
+		r["cohesion"] = convoy.cohesion()
+		r["value"] = session.finish_time[0]
 	if drag_mode:
 		r["drag"] = true
 		r["shifts"] = drag_shifts
@@ -2340,6 +2427,13 @@ func _step_physics(dt: float) -> void:
 				if adv != null:
 					adv.on_hit(c.wall_hit, "wall")
 			c.wall_hit = 0.0
+	if tprops != null and not (track as RouteTrack).water.is_empty():
+		for c in cars: # el agua del vado frena (y mucho si se entra rápido)
+			var dep: float = tprops.water_depth(c.phys.px, c.phys.pz)
+			if dep > 0.0:
+				var k := 1.0 - clampf(dt * (0.55 + 0.045 * sqrt(c.phys.vx * c.phys.vx + c.phys.vz * c.phys.vz)) * dep, 0.0, 0.25)
+				c.phys.vx *= k
+				c.phys.vz *= k
 	var h := 1.0 / 120.0
 	smooth_dt = lerpf(smooth_dt, minf(dt, 0.1), 0.02)
 	acc = minf(acc + dt, 0.05)

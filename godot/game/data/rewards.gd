@@ -155,6 +155,16 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 			if r.get("duel", false) == true:
 				cr = int(round(float(cr) * (1.5 if r.get("win", false) == true else 0.7) / 10.0)) * 10 # ganarle al bot paga más
 			show_medal = false
+		elif t == "convoy":
+			# Travesía X: se cobra por llegar con el grupo, más cuanto más unido hayas ido
+			var coh := clampf(float(r.get("cohesion", 0.0)), 0.0, 1.0)
+			if r.get("win", false) == true:
+				medal = 3 if coh > 0.8 else (2 if coh > 0.55 else 1)
+				cr = 600 + int(round(coh * 60.0)) * 10
+				xp = 250 + int(round(coh * 200.0))
+			else:
+				xp = 40
+			show_medal = true
 		else:
 			cr = 120
 			xp = 50

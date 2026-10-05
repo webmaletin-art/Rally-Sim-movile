@@ -53,6 +53,7 @@ var opts_arg = null
 var opts_panel: PanelContainer
 var opts_scroll: ScrollContainer
 var online_panel # online_panel.gd: chat, jugadores, amigos, reportes y mercado (sólo en el mundo online)
+var convoy: RefCounted # ai/convoy.gd (Travesía X) o null
 var rig: RefCounted # CameraRig del jugador (null en la aventura, que tiene sus propias cámaras)
 var lab_on := false # ¿hay taller de prueba? (prueba de autos, Carrera rápida y drift)
 var lab: Dictionary = {} # estado del auto de la prueba
@@ -256,7 +257,9 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 	else:
 		time_l.text = Kit.fmt_time(s.time)
 	var t := str(cfg.get("type", "race"))
-	if t == "race":
+	if t == "race" and convoy != null:
+		pos_l.visible = false
+	elif t == "race":
 		pos_l.text = "%d/%d" % [s.position_of(0, n_cars), n_cars]
 	if t == "drift":
 		time_l.text = Kit.fmt_time(s.remaining()) if s.state != "countdown" else Kit.fmt_time(s.limit)
@@ -274,6 +277,15 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 		lap_l.text = "PRUEBA LIBRE · salí desde la pausa"
 	elif t == "drift":
 		pass
+	elif convoy != null:
+		var left_c := maxf(s.race_len - maxf(s.prog[0], 0.0), 0.0)
+		lap_l.text = "🚙 CONVOY · %.1f km a la meta · unión %d %%" % [left_c / 1000.0, int(round(convoy.cohesion() * 100.0))]
+		drift_l.text = str(convoy.text)
+		drift_l.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3) if (convoy.lost or convoy.out_gap > 220.0) else Color(1.0, 0.85, 0.3))
+		drift_l.add_theme_font_size_override("font_size", 34)
+		if str(convoy.section_new) != "":
+			toast(str(convoy.section_new))
+			convoy.section_new = ""
 	elif s.laps > 1:
 		lap_l.text = "VUELTA %d/%d" % [s.lap_of_player(), s.laps]
 	else:
