@@ -178,6 +178,19 @@ static func _sign_plate(v: PackedVector3Array, c: PackedColorArray, xf: Transfor
 		box(v, c, plate2, Vector3.ZERO, Vector3(0.95, 0.95, 0.05), rim) # dos cuadrados cruzados: un octógono
 	box(v, c, plate, Vector3(0, 0, 0.03), Vector3(0.68, 0.68, 0.04), inner)
 
+const LIGHT_LAMPS := [[4.15, Color(0.92, 0.16, 0.12)], [3.8, Color(0.97, 0.74, 0.12)], [3.45, Color(0.22, 0.82, 0.32)]] # alto, color: roja, amarilla, verde
+
+## Las tres lámparas de un semáforo parado (malla aparte, con el shader de semáforos): COLOR.rgb = color, COLOR.a = 0 / 0,5 / 1 (roja, amarilla, verde), UV = (desfase, grupo)
+static func emit_signal_lamps(x: float, y: float, z: float, yaw: float, offset: float, group: float, v: PackedVector3Array, c: PackedColorArray, uv: PackedVector2Array) -> void:
+	var xf := Transform3D(Basis(Vector3.UP, yaw), Vector3(x, y, z))
+	for i in 3:
+		var l: Array = LIGHT_LAMPS[i]
+		var n0 := v.size()
+		box(v, c, xf, Vector3(0, float(l[0]), 2.4), Vector3(0.42, 0.22, 0.2), l[1])
+		for k in range(n0, v.size()):
+			c[k] = Color((l[1] as Color).r, (l[1] as Color).g, (l[1] as Color).b, float(i) * 0.5)
+			uv.append(Vector2(offset, group))
+
 ## Pone un objeto en la malla. fallen: dirección (x, z) hacia donde cayó (Vector2.ZERO = parado)
 static func emit(kind: int, x: float, y: float, z: float, yaw: float, seed_v: float, fallen: Vector2, v: PackedVector3Array, c: PackedColorArray, gv := PackedVector3Array(), gc := PackedColorArray()) -> void:
 	var xf := Transform3D(Basis(Vector3.UP, yaw), Vector3(x, y, z))
@@ -243,9 +256,9 @@ static func emit(kind: int, x: float, y: float, z: float, yaw: float, seed_v: fl
 			box(v, c, xf, Vector3(0, 2.2, 0), Vector3(0.18, 4.4, 0.18), Color(0.30, 0.32, 0.33))
 			box(v, c, xf, Vector3(0, 4.25, 1.3), Vector3(0.12, 0.12, 2.6), Color(0.30, 0.32, 0.33))
 			box(v, c, xf, Vector3(0, 3.8, 2.4), Vector3(0.3, 1.0, 0.3), dark)
-			var lights := [[4.15, Color(0.92, 0.16, 0.12)], [3.8, Color(0.97, 0.74, 0.12)], [3.45, Color(0.22, 0.82, 0.32)]]
-			for l in lights:
-				box(v, c, xf, Vector3(0, float(l[0]), 2.4), Vector3(0.42, 0.22, 0.2), l[1])
+			if fallen != Vector2.ZERO: # caído: las lámparas quedan apagadas en la malla de objetos (las que andan son las del shader de semáforos)
+				for l in LIGHT_LAMPS:
+					box(v, c, xf, Vector3(0, float(l[0]), 2.4), Vector3(0.42, 0.22, 0.2), (l[1] as Color).darkened(0.55))
 		MONUMENT:
 			var stone := Color(0.80, 0.77, 0.70)
 			box(v, c, xf, Vector3(0, 0.3, 0), Vector3(8.0, 0.6, 8.0), stone.darkened(0.12))

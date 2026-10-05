@@ -266,6 +266,24 @@ func _register_cells(li: int) -> void:
 func lanes_in_cell(cell: Vector2i) -> PackedInt32Array:
 	return _cells.get(cell, PackedInt32Array())
 
+## El nodo (cruce) más cercano a p dentro de max_dist; -1 si no hay
+func node_near(p: Vector2, max_dist := 30.0) -> int:
+	var best := -1
+	var bd := max_dist
+	var k := Vector2i(int(floor(p.x / MERGE)), int(floor(p.y / MERGE)))
+	var rr := int(ceil(max_dist / MERGE))
+	for dx in range(-rr, rr + 1):
+		for dz in range(-rr, rr + 1):
+			var kk := Vector2i(k.x + dx, k.y + dz)
+			if not _node_hash.has(kk):
+				continue
+			for ni in (_node_hash[kk] as Array):
+				var d := (nodes[int(ni)]["pos"] as Vector2).distance_to(p)
+				if d < bd:
+					bd = d
+					best = int(ni)
+	return best
+
 ## El carril más cercano a un punto (para saber dónde está el jugador o ubicar algo): {lane, d, dist}; vacío si no hay uno a menos de max_dist
 func nearest_lane(p: Vector2, max_dist := 40.0) -> Dictionary:
 	var best := {}

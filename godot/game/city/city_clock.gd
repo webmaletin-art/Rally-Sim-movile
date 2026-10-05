@@ -65,6 +65,8 @@ func update(dt: float) -> void:
 			hour = race.world_life.clock.hour()
 		else:
 			hour = fposmod(hour + dt * 24.0 / DAY_SECONDS, 24.0)
+	if race.world_life != null and race.track != null and race.track.world_node != null:
+		race.track.world_node.set_signal_time(race.world_life.clock.now()) # los semáforos cambian con la hora del mundo
 	_acc += dt
 	if _acc >= 0.125:
 		_acc = 0.0

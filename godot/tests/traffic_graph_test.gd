@@ -91,6 +91,40 @@ func _init() -> void:
 	check(not near.is_empty(), "hay un carril cerca de la calle 10 (a %.1f m)" % float(near.get("dist", -1.0)))
 	var cell := Vector2i(int(floor(p.x / TrafficGraph.CELL)), int(floor(p.y / TrafficGraph.CELL)))
 	check(g.lanes_in_cell(cell).size() > 0, "la cuadra del centro tiene carriles")
+	# semáforos (Etapa 7)
+	var sg: RefCounted = city.traffic_signals()
+	check(sg.count() > 15, "hay cruces con semáforos (%d) y %d postes" % [sg.count(), sg.head_info.size()])
+	check(sg.head_info.size() >= sg.count() * 2, "cada cruce con semáforo tiene sus postes")
+	var clash := false
+	var seen_green := 0
+	var seen_amber := 0
+	var seen_red := 0
+	var order_ok := true
+	for off in [0.0, 7.3, 21.9]:
+		var prev := -1
+		for k in 800:
+			var t := float(k) * 0.1
+			var a: int = sg.state_at(off, 0, t)
+			var b: int = sg.state_at(off, 1, t)
+			if a == sg.GO and b != sg.RED:
+				clash = true
+			if b == sg.GO and a != sg.RED:
+				clash = true
+			if a == sg.GO: seen_green += 1
+			elif a == sg.AMBER: seen_amber += 1
+			else: seen_red += 1
+			if prev == sg.GO and a == sg.RED:
+				order_ok = false # del verde se pasa al amarillo, nunca directo al rojo
+			prev = a
+	check(not clash, "nunca hay verde en las dos calles a la vez")
+	check(order_ok and seen_green > 0 and seen_amber > 0 and seen_red > seen_green, "el ciclo hace verde → amarillo → rojo (%d/%d/%d)" % [seen_green, seen_amber, seen_red])
+	check(is_equal_approx(sg.state_at(5.0, 0, 3.0), sg.state_at(5.0, 0, 3.0 + sg.CYCLE)), "el estado se repite cada ciclo (puro por la hora del mundo)")
+	var any_lane := -1
+	for L in g.lanes:
+		if sg.is_signalized(int(L["b"])):
+			any_lane = int(L["id"])
+			break
+	check(any_lane >= 0 and sg.time_to_change(any_lane, 0.0) > 0.0, "un carril que llega a un cruce con semáforo sabe cuánto falta para el cambio")
 	print("TRAFFIC_GRAPH_TEST ", "OK" if fails == 0 else "FALLÓ (%d)" % fails)
 	quit(1 if fails > 0 else 0)
 

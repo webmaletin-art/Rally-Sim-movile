@@ -3,6 +3,7 @@ extends Node3D
 ## acercás se arman (como mucho una por cuadro, para que no haya tirones). Cada cuadra es un puñado de mallas: el terreno, las calles con sus veredas y rayas, y los edificios
 ## (cajas de pocas caras; las ventanas las dibuja el shader fx/city_facade.gdshader). Nada lejano se dibuja: hay niebla y un horizonte pintado.
 
+const SIGNAL_SHADER := preload("res://game/fx/city_signal.gdshader")
 const PaperKit := preload("res://game/fx/paper_kit.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityProps := preload("res://game/city/city_props.gd")
@@ -20,6 +21,8 @@ var view_k := 1.0
 var built_total := 0
 var _facade_mat: ShaderMaterial
 var glow_mat: StandardMaterial3D = make_glow_material() # luces de noche (ver _glow_instance)
+var signal_mat: ShaderMaterial # lámparas de los semáforos (fx/city_signal.gdshader): el color sale de la hora del mundo
+var signals: RefCounted # TrafficSignals
 var glow_on := false # las luces de la calle están encendidas (las cuadras nuevas nacen con este estado)
 var _tunnel_mat: StandardMaterial3D # el interior de los túneles y del estacionamiento: sin luz del sol (pintado), con franjas y lámparas
 var _queue: Array = []
@@ -263,6 +266,16 @@ func _redraw_broken() -> void:
 func _props_instance(key: Vector2i) -> MeshInstance3D:
 	if not city.props_in.has(key):
 		return null
+	if signals == null:
+		signals = city.traffic_signals()
+		signal_mat = ShaderMaterial.new()
+		signal_mat.shader = SIGNAL_SHADER
+		signal_mat.set_shader_parameter("cycle", signals.CYCLE)
+		signal_mat.set_shader_parameter("green", signals.GREEN)
+		signal_mat.set_shader_parameter("yellow", signals.YELLOW)
+	var sv := PackedVector3Array()
+	var sc := PackedColorArray()
+	var suv := PackedVector2Array()
 	var v := PackedVector3Array()
 	var c := PackedColorArray()
 	var gv := PackedVector3Array()
@@ -270,6 +283,9 @@ func _props_instance(key: Vector2i) -> MeshInstance3D:
 	for id in (city.props_in[key] as PackedInt32Array):
 		var fallen: Vector2 = track.broken.get(id, Vector2.ZERO)
 		CityProps.emit(int(city.prop_type[id]), city.prop_x[id], city.prop_y[id], city.prop_z[id], city.prop_yaw[id], city.prop_seed[id], fallen, v, c, gv, gc)
+		if int(city.prop_type[id]) == CityProps.LIGHT and fallen == Vector2.ZERO and signals.head_info.has(id):
+			var hi: Vector2 = signals.head_info[id]
+			CityProps.emit_signal_lamps(city.prop_x[id], city.prop_y[id], city.prop_z[id], city.prop_yaw[id], hi.x, hi.y, sv, sc, suv)
 	if v.is_empty():
 		return null
 	var m := ArrayMesh.new()
@@ -281,7 +297,27 @@ func _props_instance(key: Vector2i) -> MeshInstance3D:
 	mi.visibility_range_end = 190.0 * maxf(view_k, 0.6)
 	if not gv.is_empty():
 		mi.add_child(_glow_instance(gv, gc, mi.visibility_range_end))
+	if not sv.is_empty():
+		var sm := ArrayMesh.new()
+		var arr := []
+		arr.resize(Mesh.ARRAY_MAX)
+		arr[Mesh.ARRAY_VERTEX] = sv
+		arr[Mesh.ARRAY_COLOR] = sc
+		arr[Mesh.ARRAY_TEX_UV] = suv
+		sm.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		sm.surface_set_material(0, signal_mat)
+		var si := MeshInstance3D.new()
+		si.name = "signals"
+		si.mesh = sm
+		si.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		si.visibility_range_end = mi.visibility_range_end
+		mi.add_child(si)
 	return mi
+
+## Hora del mundo para los semáforos (la pone el reloj de la ciudad una vez por cuadro)
+func set_signal_time(t: float) -> void:
+	if signal_mat != null:
+		signal_mat.set_shader_parameter("world_time", fposmod(t, 86400.0))
 
 ## Luces de noche (lámparas, charcos de luz): malla aparte con material aditivo; el reloj (CityClock) la enciende o apaga entera con el grupo «city_glow» y regula su brillo
 func _glow_instance(gv: PackedVector3Array, gc: PackedColorArray, vis_end: float) -> MeshInstance3D:

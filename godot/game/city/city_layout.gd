@@ -60,6 +60,7 @@ var _flat_h := 0.0
 var garage := {} # el Estacionamiento Central: {road, p (en la calle), nrm, tn, c: [centros de las tres salas], y: [alturas], r: [radios]}
 var stations: Array = [] # gasolineras: {id, name, center, yaw, dir, tn, color, fuel_points: [Vector2], pumps: [Vector2], front}
 # objetos de la calle (farolas, árboles, semáforos, bolardos): el id es el índice; salen igual en todos los teléfonos
+var prop_signal: Dictionary = {} # id de semáforo → [id de la calle que regula, posición del cruce (Vector2)]
 var prop_type := PackedByteArray()
 var prop_x := PackedFloat32Array()
 var prop_z := PackedFloat32Array()
@@ -116,7 +117,26 @@ func zone_of(x: float, z: float) -> int:
 	return 2
 
 # ───────────────────────── armado ─────────────────────────
+var _traffic: RefCounted
+var _signals: RefCounted
+
+## Grafo de tránsito de la ciudad (se arma la primera vez que se pide; ver world/traffic_graph.gd)
+func traffic() -> RefCounted:
+	if _traffic == null:
+		_traffic = preload("res://game/world/traffic_graph.gd").new()
+		_traffic.build(self)
+	return _traffic
+
+## Semáforos funcionales (fases por reloj del mundo; ver world/traffic_signals.gd)
+func traffic_signals() -> RefCounted:
+	if _signals == null:
+		_signals = preload("res://game/world/traffic_signals.gd").new()
+		_signals.build(traffic(), self)
+	return _signals
+
 func build() -> void:
+	_traffic = null
+	_signals = null
 	_rng.seed = seed_v
 	_make_roads()
 	_index()
@@ -1435,7 +1455,10 @@ func _place_props() -> void:
 			var along := float(rb["hw"]) + float(rb["sw"]) + 1.6
 			var offs := float(ra["hw"]) + float(ra["sw"]) * 0.5
 			for sg in [1.0, -1.0]:
+				var before := prop_type.size()
 				_add_prop(2, jp.x + (ta.x * along + na.x * offs) * sg, jp.y + (ta.y * along + na.y * offs) * sg, -na * sg)
+				if prop_type.size() > before:
+					prop_signal[before] = [int(rids[k]), jp] # este semáforo regula a la calle ra (ver world/traffic_signals.gd)
 			# las calles chicas que desembocan en una calle grande tienen su cartel de PARE (mirando al tránsito que llega)
 			if str(ra["kind"]) in ["minor", "alley"] and str(rb["kind"]) in ["major", "ring", "coast"]:
 				var along_s := along + 5.0
