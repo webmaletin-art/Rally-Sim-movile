@@ -11,6 +11,7 @@ extends "res://game/world/world_life_system.gd"
 const WorldSeed := preload("res://game/world/world_seed.gd")
 const CityProps := preload("res://game/city/city_props.gd")
 const TrafficSignals := preload("res://game/world/traffic_signals.gd")
+const TrafficRoutine := preload("res://game/world/traffic_routine.gd")
 
 const BLOCK := 60.0 # segundos del mundo por bloque de reconstrucción
 const FF_STEP := 0.5 # paso fijo de la reconstrucción
@@ -54,9 +55,10 @@ var _len_cache: Dictionary = {}
 var _mmi: MultiMeshInstance3D
 var _mm: MultiMesh
 var _mesh: ArrayMesh
-var _cap := 24
+var _cap := 24 # tope del perfil
 var _topup_t := 0.0
 var _next_id := 0
+var _t_now := 0.0 # hora del mundo del cálculo en curso (para las rutinas)
 
 func _init() -> void:
 	system_id = "traffic"
@@ -94,6 +96,16 @@ func seed_v() -> int:
 func now() -> float:
 	return wl.clock.now()
 
+## Hora (0–24) y fin de semana para un instante t del mundo
+func _hour_of(t: float) -> float:
+	return fposmod(t / float(wl.clock.day_seconds), 1.0) * 24.0
+
+func _weekend_of(t: float) -> bool:
+	return TrafficRoutine.is_weekend(int(floor(t / float(wl.clock.day_seconds))))
+
+func routine_density(t: float) -> float:
+	return TrafficRoutine.density(_hour_of(t), _weekend_of(t))
+
 # ───────────────────────── reglas de movimiento (puras) ─────────────────────────
 func _lane_cruise(li: int) -> float:
 	return float(KIND_SPEED.get(str(graph.lanes[li]["kind"]), 9.0))
@@ -103,11 +115,31 @@ func _choose_next(v: Veh) -> void:
 	if nx.is_empty():
 		v.next = -1
 		return
-	v.next = int(nx[WorldSeed.hash_ints(seed_v(), v.id, v.hop, 77) % nx.size()])
+	if nx.size() == 1:
+		v.next = int(nx[0])
+		return
+	# rutina: a la mañana se prefiere ir hacia el centro, a la tarde salir (peso por cuánto apunta el carril hacia/desde el centro)
+	var bias := TrafficRoutine.inward_bias(_hour_of(_t_now), _weekend_of(_t_now))
+	var ws: Array = []
+	var tot := 0.0
+	for li in nx:
+		var h: Vector2 = graph.lane_at(int(li), 0.0)["tan"]
+		var p: Vector3 = graph.lane_at(int(li), 0.0)["pos"]
+		var to_c := Vector2(-p.x, -p.z).normalized()
+		var w := clampf(1.0 + bias * 0.9 * h.dot(to_c), 0.15, 2.0)
+		ws.append(w)
+		tot += w
+	var pick := WorldSeed.unit(seed_v(), v.id, v.hop, 77) * tot
+	v.next = int(nx[nx.size() - 1])
+	for i in nx.size():
+		if pick <= float(ws[i]):
+			v.next = int(nx[i])
+			break
+		pick -= float(ws[i])
 
 ## (velocidad objetivo, tope duro de velocidad): el tope hace que el auto SIEMPRE pueda frenar antes del semáforo en rojo o del auto de adelante
 func _target_speed(v: Veh, t: float, gap_ahead: float, v_ahead: float) -> Vector2:
-	var vt := _lane_cruise(v.lane) * v.cruise / 9.0 # crucero de la calle × carácter del conductor (0,85–1,1)
+	var vt := _lane_cruise(v.lane) * v.cruise / 9.0 * TrafficRoutine.speed_factor(_hour_of(t)) # crucero de la calle × carácter del conductor × hora del día
 	var vcap := 1e9
 	if v.conn >= 0.0:
 		return Vector2(minf(vt, 6.5), 1e9) # en el cruce, más despacio (las curvas)
@@ -221,7 +253,7 @@ func sector_target(cell: Vector2i) -> int:
 	var c: Vector2 = wl.sectors.sector_center(cell)
 	var zone: int = layout.zone_of(c.x, c.y)
 	var dens := DENSITY_M * (1.0 if zone <= 1 else 1.8)
-	return clampi(int(round(total / dens)), 0, 6)
+	return clampi(int(round(total / dens * routine_density(_t_now))), 0, 6)
 
 ## El auto número i (de «semilla de aparición» key) de un sector, en el estado del comienzo del bloque
 func _make(cell: Vector2i, key: int, t: float) -> Veh:
@@ -260,7 +292,9 @@ func _make(cell: Vector2i, key: int, t: float) -> Veh:
 	# avanza desde el comienzo del bloque hasta ahora (sin autos de adelante: sólo semáforos)
 	var t0: float = floorf(t / BLOCK) * BLOCK
 	var tt: float = t0
+	_t_now = t0
 	while tt < t - 0.001:
+		_t_now = tt
 		var step: float = minf(FF_STEP, t - tt)
 		if not _advance(v, step, tt, 1e9, 0.0):
 			return null
@@ -317,9 +351,10 @@ func on_sector_changed() -> void:
 			continue
 		_filled[s] = true
 		for v in reconstruct_sector(s, t):
-			if vehicles.size() >= _cap:
+			if vehicles.size() >= cap_now(t):
 				break
-			vehicles.append(v)
+			if _spot_free(v):
+				vehicles.append(v)
 	_refresh_all()
 
 func _ensure_render() -> void:
@@ -366,6 +401,7 @@ func update(dt: float) -> void:
 	if wl == null or not wl.state.enabled or _mm == null:
 		return
 	var t := now()
+	_t_now = t
 	var pl: Vector2 = wl.sectors.player
 	var r_act: float = wl.sectors.r_active
 	var r_drop: float = wl.sectors.r_simplified * 1.2
@@ -388,6 +424,20 @@ func update(dt: float) -> void:
 		v.acc = 0.0
 		var ga := 1e9
 		var va := 0.0
+		if v.conn >= 0.0 and v.next >= 0:
+			# recorriendo el cruce: el de adelante es el que va primero hacia el mismo carril (o el último del carril de destino)
+			var rem: float = v.clen - v.conn
+			for o3 in vehicles:
+				if o3 != v and o3.conn >= 0.0 and o3.next == v.next:
+					var rem3: float = o3.clen - o3.conn
+					if rem3 < rem and rem - rem3 - CAR_LEN < ga:
+						ga = rem - rem3 - CAR_LEN
+						va = o3.v
+			if occ.has(v.next):
+				var f: Veh = (occ[v.next] as Array)[0]
+				if rem + f.d - CAR_LEN < ga:
+					ga = rem + f.d - CAR_LEN
+					va = f.v
 		if v.conn < 0.0:
 			var here: Array = occ.get(v.lane, [])
 			for o in here:
@@ -414,8 +464,25 @@ func update(dt: float) -> void:
 		_top_up(t, pl)
 	_refresh_all()
 
+## Tope de autos según la hora: de madrugada circulan muchos menos (nunca más que el tope del perfil)
+func cap_now(t: float) -> int:
+	return clampi(int(round(float(_cap) * clampf(routine_density(t) / 1.0, 0.3, 1.0))), 2, _cap)
+
 func _top_up(t: float, pl: Vector2) -> void:
-	if vehicles.size() >= _cap:
+	var cn := cap_now(t)
+	if vehicles.size() > cn + 1:
+		# sobran autos para esta hora: se retira el más lejano que no esté a la vista
+		var worst: Veh = null
+		var wd := SPAWN_SAFE
+		for v in vehicles:
+			var dd := Vector2(v.pos.x, v.pos.z).distance_to(pl)
+			if dd > wd:
+				wd = dd
+				worst = v
+		if worst != null:
+			vehicles.erase(worst)
+		return
+	if vehicles.size() >= cn:
 		return
 	var counts: Dictionary = {}
 	for v in vehicles:
@@ -433,10 +500,21 @@ func _top_up(t: float, pl: Vector2) -> void:
 			continue
 		if Vector2(v.pos.x, v.pos.z).distance_to(pl) < SPAWN_SAFE:
 			continue
+		if not _spot_free(v):
+			continue
 		vehicles.append(v)
 		spawned += 1
-		if spawned >= 2 or vehicles.size() >= _cap:
+		if spawned >= 2 or vehicles.size() >= cn:
 			break
+
+## ¿Hay lugar para un auto nuevo (ningún otro a menos de 9 m en el mismo carril)?
+func _spot_free(nv: Veh) -> bool:
+	for o in vehicles:
+		if o.lane == nv.lane and o.conn < 0.0 and absf(o.d - nv.d) < 9.0:
+			return false
+		if o.conn >= 0.0 and Vector2(o.pos.x - nv.pos.x, o.pos.z - nv.pos.z).length() < 9.0:
+			return false
+	return true
 
 func _refresh_all() -> void:
 	if _mm == null:

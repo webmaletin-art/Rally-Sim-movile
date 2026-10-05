@@ -5,6 +5,7 @@ extends "res://game/world/world_life_system.gd"
 ## (sólidos, no se rompen). Al alejarse el sector se libera todo; al volver se reconstruye idéntico.
 
 const WorldSeed := preload("res://game/world/world_seed.gd")
+const TrafficRoutine := preload("res://game/world/traffic_routine.gd")
 const CityProps := preload("res://game/city/city_props.gd")
 
 const SLOT := 7.0 # largo de un lugar (m)
@@ -62,6 +63,8 @@ func seed_v() -> int:
 func cars_in_sector(cell: Vector2i, ep: int) -> Array:
 	var out: Array = []
 	var sd := seed_v()
+	var hour := fposmod(float(wl.clock.now()) / float(wl.clock.day_seconds), 1.0) * 24.0
+	var fill := FILL * TrafficRoutine.parked_factor(hour) # de día hay menos autos en el cordón, de noche más (más ocupación = superconjunto: los mismos más otros)
 	var cs: float = graph.CELL
 	for li in graph.lanes_in_cell(cell):
 		var L: Dictionary = graph.lanes[li]
@@ -74,7 +77,7 @@ func cars_in_sector(cell: Vector2i, ep: int) -> Array:
 			var key := WorldSeed.hash_ints(sd, int(L["road"]), roundi(float(L["s0"]) * 2.0) * 2 + (0 if int(L["dir"]) == 1 else 1), i, ep)
 			d += SLOT
 			i += 1
-			if float(key & 0xFFFF) / 65536.0 >= FILL:
+			if float(key & 0xFFFF) / 65536.0 >= fill:
 				continue
 			var c: Dictionary = graph.lane_at(int(li), d - SLOT)
 			var p: Vector3 = c["pos"]
@@ -119,10 +122,11 @@ func on_sector_changed() -> void:
 	var want: Dictionary = {}
 	var all: Array = []
 	for s in wl.sectors.active:
-		var cars: Array = _slot_cache.get([s, ep], [])
-		if not _slot_cache.has([s, ep]):
+		var ck := [s, ep, int(fposmod(float(wl.clock.now()) / float(wl.clock.day_seconds), 1.0) * 24.0)] # (la ocupación depende de la hora)
+		var cars: Array = _slot_cache.get(ck, [])
+		if not _slot_cache.has(ck):
 			cars = cars_in_sector(s, ep)
-			_slot_cache[[s, ep]] = cars
+			_slot_cache[ck] = cars
 		for c in cars:
 			all.append([Vector2(c["x"], c["z"]).distance_squared_to(wl.sectors.player), s, c])
 	all.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))

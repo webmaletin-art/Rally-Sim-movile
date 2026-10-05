@@ -28,3 +28,11 @@
 - **Topes por perfil** (`world_life.json`): LOW 12 · MEDIUM 24 · HIGH 36. Los autos del sector simplificado (150–300 m) se calculan a 4 Hz; los activos, a 20 Hz. Un solo `MultiMesh` (una llamada de dibujo). Más allá de 360 m se descartan.
 - Choque: cada auto son dos círculos sólidos que se pasan a `CityTrack.set_dynamic_circles` (la reacción al golpe, con física temporal, es la Etapa 11). Con World Life OFF no queda ninguno.
 - Prueba: `tests/civil_traffic_test.gd` (huella igual en dos «teléfonos», otra semilla/otra hora → otro tránsito, topes, 150 s simulados sin entrar al cruce con rojo, sin superposiciones relevantes, liberación al apagar).
+
+## Etapa 10 — rutinas del tránsito (`world/traffic_routine.gd`)
+Funciones puras de la hora del mundo y del día (los días 5 y 6 de cada 7 son fin de semana):
+- **Densidad** de autos en marcha: madrugada ≈ 0,3×, hora pico de la mañana (≈ 8:20) y de la tarde (≈ 18:30) ≈ 1,5×, mediodía ≈ 0,8×; el fin de semana el pico es más suave y hay más movimiento a la tarde-noche. Mueve la cantidad de autos por sector y el tope efectivo (nunca más que el del perfil); los que sobran se retiran de a uno, lejos de la vista.
+- **Sentido**: a la mañana las rutas se inclinan hacia el centro, a la tarde hacia afuera (peso en cada elección de carril; sigue siendo determinista).
+- **Velocidad**: −18 % en hora pico, +12 % de madrugada.
+- **Estacionados**: más autos en el cordón de noche (casas) que de día (trabajo).
+- Prueba: `tests/traffic_routine_test.gd`. Además se mejoró la convivencia: los autos que entran a un cruce ven al que va primero hacia el mismo carril y los nuevos no nacen a menos de 9 m de otro (0 superposiciones en 150 s).

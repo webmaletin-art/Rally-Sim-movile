@@ -25,7 +25,7 @@ func _mk(city: CityLayout, profile_name: String, track: FakeTrack, root: Node3D,
 	wl.setup(null, CityLayout.CELL)
 	wl.state.world_seed = seed_v
 	wl.set_profile(profile_name)
-	wl.clock.set_reference(1000.0, 1.0, false)
+	wl.clock.set_reference(wl.clock.time_for_hour(10.0), 1.0, false) # media mañana de un día de semana
 	wl.clock.frozen = true
 	var ct := CivilTraffic.new()
 	ct.attach(city, track, root)
@@ -60,9 +60,9 @@ func _init() -> void:
 	c[0].update(0.05, spot)
 	check(c[1].logical_hash() != h1, "otra semilla: otro tránsito")
 	# otra hora: otros lugares
-	c[0].clock.set_reference(1300.0, 1.0, false)
+	c[0].clock.set_reference(c[0].clock.time_for_hour(10.0) + 300.0, 1.0, false)
 	var h_t2: int = b[1].logical_hash()
-	b[0].clock.set_reference(1300.0, 1.0, false)
+	b[0].clock.set_reference(b[0].clock.time_for_hour(10.0) + 300.0, 1.0, false)
 	check(b[1].logical_hash() != h_t2 or true, "(la hora cambia el estado reconstruido)")
 	# simulación de 150 s: semáforos, huecos entre autos, carriles válidos
 	wl.clock.frozen = false
@@ -73,12 +73,13 @@ func _init() -> void:
 	var overlap := 0
 	var bad_lane := false
 	var moved := 0.0
-	var t := 1000.0
+	var t: float = wl.clock.time_for_hour(10.0)
+	var t_end := t + 150.0
 	wl.clock.set_reference(t, 1.0, false)
 	wl.clock.frozen = true
 	var prev_conn: Dictionary = {}
 	var steps := 0
-	while t < 1150.0:
+	while t < t_end:
 		t += 0.05
 		wl.clock.set_reference(t, 1.0, false)
 		wl.clock.frozen = true
@@ -113,7 +114,7 @@ func _init() -> void:
 	check(not bad_lane, "los autos siempre están en carriles válidos")
 	check(moved > 2000.0, "los autos andan (%.0f m recorridos)" % moved)
 	check(red_runs == 0, "nadie entra a un cruce con el semáforo en rojo")
-	check(overlap <= steps / 20, "casi nunca se superponen (%d casos)" % overlap)
+	check(overlap <= steps / 200, "casi nunca se superponen (%d casos)" % overlap)
 	check(int(st2["cars"]) >= 6 and int(st2["cars"]) <= 24, "la cantidad se mantiene (%d)" % int(st2["cars"]))
 	# alejarse: se sueltan; volver: se reconstruyen
 	wl.update(0.05, Vector2(2500.0, 2500.0))
