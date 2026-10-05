@@ -1904,5 +1904,6 @@
 "🏅 ¡Nuevo rango: %s! +$%d": "🏅 New rank: %s! +$%d",
 "📍 Descubriste %s · +%d de fama": "📍 You discovered %s · +%d fame",
 "🏅 Rango: %s · %d de fama": "🏅 Rank: %s · %d fame",
-"faltan %d": "%d to go"
+"faltan %d": "%d to go",
+"Clima del mundo (nubes, niebla y lluvia según la hora; en Dream City)": "World weather (clouds, fog and rain by world time; in Dream City)"
 }

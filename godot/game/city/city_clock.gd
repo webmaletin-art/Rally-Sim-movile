@@ -3,6 +3,7 @@ extends RefCounted
 ## ambiente, niebla) que se recalculan 8 veces por segundo, sin luces dinámicas ni sombras nuevas. De noche se prenden las ventanas (en el shader de las fachadas), las lámparas de la calle
 ## (mallas aditivas con charcos de luz) y los faros del auto (un haz plano aditivo sobre el piso).
 
+const WorldWeather := preload("res://game/world/world_weather.gd")
 const DAY_SECONDS := 960.0
 const START_HOUR := 9.0
 
@@ -26,6 +27,13 @@ var night := 0.0 # 0 = de día · 1 = de noche (lo que usan las ventanas y las l
 var sun_e := 1.3 # energía de la luz de afuera (race.gd la baja bajo tierra)
 var amb_e := 0.9
 var fog_col := Color(0.82, 0.87, 0.92)
+var weather_on := true # el clima sale de WorldWeather (semilla + hora del mundo); se apaga en la configuración o con el cielo forzado de una prueba
+var wx := {"cloud": 0.0, "rain": 0.0, "fog": 0.0, "wet": 0.0, "kind": "clear"}
+var fog_b := -1.0 # distancia de niebla con el clima (-1 = sin clima: queda la de race.gd)
+var fog_e := -1.0
+var _fog_b0 := 160.0
+var _fog_e0 := 560.0
+var _rain_on := false
 var _sky: ProceduralSkyMaterial
 var _acc := 0.0
 var _beam: MeshInstance3D
@@ -46,6 +54,8 @@ func setup(p_race, p_sky: ProceduralSkyMaterial) -> void:
 		_frozen = bool(race.cfg.get("tod_frozen", false))
 	race.env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR # (el ambiente sale de acá: el cielo no regenera reflejos)
 	race.env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
+	_fog_b0 = race.env.fog_depth_begin
+	_fog_e0 = race.env.fog_depth_end
 	_build_beam()
 	_apply()
 
@@ -100,6 +110,12 @@ func _apply() -> void:
 	race.env.ambient_light_color = k[6]
 	amb_e = float(k[7])
 	fog_col = k[8]
+	weather_on = race.cfg.get("tod") == null and race.profile.setting("worldWeather") != false and race.world_life != null and race.world_life.is_enabled()
+	if weather_on:
+		_apply_weather()
+	elif fog_b > 0.0:
+		fog_b = -1.0 # clima apagado: vuelve la niebla de siempre
+		fog_e = -1.0
 	race.sun.rotation_degrees = Vector3(-float(k[9]), float(k[10]), 0.0)
 	night = float(k[11])
 	var hud = race.race_hud.city_hud if race.race_hud != null else null
@@ -110,6 +126,36 @@ func _apply() -> void:
 	if _beam != null:
 		_beam.visible = night > 0.08
 		_beam_mat.albedo_color = Color(1.0, 0.95, 0.78, clampf(night * 0.55, 0.0, 0.55))
+
+## Clima del mundo (Etapa 17) sobre la hora del día: nubes (menos sol, cielo gris), niebla (se acorta la vista), lluvia (gotas, calle mojada y menos agarre)
+func _apply_weather() -> void:
+	wx = WorldWeather.at(int(race.world_life.state.world_seed), race.world_life.clock.now())
+	var cl := float(wx["cloud"])
+	var rn := float(wx["rain"])
+	var fg := float(wx["fog"])
+	var grey := Color(0.55, 0.58, 0.62).lerp(Color(0.06, 0.07, 0.10), night) # el gris de las nubes se oscurece de noche
+	var gk := clampf(cl * 0.75, 0.0, 0.85)
+	_sky.sky_top_color = _sky.sky_top_color.lerp(grey, gk)
+	_sky.sky_horizon_color = _sky.sky_horizon_color.lerp(grey, gk)
+	_sky.ground_horizon_color = _sky.ground_horizon_color.lerp(grey, gk * 0.7)
+	race.sun.light_color = race.sun.light_color.lerp(Color(0.85, 0.88, 0.92), gk)
+	race.env.ambient_light_color = race.env.ambient_light_color.lerp(grey, gk * 0.5)
+	sun_e *= 1.0 - 0.7 * cl - 0.2 * rn
+	amb_e *= 1.0 - 0.18 * cl
+	fog_col = fog_col.lerp(grey, clampf(0.35 * cl + 0.5 * fg, 0.0, 0.9))
+	var fk := clampf(1.0 - 0.6 * fg - 0.3 * rn - 0.1 * cl, 0.25, 1.0)
+	fog_b = _fog_b0 * fk # (race._underground_light los aplica: ahí también se mezcla con la niebla del túnel)
+	fog_e = _fog_e0 * fk
+	var w = race.get("weather")
+	if w != null:
+		w.wet_target = float(wx["wet"]) if float(wx["wet"]) > 0.0 else 0.0
+		var on: bool = float(wx["rain"]) > 0.35
+		if on != _rain_on:
+			_rain_on = on
+			w._rain.emitting = on
+			w._splash.emitting = on
+			if race.get("audio") != null:
+				race.audio.rain(on)
 
 # ───────────── faros: un haz plano aditivo sobre el piso, delante del auto ─────────────
 func _build_beam() -> void:

@@ -52,6 +52,7 @@ const OPTION_LIST := [
 	["graficos", "res", "Resolución del 3D", [0, 0.35, 0.5, 0.7, 1.0], ["Automática", "35%", "50%", "70%", "100%"]],
 	["graficos", "showFps", "Mostrar FPS (cuadros por segundo)", [false, true], ["No", "Sí"]],
 	["graficos", "worldLife", "Vida del mundo (tráfico y ambiente; apagala si el teléfono anda lento)", [true, false], ["Sí", "No"]],
+	["graficos", "worldWeather", "Clima del mundo (nubes, niebla y lluvia según la hora; en Dream City)", [true, false], ["Sí", "No"]],
 	["graficos", "trees", "Árboles", ["auto", 0, 1500, 3000, 6000], ["Según la calidad", "Ninguno", "Pocos", "Normales", "Muchos"]],
 	["graficos", "shadowsQ", "Sombras", ["auto", false, true], ["Según la calidad", "No", "Sí"]],
 	["graficos", "textures", "Calidad de texturas", ["auto", "low", "mid", "high"], ["Automática", "Baja", "Media", "Alta"]],

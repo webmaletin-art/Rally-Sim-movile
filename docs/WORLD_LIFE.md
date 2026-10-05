@@ -36,3 +36,9 @@ func disable(): # liberar todo
 
 ## Prueba corta
 `godot --headless --script res://tests/world_life_test.gd` (35 comprobaciones: semilla, reloj sin saltos, determinismo entre «teléfonos», ON→OFF→ON reconstruye lo mismo, sectores, perfiles). Corre en CI.
+
+## Etapa 17 — clima, día/noche y WorldEnvironment unificados con el reloj
+- **Una sola fuente de tiempo**: `WorldClock.now()` manda la hora del día (`CityClock`), los semáforos, el tránsito y ahora el **clima** (`world/world_weather.gd`, función pura de `WORLD_SEED + tiempo`). Mismo mundo y misma hora = mismo cielo para todos, sin sincronizar nada más que el reloj.
+- **Estados** (bloques de 5 min del mundo, mezcla de 40 s entre bloques): despejado (52 %), nublado (22 %), lluvia (14 %), tormenta (4 %), niebla (8 %). Llueve ≈ 17 % del tiempo. La calle sigue mojada y seca de a poco (100/200/300 s).
+- **Efecto sobre el entorno** (`CityClock._apply_weather`, sobre los valores de la hora del día): nubes → cielo y luz grises (hasta −70 % de sol), niebla → se acorta la distancia de vista (la aplica `race._underground_light`, que también la mezcla con la del túnel), lluvia → `Weather` pone gotas, calle mojada, rocío de los autos, sonido de lluvia y **−14 % de agarre** (el que ya existía).
+- **Opciones**: «Clima del mundo» (Gráficos) lo apaga; también se apaga con World Life en OFF o con una hora forzada (pruebas). Prueba: `tests/world_weather_test.gd` (determinismo, reparto, continuidad sin saltos, mojado que seca).

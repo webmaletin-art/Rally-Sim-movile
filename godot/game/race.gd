@@ -1670,6 +1670,9 @@ func _underground_light(dt: float) -> void:
 		_ug_base[0] = clock.sun_e
 		_ug_base[1] = clock.amb_e
 		_ug_base[2] = clock.fog_col
+		if clock.fog_b > 0.0:
+			_ug_base[3] = clock.fog_b
+			_ug_base[4] = clock.fog_e
 	var inside: bool = cars[0].phys.px > 3000.0
 	_ug = move_toward(_ug, 1.0 if inside else 0.0, dt * 3.0)
 	sun.light_energy = lerpf(float(_ug_base[0]), 0.10, _ug)
