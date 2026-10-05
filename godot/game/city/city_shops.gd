@@ -112,26 +112,4 @@ func _run(dt: float) -> void:
 		if fade >= 1.0:
 			phase = "gone"
 			var front: Vector2 = p["front"]
-			if str(p["shop"]) == "garage":
-				_enter_garage()
-			else:
-				race.enter_shop(str(p["shop"]), [front.x, front.y, float(p["road_yaw"])])
-
-## El Estacionamiento Central no tiene menú: la pantalla está en negro, el auto aparece en la planta baja (mirando hacia adentro) y la pantalla se abre sola (lo hace CityLinks)
-func _enter_garage() -> void:
-	var to: Array = city.spawns[1] # [x, z, rumbo] de la planta baja
-	var ph = race.cars[0].phys
-	var v := clampf(sqrt(ph.vx * ph.vx + ph.vz * ph.vz), 0.0, 6.0)
-	world.warm(Vector3(float(to[0]), 0.0, float(to[1])))
-	race.cars[0].place(float(to[0]), float(to[1]), float(to[2]))
-	ph.vx = sin(float(to[2])) * v
-	ph.vz = cos(float(to[2])) * v
-	ph.vLong = v
-	race.cars[0].driver = _prev_driver
-	race.on_teleport()
-	race.links.phase = "in"
-	race.links.t = 0.0
-	race.links.cooldown = 2.0
-	active = ""
-	phase = ""
-	fade = 0.0
+			race.enter_shop(str(p["shop"]), [front.x, front.y, float(p["road_yaw"])])

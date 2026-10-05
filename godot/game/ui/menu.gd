@@ -368,6 +368,10 @@ func go(name: String, arg = null, push := true) -> void:
 		"level": _level_screen(arg)
 		"goals": _goals()
 		"results": _results()
+		"quick_drift":
+			career.quick["fantasy"] = false
+			career.quick["map"] = "drift"
+			career.build("quick", arg)
 		"career", "events", "event", "quick", "fantasy": career.build(name, arg)
 		"garage", "dealer", "workshop", "tune", "paint", "shop": garage.build(name, arg)
 		"about", "privacy", "terms", "credits": about.build(name, arg)
@@ -378,15 +382,44 @@ func go(name: String, arg = null, push := true) -> void:
 				perf.build(name, arg)
 		"iap": store.build()
 		"soon": _soon_screen(str(arg))
+		"online": _online_home()
+		"spawn": _spawn_screen()
 		"adventure", "adv_skills", "adv_help", "adv_stages", "adv_start": adventure.build(name, arg)
 		_: _home()
 
 ## Antes de largar una carrera se elige el nivel de simulación (arcade / intermedio / simulador total / personalizado)
 ## Mundo abierto: Dream City, a recorrer libre con el auto elegido (antes se elige el nivel de simulación)
-func _start_city() -> void:
+func _start_city(spawn := 0) -> void:
 	var pid: String = profile.current_id()
 	profile.select(pid)
-	launch({"type": "city", "track": "aurelia", "ai": 0, "sky": "day", "car": pid, "state": profile.car(), "seed": 7, "back": "home", "quick": true})
+	launch({"type": "city", "track": "aurelia", "ai": 0, "sky": "day", "car": pid, "state": profile.car(), "seed": 7, "back": "home", "quick": true, "spawn": spawn})
+
+const SPAWN_PLACES := [["Estacionamiento Central", "a nivel de la calle: salís directo a la ruta"], ["Estacionamiento Central · Planta alta", "un piso arriba: bajás por la rampa"], ["Estacionamiento Central · Subsuelo", "un piso abajo: subís por la rampa"]]
+
+## Antes de entrar al mundo abierto se elige en qué estacionamiento aparecer (todos están unidos a la calle: se sale manejando)
+func _spawn_screen() -> void:
+	set_title(tr("¿DÓNDE APARECER?"))
+	body.add_child(Kit.wrap(tr("Elegí el estacionamiento donde empezás. Todos se conectan con la calle: se entra y se sale manejando."), 15, Kit.MUTED, 300))
+	for i in SPAWN_PLACES.size():
+		var idx: int = i
+		body.add_child(menu_button("🅿 " + tr(str(SPAWN_PLACES[i][0])), tr(str(SPAWN_PLACES[i][1])), func() -> void:
+			sfx.play("click")
+			_start_city(idx), i == 0))
+
+## Modo online: sin cuenta se pide una (ver _online_options); con cuenta, el menú del mundo online
+func _online_home() -> void:
+	set_title(tr("MODO ONLINE"))
+	if app.online == null or not app.online.configured():
+		body.add_child(Kit.wrap(tr("El modo online todavía no está disponible en esta versión. Mientras tanto podés recorrer Dream City sin conexión."), 15, Kit.TEXT, 300))
+		body.add_child(menu_button("🏙 " + tr("DREAM CITY"), tr("recorrer sin conexión"), func() -> void:
+			sfx.play("click")
+			go("spawn"), true))
+		return
+	if app.online.is_account():
+		body.add_child(menu_button("🏙 " + tr("INGRESAR A LA CIUDAD"), tr("elegí dónde aparecer"), func() -> void:
+			sfx.play("click")
+			go("spawn"), true))
+	_online_options()
 
 func launch(cfg: Dictionary, ask := true) -> void:
 	if ask:
@@ -549,8 +582,8 @@ func _home() -> void:
 	var soon := Kit.grid(3, 8, 8)
 	body.add_child(soon)
 	soon.add_child(tile("🌌", "FANTASÍA", "mapas de ensueño", func(): go("fantasy"), false, 70.0))
-	soon.add_child(tile("🌐", "MODO ONLINE", "PRONTO", func(): go("soon", "online"), false, 70.0))
-	soon.add_child(tile("🗺", "MUNDO ABIERTO", "Dream City", func(): _start_city(), false, 70.0))
+	soon.add_child(tile("🌐", "MODO ONLINE", "mundo abierto", func(): go("online"), false, 70.0))
+	soon.add_child(tile("🗺", "MUNDO ABIERTO", "Dream City", func(): go("spawn"), false, 70.0))
 	var g := Kit.grid(3, 8, 8)
 	body.add_child(g)
 	var tiles := [
@@ -605,7 +638,7 @@ func _online_options() -> void:
 	body.add_child(Kit.button(("☑ " if on else "☐ ") + tr("Participar en los rankings online"), func() -> void:
 		sfx.play("click")
 		profile.set_setting("onlineScores", not on)
-		go("soon", "online", false), on, 16, Vector2(0, 46)))
+		go("online", null, false), on, 16, Vector2(0, 46)))
 	body.add_child(Kit.button("👤 " + app.online.email, func() -> void:
 		sfx.play("click")
 		go("account"), false, 16, Vector2(0, 46)))

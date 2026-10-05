@@ -302,6 +302,8 @@ func _build_chunk(key: Vector2i) -> Node3D:
 	for h in city.halls:
 		if city.chunk_of((h["pos"] as Vector2).x, (h["pos"] as Vector2).y) == key:
 			root.add_child(_hall(h))
+	if not city.garage.is_empty() and city.chunk_of((city.garage["p"] as Vector2).x, (city.garage["p"] as Vector2).y) == key:
+		root.add_child(_garage_sign())
 	for l in city.links:
 		if str(l["label"]) != "" and city.chunk_of((l["label_pos"] as Vector2).x, (l["label_pos"] as Vector2).y) == key:
 			root.add_child(_link_label(l))
@@ -639,7 +641,8 @@ func _gate(ex: Dictionary) -> Node3D:
 	var c := PackedColorArray()
 	CityProps.box(v, c, xf, Vector3(-half, 1.6, 0), Vector3(0.45, 3.2, 0.45), Color(0.9, 0.9, 0.9))
 	CityProps.box(v, c, xf, Vector3(half, 1.6, 0), Vector3(0.45, 3.2, 0.45), Color(0.9, 0.9, 0.9))
-	var n := int(ceil(half * 2.0 / 1.6))
+	var open_gate := str(ex.get("to", "")) != ""
+	var n := 0 if open_gate else int(ceil(half * 2.0 / 1.6)) # abierta: sin barrera, solo el pórtico
 	for i in n:
 		var cx := -half + (float(i) + 0.5) * (half * 2.0 / float(n))
 		CityProps.box(v, c, xf, Vector3(cx, 1.1, 0), Vector3(half * 2.0 / float(n) + 0.02, 0.5, 0.2), Color(0.92, 0.2, 0.15) if i % 2 == 0 else Color(0.97, 0.97, 0.97))
@@ -651,7 +654,10 @@ func _gate(ex: Dictionary) -> Node3D:
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
 	var lab := Label3D.new()
-	lab.text = "%s\n%s" % [Tr.t("SALIDA %d") % int(ex["num"]), Tr.t("PRÓXIMAMENTE")]
+	var dest_txt := Tr.t("PRÓXIMAMENTE")
+	if open_gate:
+		dest_txt = Tr.t("AVENTURA") if str(ex["to"]) == "adventure" else Tr.t("DRIFT")
+	lab.text = "%s\n%s" % [Tr.t("SALIDA %d") % int(ex["num"]), dest_txt]
 	lab.font_size = 80
 	lab.pixel_size = 0.012
 	lab.modulate = Color(1, 1, 1)
@@ -666,6 +672,8 @@ var _gate_ids := {}
 
 ## Círculos de choque que cierran la ruta (no se rompen): se agregan al armarse la cuadra y se sacan al borrarse
 func _gate_circles(ex: Dictionary, add: bool) -> void:
+	if str(ex.get("to", "")) != "":
+		return # la salida abierta no tiene barrera
 	var pos: Vector2 = ex["pos"]
 	var yaw: float = ex["yaw"]
 	var rd: Dictionary = city.roads[int(ex["road"])]
@@ -1051,7 +1059,8 @@ func _hall(h: Dictionary) -> Node3D:
 				open = true
 		if open:
 			continue
-		s.quad(p0, p0 + cu, p1 + cu, p1, Color(0.64, 0.66, 0.70) if i % 2 == 0 else Color(0.56, 0.58, 0.63))
+		var sk := Vector3(0, -7.0, 0)
+		s.quad(p0 + sk, p0 + cu, p1 + cu, p1 + sk, Color(0.64, 0.66, 0.70) if i % 2 == 0 else Color(0.56, 0.58, 0.63))
 		s.quad(p0 + Vector3(0, 0.9, 0), p0 + Vector3(0, 1.5, 0), p1 + Vector3(0, 1.5, 0), p1 + Vector3(0, 0.9, 0), Color(0.95, 0.52, 0.14))
 	# rayas de los lugares: líneas radiales en la corona exterior y el borde del pasillo (proporcional al radio: la sala de 42 m las dibuja entre 29 y 41 m)
 	for i in 44:
@@ -1128,6 +1137,41 @@ func _mouth(mo: Dictionary) -> Node3D:
 		lab.position = Vector3(pos.x - d.x * 0.35, y + 4.9, pos.y - d.y * 0.35)
 		lab.rotation = Vector3(0, atan2(-d.x, -d.y), 0)
 		root.add_child(lab)
+	return root
+
+## La entrada del Estacionamiento Central, vista desde la ruta: un tablero azul con la «P» sobre dos postes, al costado del camino de entrada
+func _garage_sign() -> Node3D:
+	var root := Node3D.new()
+	root.name = "cartel_estacionamiento"
+	var p0: Vector2 = city.garage["p"]
+	var nrm: Vector2 = city.garage["nrm"]
+	var tn: Vector2 = city.garage["tn"]
+	var hw_r: float = float((city.roads[int(city.garage["road"])] as Dictionary)["hw"])
+	var base: Vector2 = p0 + nrm * (hw_r + 3.2) + tn * 9.0
+	var y: float = float((city.garage["y"] as Array)[0])
+	var yaw := atan2(-tn.x, -tn.y) # el tablero mira al tránsito que viene de la ciudad
+	var xf := Transform3D(Basis(Vector3.UP, yaw), Vector3(base.x, y, base.y))
+	var v := PackedVector3Array()
+	var c := PackedColorArray()
+	CityProps.box(v, c, xf, Vector3(-1.4, 2.0, 0), Vector3(0.22, 4.0, 0.22), Color(0.55, 0.56, 0.60))
+	CityProps.box(v, c, xf, Vector3(1.4, 2.0, 0), Vector3(0.22, 4.0, 0.22), Color(0.55, 0.56, 0.60))
+	CityProps.box(v, c, xf, Vector3(0, 4.6, 0), Vector3(3.6, 2.4, 0.2), Color(0.97, 0.97, 0.96))
+	CityProps.box(v, c, xf, Vector3(0, 4.6, 0.06), Vector3(3.3, 2.1, 0.2), Color(0.10, 0.28, 0.72))
+	var m := ArrayMesh.new()
+	PaperKit.add_surface(m, v, c, PaperKit.material(null, 0.0, 0.2, 0.3))
+	var mi := MeshInstance3D.new()
+	mi.mesh = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	var lab := Label3D.new()
+	lab.text = "P"
+	lab.font_size = 220
+	lab.pixel_size = 0.011
+	lab.modulate = Color(1, 1, 1)
+	lab.outline_size = 0
+	lab.position = xf * Vector3(0, 4.6, 0.25)
+	lab.rotation = Vector3(0, yaw, 0)
+	root.add_child(lab)
 	return root
 
 ## Cartel «SALIDA» de las puntas de los brazos del túnel y de la sala del estacionamiento

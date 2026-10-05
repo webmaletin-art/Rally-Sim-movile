@@ -43,7 +43,7 @@ func _init() -> void:
 	check(c.roads.size() >= 47, "%d calles (%.1f km de calzada)" % [c.roads.size(), km])
 	check(rural_n == 4 and c.exits.size() == 4, "4 rutas rurales con su Salida numerada (%s)" % str(c.exits.map(func(e): return e["num"])))
 	check(c.junctions.size() > 140, "%d cruces" % c.junctions.size())
-	check(c.slab_count > 3000 and c.building_count == 9, "%d frentes de edificios y %d lugares especiales (el concesionario, siete talleres y el estacionamiento)" % [c.slab_count, c.building_count])
+	check(c.slab_count > 3000 and c.building_count == 8, "%d frentes de edificios y %d lugares especiales (el concesionario y siete talleres)" % [c.slab_count, c.building_count])
 	# gasolineras: cuatro, con 3 a 6 puntos de carga; ningún punto de carga sobre una calle y ningún punto del playón sobre el asfalto
 	check(c.stations.size() == 4, "hay %d gasolineras" % c.stations.size())
 	var fast_n := 0
@@ -66,33 +66,24 @@ func _init() -> void:
 						bad += 1
 		check(bad == 0, "el playón de %s no pisa ninguna calle (%d puntos mal)" % [st["id"], bad])
 	check(fast_n == 1, "hay una sola gasolinera de carga rápida")
-	# Estacionamiento Central: tres niveles unidos por rampas; se puede ir de la planta baja a la alta y al subsuelo sin saltos ni paredes
-	var gtest_ok := true
-	var maxstep := 0.0
-	for side_t in [1.0, -1.0]:
-		var yprev := 0.0
-		var x := 6000.0
-		var xend := 6000.0 + float(side_t) * 100.0
-		var prev_y := float(c.probe(6000.0, 6000.0)[4])
-		while absf(x - xend) > 1.0:
-			x += float(side_t) * 0.5
-			# se sigue la rampa (curva en S): se busca el punto de la rampa más cercano en z
-			var best_z := 6000.0
-			var best_sl := -1e9
-			for dz in range(-120, 121):
-				var zz := 6000.0 + float(dz) * 0.1
-				var sl := float(c.probe(x, zz)[0])
-				if sl > best_sl:
-					best_sl = sl
-					best_z = zz
-			var pg := c.probe(x, best_z)
-			if float(pg[0]) < 0.0:
-				gtest_ok = false
-			maxstep = maxf(maxstep, absf(float(pg[4]) - prev_y))
-			prev_y = float(pg[4])
-	check(gtest_ok, "las rampas del estacionamiento no tienen cortes entre las salas")
-	check(maxstep < 0.12, "el suelo de las rampas es continuo (salto máx. %.2f m cada 0,5 m)" % maxstep)
-	check(absf(float(c.probe(6100.0, 6000.0)[4]) - 4.4) < 0.01 and absf(float(c.probe(5900.0, 6000.0)[4]) + 4.4) < 0.01 and absf(float(c.probe(6000.0, 6000.0)[4])) < 0.01, "planta alta a 4,4 m, subsuelo a −4,4 m y planta baja al nivel de la calle")
+	# Estacionamiento Central: está sobre una ruta, unido a la calle por su camino de entrada; tres niveles a 0 y ±4,4 m
+	check(not c.garage.is_empty(), "el Estacionamiento Central tiene lugar en una ruta")
+	if not c.garage.is_empty():
+		var gy: Array = c.garage["y"]
+		var gc: Array = c.garage["c"]
+		check(absf(float(gy[1]) - float(gy[0]) - 4.4) < 0.01 and absf(float(gy[2]) - float(gy[0]) + 4.4) < 0.01, "planta alta a 4,4 m, subsuelo a −4,4 m y planta baja al nivel de la ruta")
+		for gi in 3:
+			var pg0 := c.probe((gc[gi] as Vector2).x, (gc[gi] as Vector2).y)
+			check(float(pg0[0]) > 10.0 and absf(float(pg0[4]) - float(gy[gi])) < 0.01, "el centro de la sala %d es suelo a su altura" % gi)
+		# de la ruta al centro de la planta baja se llega sin cortes (camino de entrada)
+		var ok_path := true
+		var p_a: Vector2 = c.garage["p"]
+		var p_b: Vector2 = gc[0]
+		for k in 41:
+			var q: Vector2 = p_a.lerp(p_b, float(k) / 40.0)
+			if float(c.probe(q.x, q.y)[0]) < 1.0:
+				ok_path = false
+		check(ok_path, "se entra al estacionamiento manejando desde la ruta, sin cortes")
 	check(c.spawns.size() == 3, "hay %d lugares donde aparecer (todos dentro de un estacionamiento)" % c.spawns.size())
 	for spw in c.spawns:
 		check(float(c.probe(spw[0], spw[1])[0]) > 3.0, "se puede aparecer en (%d, %d)" % [int(spw[0]), int(spw[1])])

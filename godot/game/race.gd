@@ -522,10 +522,8 @@ func _make_track() -> void:
 	if track_id == "aurelia":
 		track = CityTrack.new() # el mundo abierto: Dream City (no figura en routes.json: no es una pista de carrera)
 		if profile != null and not cfg.has("resume"):
-			# se aparece dentro de un estacionamiento: uno distinto cada vez (el subterráneo del parque, la planta baja y el subsuelo del Estacionamiento Central)
-			track.spawn_i = int(profile.d.get("spawn_n", 0)) % track.city.spawns.size()
-			profile.d["spawn_n"] = track.spawn_i + 1
-			profile.save()
+			# se aparece dentro del Estacionamiento Central: en la sala que se eligió en el menú (por defecto la planta baja)
+			track.spawn_i = int(cfg.get("spawn", 0)) % track.city.spawns.size()
 		return
 	if track_id == "prueba" or not track_maps.has(track_id):
 		track_id = "prueba"
@@ -1557,6 +1555,24 @@ var _ug_base: Array = [] # luz del sol, luz ambiente, niebla (color, inicio, fin
 var shopshot := ""
 var _shopshot_f := 0
 
+var _gate_go := false
+
+## Las salidas abiertas de las rutas: al llegar al final de la ruta se pasa a otro mapa (Aventura o Drift)
+func _check_gates() -> void:
+	if _gate_go or cars.is_empty() or not (track is CityTrack):
+		return
+	var ph = cars[0].phys
+	var pos := Vector2(ph.px, ph.pz)
+	for ex in (track as CityTrack).city.exits:
+		var to := str(ex.get("to", ""))
+		if to != "" and pos.distance_to(ex["pos"]) < 12.0:
+			_gate_go = true
+			if fuel != null:
+				fuel.save()
+			cfg.erase("gpsdrive")
+			exit_requested.emit("gate:" + to)
+			return
+
 ## Se entra a un local (taller o concesionario): se sale al menú de ese local y después se vuelve a la calle (ver app.gd)
 func enter_shop(id: String, resume: Array) -> void:
 	cfg["resume"] = resume
@@ -1592,6 +1608,7 @@ func _tick_session(dt: float) -> void:
 		links.update(dt)
 		fuel.update(dt)
 		tolls.update(dt)
+		_check_gates()
 		if clock != null:
 			clock.update(dt)
 		_underground_light(dt)

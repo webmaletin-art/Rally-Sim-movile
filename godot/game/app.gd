@@ -121,6 +121,10 @@ func _submit_online(cfg: Dictionary, result: Dictionary) -> void:
 	online.submit_score(str(cfg.get("track", "")), board, v, str(cfg.get("car", "")), int(result.get("laps", 1)), build)
 
 func _on_race_exit(back: String) -> void:
+	if back.begins_with("gate:"):
+		city_return = {}
+		show_menu("quick_drift" if back == "gate:drift" else "adventure") # la Salida de una ruta lleva a esa pantalla
+		return
 	if back.begins_with("shop:") and race != null:
 		city_return = (race.cfg as Dictionary).duplicate(true) # el auto queda frente al local: se vuelve ahí
 	else:

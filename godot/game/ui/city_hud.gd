@@ -40,8 +40,8 @@ func setup(p_track, toast_cb: Callable) -> void:
 	_toast_cb = toast_cb
 	gps = CityGps.new(city)
 	for rd in city.roads:
-		if str(rd["kind"]) in ["tunnel", "bay"]:
-			continue # los túneles están ocultos y las entradas de los locales son muy cortas
+		if str(rd["kind"]) in ["tunnel", "bay"] and not str(rd["name"]).begins_with("Entrada Estacionamiento"):
+			continue # los túneles están ocultos y las entradas de los locales son muy cortas (la del estacionamiento sí se ve)
 		var pts: PackedVector3Array = rd["pts"]
 		var step := 3
 		var i := 0
@@ -165,7 +165,16 @@ func _build_big() -> void:
 	var clear := Kit.button(Tr.t("QUITAR GPS"), func() -> void: _clear_dest(), false, 20, Vector2(190, 56))
 	clear.position = Vector2(200, 12)
 	_big.add_child(clear)
-	var hint := Kit.label(Tr.t("Tocá un lugar del mapa para ir con el GPS"), 18, Kit.MUTED)
+	var me_btn := Kit.button("🎯 " + Tr.t("MI AUTO"), func() -> void: _center_big(), false, 18, Vector2(150, 56))
+	me_btn.position = Vector2(396, 12)
+	_big.add_child(me_btn)
+	var zin := Kit.button("＋", func() -> void: _zoom_big(1.5), false, 26, Vector2(60, 56))
+	zin.position = Vector2(554, 12)
+	_big.add_child(zin)
+	var zout := Kit.button("－", func() -> void: _zoom_big(1.0 / 1.5), false, 26, Vector2(60, 56))
+	zout.position = Vector2(618, 12)
+	_big.add_child(zout)
+	var hint := Kit.label(Tr.t("Tocá un lugar para ir con el GPS · arrastrá para mover · dos dedos para el zoom"), 18, Kit.MUTED)
 	hint.position = Vector2(16, 76)
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_big.add_child(hint)
@@ -187,16 +196,71 @@ func _set_big(on: bool) -> void:
 	gps_l.visible = not on
 	if on:
 		_layout_big()
+		_center_big()
 		(_big.get_node("map") as Control).queue_redraw()
 
+var _tp := {} # dedos apoyados en el mapa grande: índice -> posición
+var _pinch_d := 0.0
+var _pressing := false
+var _moved := 0.0
+
+func _center_big() -> void:
+	var mv: MapView = _big.get_node("map")
+	mv.pan = car_pos
+	mv.zoom = 2.2
+	mv.queue_redraw()
+
+func _zoom_big(f: float) -> void:
+	var mv: MapView = _big.get_node("map")
+	mv.zoom_by(f, mv.size * 0.5)
+
+## Mapa grande: un toque elige el destino; arrastrar con un dedo lo mueve; con dos dedos (pinza) o la rueda se acerca y se aleja
 func _big_input(e: InputEvent) -> void:
-	var p := Vector2.ZERO
-	if e is InputEventMouseButton and e.pressed:
-		p = e.position
-	elif e is InputEventScreenTouch and e.pressed:
-		p = e.position
-	else:
+	var mv: MapView = _big.get_node("map")
+	if e is InputEventScreenTouch:
+		var st := e as InputEventScreenTouch
+		if st.pressed:
+			_tp[st.index] = st.position
+		else:
+			_tp.erase(st.index)
+		_pinch_d = 0.0
+		if _tp.size() >= 2:
+			_moved = 999.0 # con dos dedos nunca es un toque
 		return
+	if e is InputEventScreenDrag:
+		var sd := e as InputEventScreenDrag
+		_tp[sd.index] = sd.position
+		if _tp.size() >= 2:
+			var ks := _tp.keys()
+			var pa: Vector2 = _tp[ks[0]]
+			var pb: Vector2 = _tp[ks[1]]
+			var d := pa.distance_to(pb)
+			if _pinch_d > 8.0 and d > 8.0:
+				mv.zoom_by(d / _pinch_d, (pa + pb) * 0.5)
+			_pinch_d = d
+		return
+	if e is InputEventMouseButton:
+		var mb := e as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
+			mv.zoom_by(1.25, mb.position)
+		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
+			mv.zoom_by(0.8, mb.position)
+		elif mb.button_index == MOUSE_BUTTON_LEFT:
+			if mb.pressed:
+				_pressing = true
+				_moved = 0.0
+			else:
+				if _pressing and _moved < 14.0 and _tp.size() < 2:
+					_pick(mb.position)
+				_pressing = false
+		return
+	if e is InputEventMouseMotion and _pressing and _tp.size() < 2:
+		var mm := e as InputEventMouseMotion
+		_moved += mm.relative.length()
+		if _moved >= 14.0:
+			mv.pan_by(mm.relative)
+
+func _pick(p: Vector2) -> void:
 	var mv: MapView = _big.get_node("map")
 	var w := mv.to_world(p)
 	# un lugar de la lista si el toque cae cerca
@@ -239,12 +303,22 @@ func _reroute() -> void:
 		has_dest = false
 		gps_l.text = Tr.t("GPS: no hay camino")
 
+## La nafta y la hora van arriba, al lado del velocímetro (lejos del volante y de los pedales)
+func _layout_fuel() -> void:
+	if fuel_l == null:
+		return
+	var cx := get_viewport_rect().size.x * 0.5 + 190.0
+	fuel_l.position = Vector2(cx, 34.0)
+	fuel_bar.position = Vector2(cx, 62.0)
+	clock_l.position = Vector2(cx, 74.0)
+
 func update_hud(dt: float, car) -> void:
 	car_pos = Vector2(car.phys.px, car.phys.pz)
 	heading = car.phys.yaw
 	_t += dt
 	if _t < 0.06:
 		return
+	_layout_fuel()
 	var step := _t
 	_t = 0.0
 	_mini.queue_redraw()
@@ -256,12 +330,18 @@ func update_hud(dt: float, car) -> void:
 	else:
 		street_l.text = Tr.t("Fuera de calle")
 	for ex in city.exits:
-		if not _exit_warned.has(ex["num"]) and car_pos.distance_to(ex["pos"]) < 140.0:
-			_exit_warned[ex["num"]] = true
-			if _toast_cb.is_valid():
-				_toast_cb.call(Tr.t("%s: esa ciudad abre en la próxima actualización") % CityNames.t(str(ex["name"])))
+		if _exit_warned.has(ex["num"]) or car_pos.distance_to(ex["pos"]) >= 140.0:
+			continue
+		_exit_warned[ex["num"]] = true
+		if not _toast_cb.is_valid():
+			continue
+		if str(ex.get("to", "")) != "":
+			_toast_cb.call(Tr.t("%s: seguí derecho para salir de la ciudad") % CityNames.t(str(ex["name"])))
+		else:
+			_toast_cb.call(Tr.t("%s: esa ciudad abre en la próxima actualización") % CityNames.t(str(ex["name"])))
 	if has_dest:
 		_off_t += step
+		_trim_route()
 		_gps_text()
 		var to_dest := car_pos.distance_to(dest)
 		if to_dest < arrive_r:
@@ -269,9 +349,25 @@ func update_hud(dt: float, car) -> void:
 				_toast_cb.call(Tr.t("🏁 ¡Llegaste a %s!") % route_name)
 			_clear_dest()
 			return
-		if _off_t > 1.5 and _route_dist() > 45.0:
+		if _off_t > 1.2 and _route_dist() > 24.0:
 			_off_t = 0.0
 			_reroute()
+
+## La línea del GPS arranca en el auto: lo que ya pasaste se borra a medida que avanzás
+func _trim_route() -> void:
+	if route.size() < 3:
+		return
+	var bi := 0
+	var bd := 1e9
+	for i in mini(route.size(), 40):
+		var d := route[i].distance_to(car_pos)
+		if d < bd:
+			bd = d
+			bi = i
+	if bi >= 1 and bd < 40.0:
+		route = route.slice(bi)
+	if route.size() > 1 and bd < 40.0:
+		route[0] = car_pos
 
 ## distancia del auto al punto más cercano de la ruta
 func _route_dist() -> float:
@@ -319,20 +415,35 @@ class MapView extends Control:
 	var hud
 	var big := false
 
+	var zoom := 1.0 # solo el mapa grande
+	var pan := Vector2.ZERO # punto del mundo que queda en el centro del mapa grande
+
 	func scale_px() -> float:
 		if big:
-			return minf(size.x, size.y) / 2600.0
+			return minf(size.x, size.y) / 2600.0 * zoom
 		return size.x * 0.5 / MINI_R
 
-	func _center_world() -> Vector2:
-		return Vector2.ZERO if big else hud.car_pos
+	func zoom_by(f: float, at: Vector2) -> void:
+		var w0 := to_world(at)
+		zoom = clampf(zoom * f, 0.45, 16.0)
+		pan = w0 - (at - size * 0.5) / scale_px() # el punto bajo los dedos no se mueve
+		_clamp_pan()
+		queue_redraw()
+
+	func pan_by(rel: Vector2) -> void:
+		pan -= rel / scale_px()
+		_clamp_pan()
+		queue_redraw()
+
+	func _clamp_pan() -> void:
+		pan = pan.clamp(Vector2(-3200.0, -3200.0), Vector2(3200.0, 3200.0))
 
 	## mundo → pantalla del control
 	func _xf() -> Transform2D:
 		var s := scale_px()
 		var ctr := size * 0.5
 		if big:
-			return Transform2D(Vector2(s, 0.0), Vector2(0.0, s), ctr)
+			return Transform2D(Vector2(s, 0.0), Vector2(0.0, s), ctr - pan * s)
 		var f := Vector2(sin(hud.heading), cos(hud.heading))
 		var xa := Vector2(-f.y, -f.x) * s
 		var ya := Vector2(f.x, -f.y) * s
