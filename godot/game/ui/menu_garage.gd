@@ -9,6 +9,8 @@ const Tr := preload("res://game/i18n/tr.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const Release := preload("res://game/data/release.gd")
 const Shops := preload("res://game/data/shops.gd")
+const PartCatalog := preload("res://game/car/part_catalog.gd")
+const VehicleCustomization := preload("res://game/car/vehicle_customization.gd")
 
 const DARK := Color(0.05, 0.06, 0.08)
 const GROUP_SHORT := {"Neumáticos": "Gomas", "Alineación": "Alineac.", "Suspensión": "Susp.", "Frenos": "Frenos", "Transmisión": "Transm.", "Aerodinámica": "Aero", "Diversión (gustos raros)": "Extras"}
@@ -280,8 +282,8 @@ func _workshop() -> void:
 	hl.clip_text = true
 	hl.custom_minimum_size.x = 40
 	head.add_child(hl)
-	var tab_names := ["⚙ PIEZAS", "⚪ GOMAS", "🎚 AJUSTE", "🎨 PINTURA"]
-	var allowed: Array = sd["tabs"] if not sd.is_empty() else [0, 1, 2, 3]
+	var tab_names := ["⚙ PIEZAS", "⚪ GOMAS", "🎚 AJUSTE", "🎨 PINTURA", "🛞 LLANTAS"]
+	var allowed: Array = sd["tabs"] if not sd.is_empty() else [0, 1, 2, 3, 4]
 	if not allowed.has(ws_tab):
 		ws_tab = int(allowed[0])
 	if allowed.size() > 1:
@@ -299,6 +301,7 @@ func _workshop() -> void:
 		1: _ws_tires(id, st)
 		2: _ws_tune(id, st)
 		3: _ws_paint(id, st)
+		4: _ws_rims(id, st)
 
 func _after_change() -> void:
 	m.refresh_car()
@@ -375,6 +378,37 @@ func _ws_tires(id: String, st: Dictionary) -> void:
 			else:
 				m.sfx.play("error")
 				m.toast(tr("No te alcanza el dinero")), eq, true, 74.0, 16)
+		g.add_child(b)
+
+## Llantas modulares: se ven puestas en el auto de la sala al instante. Comprar = pagar una vez por auto; cambiar entre las compradas es gratis.
+func _ws_rims(id: String, st: Dictionary) -> void:
+	var ctx := VehicleCustomization.context(id, m.vehicles, st)
+	var cur := str((VehicleCustomization.installed(st).get("wheel", {}) as Dictionary).get("id", ""))
+	if not VehicleCustomization.supports(id):
+		m.body.add_child(Kit.wrap(tr("Este auto todavía no admite llantas modulares."), 14, Kit.MUTED, 300))
+		return
+	var own: Array = st.get("partsOwned", [])
+	var g := Kit.grid(2, 8, 8)
+	m.body.add_child(g)
+	var stock := Kit.card_button(tr("ORIGINALES"), tr("Las que trae el auto"), tr("EQUIPADO") if cur == "" else tr("PONER"), func() -> void:
+		m.profile.remove_part(id, "wheel")
+		m.sfx.play("click")
+		_after_change(), cur == "", true, 64.0, 16)
+	g.add_child(stock)
+	for pid in PartCatalog.parts_in("wheel"):
+		var p := PartCatalog.part(str(pid))
+		var ok: bool = bool(VehicleCustomization.can_install(str(pid), id, ctx["V"], ctx["meta"])["ok"])
+		var eq: bool = cur == str(pid)
+		var have: bool = own.has(str(pid))
+		var rt := tr("EQUIPADO") if eq else (tr("PONER") if have else Kit.fmt_cr(float(p.get("price", 0))))
+		var b := Kit.card_button(tr(str(p["name"])), "" if ok else tr("No entra en este auto"), rt, func() -> void:
+			var r: Dictionary = m.profile.buy_part(id, str(pid), m.vehicles)
+			if bool(r["ok"]):
+				m.sfx.play("buy")
+				_after_change()
+			else:
+				m.sfx.play("error")
+				m.toast(tr(str(r["reason"]))), eq, ok, 64.0, 16)
 		g.add_child(b)
 
 func _draft_sync(id: String, st: Dictionary) -> void:

@@ -34,3 +34,9 @@
 
 ## Prueba corta
 `godot --headless --script res://tests/parts_test.gd` (catálogo, montajes en los 9 autos, adaptación al ancho, incompatibilidad, instalar/guardar/cargar, llantas, nodos espejados). Corre en CI. Las piezas `dev_*` (ocultas) sirven para ver los montajes sin modelos reales.
+
+## Llantas (Etapa 3)
+- 15 modelos de llanta procedurales (`rim_*` en `parts.json`, estilos en `wheel_gen.gd`): multirradio 5/10, estrella 5, turbina, tuerca central, plato 6/8, chapa 10, beadlock, seis radios, Y bifurcada, malla BBS, alambre clásica, tres palas, disco aero. Agregar una más = un estilo en `WheelGen.rim_mesh` + una entrada en el JSON.
+- Offline: taller de ruedas → pestaña **🛞 LLANTAS**. Se ve puesta en el auto de la sala al instante; se paga una vez por auto (`state["partsOwned"]`) y cambiar entre las compradas es gratis (`state["mods"]["wheel"]`). «ORIGINALES» vuelve a las de fábrica. Lógica en `Profile.buy_part` / `remove_part` (valida con `VehicleCustomization.can_install`).
+- La llanta se adapta al radio de rueda de cada auto (escala 0,85–1,15); si no entra, se marca «No entra en este auto».
+- Online: **todavía no** se instala desde el servidor. Cuando se hagan las instancias de auto online (`instance_id`, Etapa 19 y migración de economía), la misma configuración `mods` se validará en un RPC del servidor (dueño, compatibilidad, precio). Hasta entonces el online muestra las llantas de fábrica.

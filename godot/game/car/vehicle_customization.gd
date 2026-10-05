@@ -6,10 +6,23 @@ extends RefCounted
 
 const PartCatalog := preload("res://game/car/part_catalog.gd")
 const VehicleMounts := preload("res://game/car/vehicle_mounts.gd")
+const VehicleParams := preload("res://game/physics/vehicle_params.gd")
+const CarBuild := preload("res://game/data/car_build.gd")
 
 ## ¿Este auto admite piezas modulares? (por ahora los que tienen carrocería propia; los que usan la del Volt todavía no)
 static func supports(vehicle_id: String) -> bool:
 	return vehicle_id != "" and ResourceLoader.exists("res://game/models/cars/%s.glb" % vehicle_id)
+
+## Medidas del auto (V = parámetros físicos, meta = JSON del modelo) para comprobar compatibilidad sin armar el auto 3D. {V, meta}
+static func context(vehicle_id: String, vehicles: Dictionary, state: Dictionary) -> Dictionary:
+	var meta := {}
+	var f := "res://game/models/cars/%s.json" % vehicle_id
+	if FileAccess.file_exists(f):
+		var j: Variant = JSON.parse_string(FileAccess.get_file_as_string(f))
+		if j is Dictionary:
+			meta = j
+	var V: RefCounted = VehicleParams.from_dict(CarBuild.build_params(vehicles[vehicle_id], state))
+	return {"V": V, "meta": meta}
 
 static func installed(state: Dictionary) -> Dictionary:
 	var m: Variant = state.get("mods", {})

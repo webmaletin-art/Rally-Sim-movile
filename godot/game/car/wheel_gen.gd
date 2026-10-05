@@ -257,6 +257,34 @@ static func rim_mesh(style: String, rr: float, wr: float, lo: bool) -> ArrayMesh
 			for i in (0 if lo else 18):
 				var a := TAU * float(i) / 18.0
 				_bolt(steel, a, rr * 0.985, xl + 0.003, 0.0075)
+		"spoke6": # seis radios finos y rectos
+			_spokes(rim, 6, rr * 0.15, rr * 0.10, r0, rb, xl - 0.012, xf, 0.014, 0.0)
+			_hub(rim, steel, r0 * 1.05, xf, 6, rr * 0.15, rr * 0.055, lo)
+		"forked": # cinco radios anchos que se abren en Y hacia el borde
+			_spokes(rim, 5, rr * 0.27, rr * 0.11, r0, rb, xl - 0.012, xf, 0.016, 0.0)
+			_spokes(rim, 5 if lo else 10, rr * 0.075, rr * 0.10, rb * 0.52, rb, xl - 0.012, xf + (xl - 0.012 - xf) * 0.2, 0.012, TAU / 20.0)
+			_hub(rim, steel, r0 * 1.1, xf, 5, rr * 0.15, rr * 0.06, lo)
+		"mesh": # malla cruzada (dos juegos de radios finos girados en sentidos opuestos)
+			var nm := 9 if lo else 16
+			_spokes(rim, nm, rr * 0.055, rr * 0.055, r0 * 1.5, rb, xl - 0.012, xf, 0.010, 0.11)
+			_spokes(rim, nm, rr * 0.055, rr * 0.055, r0 * 1.5, rb, xl - 0.012, xf, 0.010, -0.11)
+			_plate(rim, r0 * 2.3, r0, xf + 0.012, xf, seg)
+			_hub(rim, steel, r0 * 1.15, xf, 5, rr * 0.13, rr * 0.05, lo)
+		"classic": # rueda de alambre clásica con tapa cromada grande
+			var nw := 12 if lo else 28
+			_spokes(rim, nw, rr * 0.032, rr * 0.032, r0 * 1.6, rb, xl - 0.012, xf, 0.007, 0.0)
+			_spokes(rim, nw, rr * 0.032, rr * 0.032, r0 * 1.6, rb, xl - 0.012, xf, 0.007, 0.13)
+			_hub(rim, steel, r0 * 1.9, xf, 0, 0.0, 0.0, lo)
+			steel_nut(steel, xf, r0 * 1.2, 0.02)
+		"blade3": # tres palas anchas y agresivas
+			_spokes(rim, 3, rr * 0.80, rr * 0.52, r0, rb, xl - 0.012, xf, 0.020, 0.0)
+			_hub(rim, steel, r0 * 1.2, xf, 3, rr * 0.16, rr * 0.07, lo)
+		"aero": # disco aerodinámico casi plano, con ranuras de ventilación al borde
+			var xa := xl - dish * 0.35
+			_plate(rim, rb * 0.995, r0, xl - 0.010, xa, seg)
+			for i in (10 if lo else 20):
+				_slot(dark, TAU * float(i) / (10.0 if lo else 20.0), rb * 0.80, rb * 0.95, rr * 0.028, xl - 0.0105)
+			_hub(rim, steel, r0 * 1.25, xa, 5, rr * 0.20, rr * 0.05, lo)
 		_:
 			_spokes(rim, 5, rr * 0.4, rr * 0.22, r0, rb, xl - 0.012, xf, 0.016, 0.0)
 	if lo: # de lejos no se distinguen las tuercas: una superficie menos
@@ -269,7 +297,7 @@ static func rim_mesh(style: String, rr: float, wr: float, lo: bool) -> ArrayMesh
 ## radios: de r0 a r1; ancho w0 en el cubo y w1 en el borde; el centro está en el plano xf y el borde en xe (llanta cóncava)
 static func _spokes(mb: MB, n: int, w0: float, w1: float, r0: float, r1: float, xe: float, xf: float, th: float, twist: float) -> void:
 	for i in n:
-		var a := TAU * float(i) / float(n)
+		var a := TAU * float(i) / float(n) + twist # twist = giro de todo el juego de radios (para cruzar dos juegos y armar una malla)
 		var er := Vector3(0, sin(a), cos(a))
 		var et := Vector3(0, cos(a), -sin(a))
 		var steps := 3

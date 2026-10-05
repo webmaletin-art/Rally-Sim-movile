@@ -5,6 +5,8 @@ extends RefCounted
 signal changed
 
 const CarBuild := preload("res://game/data/car_build.gd")
+const PartCatalog := preload("res://game/car/part_catalog.gd")
+const VehicleCustomization := preload("res://game/car/vehicle_customization.gd")
 const PATH := "user://profile.json"
 
 const DEFAULT_SETTINGS := {
@@ -171,6 +173,30 @@ func buy_tires(id: String, tid: String) -> bool:
 	car_d["tires"] = tid
 	save()
 	return true
+
+## Piezas modulares (llantas, etc.): se compran una vez por auto y se pueden cambiar gratis. Offline = estado local; el online usa su propia instancia validada por el servidor.
+func buy_part(id: String, part_id: String, vehicles: Dictionary) -> Dictionary:
+	if not owns(id):
+		return {"ok": false, "reason": "no tenés ese auto"}
+	var car_d: Dictionary = d["owned"][id]
+	var ctx := VehicleCustomization.context(id, vehicles, car_d)
+	var c := VehicleCustomization.can_install(part_id, id, ctx["V"], ctx["meta"])
+	if not bool(c["ok"]):
+		return c
+	var own: Array = car_d.get("partsOwned", [])
+	if not own.has(part_id):
+		if not spend(int(PartCatalog.part(part_id).get("price", 0))):
+			return {"ok": false, "reason": "no alcanza el dinero"}
+		own.append(part_id)
+		car_d["partsOwned"] = own
+	var r := VehicleCustomization.install(car_d, id, part_id, ctx["V"], ctx["meta"])
+	save()
+	return r
+
+func remove_part(id: String, category: String) -> void:
+	if owns(id):
+		VehicleCustomization.remove(d["owned"][id], category)
+		save()
 
 # experiencia
 static func xp_for_level(l: int) -> int:

@@ -1,43 +1,407 @@
 {
-  "version": 1,
-  "_nota": "Catálogo de PIEZAS modulares. Una pieza se registra UNA vez (categoría, origen del modelo, escala base, ajuste, compatibilidad) y sirve para varios autos: el punto de montaje de cada auto sale de sus medidas (vehicle_mounts.gd). Para agregar un modelo nuevo (GLB/OBJ) basta una entrada acá y el archivo en game/models/parts/.",
-  "categories": {
-    "wheel": {"name": "Llantas", "mount": "wheel", "shop": "wheels", "per_vehicle": 1},
-    "front_bumper": {"name": "Paragolpes delantero", "mount": "front_bumper", "shop": "paint", "per_vehicle": 1},
-    "rear_bumper": {"name": "Paragolpes trasero", "mount": "rear_bumper", "shop": "paint", "per_vehicle": 1},
-    "spoiler": {"name": "Alerón", "mount": "spoiler", "shop": "paint", "per_vehicle": 1},
-    "hood": {"name": "Capó", "mount": "hood", "shop": "paint", "per_vehicle": 1},
-    "side_skirt": {"name": "Faldones", "mount": "side_skirt", "mirror": true, "shop": "paint", "per_vehicle": 1}
+ "version": 1,
+ "_nota": "Catálogo de PIEZAS modulares. Una pieza se registra UNA vez (categoría, origen del modelo, escala base, ajuste, compatibilidad) y sirve para varios autos: el punto de montaje de cada auto sale de sus medidas (vehicle_mounts.gd). Para agregar un modelo nuevo (GLB/OBJ) basta una entrada acá y el archivo en game/models/parts/.",
+ "categories": {
+  "wheel": {
+   "name": "Llantas",
+   "mount": "wheel",
+   "shop": "wheels",
+   "per_vehicle": 1
   },
-  "defaults": {
-    "base": {"scale": 1.0, "offset": [0, 0, 0], "rot": [0, 0, 0]},
-    "fit": {"mode": "none", "ref": 1.0, "ratio": 1.0, "min": 0.6, "max": 1.6},
-    "compat": {"vehicles": ["*"], "exclude": []}
+  "front_bumper": {
+   "name": "Paragolpes delantero",
+   "mount": "front_bumper",
+   "shop": "paint",
+   "per_vehicle": 1
   },
-  "parts": {
-    "rim_multi5": {"category": "wheel", "name": "Multirradio 5", "source": {"type": "rim", "style": "multi5"}, "price": 0, "tier": 0},
-    "rim_star5": {"category": "wheel", "name": "Estrella 5", "source": {"type": "rim", "style": "star5"}, "price": 1500, "tier": 0},
-    "rim_multi10": {"category": "wheel", "name": "Multirradio 10", "source": {"type": "rim", "style": "multi10"}, "price": 2200, "tier": 1},
-    "rim_turbine": {"category": "wheel", "name": "Turbina", "source": {"type": "rim", "style": "turbine"}, "price": 2800, "tier": 1},
-    "rim_centerlock": {"category": "wheel", "name": "Tuerca central", "source": {"type": "rim", "style": "centerlock"}, "price": 3500, "tier": 2},
-    "rim_dish6": {"category": "wheel", "name": "Plato 6", "source": {"type": "rim", "style": "dish6"}, "price": 800, "tier": 0},
-    "rim_dish8": {"category": "wheel", "name": "Plato 8", "source": {"type": "rim", "style": "dish8"}, "price": 900, "tier": 0},
-    "rim_steel10": {"category": "wheel", "name": "Chapa 10", "source": {"type": "rim", "style": "steel10"}, "price": 400, "tier": 0},
-    "rim_beadlock": {"category": "wheel", "name": "Beadlock", "source": {"type": "rim", "style": "beadlock"}, "price": 1800, "tier": 1},
-
-    "dev_spoiler_wing": {"category": "spoiler", "name": "Alerón de prueba", "hidden": true,
-      "source": {"type": "boxes", "boxes": [
-        {"pos": [0, 0.26, 0], "size": [1.0, 0.04, 0.26], "color": "#1b1d22"},
-        {"pos": [-0.42, 0.12, 0], "size": [0.04, 0.24, 0.2], "color": "#1b1d22"},
-        {"pos": [0.42, 0.12, 0], "size": [0.04, 0.24, 0.2], "color": "#1b1d22"}]},
-      "fit": {"mode": "width", "ref": 1.0, "ratio": 0.78, "min": 0.8, "max": 2.4}},
-    "dev_bumper_front": {"category": "front_bumper", "name": "Paragolpes de prueba", "hidden": true,
-      "source": {"type": "boxes", "boxes": [
-        {"pos": [0, 0, 0], "size": [1.0, 0.18, 0.12], "color": "#23262c"},
-        {"pos": [0, -0.08, 0.04], "size": [0.7, 0.05, 0.16], "color": "#101114"}]},
-      "fit": {"mode": "width", "ref": 1.0, "ratio": 0.92, "min": 0.8, "max": 2.4}},
-    "dev_skirt": {"category": "side_skirt", "name": "Faldón de prueba", "hidden": true,
-      "source": {"type": "boxes", "boxes": [{"pos": [0, 0, 0], "size": [0.06, 0.1, 1.0], "color": "#23262c"}]},
-      "fit": {"mode": "length", "ref": 1.0, "ratio": 0.5, "min": 0.8, "max": 3.5}}
+  "rear_bumper": {
+   "name": "Paragolpes trasero",
+   "mount": "rear_bumper",
+   "shop": "paint",
+   "per_vehicle": 1
+  },
+  "spoiler": {
+   "name": "Alerón",
+   "mount": "spoiler",
+   "shop": "paint",
+   "per_vehicle": 1
+  },
+  "hood": {
+   "name": "Capó",
+   "mount": "hood",
+   "shop": "paint",
+   "per_vehicle": 1
+  },
+  "side_skirt": {
+   "name": "Faldones",
+   "mount": "side_skirt",
+   "mirror": true,
+   "shop": "paint",
+   "per_vehicle": 1
   }
+ },
+ "defaults": {
+  "base": {
+   "scale": 1.0,
+   "offset": [
+    0,
+    0,
+    0
+   ],
+   "rot": [
+    0,
+    0,
+    0
+   ]
+  },
+  "fit": {
+   "mode": "none",
+   "ref": 1.0,
+   "ratio": 1.0,
+   "min": 0.6,
+   "max": 1.6
+  },
+  "compat": {
+   "vehicles": [
+    "*"
+   ],
+   "exclude": []
+  }
+ },
+ "parts": {
+  "rim_multi5": {
+   "category": "wheel",
+   "name": "Multirradio 5",
+   "source": {
+    "type": "rim",
+    "style": "multi5"
+   },
+   "price": 0,
+   "tier": 0,
+   "workshop": "rally"
+  },
+  "rim_star5": {
+   "category": "wheel",
+   "name": "Estrella 5",
+   "source": {
+    "type": "rim",
+    "style": "star5"
+   },
+   "price": 1500,
+   "tier": 0,
+   "workshop": "sport"
+  },
+  "rim_multi10": {
+   "category": "wheel",
+   "name": "Multirradio 10",
+   "source": {
+    "type": "rim",
+    "style": "multi10"
+   },
+   "price": 2200,
+   "tier": 1,
+   "workshop": "sport"
+  },
+  "rim_turbine": {
+   "category": "wheel",
+   "name": "Turbina",
+   "source": {
+    "type": "rim",
+    "style": "turbine"
+   },
+   "price": 2800,
+   "tier": 1,
+   "workshop": "sport"
+  },
+  "rim_centerlock": {
+   "category": "wheel",
+   "name": "Tuerca central",
+   "source": {
+    "type": "rim",
+    "style": "centerlock"
+   },
+   "price": 3500,
+   "tier": 2,
+   "workshop": "premium"
+  },
+  "rim_dish6": {
+   "category": "wheel",
+   "name": "Plato 6",
+   "source": {
+    "type": "rim",
+    "style": "dish6"
+   },
+   "price": 800,
+   "tier": 0,
+   "workshop": "basic"
+  },
+  "rim_dish8": {
+   "category": "wheel",
+   "name": "Plato 8",
+   "source": {
+    "type": "rim",
+    "style": "dish8"
+   },
+   "price": 900,
+   "tier": 0,
+   "workshop": "rally"
+  },
+  "rim_steel10": {
+   "category": "wheel",
+   "name": "Chapa 10",
+   "source": {
+    "type": "rim",
+    "style": "steel10"
+   },
+   "price": 400,
+   "tier": 0,
+   "workshop": "basic"
+  },
+  "rim_beadlock": {
+   "category": "wheel",
+   "name": "Beadlock",
+   "source": {
+    "type": "rim",
+    "style": "beadlock"
+   },
+   "price": 1800,
+   "tier": 1,
+   "workshop": "rally",
+   "compat": {
+    "vehicles": [
+     "pickup",
+     "suv",
+     "buggy",
+     "truck",
+     "hatch"
+    ]
+   }
+  },
+  "rim_spoke6": {
+   "category": "wheel",
+   "name": "Seis radios",
+   "workshop": "basic",
+   "source": {
+    "type": "rim",
+    "style": "spoke6"
+   },
+   "price": 1200,
+   "tier": 0
+  },
+  "rim_forked": {
+   "category": "wheel",
+   "name": "Y bifurcada",
+   "workshop": "sport",
+   "source": {
+    "type": "rim",
+    "style": "forked"
+   },
+   "price": 3200,
+   "tier": 1
+  },
+  "rim_mesh": {
+   "category": "wheel",
+   "name": "Malla BBS",
+   "workshop": "premium",
+   "source": {
+    "type": "rim",
+    "style": "mesh"
+   },
+   "price": 4200,
+   "tier": 2,
+   "compat": {
+    "vehicles": [
+     "pickup",
+     "suv",
+     "hatch",
+     "muscle",
+     "gt",
+     "gt3",
+     "hyper",
+     "buggy"
+    ]
+   }
+  },
+  "rim_classic": {
+   "category": "wheel",
+   "name": "Alambre clásica",
+   "workshop": "basic",
+   "source": {
+    "type": "rim",
+    "style": "classic"
+   },
+   "price": 2600,
+   "tier": 0,
+   "compat": {
+    "vehicles": [
+     "pickup",
+     "suv",
+     "hatch",
+     "muscle",
+     "gt",
+     "buggy"
+    ]
+   }
+  },
+  "rim_blade3": {
+   "category": "wheel",
+   "name": "Tres palas",
+   "workshop": "premium",
+   "source": {
+    "type": "rim",
+    "style": "blade3"
+   },
+   "price": 3800,
+   "tier": 2
+  },
+  "rim_aero": {
+   "category": "wheel",
+   "name": "Disco aero",
+   "workshop": "premium",
+   "source": {
+    "type": "rim",
+    "style": "aero"
+   },
+   "price": 5200,
+   "tier": 2,
+   "compat": {
+    "vehicles": [
+     "hatch",
+     "muscle",
+     "gt",
+     "gt3",
+     "hyper"
+    ]
+   }
+  },
+  "dev_spoiler_wing": {
+   "category": "spoiler",
+   "name": "Alerón de prueba",
+   "hidden": true,
+   "source": {
+    "type": "boxes",
+    "boxes": [
+     {
+      "pos": [
+       0,
+       0.26,
+       0
+      ],
+      "size": [
+       1.0,
+       0.04,
+       0.26
+      ],
+      "color": "#1b1d22"
+     },
+     {
+      "pos": [
+       -0.42,
+       0.12,
+       0
+      ],
+      "size": [
+       0.04,
+       0.24,
+       0.2
+      ],
+      "color": "#1b1d22"
+     },
+     {
+      "pos": [
+       0.42,
+       0.12,
+       0
+      ],
+      "size": [
+       0.04,
+       0.24,
+       0.2
+      ],
+      "color": "#1b1d22"
+     }
+    ]
+   },
+   "fit": {
+    "mode": "width",
+    "ref": 1.0,
+    "ratio": 0.78,
+    "min": 0.8,
+    "max": 2.4
+   }
+  },
+  "dev_bumper_front": {
+   "category": "front_bumper",
+   "name": "Paragolpes de prueba",
+   "hidden": true,
+   "source": {
+    "type": "boxes",
+    "boxes": [
+     {
+      "pos": [
+       0,
+       0,
+       0
+      ],
+      "size": [
+       1.0,
+       0.18,
+       0.12
+      ],
+      "color": "#23262c"
+     },
+     {
+      "pos": [
+       0,
+       -0.08,
+       0.04
+      ],
+      "size": [
+       0.7,
+       0.05,
+       0.16
+      ],
+      "color": "#101114"
+     }
+    ]
+   },
+   "fit": {
+    "mode": "width",
+    "ref": 1.0,
+    "ratio": 0.92,
+    "min": 0.8,
+    "max": 2.4
+   }
+  },
+  "dev_skirt": {
+   "category": "side_skirt",
+   "name": "Faldón de prueba",
+   "hidden": true,
+   "source": {
+    "type": "boxes",
+    "boxes": [
+     {
+      "pos": [
+       0,
+       0,
+       0
+      ],
+      "size": [
+       0.06,
+       0.1,
+       1.0
+      ],
+      "color": "#23262c"
+     }
+    ]
+   },
+   "fit": {
+    "mode": "length",
+    "ref": 1.0,
+    "ratio": 0.5,
+    "min": 0.8,
+    "max": 3.5
+   }
+  }
+ }
 }
