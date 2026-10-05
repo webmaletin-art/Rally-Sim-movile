@@ -153,3 +153,10 @@ Antes todo lo que no era calle era «afuera» (código 4). Ahora `CityTrack.grou
 | Cumbre desde 64 m | 6 nieve pisada | |
 | Entre edificios | 4 | |
 El color del suelo del mapa usa las mismas alturas (`WorldSurfaces.color`): arena clara, roca gris y nieve blanca. `CityLayout.verge_clearance()` mide a cuántos metros de la banquina se está (probe() sólo es confiable adentro del corredor). Costo de `ground_info`: ≈ 17 µs. Prueba: `tests/surfaces_test.gd`. Barro (5) queda libre para la lluvia (Etapa 17).
+
+## Etapa 15 — actividades del mundo abierto (`world/world_activities.gd` + `city/city_activities.gd`)
+Reglas puras (dónde, cuánto paga, medallas) en `world_activities.gd`; el estado (récords y cobros) en el perfil (`profile.d["act"]`, offline). **Online todavía no** (los créditos online los dará el servidor; ver `docs/ECONOMIA_ONLINE.md`): con `cfg.online` no hace nada.
+- **Radares** (8: avenidas 1·3·5·7, Rutas 20 y 60 y dos en la Ruta Panorámica): una línea naranja y una cámara junto al cordón. Pasar a ≥120 km/h paga $150, ≥160 $300, ≥200 $600, ≥240 $1000, **una vez por radar por día del mundo** (16 min); se guarda el récord de velocidad de cada radar.
+- **Contrarreloj Panorámica**: línea verde de largada al principio de la Ruta Panorámica y línea blanca de llegada al final (4,5 km); cronómetro en pantalla. Oro ≤ 3:55, plata ≤ 4:35, bronce ≤ 5:30; el premio ($400 / $900 / $1800) se cobra sólo al mejorar la medalla.
+- **Encargos**: el mundo ofrece (según semilla + día + número de encargo, igual para todos) llevar algo de un lugar a otro (gasolineras, locales, estacionamiento, peajes, plaza de drift) entre 350 y 1800 m. Se recoge frenando en el círculo amarillo, se entrega frenando en el verde (el GPS marca el destino). Paga $150 + 0,35 $/m; +30 % si llegás en menos del 70 % del tiempo límite, la mitad si llegás tarde (hasta 1,5×) y nada después. Se ofrece el más cercano de los próximos cuatro.
+- Prueba: `tests/activities_test.gd` (reglas, determinismo y un auto simulado cruzando un radar, la contrarreloj y un encargo completo).

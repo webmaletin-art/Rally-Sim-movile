@@ -1881,5 +1881,19 @@
 "Lisas": "Lisses",
 "desgaste": "usure",
 "Tipo %s · el agarre baja a %d%% cuando están lisas": "Type %s · l'adhérence tombe à %d%% quand elles sont lisses",
-"Deportiva": "Sport"
+"Deportiva": "Sport",
+"⏱ Contrarreloj cancelada": "⏱ Contre-la-montre annulé",
+"⏱ ¡Contrarreloj Panorámica en marcha!": "⏱ Contre-la-montre panoramique lancé !",
+"🥉 bronce": "🥉 bronze",
+"🥈 plata": "🥈 argent",
+"🥇 oro": "🥇 or",
+"medalla": "médaille",
+"sin medalla": "pas de médaille",
+"récord": "record",
+"📦 Encargo: pasá a buscarlo por %s": "📦 Livraison : va la chercher à %s",
+"📦 Recogido: entregalo en %s (%d s)": "📦 Récupéré : livre-le à %s (%d s)",
+"📦 ¡Entregado! +$%d": "📦 Livré ! +$%d",
+"📦 Llegaste tarde: sin paga": "📦 Trop tard : pas de paie",
+"📦 Encargo vencido": "📦 Livraison expirée",
+"Radar · %s": "Radar · %s"
 }

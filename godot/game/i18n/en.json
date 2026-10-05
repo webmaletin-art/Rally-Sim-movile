@@ -1881,5 +1881,19 @@
 "Lisas": "Bald",
 "desgaste": "wear",
 "Tipo %s · el agarre baja a %d%% cuando están lisas": "Type %s · grip drops to %d%% when bald",
-"Deportiva": "Sport"
+"Deportiva": "Sport",
+"⏱ Contrarreloj cancelada": "⏱ Time trial cancelled",
+"⏱ ¡Contrarreloj Panorámica en marcha!": "⏱ Scenic Time Trial started!",
+"🥉 bronce": "🥉 bronze",
+"🥈 plata": "🥈 silver",
+"🥇 oro": "🥇 gold",
+"medalla": "medal",
+"sin medalla": "no medal",
+"récord": "record",
+"📦 Encargo: pasá a buscarlo por %s": "📦 Delivery job: pick it up at %s",
+"📦 Recogido: entregalo en %s (%d s)": "📦 Picked up: deliver it at %s (%d s)",
+"📦 ¡Entregado! +$%d": "📦 Delivered! +$%d",
+"📦 Llegaste tarde: sin paga": "📦 Too late: no pay",
+"📦 Encargo vencido": "📦 Job expired",
+"Radar · %s": "Speed trap · %s"
 }

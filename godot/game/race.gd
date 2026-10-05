@@ -22,6 +22,7 @@ const WorldLifeConfig := preload("res://game/world/world_life_config.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityFuel := preload("res://game/city/city_fuel.gd")
 const CityTires := preload("res://game/city/city_tires.gd")
+const CityActivities := preload("res://game/city/city_activities.gd")
 const CityClock := preload("res://game/city/city_clock.gd")
 const CityToll := preload("res://game/city/city_toll.gd")
 const DriftSession := preload("res://game/drift_session.gd")
@@ -1122,6 +1123,8 @@ func _start_session() -> void:
 			fuel.setup(self, track.city)
 			tires = CityTires.new() # desgaste de gomas (Etapa 13)
 			tires.setup(self)
+			acts = CityActivities.new() # radares, contrarreloj y encargos (Etapa 15)
+			acts.setup(self, track.city, track.world_node)
 			tolls = CityToll.new()
 			tolls.setup(self, track.world_node, track.city)
 			city_drift = CityDrift.new()
@@ -1585,6 +1588,7 @@ var shops # CityShops (solo en Dream City)
 var links # CityLinks: bocas de túnel y estacionamiento
 var fuel # CityFuel: nafta y gasolineras
 var tires # CityTires: desgaste de las gomas puestas
+var acts # CityActivities: radares, contrarreloj panorámica y encargos
 var tolls # CityToll: peajes de las rutas
 var city_drift # CityDrift: la Plaza de Drift al final de la Ruta 60
 var world_life # WorldLife: la capa de vida del mundo (reloj, semilla, sectores, sistemas de vida); sólo en Dream City
@@ -1694,6 +1698,8 @@ func _tick_session(dt: float) -> void:
 		fuel.update(dt)
 		if tires != null:
 			tires.update(dt)
+		if acts != null:
+			acts.update(dt)
 		tolls.update(dt)
 		if city_drift != null:
 			city_drift.update(dt)

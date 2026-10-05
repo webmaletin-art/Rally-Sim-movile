@@ -1881,5 +1881,19 @@
 "Lisas": "Glatt",
 "desgaste": "Verschleiß",
 "Tipo %s · el agarre baja a %d%% cuando están lisas": "Typ %s · der Grip sinkt auf %d%%, wenn sie glatt sind",
-"Deportiva": "Sport"
+"Deportiva": "Sport",
+"⏱ Contrarreloj cancelada": "⏱ Zeitfahren abgebrochen",
+"⏱ ¡Contrarreloj Panorámica en marcha!": "⏱ Panorama-Zeitfahren läuft!",
+"🥉 bronce": "🥉 Bronze",
+"🥈 plata": "🥈 Silber",
+"🥇 oro": "🥇 Gold",
+"medalla": "Medaille",
+"sin medalla": "keine Medaille",
+"récord": "Rekord",
+"📦 Encargo: pasá a buscarlo por %s": "📦 Lieferauftrag: hol ihn bei %s ab",
+"📦 Recogido: entregalo en %s (%d s)": "📦 Abgeholt: liefere ihn bei %s ab (%d s)",
+"📦 ¡Entregado! +$%d": "📦 Geliefert! +$%d",
+"📦 Llegaste tarde: sin paga": "📦 Zu spät: keine Bezahlung",
+"📦 Encargo vencido": "📦 Auftrag abgelaufen",
+"Radar · %s": "Blitzer · %s"
 }
