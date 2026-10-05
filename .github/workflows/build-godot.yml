@@ -112,6 +112,7 @@ jobs:
           timeout -k 5 600 godot --headless --script res://tests/ambient_peds_test.gd
           timeout -k 5 600 godot --headless --script res://tests/world_budget_test.gd
           timeout -k 5 900 godot --headless --script res://tests/travesia_test.gd -- --km=9
+          timeout -k 5 600 godot --headless --script res://tests/vegbench_test.gd
 
       - name: Configurar el modo online (Supabase)
         working-directory: godot

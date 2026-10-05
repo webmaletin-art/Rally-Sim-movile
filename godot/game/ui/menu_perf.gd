@@ -8,6 +8,9 @@ var m # menu.gd
 
 func build(_name: String, _arg) -> void:
 	m.set_title("PRUEBA DE RENDIMIENTO")
+	m.body.add_child(Kit.card_button("🌲 BENCHMARK — VEGETACIÓN", "3D original · 8 vistas · cross", "1000–20000 árboles", func() -> void:
+		m.sfx.play("click")
+		m.app.start_vegbench(), false, true, 64, 19))
 	m.body.add_child(Kit.wrap("Maneja sola por una pista normal y por la plaza de drift (más pesada). Mide primero sin ningún filtro de cámara, después cada cámara, cada componente del juego y por último el lente y cada efecto (ojo de pez, oclusión, cromática…). Al final te da un informe para copiar y pegar.", 15, Kit.TEXT, 300))
 	m.body.add_child(Kit.wrap("Dejá el teléfono quieto, con batería y sin otras aplicaciones abiertas. No toques la pantalla.", 14, Kit.GOLD, 300))
 	for md in [["full", "🔬 COMPLETA", "recomendada"], ["quick", "⚡ RÁPIDA", "lo más importante"]]:

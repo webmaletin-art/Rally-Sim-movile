@@ -39,6 +39,9 @@ func _ready() -> void:
 	var dbg := false
 	var menu_forced := false
 	for a in OS.get_cmdline_user_args():
+		if a == "--vegbench": # prueba: abre directo el benchmark de vegetación (godot/game/vegbench)
+			start_vegbench()
+			return
 		if a == "--menu":
 			menu_forced = true
 		elif a.begins_with("--") and not a.begins_with("--manifest=") and not a.begins_with("--screen="):
@@ -58,6 +61,17 @@ func enter_online() -> bool:
 		return false
 	oprofile = OnlineProfile.new(profile, eco)
 	return true
+
+## Benchmark de vegetación (aislado: escena propia en godot/game/vegbench; no usa carreras ni perfil). Se entra desde Rendimiento.
+func start_vegbench() -> void:
+	if menu != null:
+		menu.queue_free()
+		menu = null
+	var vb: Node = (load("res://game/vegbench/ImpostorForestTest.tscn") as PackedScene).instantiate()
+	vb.exit_requested.connect(func() -> void:
+		vb.queue_free()
+		show_menu("perf"))
+	add_child(vb)
 
 func show_menu(screen := "home") -> void:
 	AdvData.practice = {} # la práctica de la Ruta de los Sueños no deja rastro
