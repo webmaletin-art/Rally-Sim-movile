@@ -8,6 +8,20 @@ const FlatTrack := preload("res://game/physics/flat_track.gd")
 const VehicleParams := preload("res://game/physics/vehicle_params.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const RigPilot := preload("res://game/car/rig_pilot.gd")
+const MixamoClips := preload("res://game/car/mixamo_clips.gd")
+
+## Qué clips de Mixamo se usan para cada pose del guion del menú (si el archivo de clips no está, quedan las poses procedurales)
+const CLIPS := {
+	"idle": ["Standing_Idle", "Breathing_Idle", "Idle_2", "weight_shift"],
+	"chin": ["Thinking", "Thoughtful_Head_Nod", "Looking_Down", "Looking_3"],
+	"crossed": ["Bored", "weight_shift", "Looking_Around", "Happy_Idle_2"],
+	"hip": ["Male_Standing_Pose_11", "Happy_Idle", "Standing_Idle"],
+	"pocket": ["Idle_2", "Looking_Around", "Breathing_Idle"],
+	"point": ["Pointing_Forward", "Pointing_2", "Pointing_Gesture_2", "Reaching_Out"],
+	"paint": ["Reaching_Out", "Taking_Item", "Kneeling_Inspecting"],
+	"talk": ["Talking_7", "Talking_4", "Talking_6", "Talking_3", "Arm_Gesture", "Hands_Forward_Gesture"],
+	"read": ["Texting_While_Standing"],
+}
 
 
 var car: Car
@@ -123,8 +137,11 @@ func _make_crew() -> void:
 		var node := Node3D.new()
 		add_child(node)
 		var rig := RigPilot.new(node, float(spec["h"]), false)
-		crew.append({"rig": rig, "node": node, "h": float(spec["h"]), "name": spec["name"], "ring": float(spec["ring"]), "queue": [], "step": {}, "t": 0.0,
-			"yaw": 0.0, "phi": 0.0, "pose": "idle", "pose_prev": {}, "blend": 1.0, "speed": 0.0, "tl": Vector3.ZERO, "face": null, "ang": 0.0})
+		var mx: Variant = null
+		if rig.ok and MixamoClips.available():
+			mx = MixamoClips.Player.new(rig.skel, rig.B)
+		crew.append({"rig": rig, "mx": mx, "node": node, "h": float(spec["h"]), "name": spec["name"], "ring": float(spec["ring"]), "queue": [], "step": {}, "t": 0.0,
+			"mx_pose": "", "mx_step_id": -1, "yaw": 0.0, "phi": 0.0, "pose": "idle", "pose_prev": {}, "blend": 1.0, "speed": 0.0, "tl": Vector3.ZERO, "face": null, "ang": 0.0})
 	clip = MeshInstance3D.new()
 	var bm := BoxMesh.new()
 	bm.size = Vector3(0.22, 0.30, 0.012)
@@ -444,6 +461,57 @@ func _pose_for(i: int) -> Dictionary:
 	return res
 
 var _cur_pos := [Vector3.ZERO, Vector3.ZERO]
+var _step_seq := 0
+
+## Un clip de Mixamo para la pose del guion (distinto del que está sonando); "" si no hay
+func _pick_clip(pose: String, avoid: String) -> String:
+	var pool: Array = CLIPS.get(pose, CLIPS["idle"])
+	var opts: Array = []
+	for n in pool:
+		if MixamoClips.has_clip(str(n)) and str(n) != avoid:
+			opts.append(str(n))
+	if opts.is_empty():
+		return ""
+	return str(opts[rng.randi() % opts.size()])
+
+## Un cuadro del personaje: clips de Mixamo cuando está parado haciendo algo; pose procedural al caminar (y como respaldo si faltan los clips)
+func _animate(i: int) -> void:
+	var c: Dictionary = crew[i]
+	var rig: RigPilot = c["rig"]
+	var mx: Variant = c["mx"]
+	var st: Dictionary = c["step"]
+	if mx == null:
+		rig.pose(_pose_for(i))
+		return
+	var pl: MixamoClips.Player = mx
+	var dt := get_process_delta_time()
+	var standing: bool = (not st.is_empty()) and str(st["t"]) == "stand"
+	if standing:
+		if not st.has("sid"):
+			_step_seq += 1
+			st["sid"] = _step_seq
+		var pose := str(st["pose"])
+		var need := int(c["mx_step_id"]) != int(st["sid"]) or pl.ended()
+		if need:
+			var n := _pick_clip(pose, str((pl.cur as Dictionary).get("name", "")) if int(c["mx_step_id"]) == int(st["sid"]) else "")
+			if n != "":
+				pl.play(MixamoClips.clip(n))
+				c["mx_step_id"] = int(st["sid"])
+				c["mx_pose"] = n
+			elif int(c["mx_step_id"]) != int(st["sid"]):
+				standing = false
+		if standing:
+			pl.step(dt)
+			pl.apply_clip()
+	if not standing:
+		if str(c["mx_pose"]) != "":
+			pl.mark_transition()
+			rig.skel.reset_bone_poses()
+			c["mx_pose"] = ""
+			c["mx_step_id"] = -1
+			pl.cur = {}
+		rig.pose(_pose_for(i))
+	pl.post(dt)
 
 func _process(dt: float) -> void:
 	if not ready_ok:
@@ -470,7 +538,7 @@ func _process(dt: float) -> void:
 	var show_clip := false
 	for i in 2:
 		var c: Dictionary = crew[i]
-		(c["rig"] as RigPilot).pose(_pose_for(i))
+		_animate(i)
 		var st: Dictionary = c["step"]
 		if i == 1 and not st.is_empty() and st["t"] == "stand" and st["pose"] == "read":
 			show_clip = true
@@ -478,4 +546,12 @@ func _process(dt: float) -> void:
 	if show_clip:
 		var cn: Node3D = crew[1]["node"]
 		var k2: float = float(crew[1]["h"]) / 1.76
-		clip.global_transform = Transform3D(cn.global_transform.basis * Basis.from_euler(Vector3(-0.9, 0, 0)), cn.global_transform * Vector3(0, 1.10 * k2, 0.30))
+		var rg: RigPilot = crew[1]["rig"]
+		if str(crew[1]["mx_pose"]) != "" and rg.B.has("RightHand"):
+			# con el clip de Mixamo (texteando) el celular va en la mano derecha
+			(clip.mesh as BoxMesh).size = Vector3(0.07, 0.15, 0.01)
+			var hand: Transform3D = rg.skel.global_transform * rg.skel.get_bone_global_pose(int(rg.B["RightHand"]))
+			clip.global_transform = Transform3D(hand.basis.orthonormalized(), hand * Vector3(0.0, 0.07, 0.025))
+		else:
+			(clip.mesh as BoxMesh).size = Vector3(0.22, 0.30, 0.012)
+			clip.global_transform = Transform3D(cn.global_transform.basis * Basis.from_euler(Vector3(-0.9, 0, 0)), cn.global_transform * Vector3(0, 1.10 * k2, 0.30))
