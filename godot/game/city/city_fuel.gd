@@ -5,6 +5,7 @@ extends RefCounted
 const Tr := preload("res://game/i18n/tr.gd")
 const CityNames := preload("res://game/city/city_names.gd")
 const Release := preload("res://game/data/release.gd")
+const WorldProgress := preload("res://game/world/world_progress.gd")
 
 const PER_M := 1.0 / 80000.0 # fracción del tanque por metro a gas medio
 const PRICE_FULL := 120.0 # créditos de un tanque entero (1 por cada 1 %)
@@ -38,6 +39,13 @@ func setup(p_race, p_city) -> void:
 	level = clampf(float(race.cfg.get("fuel", race.profile.d.get("fuel", 1.0))), 0.0, 1.0)
 	_warned_low = level < LOW
 	_warned_empty = empty()
+
+## Descuento de nafta por rango de fama (Etapa 16)
+func _rank_k() -> float:
+	var rep: Variant = race.profile.d.get("worldRep")
+	if rep is Dictionary:
+		return WorldProgress.fuel_price_k(WorldProgress.rank_for(float((rep as Dictionary).get("pts", 0.0))))
+	return 1.0
 
 func empty() -> bool:
 	return level <= 0.0005
@@ -131,7 +139,7 @@ func _begin() -> void:
 	var afford := 1.0 - level
 	_free = Release.dev(race.profile)
 	_fast = _near_fast
-	var price_full := PRICE_FULL * (FAST_PRICE_K if _fast else 1.0)
+	var price_full := PRICE_FULL * (FAST_PRICE_K if _fast else 1.0) * _rank_k()
 	if not _free:
 		afford = minf(afford, float(race.profile.credits) / price_full)
 		if afford < 0.01:
@@ -166,7 +174,7 @@ func _finish() -> void:
 	progress = 0.0
 	_armed = false # para cargar de nuevo hay que salir del círculo
 	var added := level - _from
-	var cost := 0 if _free else int(ceil(added * PRICE_FULL * (FAST_PRICE_K if _fast else 1.0)))
+	var cost := 0 if _free else int(ceil(added * PRICE_FULL * (FAST_PRICE_K if _fast else 1.0) * _rank_k()))
 	if cost > 0:
 		race.profile.spend(mini(cost, race.profile.credits))
 	if level > LOW:

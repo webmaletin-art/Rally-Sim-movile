@@ -1895,5 +1895,14 @@
 "📦 ¡Entregado! +$%d": "📦 Delivered! +$%d",
 "📦 Llegaste tarde: sin paga": "📦 Too late: no pay",
 "📦 Encargo vencido": "📦 Job expired",
-"Radar · %s": "Speed trap · %s"
+"Radar · %s": "Speed trap · %s",
+"Novato": "Rookie",
+"Conductor": "Driver",
+"Piloto urbano": "Urban racer",
+"Veterano": "Veteran",
+"Leyenda de Dream City": "Dream City Legend",
+"🏅 ¡Nuevo rango: %s! +$%d": "🏅 New rank: %s! +$%d",
+"📍 Descubriste %s · +%d de fama": "📍 You discovered %s · +%d fame",
+"🏅 Rango: %s · %d de fama": "🏅 Rank: %s · %d fame",
+"faltan %d": "%d to go"
 }

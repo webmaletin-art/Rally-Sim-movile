@@ -4,6 +4,7 @@ extends RefCounted
 ## Online todavía no: los créditos online los dará el servidor (ver docs/ECONOMIA_ONLINE.md), así que con cfg.online no hace nada.
 
 const WA := preload("res://game/world/world_activities.gd")
+const WP := preload("res://game/world/world_progress.gd")
 const CityProps := preload("res://game/city/city_props.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CityNames := preload("res://game/city/city_names.gd")
@@ -62,6 +63,27 @@ func _act() -> Dictionary:
 			a[k] = {}
 	return a
 
+## Fama del mundo (profile.d["worldRep"] = {pts, visited: {id: true}}) y su rango
+func _rep() -> Dictionary:
+	var d: Dictionary = race.profile.d
+	if not d.has("worldRep") or not (d["worldRep"] is Dictionary):
+		d["worldRep"] = {"pts": 0.0, "visited": {}}
+	return d["worldRep"]
+
+func rank() -> int:
+	return WP.rank_for(float(_rep()["pts"]))
+
+func add_fame(p: float) -> void:
+	var r := _rep()
+	var before := WP.rank_for(float(r["pts"]))
+	r["pts"] = float(r["pts"]) + p
+	var after := WP.rank_for(float(r["pts"]))
+	if after > before:
+		var bonus := int(WP.RANK_BONUS[after])
+		race.profile.earn(float(bonus))
+		_toast(Tr.t("🏅 ¡Nuevo rango: %s! +$%d") % [Tr.t(WP.rank_name(after)), bonus], "up")
+	race.profile.save()
+
 func _day() -> int:
 	return race.world_life.clock.day_index() if race.world_life != null else 0
 
@@ -94,11 +116,49 @@ func update(dt: float) -> void:
 	_prev = pos
 	_have_prev = true
 	_delivery(pos, spd, dt)
+	_fame_tick(pos, dt)
+	if _hello > 0.0:
+		_hello -= dt
+		if _hello <= 0.0:
+			var pts := float(_rep()["pts"])
+			var nx := WP.to_next(pts)
+			_toast(Tr.t("🏅 Rango: %s · %d de fama") % [Tr.t(WP.rank_name(rank())), int(pts)] + ((" · " + Tr.t("faltan %d") % int(nx)) if nx > 0.0 else ""))
 	_t_acc += dt
 	if _t_acc > 0.5:
 		_t_acc = 0.0
 		_manage_nodes(pos)
 	_label()
+
+# ───────────────────────── fama ─────────────────────────
+var _km_acc := 0.0
+var _disc_t := 0.0
+
+func _fame_tick(pos: Vector2, dt: float) -> void:
+	if _fame_ok and pos.distance_to(_prev_fame) < 60.0:
+		_km_acc += pos.distance_to(_prev_fame)
+		if _km_acc >= 1000.0:
+			_km_acc -= 1000.0
+			add_fame(float(WP.PTS["km"]))
+	_prev_fame = pos
+	_fame_ok = true
+	_disc_t += dt
+	if _disc_t < 1.0:
+		return
+	_disc_t = 0.0
+	var vis: Dictionary = _rep()["visited"]
+	for p in city.pois:
+		var id := str(p["id"])
+		if vis.has(id):
+			continue
+		if (p["pos"] as Vector2).distance_to(pos) < 28.0:
+			vis[id] = true
+			_toast(Tr.t("📍 Descubriste %s · +%d de fama") % [CityNames.t(str(p["name"])), int(WP.PTS["discover"])], "up")
+			add_fame(float(WP.PTS["discover"]))
+			return
+
+var _prev_fame := Vector2.ZERO
+var _fame_ok := false
+var _hello := 3.0 # al entrar al mundo se muestra el rango una vez
 
 # ───────────────────────── radares ─────────────────────────
 func _check_traps(pos: Vector2, spd: float) -> void:
@@ -115,6 +175,7 @@ func _check_traps(pos: Vector2, spd: float) -> void:
 		if pay > 0 and not paid_today:
 			rec["day"] = _day()
 			_pay(pay)
+			add_fame(WP.trap_pts(pay))
 			_toast("📸 %s: %d km/h · +$%d" % [CityNames.t(str(tp["name"])), roundi(kmh), pay], "up")
 		else:
 			_toast("📸 %s: %d km/h" % [CityNames.t(str(tp["name"])), roundi(kmh)])
@@ -150,6 +211,8 @@ func _finish_trial() -> void:
 	rec["medal"] = maxi(m, old_m)
 	var names := ["", Tr.t("🥉 bronce"), Tr.t("🥈 plata"), Tr.t("🥇 oro")]
 	_pay(pay)
+	if m > old_m:
+		add_fame(float(WP.PTS["medal"]) * float(m - old_m))
 	_toast("⏱ %s · %s%s%s" % [_fmt(t), Tr.t("medalla") + " " + names[m] if m > 0 else Tr.t("sin medalla"), (" · +$%d" % pay) if pay > 0 else "", (" · " + Tr.t("récord") + " " + _fmt(best)) if best >= t - 0.001 and t <= best + 0.001 else ""], "up" if m > 0 else "")
 
 static func _fmt(t: float) -> String:
@@ -198,8 +261,10 @@ func _delivery(pos: Vector2, spd: float, dt: float) -> void:
 			_del_t += dt
 			var tp2: Vector2 = sites[int(offer["to"])]["pos"]
 			if pos.distance_to(tp2) < WA.DELIVERY_RADIUS and spd < 4.0:
-				var pay := WA.delivery_pay(offer, _del_t)
+				var pay := int(round(float(WA.delivery_pay(offer, _del_t)) * WP.delivery_pay_k(rank())))
 				_pay(pay)
+				if pay > 0:
+					add_fame(float(WP.PTS["delivery"]))
 				var a2 := _act()
 				a2["seq"] = int(offer["seq"]) + 1
 				a2["deliveries"] = int(a2.get("deliveries", 0)) + 1

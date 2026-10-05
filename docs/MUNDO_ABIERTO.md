@@ -160,3 +160,10 @@ Reglas puras (dónde, cuánto paga, medallas) en `world_activities.gd`; el estad
 - **Contrarreloj Panorámica**: línea verde de largada al principio de la Ruta Panorámica y línea blanca de llegada al final (4,5 km); cronómetro en pantalla. Oro ≤ 3:55, plata ≤ 4:35, bronce ≤ 5:30; el premio ($400 / $900 / $1800) se cobra sólo al mejorar la medalla.
 - **Encargos**: el mundo ofrece (según semilla + día + número de encargo, igual para todos) llevar algo de un lugar a otro (gasolineras, locales, estacionamiento, peajes, plaza de drift) entre 350 y 1800 m. Se recoge frenando en el círculo amarillo, se entrega frenando en el verde (el GPS marca el destino). Paga $150 + 0,35 $/m; +30 % si llegás en menos del 70 % del tiempo límite, la mitad si llegás tarde (hasta 1,5×) y nada después. Se ofrece el más cercano de los próximos cuatro.
 - Prueba: `tests/activities_test.gd` (reglas, determinismo y un auto simulado cruzando un radar, la contrarreloj y un encargo completo).
+
+## Etapa 16 — progresión del mundo: fama y rangos (`world/world_progress.gd`)
+- **Fama** (`profile.d["worldRep"] = {pts, visited}`, offline; el online tendrá la suya, guardada por el servidor): +6 por cada lugar descubierto (a menos de 28 m, una sola vez), +1 por km manejado, +4 (+3 por tramo) por radar pagado, +12 por encargo entregado, +25 por medalla nueva de la contrarreloj.
+- **Rangos**: Novato (0) · Conductor (60) · Piloto urbano (180) · Veterano (400) · Leyenda de Dream City (800). Al subir se regalan $300 / $600 / $1200 / $3000.
+- **Ventajas por rango**: nafta −4 % por rango (hasta −16 %), encargos +6 % por rango (hasta +24 %), cambio de gomas −5 % por rango (hasta −20 %).
+- Al entrar al mundo se muestra el rango y los puntos que faltan; los toasts avisan cada descubrimiento y cada subida.
+- Prueba: `tests/activities_test.gd` (rangos, ventajas, fama por actividades, regalo al subir y descubrimiento único).

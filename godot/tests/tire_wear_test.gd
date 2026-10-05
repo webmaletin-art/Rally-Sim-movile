@@ -58,6 +58,7 @@ func _init() -> void:
 	p.d["owned"] = {}
 	p.give("gt")
 	p.d["credits"] = 100000
+	p.d.erase("worldRep")
 	var car_d: Dictionary = p.d["owned"]["gt"]
 	car_d["tireWear"] = {"street": 0.8}
 	check(is_equal_approx(p.tire_wear("gt"), 0.8), "el perfil devuelve el desgaste del juego puesto")

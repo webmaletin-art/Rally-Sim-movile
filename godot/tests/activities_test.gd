@@ -6,6 +6,7 @@ const CityLayout := preload("res://game/city/city_layout.gd")
 const WA := preload("res://game/world/world_activities.gd")
 const CityActivities := preload("res://game/city/city_activities.gd")
 const Profile := preload("res://game/data/profile.gd")
+const WP := preload("res://game/world/world_progress.gd")
 
 var fails := 0
 
@@ -73,6 +74,7 @@ func _init() -> void:
 	race.profile = Profile.new()
 	race.profile.d["credits"] = 0
 	race.profile.d.erase("act")
+	race.profile.d.erase("worldRep")
 	var car := FakeCar.new()
 	race.cars = [car]
 	var hud := FakeHud.new()
@@ -148,5 +150,28 @@ func _init() -> void:
 	var c2: int = race.profile.credits
 	ac.update(30.0)
 	check(race.profile.credits > c2 and ac.del_state == "cooldown", "al entregarlo se cobra (+$%d)" % (race.profile.credits - c2))
+	# fama y rangos (Etapa 16)
+	check(WP.rank_for(0.0) == 0 and WP.rank_for(60.0) == 1 and WP.rank_for(399.0) == 2 and WP.rank_for(5000.0) == 4, "los rangos suben con la fama")
+	check(WP.to_next(100.0) == 80.0 and WP.to_next(900.0) == 0.0, "puntos que faltan para el próximo rango")
+	check(WP.fuel_price_k(4) < WP.fuel_price_k(1) and WP.delivery_pay_k(4) > WP.delivery_pay_k(0) and WP.tire_price_k(4) < 1.0, "cada rango da ventajas (nafta, encargos, gomas)")
+	var rep: Dictionary = race.profile.d["worldRep"]
+	check(float(rep["pts"]) > 0.0, "las actividades dan fama (%d puntos)" % int(float(rep["pts"])))
+	var fame0 := float(rep["pts"])
+	var cr0: int = race.profile.credits
+	ac.add_fame(float(WP.RANKS[2]["pts"]))
+	check(ac.rank() >= 2 and race.profile.credits - cr0 >= int(WP.RANK_BONUS[2]), "subir de rango regala créditos (%d)" % (race.profile.credits - cr0))
+	# descubrir un lugar da fama una sola vez
+	var poi: Dictionary = city.pois[0]
+	var pp: Vector2 = poi["pos"]
+	car.phys.px = pp.x
+	car.phys.pz = pp.y
+	ac._prev = pp
+	ac._disc_t = 2.0
+	var f1 := float(rep["pts"])
+	ac.update(0.016)
+	var f2 := float(rep["pts"])
+	ac._disc_t = 2.0
+	ac.update(0.016)
+	check(f2 > f1 and float(rep["pts"]) == f2, "descubrir un lugar da fama una sola vez")
 	print("ACTIVITIES_TEST ", "OK" if fails == 0 else "FALLÓ (%d)" % fails)
 	quit(1 if fails > 0 else 0)

@@ -1895,5 +1895,14 @@
 "📦 ¡Entregado! +$%d": "📦 Geliefert! +$%d",
 "📦 Llegaste tarde: sin paga": "📦 Zu spät: keine Bezahlung",
 "📦 Encargo vencido": "📦 Auftrag abgelaufen",
-"Radar · %s": "Blitzer · %s"
+"Radar · %s": "Blitzer · %s",
+"Novato": "Neuling",
+"Conductor": "Fahrer",
+"Piloto urbano": "Stadtpilot",
+"Veterano": "Veteran",
+"Leyenda de Dream City": "Legende von Dream City",
+"🏅 ¡Nuevo rango: %s! +$%d": "🏅 Neuer Rang: %s! +$%d",
+"📍 Descubriste %s · +%d de fama": "📍 Du hast %s entdeckt · +%d Ruhm",
+"🏅 Rango: %s · %d de fama": "🏅 Rang: %s · %d Ruhm",
+"faltan %d": "noch %d"
 }

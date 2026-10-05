@@ -6,6 +6,7 @@ signal changed
 
 const CarBuild := preload("res://game/data/car_build.gd")
 const TireWear := preload("res://game/car/tire_wear.gd")
+const WorldProgress := preload("res://game/world/world_progress.gd")
 const PartCatalog := preload("res://game/car/part_catalog.gd")
 const VehicleCustomization := preload("res://game/car/vehicle_customization.gd")
 const PATH := "user://profile.json"
@@ -189,7 +190,9 @@ func replace_tires(id: String) -> int:
 		return -1
 	var car_d: Dictionary = d["owned"][id]
 	var t := str(car_d.get("tires", "street"))
-	var cost := TireWear.replace_cost(float(CarBuild.tire(t).get("cost", 0)))
+	var rep: Variant = d.get("worldRep")
+	var rk := WorldProgress.rank_for(float((rep as Dictionary).get("pts", 0.0))) if rep is Dictionary else 0
+	var cost := int(round(float(TireWear.replace_cost(float(CarBuild.tire(t).get("cost", 0)))) * WorldProgress.tire_price_k(rk)))
 	if not spend(cost):
 		return -1
 	var tw: Dictionary = car_d.get("tireWear", {})

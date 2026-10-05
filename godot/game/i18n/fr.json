@@ -1895,5 +1895,14 @@
 "📦 ¡Entregado! +$%d": "📦 Livré ! +$%d",
 "📦 Llegaste tarde: sin paga": "📦 Trop tard : pas de paie",
 "📦 Encargo vencido": "📦 Livraison expirée",
-"Radar · %s": "Radar · %s"
+"Radar · %s": "Radar · %s",
+"Novato": "Débutant",
+"Conductor": "Conducteur",
+"Piloto urbano": "Pilote urbain",
+"Veterano": "Vétéran",
+"Leyenda de Dream City": "Légende de Dream City",
+"🏅 ¡Nuevo rango: %s! +$%d": "🏅 Nouveau rang : %s ! +$%d",
+"📍 Descubriste %s · +%d de fama": "📍 Tu as découvert %s · +%d de renommée",
+"🏅 Rango: %s · %d de fama": "🏅 Rang : %s · %d de renommée",
+"faltan %d": "encore %d"
 }
