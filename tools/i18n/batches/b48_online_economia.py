@@ -1,0 +1,20 @@
+# Etapas 3/18/19: economía online (garaje, talleres y mercado con el servidor)
+T = {
+"Conectando con tu garaje online…": ("Connecting to your online garage…", "Conectando à sua garagem online…", "Connexion à ton garage en ligne…", "Connessione al tuo garage online…", "Verbindung zu deiner Online-Garage…"),
+"No se pudo cargar tu garaje online. Revisá la conexión.": ("Couldn't load your online garage. Check your connection.", "Não foi possível carregar sua garagem online. Verifique a conexão.", "Impossible de charger ton garage en ligne. Vérifie la connexion.", "Impossibile caricare il tuo garage online. Controlla la connessione.", "Online-Garage konnte nicht geladen werden. Prüfe die Verbindung."),
+"Créditos online": ("Online credits", "Créditos online", "Crédits en ligne", "Crediti online", "Online-Credits"),
+"REGALO DIARIO ONLINE": ("DAILY ONLINE GIFT", "PRESENTE DIÁRIO ONLINE", "CADEAU QUOTIDIEN EN LIGNE", "REGALO GIORNALIERO ONLINE", "TÄGLICHES ONLINE-GESCHENK"),
+"¡Regalo del día! +%s créditos online": ("Daily gift! +%s online credits", "Presente do dia! +%s créditos online", "Cadeau du jour ! +%s crédits en ligne", "Regalo del giorno! +%s crediti online", "Tagesgeschenk! +%s Online-Credits"),
+"ya cobraste el regalo de hoy": ("you already claimed today's gift", "você já pegou o presente de hoje", "tu as déjà pris le cadeau du jour", "hai già ritirato il regalo di oggi", "du hast das heutige Geschenk schon abgeholt"),
+"No se pudo cobrar. Probá de nuevo.": ("Couldn't claim it. Try again.", "Não foi possível resgatar. Tente de novo.", "Impossible de le récupérer. Réessaie.", "Impossibile riscuoterlo. Riprova.", "Abholen nicht möglich. Versuch es nochmal."),
+"no te alcanza el dinero": ("you don't have enough money", "você não tem dinheiro suficiente", "tu n'as pas assez d'argent", "non hai abbastanza denaro", "du hast nicht genug Geld"),
+"no estás en el local": ("you're not at the shop", "você não está na loja", "tu n'es pas dans l'atelier", "non sei nel negozio", "du bist nicht im Laden"),
+"este trabajo no se hace en ese local": ("this job isn't done at that shop", "este trabalho não é feito nessa loja", "ce travail ne se fait pas dans cet atelier", "questo lavoro non si fa in quel negozio", "diese Arbeit wird in diesem Laden nicht gemacht"),
+"primero comprá el nivel anterior": ("buy the previous level first", "compre o nível anterior primeiro", "achète d'abord le niveau précédent", "compra prima il livello precedente", "kaufe zuerst die vorherige Stufe"),
+"esa pieza no entra en este auto": ("that part doesn't fit this car", "essa peça não serve neste carro", "cette pièce ne va pas sur cette voiture", "questo pezzo non va su questa auto", "dieses Teil passt nicht an dieses Auto"),
+"ese auto no se compra con créditos online": ("that car can't be bought with online credits", "esse carro não se compra com créditos online", "cette voiture ne s'achète pas avec des crédits en ligne", "quest'auto non si compra con i crediti online", "dieses Auto kann nicht mit Online-Credits gekauft werden"),
+"garage lleno (máximo 12 autos)": ("garage full (max 12 cars)", "garagem cheia (máximo 12 carros)", "garage plein (12 voitures max)", "garage pieno (massimo 12 auto)", "Garage voll (maximal 12 Autos)"),
+"demasiadas acciones, esperá un rato": ("too many actions, wait a bit", "ações demais, espere um pouco", "trop d'actions, attends un peu", "troppe azioni, aspetta un po'", "zu viele Aktionen, warte einen Moment"),
+"Ese auto ya está en venta.": ("That car is already for sale.", "Esse carro já está à venda.", "Cette voiture est déjà en vente.", "Quest'auto è già in vendita.", "Dieses Auto steht schon zum Verkauf."),
+"Tu garaje está lleno (máximo 12 autos).": ("Your garage is full (max 12 cars).", "Sua garagem está cheia (máximo 12 carros).", "Ton garage est plein (12 voitures max).", "Il tuo garage è pieno (massimo 12 auto).", "Deine Garage ist voll (maximal 12 Autos)."),
+}

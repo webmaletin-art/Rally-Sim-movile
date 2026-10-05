@@ -1905,5 +1905,22 @@
 "📍 Descubriste %s · +%d de fama": "📍 Tu as découvert %s · +%d de renommée",
 "🏅 Rango: %s · %d de fama": "🏅 Rang : %s · %d de renommée",
 "faltan %d": "encore %d",
-"Clima del mundo (nubes, niebla y lluvia según la hora; en Dream City)": "Météo du monde (nuages, brouillard et pluie selon l'heure ; à Dream City)"
+"Clima del mundo (nubes, niebla y lluvia según la hora; en Dream City)": "Météo du monde (nuages, brouillard et pluie selon l'heure ; à Dream City)",
+"Conectando con tu garaje online…": "Connexion à ton garage en ligne…",
+"No se pudo cargar tu garaje online. Revisá la conexión.": "Impossible de charger ton garage en ligne. Vérifie la connexion.",
+"Créditos online": "Crédits en ligne",
+"REGALO DIARIO ONLINE": "CADEAU QUOTIDIEN EN LIGNE",
+"¡Regalo del día! +%s créditos online": "Cadeau du jour ! +%s crédits en ligne",
+"ya cobraste el regalo de hoy": "tu as déjà pris le cadeau du jour",
+"No se pudo cobrar. Probá de nuevo.": "Impossible de le récupérer. Réessaie.",
+"no te alcanza el dinero": "tu n'as pas assez d'argent",
+"no estás en el local": "tu n'es pas dans l'atelier",
+"este trabajo no se hace en ese local": "ce travail ne se fait pas dans cet atelier",
+"primero comprá el nivel anterior": "achète d'abord le niveau précédent",
+"esa pieza no entra en este auto": "cette pièce ne va pas sur cette voiture",
+"ese auto no se compra con créditos online": "cette voiture ne s'achète pas avec des crédits en ligne",
+"garage lleno (máximo 12 autos)": "garage plein (12 voitures max)",
+"demasiadas acciones, esperá un rato": "trop d'actions, attends un peu",
+"Ese auto ya está en venta.": "Cette voiture est déjà en vente.",
+"Tu garaje está lleno (máximo 12 autos).": "Ton garage est plein (12 voitures max)."
 }

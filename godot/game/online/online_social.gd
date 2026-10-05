@@ -84,7 +84,8 @@ func _process(dt: float) -> void:
 
 func _beat() -> void:
 	_beating = true
-	await online.call_fn("presence_beat", {"p_x": x, "p_z": z, "p_speed": kmh, "p_car": str(profile.current_id()), "p_name": player_name()})
+	var inst := str(profile.instance_of(str(profile.current_id()))) if profile.has_method("instance_of") else ""
+	await online.call_fn("presence_beat", {"p_x": x, "p_z": z, "p_speed": kmh, "p_car": str(profile.current_id()), "p_name": player_name(), "p_instance": inst if inst != "" else null})
 	_beating = false
 
 ## Al salir del mundo se avisa para no quedar como conectado
@@ -162,7 +163,7 @@ func threads() -> Array:
 
 # ───────────────────────── jugadores y amigos ─────────────────────────
 func players() -> Array:
-	var r: Dictionary = await online.call_fn("presence_list", {"p_limit": 60})
+	var r: Dictionary = await online.call_fn("presence_list_v", {"p_limit": 60})
 	return r["data"] if r["ok"] and r["data"] is Array else []
 
 func friends() -> Array:
@@ -196,72 +197,74 @@ func report(id: String, note: String) -> Dictionary:
 	return {"ok": false, "text": "No se pudo mandar el reporte."}
 
 # ───────────────────────── mercado de autos ─────────────────────────
+## Cada auto en venta es una instancia verificada por el servidor (market_list_instance): el servidor hace el traspaso y paga al vendedor en el momento. El estado del auto no lo manda el teléfono.
+func _eco() -> RefCounted:
+	return profile.get("eco") as RefCounted
+
+func _resync() -> void:
+	var e := _eco()
+	if e != null and await e.sync(player_name()):
+		profile.rebuild()
+
 func market_browse() -> Array:
 	var r: Dictionary = await online.call_fn("market_browse", {"p_limit": 40})
 	return r["data"] if r["ok"] and r["data"] is Array else []
 
-## Pone a la venta el auto con sus mejoras y pintura. El auto sale del garaje al publicarse (si se cancela vuelve igual que estaba).
+## Pone a la venta un auto del garaje online (con sus mejoras y pintura). Sale del garaje al publicarse y vuelve si se retira.
 func market_sell(car_id: String, price: int) -> Dictionary:
-	var owned: Dictionary = profile.d["owned"]
-	if not owned.has(car_id):
+	var e := _eco()
+	var inst: String = str(profile.instance_of(car_id)) if e != null else ""
+	if inst == "":
 		return {"ok": false, "text": "Ese auto no es tuyo."}
-	if owned.size() <= 1:
+	if (profile.d["owned"] as Dictionary).size() <= 1:
 		return {"ok": false, "text": "No podés vender tu único auto."}
-	var state: Dictionary = (owned[car_id] as Dictionary).duplicate(true)
-	owned.erase(car_id)
-	var was_current: bool = str(profile.d["current"]) == car_id
-	if was_current:
-		profile.d["current"] = str(owned.keys()[0])
-	profile.save()
-	var r: Dictionary = await online.call_fn("market_list", {"p_car": car_id, "p_state": state, "p_price": price, "p_name": player_name()})
-	if not r["ok"]:
-		owned[car_id] = state # no se pudo publicar: el auto vuelve
-		if was_current:
-			profile.d["current"] = car_id
-		profile.save()
-		var e := str(r["error"])
-		if e.contains("máximo"):
+	var r: Dictionary = await e.act("market_list_instance", {"p_instance": inst, "p_price": price, "p_name": player_name()}, false)
+	if not bool(r["ok"]):
+		var m := str(r["text"])
+		if m.contains("máximo"):
 			return {"ok": false, "text": "Ya tenés 5 autos en venta."}
+		if m.contains("garage") or m.contains("venta"):
+			return {"ok": false, "text": "Ese auto ya está en venta."}
 		return {"ok": false, "text": "No se pudo publicar la venta."}
+	await _resync()
 	return {"ok": true, "text": "Auto publicado en el mercado."}
 
 func market_cancel(row: Dictionary) -> Dictionary:
-	var r: Dictionary = await online.call_fn("market_cancel", {"p_id": int(row["id"])})
-	if not r["ok"]:
+	var e := _eco()
+	if e == null:
 		return {"ok": false, "text": "No se pudo retirar."}
-	var cid := str(row.get("car", ""))
-	if cid != "" and not profile.owns(cid) and row.get("state") is Dictionary:
-		profile.d["owned"][cid] = (row["state"] as Dictionary).duplicate(true)
-		profile.save()
+	var r: Dictionary = await e.act("market_cancel", {"p_id": int(row["id"])}, false)
+	if not bool(r["ok"]):
+		return {"ok": false, "text": "No se pudo retirar."}
+	await _resync()
 	return {"ok": true, "text": "Retiraste el auto de la venta."}
 
 func market_buy(row: Dictionary) -> Dictionary:
+	var e := _eco()
 	var cid := str(row.get("car", ""))
 	var price := int(row.get("price", 0))
+	if e == null:
+		return {"ok": false, "text": "Sin conexión."}
 	if profile.owns(cid):
 		return {"ok": false, "text": "Ya tenés ese auto."}
 	if profile.credits < price:
 		return {"ok": false, "text": "No te alcanzan los créditos."}
-	var r: Dictionary = await online.call_fn("market_buy", {"p_id": int(row["id"])})
-	var d: Dictionary = r["data"] if r["data"] is Dictionary else {}
-	if not r["ok"] or not bool(d.get("ok", false)):
+	var r: Dictionary = await e.act("market_buy_instance", {"p_id": int(row["id"])}, false)
+	if not bool(r["ok"]):
+		var m := str(r["text"])
+		if m.contains("alcanza"):
+			return {"ok": false, "text": "No te alcanzan los créditos."}
+		if m.contains("lleno"):
+			return {"ok": false, "text": "Tu garaje está lleno (máximo 12 autos)."}
 		return {"ok": false, "text": "Ya no está disponible."}
-	if not profile.spend(int(d.get("price", price))):
-		return {"ok": false, "text": "No te alcanzan los créditos."}
-	if d.get("state") is Dictionary:
-		profile.d["owned"][str(d.get("car", cid))] = (d["state"] as Dictionary).duplicate(true)
-	else:
-		profile.give(cid)
-	profile.save()
+	await _resync()
 	return {"ok": true, "text": "¡Compraste el auto! Ya está en tu garaje."}
 
-## Cobra lo que se vendió desde la última vez (los créditos viven en cada teléfono)
+## Al abrir el mercado se vuelve a pedir el saldo al servidor: lo que se vendió ya está acreditado (devuelve cuánto entró desde la última vez)
 func market_collect() -> int:
-	if not active:
+	var e := _eco()
+	if not active or e == null:
 		return 0
-	var r: Dictionary = await online.call_fn("market_collect", {})
-	var d: Dictionary = r["data"] if r["data"] is Dictionary else {}
-	var cr := int(d.get("credits", 0))
-	if r["ok"] and cr > 0:
-		profile.earn(cr)
-	return cr if r["ok"] else 0
+	var before: int = int(e.credits)
+	await _resync()
+	return maxi(0, int(e.credits) - before)

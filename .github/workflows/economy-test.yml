@@ -1,0 +1,33 @@
+name: Economía online · prueba SQL
+
+# Aplica TODAS las migraciones en un Postgres temporal y corre las pruebas de seguridad de la economía online (dueño, local, catálogo, saldo, mercado, abuso).
+# No toca tu proyecto de Supabase: usa una base de prueba que se tira al terminar.
+
+on:
+  workflow_dispatch:
+  push:
+    paths: ['supabase/**', 'tools/online/**']
+
+jobs:
+  economy:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar la economía online
+        run: |
+          out=$(bash tools/online/run_economy_test.sh 2>&1) || { echo "$out"; exit 1; }
+          echo "$out" | tail -60
+          echo "$out" | grep -q "FALLA" && exit 1
+          echo "$out" | grep -q "ECONOMIA_ONLINE_TEST OK"

@@ -1905,5 +1905,22 @@
 "📍 Descubriste %s · +%d de fama": "📍 You discovered %s · +%d fame",
 "🏅 Rango: %s · %d de fama": "🏅 Rank: %s · %d fame",
 "faltan %d": "%d to go",
-"Clima del mundo (nubes, niebla y lluvia según la hora; en Dream City)": "World weather (clouds, fog and rain by world time; in Dream City)"
+"Clima del mundo (nubes, niebla y lluvia según la hora; en Dream City)": "World weather (clouds, fog and rain by world time; in Dream City)",
+"Conectando con tu garaje online…": "Connecting to your online garage…",
+"No se pudo cargar tu garaje online. Revisá la conexión.": "Couldn't load your online garage. Check your connection.",
+"Créditos online": "Online credits",
+"REGALO DIARIO ONLINE": "DAILY ONLINE GIFT",
+"¡Regalo del día! +%s créditos online": "Daily gift! +%s online credits",
+"ya cobraste el regalo de hoy": "you already claimed today's gift",
+"No se pudo cobrar. Probá de nuevo.": "Couldn't claim it. Try again.",
+"no te alcanza el dinero": "you don't have enough money",
+"no estás en el local": "you're not at the shop",
+"este trabajo no se hace en ese local": "this job isn't done at that shop",
+"primero comprá el nivel anterior": "buy the previous level first",
+"esa pieza no entra en este auto": "that part doesn't fit this car",
+"ese auto no se compra con créditos online": "that car can't be bought with online credits",
+"garage lleno (máximo 12 autos)": "garage full (max 12 cars)",
+"demasiadas acciones, esperá un rato": "too many actions, wait a bit",
+"Ese auto ya está en venta.": "That car is already for sale.",
+"Tu garaje está lleno (máximo 12 autos).": "Your garage is full (max 12 cars)."
 }

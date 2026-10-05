@@ -395,17 +395,26 @@ func go(name: String, arg = null, push := true) -> void:
 var world_online := false # el mundo se abre desde Modo online (con cuenta): se activan el chat, los jugadores y el mercado
 
 func _start_city(spawn := 0) -> void:
-	var pid: String = profile.current_id()
-	profile.select(pid)
-	var cfg := {"type": "city", "track": "aurelia", "ai": 0, "sky": "day", "car": pid, "state": profile.car(), "seed": 7, "back": "home", "quick": true, "spawn": spawn, "online": world_online and app.online != null and app.online.is_account()}
+	var online_world: bool = world_online and app.online != null and app.online.is_account()
+	var prof: RefCounted = profile
+	if online_world: # el mundo online usa los autos y los créditos del servidor (aparte del progreso offline)
+		toast(tr("Conectando con tu garaje online…"))
+		if not await app.enter_online():
+			sfx.play("error")
+			toast(tr("No se pudo cargar tu garaje online. Revisá la conexión."))
+			return
+		prof = app.oprofile
+	var pid: String = prof.current_id()
+	prof.select(pid)
+	var cfg := {"type": "city", "track": "aurelia", "ai": 0, "sky": "day", "car": pid, "state": prof.car(), "seed": 7, "back": "home", "quick": true, "spawn": spawn, "online": online_world}
 	if spawn < 0: # última ubicación
-		var lp: Array = profile.d["lastPos"]
+		var lp: Array = prof.d["lastPos"]
 		cfg["resume"] = [float(lp[0]), float(lp[1]), float(lp[2])]
 	launch(cfg)
 
 ## ¿Hay una última ubicación guardada y sirve en esta versión del mapa?
 func _has_last_pos() -> bool:
-	var lp: Variant = profile.d.get("lastPos", null)
+	var lp: Variant = (((profile.d.get("online", {}) as Dictionary).get("lastPos", null)) if world_online else profile.d.get("lastPos", null))
 	return lp is Array and (lp as Array).size() >= 4 and int((lp as Array)[3]) == CityLayout.WORLD_VERSION
 
 const SPAWN_PLACES := [["Estacionamiento Central", "a nivel de la calle: salís directo a la ruta"], ["Estacionamiento Central · Planta alta", "un piso arriba: bajás por la rampa"], ["Estacionamiento Central · Subsuelo", "un piso abajo: subís por la rampa"]]
@@ -465,11 +474,30 @@ func _online_hub() -> void:
 	cv.add_child(st_l)
 	var pl_l := Kit.label("", 15, Kit.MUTED)
 	cv.add_child(pl_l)
+	var wal_l := Kit.label("💰 " + tr("Créditos online") + ": …", 15, Kit.GOLD)
+	cv.add_child(wal_l)
 	body.add_child(menu_button("🌍 " + tr("ENTRAR AL MUNDO"), tr("elegí dónde aparecer"), func() -> void:
 		sfx.play("click")
 		world_online = true
 		go("spawn"), true))
+	var gift_b := Kit.button("🎁 " + tr("REGALO DIARIO ONLINE"), func() -> void:
+		sfx.play("click")
+		var gr: Dictionary = await app.eco.daily()
+		if not is_instance_valid(wal_l):
+			return
+		if bool(gr["ok"]):
+			sfx.play("buy")
+			toast(tr("¡Regalo del día! +%s créditos online") % Kit.fmt_cr(float(gr["gift"])))
+			wal_l.text = "💰 %s: %s" % [tr("Créditos online"), Kit.fmt_cr(float(app.eco.credits))]
+		else:
+			toast(tr(str(gr["text"]))), false, 16, Vector2(0, 46))
+	gift_b.visible = false
+	body.add_child(gift_b)
 	_online_options()
+	# billetera online (la guarda el servidor, aparte de los créditos offline)
+	if await app.enter_online() and is_instance_valid(wal_l):
+		wal_l.text = "💰 %s: %s" % [tr("Créditos online"), Kit.fmt_cr(float(app.eco.credits))]
+		gift_b.visible = true
 	# estado de la conexión y jugadores (sin trabar la pantalla)
 	var on: Node = app.online
 	var r: Dictionary = await on.call_fn("presence_list", {"p_limit": 60})
@@ -598,6 +626,13 @@ func return_to_city() -> void:
 	c["state"] = profile.car()
 	c["sim"] = str(profile.setting("simLevel"))
 	app.start_race(c)
+
+## El servidor rechazó una acción del taller online: se avisa y se vuelve a mostrar lo que el servidor dice
+func on_online_failed(text: String) -> void:
+	sfx.play("error")
+	toast(tr(text))
+	refresh_car()
+	go(screen, screen_arg, false)
 
 func update_credits() -> void:
 	if credits_l != null:

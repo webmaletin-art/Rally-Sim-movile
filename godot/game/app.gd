@@ -13,12 +13,16 @@ const Tr := preload("res://game/i18n/tr.gd")
 const Release := preload("res://game/data/release.gd")
 const Billing := preload("res://game/store/billing.gd")
 const Online := preload("res://game/online/online.gd")
+const OnlineEconomy := preload("res://game/online/online_economy.gd")
+const OnlineProfile := preload("res://game/data/online_profile.gd")
 
 var autorace_used := false
 var profile: RefCounted
 var offer_shown := false # el cartel de ofertas sale una vez por sesión
 var billing: Node # compras de Google Play (sin plugin queda «no disponible»)
 var online: Node # modo online (Supabase): rankings; apagado si no hay configuración o el jugador no participa
+var eco: RefCounted # economía online (servidor): billetera y autos online
+var oprofile: RefCounted # perfil del modo online (espejo del servidor); el offline es `profile`
 var menu: Node
 var race: Node
 
@@ -44,8 +48,21 @@ func _ready() -> void:
 		return
 	show_menu()
 
+## Trae del servidor la billetera y los autos online y arma el perfil online. false si no hay cuenta o conexión (no se entra al mundo online sin eso: el progreso online es aparte del offline).
+func enter_online() -> bool:
+	if online == null or not online.is_account():
+		return false
+	if eco == null:
+		eco = OnlineEconomy.new(online)
+	if not await eco.sync(str(profile.d.get("name", "Piloto"))):
+		return false
+	oprofile = OnlineProfile.new(profile, eco)
+	return true
+
 func show_menu(screen := "home") -> void:
 	AdvData.practice = {} # la práctica de la Ruta de los Sueños no deja rastro
+	if oprofile != null:
+		oprofile.flush() # lo que dejó el mundo online (posición, nafta, fama) se guarda aparte del perfil offline
 	if race != null:
 		race.queue_free()
 		race = null
@@ -53,9 +70,15 @@ func show_menu(screen := "home") -> void:
 		menu.queue_free()
 	menu = MenuScript.new()
 	menu.app = self
-	menu.profile = profile
+	var in_online_shop: bool = oprofile != null and bool(city_return.get("online", false)) and screen.begins_with("shop:")
+	menu.profile = oprofile if in_online_shop else profile # el taller de un mundo online trabaja sobre los autos online
+	if in_online_shop:
+		oprofile.shop = screen.substr(5)
 	menu.start_screen = screen
 	add_child(menu)
+	if in_online_shop:
+		oprofile.sync_failed.connect(menu.on_online_failed)
+		oprofile.changed.connect(menu.update_credits)
 
 ## cfg: ver race.gd (car, state, track, weather, ai, laps, seg, type, event, tier…). {} = escena de pruebas
 func _start_race(cfg: Dictionary) -> void:
@@ -76,7 +99,10 @@ func _start_race(cfg: Dictionary) -> void:
 		await get_tree().process_frame
 	race = RACE_SCENE.instantiate()
 	race.cfg = cfg
-	race.profile = profile
+	var online_world: bool = bool(cfg.get("online", false)) and oprofile != null
+	if online_world:
+		oprofile.shop = "" # en la calle (no en un local)
+	race.profile = oprofile if online_world else profile
 	race.online = online
 	race.finished.connect(_on_race_finished)
 	race.exit_requested.connect(_on_race_exit)
@@ -128,6 +154,10 @@ func _on_race_exit(back: String) -> void:
 		return
 	if back.begins_with("shop:") and race != null:
 		city_return = (race.cfg as Dictionary).duplicate(true) # el auto queda frente al local: se vuelve ahí
+		if bool(city_return.get("online", false)) and eco != null and not race.cars.is_empty():
+			var ph = race.cars[0].phys # dónde está el auto: el servidor comprueba que sea en el local
+			eco.anchor = Vector2(ph.px, ph.pz)
+			eco.has_anchor = true
 	else:
 		city_return = {}
 	show_menu(back)
