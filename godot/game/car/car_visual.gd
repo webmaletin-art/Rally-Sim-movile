@@ -203,7 +203,9 @@ func set_parts(pp: Dictionary) -> void:
 
 ## Rotulados: dibujos de pintura calculados sobre la carrocería (no hace falta textura): franjas, banda lateral, la «onda»
 ## de Dream Racing, bicolor y el rally con el círculo del número en las puertas. 0 = liso.
-const LIVERIES := ["Liso", "Franjas", "Banda lateral", "Onda Dream", "Bicolor", "Rally"]
+const LIVERIES := ["Liso", "Franjas", "Banda lateral", "Onda Dream", "Bicolor", "Rally", "Camuflaje Multicam"]
+const CAMO_TEX := "res://game/models/cars/camo_multicam.png"
+static var _camo: Texture2D
 const LIVERY_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
@@ -223,6 +225,7 @@ uniform vec4 sp0 = vec4(0.0); // ventanillas laterales: polígono (z, y) de 4 pu
 uniform vec4 sp1 = vec4(0.0);
 uniform vec2 clip = vec2(-1000.0, 0.0); // vista interior: no se dibuja la carrocería dentro de la cabina (z menor que clip.x y |x| menor que clip.y)
 uniform float cab_hw = 0.6;
+uniform sampler2D camo_tex : source_color, filter_linear_mipmap, repeat_enable;
 varying vec3 lp;
 varying vec3 ln;
 void vertex() {
@@ -304,6 +307,11 @@ void fragment() {
 		c = mix(c, accent2, disc);
 		c = mix(c, accent, ring);
 		c = mix(c, accent, band(ax, 0.0, 0.22) * top * step(0.0, lp.z));
+	} else if (pattern == 6) { // camuflaje multicam: textura proyectada en tres ejes (la carrocería no necesita UV); el color de pintura la tiñe (blanco = camuflaje puro)
+		vec3 w = pow(abs(ln), vec3(4.0));
+		w /= max(w.x + w.y + w.z, 0.001);
+		vec3 t = texture(camo_tex, lp.zy * 0.35).rgb * w.x + texture(camo_tex, lp.xz * 0.35).rgb * w.y + texture(camo_tex, lp.xy * 0.35).rgb * w.z;
+		c = t * 1.7 * paint;
 	}
 	// el modelo trae la pintura original (azul) en los colores de vértice: se usa solo cuánto brilla cada parte
 	float k = clamp(dot(COLOR.rgb, vec3(0.2126, 0.7152, 0.0722)) * vk, 0.0, 1.0);
@@ -348,6 +356,10 @@ static func _paint_material(pattern: int, paint: Color, accent: Color, finish: S
 	sm.set_shader_parameter("accent", accent)
 	sm.set_shader_parameter("accent2", accent2)
 	sm.set_shader_parameter("pattern", pattern)
+	if pattern == 6:
+		if _camo == null:
+			_camo = load(CAMO_TEX)
+		sm.set_shader_parameter("camo_tex", _camo)
 	sm.set_shader_parameter("metal", float(fin[0]))
 	sm.set_shader_parameter("rough", float(fin[1]))
 	return sm

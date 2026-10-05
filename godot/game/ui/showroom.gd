@@ -35,6 +35,14 @@ var view_shift := 0.5 # cuánto se corre la escena hacia la derecha (el menú oc
 var car_len := 4.6
 var clip: MeshInstance3D
 var ready_ok := false
+# cámara libre (taller, pintura, llantas…): se gira con un dedo, se acerca con pellizco o rueda; sale de la automática y vuelve al salir del taller
+var free := false
+var f_yaw := 0.6
+var f_pitch := 0.12
+var f_dist := 6.0
+var f_target := Vector3(0.0, 0.75, 0.0)
+var _touches := {}
+var _pinch_d := 0.0
 
 func _ready() -> void:
 	rng.randomize()
@@ -513,6 +521,50 @@ func _animate(i: int) -> void:
 		rig.pose(_pose_for(i))
 	pl.post(dt)
 
+func set_free(on: bool) -> void:
+	if on == free:
+		return
+	free = on
+	_touches.clear()
+	if on:
+		f_yaw = cam_ang
+		f_pitch = 0.12
+		f_dist = car_len * 1.5 + 1.1
+		f_target = Vector3(0.0, 0.75, 0.0)
+
+func _unhandled_input(ev: InputEvent) -> void:
+	if not free:
+		return
+	if ev is InputEventScreenTouch:
+		var te := ev as InputEventScreenTouch
+		if te.pressed:
+			_touches[te.index] = te.position
+		else:
+			_touches.erase(te.index)
+		_pinch_d = 0.0
+	elif ev is InputEventScreenDrag:
+		var de := ev as InputEventScreenDrag
+		_touches[de.index] = de.position
+		if _touches.size() >= 2:
+			var ks: Array = _touches.keys()
+			var d: float = (_touches[ks[0]] as Vector2).distance_to(_touches[ks[1]] as Vector2)
+			if _pinch_d > 0.0:
+				f_dist = clampf(f_dist * _pinch_d / maxf(d, 1.0), 2.2, car_len * 3.2)
+			_pinch_d = d
+		else:
+			f_yaw -= de.relative.x * 0.009
+			f_pitch = clampf(f_pitch + de.relative.y * 0.006, -0.05, 1.2)
+	elif ev is InputEventMouseMotion and (ev as InputEventMouseMotion).button_mask & MOUSE_BUTTON_MASK_LEFT != 0:
+		var me := ev as InputEventMouseMotion
+		f_yaw -= me.relative.x * 0.009
+		f_pitch = clampf(f_pitch + me.relative.y * 0.006, -0.05, 1.2)
+	elif ev is InputEventMouseButton and (ev as InputEventMouseButton).pressed:
+		var mb := ev as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_WHEEL_UP:
+			f_dist = clampf(f_dist * 0.92, 2.2, car_len * 3.2)
+		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			f_dist = clampf(f_dist * 1.08, 2.2, car_len * 3.2)
+
 func _process(dt: float) -> void:
 	if not ready_ok:
 		return
@@ -522,9 +574,14 @@ func _process(dt: float) -> void:
 	var dist := car_len * 1.5 + 1.1
 	var target := Vector3(1.35, 0.85, car_len * 0.18)
 	var cp := target + Vector3(sin(cam_ang) * dist, 0.65 + 0.12 * sin(t * 0.17), cos(cam_ang) * dist)
+	var hd := dist
+	if free:
+		hd = f_dist
+		cp = f_target + Vector3(sin(f_yaw) * cos(f_pitch), sin(f_pitch), cos(f_yaw) * cos(f_pitch)) * f_dist
+		target = f_target
 	cam.position = cp
 	cam.look_at(target)
-	cam.h_offset = -view_shift * dist * 0.5
+	cam.h_offset = -view_shift * hd * 0.5
 	if car != null:
 		car.visual.blob.visible = false
 	if crew.is_empty():

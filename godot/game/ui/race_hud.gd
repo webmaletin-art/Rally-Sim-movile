@@ -406,6 +406,8 @@ func set_paused(on: bool) -> void:
 		toast_t = 0.0 if toast_l.text == "" else toast_t
 	pause_box.visible = on
 	pause_box.mouse_filter = Control.MOUSE_FILTER_STOP
+	if city_hud != null:
+		city_hud.set_paused(on)
 
 # ───────────────────────── opciones dentro de la carrera ─────────────────────────
 ## Las mismas pantallas de opciones del menú; cada cambio se aplica en el momento (options_changed) y se ve detrás

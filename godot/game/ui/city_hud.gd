@@ -200,6 +200,16 @@ func _set_big(on: bool) -> void:
 		_center_big()
 		(_big.get_node("map") as Control).queue_redraw()
 
+## En la pausa se esconde el minimapa y el GPS (se veían tapando el menú)
+func set_paused(on: bool) -> void:
+	if on:
+		_mini.visible = false
+		street_l.visible = false
+		gps_l.visible = false
+		_big.visible = false
+	else:
+		_set_big(big)
+
 var _tp := {} # dedos apoyados en el mapa grande: índice -> posición
 var _pinch_d := 0.0
 var _pressing := false

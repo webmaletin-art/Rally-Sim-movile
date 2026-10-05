@@ -37,7 +37,7 @@ var _rain_on := false
 var _sky: ProceduralSkyMaterial
 var _acc := 0.0
 var _beam: MeshInstance3D
-var _beam_mat: StandardMaterial3D
+var _beam_mat: ShaderMaterial
 var _frozen := false
 var _follow_world := true # la hora sale del reloj del mundo (WorldClock): en el online es la misma para todos; con la hora forzada de una prueba, no
 
@@ -81,7 +81,7 @@ func update(dt: float) -> void:
 	if _acc >= 0.125:
 		_acc = 0.0
 		_apply()
-	_update_beam()
+	_update_beam(dt)
 
 func _lerp_key(h: float) -> Array:
 	var i := 0
@@ -125,7 +125,7 @@ func _apply() -> void:
 		race.track.world_node.set_night(night)
 	if _beam != null:
 		_beam.visible = night > 0.08
-		_beam_mat.albedo_color = Color(1.0, 0.95, 0.78, clampf(night * 0.55, 0.0, 0.55))
+		_beam_mat.set_shader_parameter("k", clampf(night * 0.55, 0.0, 0.55))
 
 ## Clima del mundo (Etapa 17) sobre la hora del día: nubes (menos sol, cielo gris), niebla (se acorta la vista), lluvia (gotas, calle mojada y menos agarre)
 func _apply_weather() -> void:
@@ -207,14 +207,27 @@ func _build_beam() -> void:
 	arr[Mesh.ARRAY_VERTEX] = v
 	arr[Mesh.ARRAY_COLOR] = c
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-	_beam_mat = StandardMaterial3D.new()
-	_beam_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_beam_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_beam_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	_beam_mat.vertex_color_use_as_albedo = true
-	_beam_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	_beam_mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
-	_beam_mat.albedo_color = Color(1, 1, 1, 0)
+	_beam_mat = ShaderMaterial.new()
+	var sh := Shader.new()
+	# el haz se apoya en el terreno: la altura del piso a 0, 6, 12… 30 m adelante llega por uniforme y el vértice se sube o baja (antes quedaba plano y se metía bajo el asfalto en las subidas)
+	sh.code = """shader_type spatial;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never;
+uniform float hs[6];
+uniform float k = 1.0;
+varying vec4 vc;
+void vertex() {
+	float zf = clamp(VERTEX.z / 6.0, 0.0, 4.999);
+	int i = int(zf);
+	VERTEX.y += mix(hs[i], hs[i + 1], zf - float(i)) + 0.12;
+	vc = COLOR;
+}
+void fragment() {
+	ALBEDO = vc.rgb;
+	ALPHA = vc.a * k;
+}
+"""
+	_beam_mat.shader = sh
+	_beam_mat.set_shader_parameter("hs", PackedFloat32Array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
 	m.surface_set_material(0, _beam_mat)
 	_beam = MeshInstance3D.new()
 	_beam.mesh = m
@@ -223,11 +236,31 @@ func _build_beam() -> void:
 	_beam.top_level = true
 	race.world.add_child(_beam)
 
-func _update_beam() -> void:
+var _beam_t := 0.0
+
+func _update_beam(dt: float) -> void:
 	if _beam == null or not _beam.visible or race.cars.is_empty():
 		return
 	var vis: Node3D = race.cars[0].visual
 	if vis == null:
 		return
-	var gy: float = (vis.get("blob") as Node3D).global_position.y + 0.05
-	_beam.global_transform = Transform3D(Basis(Vector3.UP, vis.basis.get_euler(EULER_ORDER_YXZ).y), Vector3(vis.position.x, gy, vis.position.z))
+	var gy: float = (vis.get("blob") as Node3D).global_position.y
+	var yaw: float = vis.basis.get_euler(EULER_ORDER_YXZ).y
+	_beam.global_transform = Transform3D(Basis(Vector3.UP, yaw), Vector3(vis.position.x, gy, vis.position.z))
+	_beam_t -= dt
+	if _beam_t > 0.0:
+		return
+	_beam_t = 0.06
+	var city = race.track.city if race.track != null else null
+	if city == null:
+		return
+	var fw := Vector2(sin(yaw), cos(yaw))
+	var hs := PackedFloat32Array()
+	for k in 6:
+		var px: float = vis.position.x + fw.x * 6.0 * float(k)
+		var pz: float = vis.position.z + fw.y * 6.0 * float(k)
+		var pr: PackedFloat64Array = city.probe(px, pz)
+		var gh: float = float(pr[4]) if float(pr[0]) >= -1.0 else city.height(px, pz)
+		hs.append(clampf(gh - gy, -3.0, 4.0))
+	hs[0] = 0.0
+	_beam_mat.set_shader_parameter("hs", hs)

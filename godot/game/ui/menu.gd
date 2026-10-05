@@ -51,6 +51,7 @@ var adventure: RefCounted
 var about: RefCounted
 var account: RefCounted
 var world_ui: RefCounted # menu_world.gd: mundo abierto y modo online
+const FREE_CAM_SCREENS := ["workshop", "tune", "paint", "shop"]
 var world_online := false # el mundo se abre desde Modo online (con cuenta): se activan el chat, los jugadores y el mercado
 var perf: RefCounted
 var store: RefCounted
@@ -333,6 +334,7 @@ func go(name: String, arg = null, push := true) -> void:
 		stack.append([screen, screen_arg])
 	screen = name
 	screen_arg = arg
+	showroom.set_free(name in FREE_CAM_SCREENS) # en el taller la cámara es libre: girar con un dedo, acercar con pellizco
 	if panel != null:
 		panel.queue_free()
 	panel = Kit.panel(12)

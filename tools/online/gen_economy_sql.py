@@ -23,6 +23,12 @@ L.append("insert into public.online_cat_shops (id, name, x, z) values")
 L.append(",\n".join("  (%s, %s, %s, %s)" % (q(s['id']), q(s['name']), s['x'], s['z']) for s in cat['shops']))
 L.append("on conflict (id) do update set name = excluded.name, x = excluded.x, z = excluded.z;\n")
 L.append("insert into public.online_cat_finishes (id) values " + ", ".join("(%s)" % q(f) for f in cat['finishes']) + " on conflict do nothing;")
+if len(sys.argv) > 2 and sys.argv[1] == '--seeds-only':
+    # migración incremental: sólo las semillas del catálogo (autos nuevos, compatibilidad de piezas); la migración base ya aplicada no se toca
+    out = "-- Catálogo online: autos y piezas nuevos (generado con tools/online/gen_economy_sql.py --seeds-only). Aditivo: sólo inserta o actualiza semillas.\n" + "\n".join(L) + "\n"
+    open(sys.argv[2], 'w', encoding='utf-8').write(out)
+    print("semillas escritas:", sys.argv[2], len(out), "bytes")
+    sys.exit(0)
 out = tpl.replace("-- @@SEEDS@@", "\n".join(L))
 p = os.path.join(ROOT, 'supabase', 'migrations', '20261007010000_online_economy.sql')
 open(p, 'w', encoding='utf-8').write(out)

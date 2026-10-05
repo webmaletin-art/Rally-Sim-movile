@@ -51,8 +51,13 @@ CARS = {
                   drag=0.8, mu=1.12, surf=SURF_ROAD, tire='road', slipL=0.12, slipT=0.16, eng_in=0.2, clutch=0.5, shift=0.1, vgov=0, roll=0.014,
                   cat=dict(brand='VORTEX', model='Aerion', kind='Hypercar híbrido', price=150000, engine='V8 biturbo + 2 motores · 1000 cv', drive='AWD', year=2027,
                            desc='Bajo, ancho y brutal. Tracción integral y mil caballos para dejar el asfalto atrás.', paint=dict(body='#0b0c0e', accent='#00b4d8', rim='#c0c5cc'))),
+    'camo': dict(base='pickup', name='Cóndor T6 Multicam', icon='🪖', tagline='Todo terreno V6 · suspensión larga', cyl=6, mass=2350, comH=0.78, travel=0.36, fq=(1.1, 1.15), zb=0.36, zr=0.62,
+                 tq=650, rpm=6400, turbo=True, gears=[4.6, 3.0, 2.1, 1.6, 1.3, 1.05, 0.84], fd=4.1, drive='AWD', fdr=0.45, cbias=0.42, lsd=1100, decel=10.5, steer=0.5, sresp=8.5,
+                 drag=1.18, mu=1.0, surf=SURF_OFF, tire='mud', slipL=0.14, slipT=0.18, eng_in=0.3, clutch=0.7, shift=0.18, vgov=0, roll=0.02,
+                 cat=dict(brand='CÓNDOR', model='T6 Multicam', kind='Camioneta todo terreno', price=42000, engine='V6 3.5 biturbo 360 cv', drive='4x4', year=2026,
+                          desc='Camioneta militar de camuflaje multicam: ruedas todo terreno, suspensión de recorrido largo y un V6 que no se queja del barro.', paint=dict(body='#ffffff', accent='#2c3a1e', rim='#d9a21c', livery=6))),
 }
-NEW_ORDER = ['hatch', 'suv', 'buggy', 'muscle', 'gt', 'gt3', 'hyper']
+NEW_ORDER = ['hatch', 'suv', 'buggy', 'muscle', 'gt', 'gt3', 'hyper', 'camo']
 
 def build_entry(cid, spec, meta, v):
     d = copy.deepcopy(v[spec['base']])

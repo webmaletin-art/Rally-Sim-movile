@@ -205,13 +205,14 @@ func _cars(mine: bool) -> void:
 		use.disabled = cur
 		use.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		brow.add_child(use)
-		var wb := Kit.button("🔧 TALLER", func() -> void:
-			m.profile.select(id)
-			m.sfx.play("click")
-			m.refresh_car()
-			m.go("workshop", 0), false, 20, Vector2(0, 52))
-		wb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		brow.add_child(wb)
+		if m.app.city_return.is_empty(): # en el concesionario de Dream City no hay taller: cada trabajo se hace en su local
+			var wb := Kit.button("🔧 TALLER", func() -> void:
+				m.profile.select(id)
+				m.sfx.play("click")
+				m.refresh_car()
+				m.go("workshop", 0), false, 20, Vector2(0, 52))
+			wb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			brow.add_child(wb)
 	else:
 		if owned:
 			var ob := Kit.button("✔ EN TU GARAJE", Callable(), false, 20, Vector2(0, 52))

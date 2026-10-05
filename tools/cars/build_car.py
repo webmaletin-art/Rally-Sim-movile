@@ -20,6 +20,7 @@ OUT = os.path.join(HERE, '..', '..', 'godot', 'game', 'models', 'cars')
 # superior de la luneta, base de la luneta] como (z, y sobre la base de la carrocería) en el auto ya centrado; None = sin vidrios
 CARS = {
     'pickup': dict(src='car0', L=6.033, Lref=5.45, wscale=0.9, R=0.44, gap=0.05, wf=0.54, wf_ref=0.52, glass=[(1.05, 0.93), (0.50, 1.47), (-1.00, 1.47), (-1.05, 0.93)]),
+    'camo':   dict(src='car9', L=6.033, Lref=5.45, wscale=0.9, R=0.46, gap=0.05, wf=0.54, wf_ref=0.52, glass=[(1.05, 0.93), (0.50, 1.47), (-1.00, 1.47), (-1.05, 0.93)]),
     'truck':  dict(src='car1', L=7.057, Lref=6.60, wscale=0.86, R=0.55, gap=0.06, wf=0.50, wf_ref=0.46, glass=[(3.25, 1.32), (2.95, 2.40), (1.85, 2.40), (1.85, 1.32)]),
     'muscle': dict(src='car2', L=4.85, wscale=1.0, ground=0.10, gap=0.05, wf=0.54, glass=[(0.85, 0.82), (0.45, 1.23), (-0.75, 1.20), (-1.45, 0.90)]),
     'gt':     dict(src='car3', L=4.55, wscale=1.0, ground=0.09, gap=0.05, wf=0.50, glass=[(0.90, 0.82), (0.42, 1.17), (-0.55, 1.15), (-1.35, 0.84)]),
@@ -34,6 +35,7 @@ CARS = {
 # Ruedas: style = diseño de la llanta · rim = radio de la llanta (m) · tw/tw_r = ancho de goma adelante/atrás · tread = dibujo de la goma
 WHEELS = {
     'pickup': dict(spring_col='#e11d2a', caliper_col='#1b1d22', style='dish8', rim=0.229, tw=0.325, tw_r=0.325, tread='offroad', spring='coil', susp='truck'),
+    'camo':   dict(spring_col='#d9a21c', caliper_col='#d9a21c', style='beadlock', rim=0.235, tw=0.345, tw_r=0.345, tread='offroad', spring='coil', susp='truck'),
     'truck':  dict(spring_col='#ff6a08', caliper_col='#ffc300', style='steel10', rim=0.254, tw=0.32, tw_r=0.46, tread='offroad', spring='coil', susp='truck'),
     'muscle': dict(spring_col='#e11d2a', caliper_col='#e6c619', style='star5', rim=0.245, tw=0.27, tw_r=0.33, tread='road', spring='coil', susp='car'),
     'gt':     dict(spring_col='#1a4fe0', caliper_col='#1a4fe0', style='multi10', rim=0.235, tw=0.26, tw_r=0.28, tread='road', spring='coil', susp='car'),
