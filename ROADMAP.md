@@ -2,6 +2,14 @@
 
 Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
+## Hecho en la evolución progresiva (Etapas 1–23)
+- ✅ **Vida del mundo** (`docs/WORLD_LIFE.md`, `docs/TRAFICO.md`, `docs/PEATONES.md`, `docs/AUDIO_MUNDO.md`): reloj y semilla deterministas, semáforos, autos estacionados, tránsito civil, rutinas, peatones de papel, clima, audio ambiente; presupuesto de CPU con estrangulamiento automático (`docs/OPTIMIZACION_ANDROID.md`).
+- ✅ **Personalización modular** (`docs/PIEZAS_MODULARES.md`): 15 llantas, alerones, paragolpes, difusor, polleras; Mixamo en el menú (`docs/ANIMACIONES_MIXAMO.md`); gomas con desgaste (`docs/DESGASTE_GOMAS.md`).
+- ✅ **Mundo abierto** (`docs/MUNDO_ABIERTO.md`): guardarraíles, Ruta Panorámica con gasolineras, superficies, actividades, fama.
+- ✅ **Economía online autoritativa** (`docs/ECONOMIA_ONLINE.md`): billetera, autos por instancia, talleres y mercado validados en el servidor.
+- ✅ **Arquitectura** (`docs/ARQUITECTURA.md`): dónde vive cada cosa.
+- ⏳ Falta probar todo en el APK: Aventura, Dream City, online (regalo diario, taller, mercado), peatones, audio, FPS con «Vida del mundo» SÍ/NO.
+
 ## Hecho recientemente
 - ✅ **Plaza de Drift física al final de la Ruta 60** (conos con física y puntaje de derrape en el mundo), **hub online con apodo**, **ÚLTIMA UBICACIÓN**, **otros jugadores visibles** (autos de papel con apodo, posiciones cada 2 s), **árboles de ruta de papel cruzado** y **carteles de orientación** en las rutas. Pendiente: fusión física de la Aventura, Realtime para los autos de otros jugadores.
 - ✅ **Mundo online (Etapas 1–3)** — sin probar en el APK todavía: modo online con cuenta obligatoria → elegir dónde aparecer → Dream City con **Estacionamiento Central unido a la ruta** (3 salas, rampas, sin teletransporte), salidas abiertas a Aventura (Ruta 20) y Drift (Ruta 60), mapa grande con zoom/arrastre y GPS vivo, calles limpias (sin árboles en la ciudad), rutas con cerco, carteles y horizonte falso, cámara que no atraviesa edificios, faros nuevos, arreglo de parpadeos, editor de controles, FPS opcional, y en la pausa online: **chat mundial/privado con filtro y bloqueos, jugadores, amigos, reportes con evidencia y mercado de autos** (`docs/MUNDO_ABIERTO.md`, `docs/ONLINE_SUPABASE.md`, `tools/online/report_view.py`). Falta: ver a los otros autos en el mapa y fusionar físicamente Drift/Aventura.

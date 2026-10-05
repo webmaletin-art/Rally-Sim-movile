@@ -11,20 +11,9 @@ const CityTrack := preload("res://game/track/city_track.gd")
 const CitySession := preload("res://game/city_session.gd")
 const OnlineSocial := preload("res://game/online/online_social.gd")
 const CityDriver := preload("res://game/ai/city_driver.gd")
-const CityShops := preload("res://game/city/city_shops.gd")
-const CityLinks := preload("res://game/city/city_links.gd")
-const CityDrift := preload("res://game/city/city_drift.gd")
 const RemoteCars := preload("res://game/online/remote_cars.gd")
-const WorldLife := preload("res://game/world/world_life.gd")
-const ParkedCars := preload("res://game/world/parked_cars.gd")
-const CivilTraffic := preload("res://game/world/civil_traffic.gd")
-const WorldLifeConfig := preload("res://game/world/world_life_config.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
-const CityFuel := preload("res://game/city/city_fuel.gd")
-const CityTires := preload("res://game/city/city_tires.gd")
-const CityActivities := preload("res://game/city/city_activities.gd")
 const CityClock := preload("res://game/city/city_clock.gd")
-const CityToll := preload("res://game/city/city_toll.gd")
 const DriftSession := preload("res://game/drift_session.gd")
 const PaperTrack := preload("res://game/track/paper_track.gd")
 const Drag := preload("res://game/data/drag.gd")
@@ -57,8 +46,8 @@ const AiCars := preload("res://game/data/ai_cars.gd")
 const Session := preload("res://game/session.gd")
 const RaceHud := preload("res://game/ui/race_hud.gd")
 const UiSfx := preload("res://game/audio/ui_sfx.gd")
-const WorldAmbient := preload("res://game/audio/world_ambient.gd")
-const AmbientPeds := preload("res://game/world/ambient_peds.gd")
+const CityLife := preload("res://game/city/city_life.gd")
+const CityServices := preload("res://game/city/city_services.gd")
 const AdvTrack := preload("res://game/adventure/adv_track.gd")
 const AdvWorld := preload("res://game/adventure/adv_world.gd")
 const AdvData := preload("res://game/adventure/adv_data.gd")
@@ -1117,20 +1106,8 @@ func _start_session() -> void:
 			race_hud.setup(session, cfg, rival_info)
 			if cfg.has("gpsdrive") and race_hud.city_hud != null: # prueba: el auto va solo por el GPS hasta ese lugar
 				_city_drive_test(str(cfg["gpsdrive"]))
-			shops = CityShops.new()
-			shops.setup(self, track.world_node, track.city)
-			links = CityLinks.new()
-			links.setup(self, track.world_node, track.city)
-			fuel = CityFuel.new()
-			fuel.setup(self, track.city)
-			tires = CityTires.new() # desgaste de gomas (Etapa 13)
-			tires.setup(self)
-			acts = CityActivities.new() # radares, contrarreloj y encargos (Etapa 15)
-			acts.setup(self, track.city, track.world_node)
-			tolls = CityToll.new()
-			tolls.setup(self, track.world_node, track.city)
-			city_drift = CityDrift.new()
-			city_drift.setup(self, track.world_node, track.city)
+			services = CityServices.new() # talleres, túneles, nafta, gomas, actividades, peajes y la Plaza de Drift: ver city/city_services.gd
+			services.setup(self)
 			if cfg.get("online", false) == true and online != null and profile != null:
 				social = OnlineSocial.new()
 				add_child(social)
@@ -1140,24 +1117,10 @@ func _start_session() -> void:
 					var rc := RemoteCars.new() # los autos de los otros jugadores
 					rc.setup(self, social, track.city)
 					add_child(rc)
-			world_life = WorldLife.new() # un solo núcleo para offline y online (online: el servidor da id, versión, semilla y hora al entrar)
-			world_life.setup(profile, CityLayout.CELL)
-			var pk = ParkedCars.new() # autos estacionados deterministas (Etapa 8)
-			pk.attach(track.city, track, track.world_node)
-			world_life.register_system(pk)
-			var ct = CivilTraffic.new() # tránsito civil cinemático (Etapa 9)
-			ct.attach(track.city, track, track.world_node)
-			world_life.register_system(ct)
-			var pdx = AmbientPeds.new() # peatones de papel 2.5D por las veredas (Etapa 21)
-			pdx.attach(track.city, track, track.world_node)
-			world_life.register_system(pdx)
-			world_life.set_enabled(profile.setting("worldLife") != false)
-			ambient = WorldAmbient.new() # ambiente, tránsito en 3D, truenos y eco bajo tierra (Etapa 20)
-			add_child(ambient)
-			ambient.setup(self, 2 if WorldLifeConfig.profile_for(profile) == "LOW" else (3 if WorldLifeConfig.profile_for(profile) == "MEDIUM" else 4))
-			ambient.set_level(float(profile.setting("volAmb")) / 100.0)
+			life = CityLife.new() # la vida del mundo (estacionados, tránsito, peatones, audio ambiente): ver city/city_life.gd
+			life.setup(self)
 			if social != null and social.active:
-				world_life.join_online(online)
+				life.join_online(online)
 			if cfg.has("bigmap") and race_hud.city_hud != null:
 				race_hud.city_hud.set_dest(race_hud.city_hud.city.pois[0]["front"], str(race_hud.city_hud.city.pois[0]["name"]))
 				race_hud.city_hud.call_deferred("_set_big", true)
@@ -1593,6 +1556,7 @@ func _city_drive_test(poi_id: String) -> void:
 var _cd_t := 0.0
 var _link_test: PackedStringArray = PackedStringArray()
 var _link_stage := 0
+var services # CityServices: agrupa los de abajo (city/city_services.gd)
 var shops # CityShops (solo en Dream City)
 var links # CityLinks: bocas de túnel y estacionamiento
 var fuel # CityFuel: nafta y gasolineras
@@ -1600,6 +1564,7 @@ var tires # CityTires: desgaste de las gomas puestas
 var acts # CityActivities: radares, contrarreloj panorámica y encargos
 var tolls # CityToll: peajes de las rutas
 var city_drift # CityDrift: la Plaza de Drift al final de la Ruta 60
+var life # CityLife: conecta la vida del mundo con Dream City (city/city_life.gd)
 var ambient # WorldAmbient: audio del mundo abierto (tránsito en 3D, clima, ecos); sólo en Dream City
 var world_life # WorldLife: la capa de vida del mundo (reloj, semilla, sectores, sistemas de vida); sólo en Dream City
 var clock # CityClock: ciclo de día y noche
@@ -1700,40 +1665,19 @@ func _exit_tree() -> void:
 	if track is CityTrack and profile != null and not cars.is_empty() and str(cfg.get("type", "")) == "city":
 		var lp = cars[0].phys # la última ubicación: se puede volver a aparecer ahí desde el menú
 		profile.d["lastPos"] = [snappedf(lp.px, 0.1), snappedf(lp.pz, 0.1), snappedf(lp.yaw, 0.01), CityLayout.WORLD_VERSION]
-		if world_life != null:
-			world_life.save(profile)
+		if life != null:
+			life.save()
 		profile.save()
 
 func _tick_session(dt: float) -> void:
-	if shops != null:
-		shops.update(dt)
-		links.update(dt)
-		fuel.update(dt)
-		if tires != null:
-			tires.update(dt)
-		if acts != null:
-			acts.update(dt)
-		tolls.update(dt)
-		if city_drift != null:
-			city_drift.update(dt)
+	if services != null:
+		services.update(dt)
 		_check_gates()
 		if social != null and not cars.is_empty():
 			var sp0 = cars[0].phys
 			social.set_state(sp0.px, sp0.pz, sqrt(sp0.vx * sp0.vx + sp0.vz * sp0.vz) * 3.6)
-		if world_life != null and not cars.is_empty():
-			var wp = cars[0].phys
-			var tsys = world_life.get_system("traffic")
-			if tsys != null:
-				tsys.player_vel = Vector2(wp.vx, wp.vz) # para que el tránsito reaccione al jugador (frena, esquiva, se golpea)
-			var psys = world_life.get_system("peds")
-			if psys != null:
-				psys.player_vel = Vector2(wp.vx, wp.vz)
-				psys.night = float(clock.night) if clock != null else 0.0
-				psys.weather_on = profile.setting("worldWeather") != false
-			world_life.update(dt, Vector2(wp.px, wp.pz))
-			if ambient != null:
-				ambient.enabled = audio_on
-				ambient.update(dt, Vector2(wp.px, wp.pz), sqrt(wp.vx * wp.vx + wp.vz * wp.vz))
+		if life != null:
+			life.update(dt)
 		if clock != null:
 			clock.update(dt)
 		_underground_light(dt)
@@ -1866,8 +1810,8 @@ func _apply_live_settings(key: String) -> void:
 			lens.apply_settings(profile)
 			lens_auto = false
 		"quality", "trees", "shadowsQ", "textures":
-			if world_life != null:
-				world_life.set_profile(WorldLifeConfig.profile_for(profile)) # LOW / MEDIUM / HIGH según la calidad
+			if life != null:
+				life.apply_setting(key)
 			var old := trees_n
 			_apply_quality_settings()
 			if trees_n != old:
@@ -1878,12 +1822,9 @@ func _apply_live_settings(key: String) -> void:
 			if not res_auto:
 				res_scale = rs
 			_on_resize()
-		"worldLife":
-			if world_life != null:
-				world_life.set_enabled(profile.setting("worldLife") != false)
-		"volAmb":
-			if ambient != null:
-				ambient.set_level(float(profile.setting("volAmb")) / 100.0)
+		"worldLife", "volAmb":
+			if life != null:
+				life.apply_setting(key)
 		"particles":
 			fx.intensity = _particle_level() / 10.0
 		"abs", "tc", "stab", "lineAssist":
