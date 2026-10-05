@@ -14,6 +14,7 @@
 " · FINAL": " · FINAL",
 " · MHz máx.: ": "",
 " · SIN ": "",
+" · VIDA ": "",
 "%-52s → %3d FPS · %5.1f ms · p95 %5.1f · p99 %5.1f · peor %5.1f · >20ms %4.1f%% · tirones(>33ms) %3d · fís %4.1f · código %4.1f · render CPU %4.1f / GPU %4.1f · %3d llam · %3dk tri": "",
 "%.1f km a la meta": "%.1f km to the finish",
 "%.1f km hasta la próxima estación": "%.1f km to the next station",
@@ -651,6 +652,7 @@
 "Guardarraíl": "Guardrail",
 "HABILIDADES": "SKILLS",
 "HABILIDADES (%d)": "SKILLS (%d)",
+"HIGH": "",
 "Hatch de rally": "Rally hatch",
 "Hatch de rally · ágil y filoso": "Rally hatch · agile and sharp",
 "Hay un túnel largo: adentro está oscuro y los ojos tardan en acostumbrarse. Después viene una bajada larga: frená antes, el auto pesa hacia adelante.": "There is a long tunnel: it's dark inside and your eyes take time to adjust. Then comes a long descent: brake earlier, the car weighs forward.",
@@ -790,6 +792,7 @@
 "Los textos legales completos están en el repositorio del juego (docs/PRIVACIDAD.md y docs/TERMINOS.md).": "The full legal texts are in the game's repository (docs/PRIVACIDAD.md and docs/TERMINOS.md).",
 "Lucía Ferreyra": "Lucía Ferreyra",
 "MAPAS FANTASÍA": "FANTASY MAPS",
+"MEDIUM": "",
 "MENSAJE PRIVADO": "PRIVATE MESSAGE",
 "MENSAJES PRIVADOS": "PRIVATE MESSAGES",
 "MERCADO DE AUTOS": "CAR MARKET",
@@ -1337,6 +1340,7 @@
 "Versión %s": "Version %s",
 "Vibración (opcional) y los permisos de red que necesita el servicio de compras de Google Play (el juego no los usa para nada más). No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono.": "Vibration (optional) and the network permissions needed by the Google Play purchase service (the game uses them for nothing else). We don't ask for location, camera, microphone, contacts or personal files. Motion sensors are only used to steer by tilting the phone.",
 "Vibración tipo volante (peso y baches)": "Wheel-like vibration (weight and bumps)",
+"Vida del mundo (tráfico y ambiente; apagala si el teléfono anda lento)": "World life (traffic and ambience; turn it off if your phone runs slow)",
 "Viento": "Wind",
 "Villa Aurora": "Villa Aurora",
 "Visión nocturna": "Night vision",
@@ -1768,6 +1772,7 @@
 "calidad automática o fija": "",
 "calidad general, resolución, árboles, sombras": "",
 "cargando": "filling",
+"centro": "downtown",
 "color y acabado": "",
 "conectado": "online",
 "cuadra": "block",
@@ -1825,6 +1830,5 @@
 "🚗 GARAJE": "",
 "🚧 Completaste la primera parte. Las próximas etapas llegan con una actualización.": "🚧 You completed the first part. The next stages arrive with an update.",
 "🚧 Hasta acá llega la primera parte de la aventura. Las próximas etapas llegan con una actualización; tu avance queda guardado.": "🚧 This is where the first part of the adventure ends. The next stages arrive with an update; your progress is saved.",
-"🧱 Texturas": "",
-"centro": "downtown"
+"🧱 Texturas": ""
 }

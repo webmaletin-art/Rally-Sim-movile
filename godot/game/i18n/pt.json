@@ -14,6 +14,7 @@
 " · FINAL": " · FINAL",
 " · MHz máx.: ": "",
 " · SIN ": "",
+" · VIDA ": "",
 "%-52s → %3d FPS · %5.1f ms · p95 %5.1f · p99 %5.1f · peor %5.1f · >20ms %4.1f%% · tirones(>33ms) %3d · fís %4.1f · código %4.1f · render CPU %4.1f / GPU %4.1f · %3d llam · %3dk tri": "",
 "%.1f km a la meta": "%.1f km até a chegada",
 "%.1f km hasta la próxima estación": "%.1f km até a próxima estação",
@@ -651,6 +652,7 @@
 "Guardarraíl": "Guard-rail",
 "HABILIDADES": "HABILIDADES",
 "HABILIDADES (%d)": "HABILIDADES (%d)",
+"HIGH": "",
 "Hatch de rally": "Hatch de rali",
 "Hatch de rally · ágil y filoso": "Hatch de rali · ágil e afiado",
 "Hay un túnel largo: adentro está oscuro y los ojos tardan en acostumbrarse. Después viene una bajada larga: frená antes, el auto pesa hacia adelante.": "Há um túnel longo: dentro está escuro e os olhos demoram a se acostumar. Depois vem uma descida longa: freie antes, o carro pesa para a frente.",
@@ -790,6 +792,7 @@
 "Los textos legales completos están en el repositorio del juego (docs/PRIVACIDAD.md y docs/TERMINOS.md).": "Os textos legais completos estão no repositório do jogo (docs/PRIVACIDAD.md e docs/TERMINOS.md).",
 "Lucía Ferreyra": "Lucía Ferreyra",
 "MAPAS FANTASÍA": "MAPAS DE FANTASIA",
+"MEDIUM": "",
 "MENSAJE PRIVADO": "MENSAGEM PRIVADA",
 "MENSAJES PRIVADOS": "MENSAGENS PRIVADAS",
 "MERCADO DE AUTOS": "MERCADO DE CARROS",
@@ -1337,6 +1340,7 @@
 "Versión %s": "Versão %s",
 "Vibración (opcional) y los permisos de red que necesita el servicio de compras de Google Play (el juego no los usa para nada más). No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono.": "Vibração (opcional) e as permissões de rede necessárias ao serviço de compras do Google Play (o jogo não as usa para mais nada). Não pedimos localização, câmera, microfone, contatos nem arquivos pessoais. Os sensores de movimento são usados apenas para dirigir inclinando o celular.",
 "Vibración tipo volante (peso y baches)": "Vibração tipo volante (peso e buracos)",
+"Vida del mundo (tráfico y ambiente; apagala si el teléfono anda lento)": "Vida do mundo (tráfego e ambiente; desligue se o celular estiver lento)",
 "Viento": "Vento",
 "Villa Aurora": "Villa Aurora",
 "Visión nocturna": "Visão noturna",
@@ -1768,6 +1772,7 @@
 "calidad automática o fija": "",
 "calidad general, resolución, árboles, sombras": "",
 "cargando": "abastecendo",
+"centro": "centro",
 "color y acabado": "",
 "conectado": "conectado",
 "cuadra": "quadra",
@@ -1825,6 +1830,5 @@
 "🚗 GARAJE": "",
 "🚧 Completaste la primera parte. Las próximas etapas llegan con una actualización.": "🚧 Você completou a primeira parte. As próximas etapas chegam com uma atualização.",
 "🚧 Hasta acá llega la primera parte de la aventura. Las próximas etapas llegan con una actualización; tu avance queda guardado.": "🚧 Aqui termina a primeira parte da aventura. As próximas etapas chegam com uma atualização; seu progresso fica salvo.",
-"🧱 Texturas": "",
-"centro": "centro"
+"🧱 Texturas": ""
 }

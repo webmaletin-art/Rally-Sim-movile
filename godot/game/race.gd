@@ -15,6 +15,8 @@ const CityShops := preload("res://game/city/city_shops.gd")
 const CityLinks := preload("res://game/city/city_links.gd")
 const CityDrift := preload("res://game/city/city_drift.gd")
 const RemoteCars := preload("res://game/online/remote_cars.gd")
+const WorldLife := preload("res://game/world/world_life.gd")
+const WorldLifeConfig := preload("res://game/world/world_life_config.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityFuel := preload("res://game/city/city_fuel.gd")
 const CityClock := preload("res://game/city/city_clock.gd")
@@ -1128,6 +1130,11 @@ func _start_session() -> void:
 					var rc := RemoteCars.new() # los autos de los otros jugadores
 					rc.setup(self, social, track.city)
 					add_child(rc)
+			world_life = WorldLife.new() # un solo núcleo para offline y online (online: el servidor da id, versión, semilla y hora al entrar)
+			world_life.setup(profile, CityLayout.CELL)
+			world_life.set_enabled(profile.setting("worldLife") != false)
+			if social != null and social.active:
+				world_life.join_online(online)
 			if cfg.has("bigmap") and race_hud.city_hud != null:
 				race_hud.city_hud.set_dest(race_hud.city_hud.city.pois[0]["front"], str(race_hud.city_hud.city.pois[0]["name"]))
 				race_hud.city_hud.call_deferred("_set_big", true)
@@ -1568,6 +1575,7 @@ var links # CityLinks: bocas de túnel y estacionamiento
 var fuel # CityFuel: nafta y gasolineras
 var tolls # CityToll: peajes de las rutas
 var city_drift # CityDrift: la Plaza de Drift al final de la Ruta 60
+var world_life # WorldLife: la capa de vida del mundo (reloj, semilla, sectores, sistemas de vida); sólo en Dream City
 var clock # CityClock: ciclo de día y noche
 var _ug := 0.0 # 0 = afuera · 1 = bajo tierra (el sol y el cielo se apagan)
 var _ug_base: Array = [] # luz del sol, luz ambiente, niebla (color, inicio, fin) de afuera
@@ -1596,7 +1604,7 @@ func _update_fps_label(fps: float) -> void:
 		cl.add_child(_fps_l)
 	_fps_l.visible = true
 	_fps_l.position = Vector2(get_viewport().get_visible_rect().size.x - 190.0, 118.0)
-	_fps_l.text = "%d FPS" % int(fps)
+	_fps_l.text = "%d FPS" % int(fps) + ((" · VIDA " + ("ON" if world_life.is_enabled() else "OFF")) if world_life != null else "")
 
 var _gate_go := false
 var _gate_t := 0.0 # fundido a negro al cruzar un portón abierto (en vez de cambiar de pantalla de golpe)
@@ -1663,6 +1671,8 @@ func _exit_tree() -> void:
 	if track is CityTrack and profile != null and not cars.is_empty() and str(cfg.get("type", "")) == "city":
 		var lp = cars[0].phys # la última ubicación: se puede volver a aparecer ahí desde el menú
 		profile.d["lastPos"] = [snappedf(lp.px, 0.1), snappedf(lp.pz, 0.1), snappedf(lp.yaw, 0.01), CityLayout.WORLD_VERSION]
+		if world_life != null:
+			world_life.save(profile)
 		profile.save()
 
 func _tick_session(dt: float) -> void:
@@ -1677,6 +1687,9 @@ func _tick_session(dt: float) -> void:
 		if social != null and not cars.is_empty():
 			var sp0 = cars[0].phys
 			social.set_state(sp0.px, sp0.pz, sqrt(sp0.vx * sp0.vx + sp0.vz * sp0.vz) * 3.6)
+		if world_life != null and not cars.is_empty():
+			var wp = cars[0].phys
+			world_life.update(dt, Vector2(wp.px, wp.pz))
 		if clock != null:
 			clock.update(dt)
 		_underground_light(dt)
@@ -1809,6 +1822,8 @@ func _apply_live_settings(key: String) -> void:
 			lens.apply_settings(profile)
 			lens_auto = false
 		"quality", "trees", "shadowsQ", "textures":
+			if world_life != null:
+				world_life.set_profile(WorldLifeConfig.profile_for(profile)) # LOW / MEDIUM / HIGH según la calidad
 			var old := trees_n
 			_apply_quality_settings()
 			if trees_n != old:
@@ -1819,6 +1834,9 @@ func _apply_live_settings(key: String) -> void:
 			if not res_auto:
 				res_scale = rs
 			_on_resize()
+		"worldLife":
+			if world_life != null:
+				world_life.set_enabled(profile.setting("worldLife") != false)
 		"particles":
 			fx.intensity = _particle_level() / 10.0
 		"abs", "tc", "stab", "lineAssist":

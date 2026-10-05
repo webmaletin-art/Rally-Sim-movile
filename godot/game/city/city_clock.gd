@@ -31,6 +31,7 @@ var _acc := 0.0
 var _beam: MeshInstance3D
 var _beam_mat: StandardMaterial3D
 var _frozen := false
+var _follow_world := true # la hora sale del reloj del mundo (WorldClock): en el online es la misma para todos; con la hora forzada de una prueba, no
 
 func setup(p_race, p_sky: ProceduralSkyMaterial) -> void:
 	race = p_race
@@ -40,6 +41,7 @@ func setup(p_race, p_sky: ProceduralSkyMaterial) -> void:
 	hour = fposmod(float(race.profile.d.get("tod", START_HOUR)), 24.0)
 	var forced = race.cfg.get("tod")
 	if forced != null:
+		_follow_world = false
 		hour = fposmod(float(forced), 24.0)
 		_frozen = bool(race.cfg.get("tod_frozen", false))
 	race.env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR # (el ambiente sale de acá: el cielo no regenera reflejos)
@@ -59,7 +61,10 @@ func save() -> void:
 
 func update(dt: float) -> void:
 	if not _frozen:
-		hour = fposmod(hour + dt * 24.0 / DAY_SECONDS, 24.0)
+		if _follow_world and race.world_life != null:
+			hour = race.world_life.clock.hour()
+		else:
+			hour = fposmod(hour + dt * 24.0 / DAY_SECONDS, 24.0)
 	_acc += dt
 	if _acc >= 0.125:
 		_acc = 0.0
