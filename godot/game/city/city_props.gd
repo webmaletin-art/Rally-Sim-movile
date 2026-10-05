@@ -3,8 +3,8 @@ extends RefCounted
 ## todos los de una cuadra se juntan en una sola malla (una llamada de dibujo) y se rearma cuando uno se rompe: el objeto queda tirado en el piso.
 ## Espacio local del objeto: +y arriba y +z hacia la calle (hacia donde apunta el brazo de la farola o del semáforo).
 
-enum { LAMP, TREE, LIGHT, BOLLARD, MONUMENT, PILLAR, PARKED, FLOWERS, BUSH, GRASS, RTREE, PUMP, BLOCK }
-const RADIUS := [0.30, 0.45, 0.30, 0.20, 3.6, 1.0, 1.5, 0.0, 0.0, 0.0, 0.0, 0.9, 3.0] # 0 = decoración: no choca ni se rompe
+enum { LAMP, TREE, LIGHT, BOLLARD, MONUMENT, PILLAR, PARKED, FLOWERS, BUSH, GRASS, RTREE, PUMP, BLOCK, FENCE, STOP, CURVE, LIMIT }
+const RADIUS := [0.30, 0.45, 0.30, 0.20, 3.6, 1.0, 1.5, 0.0, 0.0, 0.0, 0.0, 0.9, 3.0, 0.0, 0.25, 0.25, 0.25] # 0 = decoración: no choca ni se rompe
 const PieceBatch := preload("res://game/city/piece_batch.gd")
 const STREET_TREES := ["tree_birch", "tree_tree", "tree_sassafras", "tree_quaking_aspen", "sc_acacia", "tree_weeping_willow", "abedul", "sc_cypress"]
 const ROAD_TREES := ["alamo", "pino", "sc_pine", "tree_tree", "tree_birch", "tree_lombardy_poplar", "sc_cypress", "tree_sassafras", "arbol_hoja_ancha", "tree_quaking_aspen"]
@@ -112,6 +112,17 @@ static func frustum(v: PackedVector3Array, c: PackedColorArray, xf: Transform3D,
 		if r1 > 0.01:
 			_tri(v, c, xf * top, t0, t1, mid, col.lightened(0.12))
 
+## Cartel de papel: poste y una chapa (rotada en su plano) con un borde y un centro de otro color; +z local mira hacia el tránsito
+static func _sign_plate(v: PackedVector3Array, c: PackedColorArray, xf: Transform3D, rim: Color, inner: Color, octagon: bool, diamond: bool) -> void:
+	box(v, c, xf, Vector3(0, 1.3, -0.02), Vector3(0.09, 2.6, 0.09), Color(0.50, 0.52, 0.56)) # poste
+	var tilt := PI * 0.25 if diamond else 0.0
+	var plate := xf * Transform3D(Basis(Vector3(0, 0, 1), tilt), Vector3(0, 2.75, 0))
+	box(v, c, plate, Vector3.ZERO, Vector3(0.95, 0.95, 0.05), rim)
+	if octagon:
+		var plate2 := xf * Transform3D(Basis(Vector3(0, 0, 1), PI * 0.25), Vector3(0, 2.75, 0))
+		box(v, c, plate2, Vector3.ZERO, Vector3(0.95, 0.95, 0.05), rim) # dos cuadrados cruzados: un octógono
+	box(v, c, plate, Vector3(0, 0, 0.03), Vector3(0.68, 0.68, 0.04), inner)
+
 ## Pone un objeto en la malla. fallen: dirección (x, z) hacia donde cayó (Vector2.ZERO = parado)
 static func emit(kind: int, x: float, y: float, z: float, yaw: float, seed_v: float, fallen: Vector2, v: PackedVector3Array, c: PackedColorArray, gv := PackedVector3Array(), gc := PackedColorArray()) -> void:
 	var xf := Transform3D(Basis(Vector3.UP, yaw), Vector3(x, y, z))
@@ -150,6 +161,20 @@ static func emit(kind: int, x: float, y: float, z: float, yaw: float, seed_v: fl
 			PieceBatch.add("pasto", Vector3(-0.5, 0, 0.5), seed_v * 7.0, 0.0, v, c, xf)
 		BUSH:
 			PieceBatch.add("arbusto" if seed_v < 0.6 else "arbusto_flores", Vector3.ZERO, seed_v * TAU, 1.1 + 0.5 * fmod(seed_v * 9.1, 1.0), v, c, xf)
+		FENCE:
+			# alambrado: un poste de madera y dos hilos hasta el poste siguiente (6 m más adelante, en +z)
+			box(v, c, xf, Vector3(0, 0.65, 0), Vector3(0.14, 1.3, 0.14), Color(0.52, 0.42, 0.30))
+			box(v, c, xf, Vector3(0, 0.55, 3.0), Vector3(0.03, 0.03, 6.0), Color(0.62, 0.64, 0.68))
+			box(v, c, xf, Vector3(0, 0.95, 3.0), Vector3(0.03, 0.03, 6.0), Color(0.62, 0.64, 0.68))
+		STOP:
+			_sign_plate(v, c, xf, Color(0.84, 0.12, 0.10), Color(0.92, 0.18, 0.15), true, false)
+			box(v, c, xf, Vector3(0, 2.75, 0.07), Vector3(0.52, 0.12, 0.03), Color(0.98, 0.97, 0.95)) # la franja blanca del PARE
+		CURVE:
+			_sign_plate(v, c, xf, Color(0.10, 0.10, 0.12), Color(0.98, 0.80, 0.12), false, true)
+			box(v, c, xf, Vector3(0.0, 2.75, 0.07), Vector3(0.14, 0.4, 0.03), Color(0.12, 0.12, 0.14))
+		LIMIT:
+			_sign_plate(v, c, xf, Color(0.86, 0.14, 0.12), Color(0.97, 0.97, 0.95), true, false)
+			box(v, c, xf, Vector3(0.0, 2.75, 0.07), Vector3(0.3, 0.3, 0.03), Color(0.14, 0.14, 0.16))
 		BLOCK:
 			pass # solo choca (el kiosco de la gasolinera): se dibuja aparte
 		PUMP:

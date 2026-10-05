@@ -36,8 +36,10 @@ void vertex() {
 }
 
 void fragment() {
-	vec3 fn = normalize(cross(dFdx(VERTEX), dFdy(VERTEX)));
-	if (fn.z < 0.0) fn = -fn;
+	// normal de la propia malla (plana por cara): calcularla con derivadas de pantalla (dFdx/dFdy) tiembla en las GPU de celular con las paredes de costado y hace que el edificio
+	// cambie de claro a oscuro al mover un poco la cámara
+	vec3 fn = normalize(NORMAL);
+	if (dot(fn, VIEW) < 0.0) fn = -fn;
 	NORMAL = fn;
 	vec3 col = wcol;
 	float crease = 0.0; // 1 = hay un doblez o un borde de papel en este píxel

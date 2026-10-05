@@ -209,12 +209,12 @@ func _make_grid(id: int) -> int:
 	var v := Vector2(-sin(ang), cos(ang))
 	var num := 301
 	var lines: Array = []
-	for i in range(-5, 6): # paralelas al eje del sector
+	for i in range(-3, 4): # paralelas al eje del sector (más separadas: manzanas grandes y calles claras, no una trama apretada)
 		var pts := PackedVector2Array()
 		var runs: Array = []
 		var s_ := 230.0
 		while s_ < 1040.0:
-			var p := u * s_ + v * (float(i) * 96.0)
+			var p := u * s_ + v * (float(i) * 150.0)
 			if _in_grid(p, -1.0):
 				pts.append(p)
 			elif pts.size() > 0:
@@ -224,12 +224,12 @@ func _make_grid(id: int) -> int:
 		if pts.size() > 0:
 			runs.append(pts)
 		lines.append_array(runs)
-	for j in range(0, 9): # transversales
+	for j in range(0, 6): # transversales
 		var pts := PackedVector2Array()
 		var runs: Array = []
 		var t := -620.0
 		while t < 620.0:
-			var p := u * (300.0 + float(j) * 88.0) + v * t
+			var p := u * (300.0 + float(j) * 140.0) + v * t
 			if _in_grid(p, -1.0):
 				pts.append(p)
 			elif pts.size() > 0:
@@ -670,7 +670,7 @@ var slabs: Dictionary = {} # Vector2i (cuadra) -> Array de losas {pts: PackedVec
 var slab_count := 0
 
 ## ¿El punto cae dentro del corredor (calzada + vereda + margen) de alguna calle que no sea own, o de un lugar especial o zona abierta?
-func _blocked_line(x: float, z: float, own: int) -> bool:
+func _blocked_line(x: float, z: float, own: int, roads_only := false) -> bool:
 	var kx := int(floor(x / HC))
 	var kz := int(floor(z / HC))
 	for dx in range(-1, 2):
@@ -699,6 +699,8 @@ func _blocked_line(x: float, z: float, own: int) -> bool:
 				var need := float(rd["hw"]) + float(rd["sw"]) + LINE_GAP
 				if ddx * ddx + ddz * ddz < need * need:
 					return true
+	if roads_only:
+		return false
 	return _point_covered(x, z, 0.5) or _no_build(Vector2(x, z))
 
 ## ¿Hay una losa (o una pared de un lugar especial) justo en este punto de la línea de edificación? (para las pruebas)
@@ -770,10 +772,23 @@ func _place_facades() -> void:
 					continue
 			var blocked: Array = []
 			var line: Array = []
+			var gaps_f: Array = [] # [punto, espacio libre] de los huecos angostos (donde otra calle pasa muy cerca por detrás)
 			for i in n:
 				var lp := Vector2(pts[i].x, pts[i].z) + away[i] * off
 				line.append(lp)
-				blocked.append(_blocked_line(lp.x, lp.y, ri))
+				var bl := _blocked_line(lp.x, lp.y, ri)
+				if not bl and kind != "plaza":
+					# dos calles que van casi juntas, se separan un poquito y se vuelven a unir no dejan lugar para edificios: no se arma ahí una losa comprimida
+					var gd := _gap_behind(lp, away[i], ri)
+					if gd > 0.0:
+						bl = true
+						if i % 5 == 0:
+							gaps_f.append([lp + away[i] * gd * 0.5, away[i]])
+				blocked.append(bl)
+			for g in gaps_f: # en su lugar, una farola con un cantero de flores: se ve como una isla vial pensada
+				var gp: Vector2 = g[0]
+				_add_prop(0, gp.x, gp.y, g[1])
+				_add_prop(7, gp.x + (g[1] as Vector2).x * 2.0, gp.y + (g[1] as Vector2).y * 2.0, g[1])
 			# tramos libres, en parámetro continuo (índice + fracción), con los extremos exactos sobre el borde de la calle que cruza
 			var runs: Array = []
 			var cur_a := -1.0
@@ -783,23 +798,33 @@ func _place_facades() -> void:
 				var b0: bool = blocked[i]
 				var b1: bool = blocked[i + 1]
 				if b0 and not b1:
-					cur_a = float(i) + _edge_t(pts, away, off, i, true, ri)
+					cur_a = float(i) + _edge_t(pts, away, off, i, true, ri, kind != "plaza")
 				elif (not b0) and b1:
-					runs.append([cur_a, float(i) + _edge_t(pts, away, off, i, false, ri)])
+					runs.append([cur_a, float(i) + _edge_t(pts, away, off, i, false, ri, kind != "plaza")])
 					cur_a = -1.0
 			if cur_a >= 0.0:
 				runs.append([cur_a, float(n - 1)])
 			for r in runs:
 				_slabs_in_run(kind, pts, away, off, float(r[0]), float(r[1]), sdv)
 
+## Si detrás de la línea de edificación (a menos de ~18 m) pasa el corredor de otra calle: la distancia hasta ahí; 0 si hay lugar de sobra para un edificio
+func _gap_behind(p: Vector2, dir: Vector2, own: int) -> float:
+	for d in [9.0, 18.0]:
+		var q: Vector2 = p + dir * float(d)
+		if _blocked_line(q.x, q.y, own, true):
+			return float(d)
+	return 0.0
+
 ## Parámetro (0..1) dentro del tramo i→i+1 donde la línea de edificación entra (to_free = true: pasa de bloqueada a libre) o sale de una calle que cruza
-func _edge_t(pts: PackedVector3Array, away: PackedVector2Array, off: float, i: int, to_free: bool, own: int) -> float:
+func _edge_t(pts: PackedVector3Array, away: PackedVector2Array, off: float, i: int, to_free: bool, own: int, gap_on := true) -> float:
 	var lo := 0.0
 	var hi := 1.0
 	for it in 10:
 		var mid := (lo + hi) * 0.5
 		var lp: Array = _line_pt(pts, away, off, float(i) + mid)
 		var bl := _blocked_line((lp[0] as Vector2).x, (lp[0] as Vector2).y, own)
+		if not bl and gap_on:
+			bl = _gap_behind(lp[0], lp[2], own) > 0.0 # (igual que en _place_facades: los huecos angostos también cortan la línea)
 		if to_free:
 			if bl:
 				lo = mid
@@ -1205,7 +1230,7 @@ func _add_prop(t: int, x: float, z: float, to_road: Vector2) -> void:
 	if pr[0] >= 0.0:
 		py = float(pr[4]) + (0.16 if pr[6] >= 0.0 else 0.0) # sobre la vereda (el cordón sube 16 cm); en una plaza abierta, a ras del suelo
 	prop_y.append(py)
-	prop_yaw.append(atan2(to_road.x, to_road.y) if not (t == 1 or t >= 7) else _rng.randf() * TAU)
+	prop_yaw.append(atan2(to_road.x, to_road.y) if (t == 13 or t >= 14 or not (t == 1 or t >= 7)) else _rng.randf() * TAU)
 	prop_seed.append(_rng.randf())
 	var key := chunk_of(x, z)
 	var arr: PackedInt32Array = props_in.get(key, PackedInt32Array())
@@ -1251,13 +1276,19 @@ func _place_props() -> void:
 				_add_prop(0, p.x + nrm.x * sd * off, p.y + nrm.y * sd * off, -nrm * sd)
 				if kind == "alley":
 					_add_prop(0, p.x - nrm.x * sd * off, p.y - nrm.y * sd * off, nrm * sd) # callejón: faroles de los dos lados
-			if acc_t >= tree_gap and not near_j and kind in ["major", "ring", "coast", "minor", "hill", "plaza"] and sw >= 2.0:
-				acc_t = 0.0
-				if _rng.randf() < 0.75:
-					var st := flip_t
-					flip_t = -flip_t
-					if not (kind == "coast" and st > 0.0):
+			if acc_t >= tree_gap and not near_j and sw >= 2.0:
+				# árboles solo donde hay naturaleza (la colina y la plaza); en las calles de la ciudad, nada: salvo alguna maceta con flores en el centro, que es la zona más cuidada
+				if kind in ["hill", "plaza"]:
+					acc_t = 0.0
+					if _rng.randf() < 0.75:
+						var st := flip_t
+						flip_t = -flip_t
 						_add_prop(1, p.x + nrm.x * st * off, p.y + nrm.y * st * off, -nrm * st)
+				elif kind in ["major", "ring", "minor"] and zone_of(p.x, p.y) == 0:
+					acc_t = -tree_gap # una maceta cada ~110 m
+					var st2 := flip_t
+					flip_t = -flip_t
+					_add_prop(7, p.x + nrm.x * st2 * off, p.y + nrm.y * st2 * off, -nrm * st2)
 			if kind == "alley" and acc_b >= 6.0 and not near_j:
 				acc_b = 0.0
 				for sd in [-1.0, 1.0]:
@@ -1349,6 +1380,11 @@ func _place_props() -> void:
 			var offs := float(ra["hw"]) + float(ra["sw"]) * 0.5
 			for sg in [1.0, -1.0]:
 				_add_prop(2, jp.x + (ta.x * along + na.x * offs) * sg, jp.y + (ta.y * along + na.y * offs) * sg, -na * sg)
+			# las calles chicas que desembocan en una calle grande tienen su cartel de PARE (mirando al tránsito que llega)
+			if str(ra["kind"]) in ["minor", "alley"] and str(rb["kind"]) in ["major", "ring", "coast"]:
+				var along_s := along + 5.0
+				for sg2 in [1.0, -1.0]:
+					_add_prop(14, jp.x + (ta.x * along_s + na.x * offs) * sg2, jp.y + (ta.y * along_s + na.y * offs) * sg2, ta * sg2)
 
 ## Bordes de las rutas rurales y de los atajos: una tirada de árboles del pack (varias especies, dos filas), con pasto, flores y algún arbusto abajo. No chocan: el auto no sale del camino.
 func _place_roadside() -> void:
@@ -1359,10 +1395,12 @@ func _place_roadside() -> void:
 			continue
 		var pts: PackedVector3Array = rd["pts"]
 		var base := float(rd["hw"]) + float(rd["sw"])
-		var acc_t := _rng.randf() * 12.0
-		var acc_u := _rng.randf() * 17.0
-		var acc_g := _rng.randf() * 5.0
+		var acc_t := _rng.randf() * 28.0
+		var acc_u := _rng.randf() * 60.0
+		var acc_g := _rng.randf() * 11.0
 		var acc_b := _rng.randf() * 40.0
+		var acc_f := 0.0
+		var acc_s := _rng.randf() * 80.0
 		for i in range(1, pts.size() - 1):
 			var tn := Vector2(pts[i + 1].x - pts[i - 1].x, pts[i + 1].z - pts[i - 1].z)
 			if tn.length() < 0.1:
@@ -1375,25 +1413,43 @@ func _place_roadside() -> void:
 			acc_u += step
 			acc_g += step
 			acc_b += step
+			acc_f += step
+			acc_s += step
+			if acc_s >= 110.0 and i >= 3 and i < pts.size() - 3:
+				# cartel de curva donde el camino dobla, y de vez en cuando uno de velocidad máxima (un par: uno para cada sentido)
+				var t_a := Vector2(pts[i].x - pts[i - 3].x, pts[i].z - pts[i - 3].z)
+				var t_b := Vector2(pts[i + 3].x - pts[i].x, pts[i + 3].z - pts[i].z)
+				var bend := absf(wrapf(atan2(t_b.x, t_b.y) - atan2(t_a.x, t_a.y), -PI, PI))
+				if bend > 0.16 or acc_s >= 330.0:
+					acc_s = 0.0
+					var kind_s := 15 if bend > 0.16 else 16
+					for sd3 in [-1.0, 1.0]:
+						var os := base + 2.2
+						_add_prop(kind_s, p.x + nrm.x * float(sd3) * os, p.y + nrm.y * float(sd3) * os, tn * float(sd3))
 			for sd in [-1.0, 1.0]:
 				var sg: float = sd
-				if acc_t >= 12.0:
+				if acc_f >= 6.0:
+					var fo := base + 0.5 # el alambrado corre justo al borde de la banquina
+					_add_prop(13, p.x + nrm.x * sg * fo, p.y + nrm.y * sg * fo, tn)
+				if acc_t >= 28.0:
 					var o := base + 3.5 + _rng.randf() * 2.0
 					_add_prop(10, p.x + nrm.x * sg * o, p.y + nrm.y * sg * o, nrm)
-				if acc_u >= 17.0:
+				if acc_u >= 60.0:
 					var o2 := base + 9.5 + _rng.randf() * 3.0
 					_add_prop(10, p.x + nrm.x * sg * o2, p.y + nrm.y * sg * o2, nrm)
-				if acc_g >= 5.0:
+				if acc_g >= 11.0:
 					var o3 := base + 1.0 + _rng.randf() * 2.2
 					_add_prop(9 if _rng.randf() < 0.5 else 7, p.x + nrm.x * sg * o3, p.y + nrm.y * sg * o3, nrm)
 				if acc_b >= 40.0:
 					var o4 := base + 2.0 + _rng.randf() * 1.5
 					_add_prop(8, p.x + nrm.x * sg * o4, p.y + nrm.y * sg * o4, nrm)
-			if acc_t >= 12.0:
+			if acc_f >= 6.0:
+				acc_f = 0.0
+			if acc_t >= 28.0:
 				acc_t = 0.0
-			if acc_u >= 17.0:
+			if acc_u >= 60.0:
 				acc_u = 0.0
-			if acc_g >= 5.0:
+			if acc_g >= 11.0:
 				acc_g = 0.0
 			if acc_b >= 40.0:
 				acc_b = 0.0

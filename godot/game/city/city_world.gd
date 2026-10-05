@@ -69,6 +69,7 @@ func setup(p_track) -> void:
 	_tunnel_mat.vertex_color_use_as_albedo = true
 	_tunnel_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	_ground_plane()
+	_horizon()
 
 ## Un plano enorme y plano bajo todo el mundo (el color de la lejanía): lo que todavía no se armó no deja un hueco
 func _ground_plane() -> void:
@@ -97,11 +98,45 @@ func _ground_plane() -> void:
 	sea.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(sea)
 
+var _hz: MeshInstance3D
+
+## Falso horizonte: dos anillos de lomas de papel (una más lejana y clara, otra más cerca y verde) que acompañan a la cámara. Donde termina lo que se arma, el mundo sigue en vez de cortarse
+## en una tira de árboles. Son 72 triángulos, sin textura, y la niebla los va borrando con la distancia.
+func _horizon() -> void:
+	var s := Soup.new()
+	var n := 36
+	for layer in 2:
+		var rr := 440.0 if layer == 0 else 400.0
+		var col0 := Color(0.54, 0.66, 0.70) if layer == 0 else Color(0.46, 0.62, 0.48)
+		for i in n:
+			var a0 := TAU * float(i) / float(n)
+			var a1 := TAU * float(i + 1) / float(n)
+			var am := (a0 + a1) * 0.5
+			var hgt := (32.0 + 28.0 * (0.5 + 0.5 * sin(float(i) * 2.3 + float(layer) * 1.7))) * (1.0 if layer == 0 else 0.6)
+			var b0 := Vector3(cos(a0) * rr, -6.0, sin(a0) * rr)
+			var b1 := Vector3(cos(a1) * rr, -6.0, sin(a1) * rr)
+			var pk := Vector3(cos(am) * rr, hgt - 6.0, sin(am) * rr)
+			s.tri(b0, b1, pk, col0.lerp(Color(0.62, 0.72, 0.74), 0.3 * (0.5 + 0.5 * sin(float(i) * 1.3))))
+	var m := ArrayMesh.new()
+	var hm := StandardMaterial3D.new()
+	hm.vertex_color_use_as_albedo = true
+	hm.roughness = 1.0
+	hm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_surface(m, s, hm)
+	_hz = MeshInstance3D.new()
+	_hz.mesh = m
+	_hz.extra_cull_margin = 4000.0
+	_hz.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_hz)
+
 # ───────────────────────── carga por cuadras ─────────────────────────
 func _process(_dt: float) -> void:
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:
 		return
+	if _hz != null:
+		_hz.global_position = Vector3(cam.global_position.x, 0.0, cam.global_position.z) # el horizonte acompaña a la cámara: siempre está lejos
+		_hz.scale = Vector3(view_k, 1.0, view_k) # y se acerca junto con la niebla cuando el teléfono baja la distancia de vista
 	update_around(cam.global_position, 1)
 	_redraw_broken()
 
@@ -516,7 +551,7 @@ func _road_segment(rd: Soup, mk: Soup, si: int, ni: int, tn: Soup) -> void:
 	var junc := nj.size() > local_i and nj[local_i] != 0
 	if not junc and kind != "plaza" and kind != "bay":
 		var lw := 0.11
-		var mu := Vector3(0, 0.055, 0)
+		var mu := Vector3(0, 0.11, 0) # a 7 cm del asfalto: más cerca (1,5 cm) las rayas parpadeaban a la distancia (z-fighting)
 		if kind in ["major", "ring", "coast", "hill", "rural"] and hw >= 4.0:
 			if local_i % 3 != 2: # raya del medio cortada
 				var cc := C_YEL if kind != "ring" else C_WHT
