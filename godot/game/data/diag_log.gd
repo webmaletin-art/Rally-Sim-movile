@@ -117,8 +117,8 @@ static func test_count() -> int:
 
 # ───────────────────────── condiciones ─────────────────────────
 ## Claves que cuentan para comparar dos pruebas (la ubicación fina, «where», sólo se muestra)
-const CMP_KEYS := ["trees", "buildings", "cars", "veg", "decor", "peds", "weather", "time", "zone", "surface"]
-const KEY_NAMES := {"trees": "Árboles", "buildings": "Edificios", "cars": "Autos civiles", "veg": "Vegetación", "decor": "Decoración", "peds": "Peatones", "weather": "Clima", "time": "Hora", "zone": "Zona", "surface": "Superficie"}
+const CMP_KEYS := ["trees", "buildings", "cars", "veg", "decor", "peds", "weather", "time", "zone", "surface", "res"]
+const KEY_NAMES := {"trees": "Árboles", "buildings": "Edificios", "cars": "Autos civiles", "veg": "Vegetación", "decor": "Decoración", "peds": "Peatones", "weather": "Clima", "time": "Hora", "zone": "Zona", "surface": "Superficie", "res": "Escala 3D"}
 
 static func onoff(b) -> String:
 	return "ON" if bool(b) else "OFF"
@@ -142,6 +142,7 @@ static func _cond_text(c: Dictionary) -> String:
 			parts.append("%s %s" % [sw[1], onoff(c[sw[0]])])
 	parts.append("Clima %s" % str(c.get("weather", "?")))
 	parts.append("Hora %s" % str(c.get("time", "?")))
+	parts.append("Escala 3D %s" % str(c.get("res", "?")))
 	return " · ".join(parts)
 
 static func _diff_text(prev: Dictionary, now: Dictionary, keys: Array) -> String:
@@ -185,6 +186,7 @@ static func export_text() -> String:
 	L.append("QUÉ APAGA CADA INTERRUPTOR:")
 	for sw in SWITCHES:
 		L.append("- %s: %s" % [sw[1], sw[2]])
+	L.append("- ESCALA 3D: resolución a la que se dibuja el mundo 3D = pantalla × escala (0.80 = 80 %). El HUD y la ventana no cambian. AUTO = la ajusta el juego solo.")
 	L.append("(el promedio y el mínimo se miden en tramos de 0,5 s, desde el último cambio o captura, sin contar los 2 s siguientes a un cambio)")
 	if sessions.is_empty():
 		L.append("")
@@ -213,6 +215,7 @@ static func _session_text(s: Dictionary, L: Array) -> void:
 		L.append("Zona: %s · Superficie: %s" % [str(c.get("zone", "?")), str(c.get("surface", "?"))])
 		L.append("Clima: %s" % str(c.get("weather", "?")))
 		L.append("Hora: %s" % str(c.get("time", "?")))
+		L.append("ESCALA 3D: %s  (%s)" % [str(c.get("res", "(no registrada)")), str(c.get("res_px", "?"))])
 		L.append("")
 		for sw in SWITCHES:
 			if c.has(sw[0]):

@@ -52,6 +52,7 @@ var _main_box: VBoxContainer
 var _log_box: VBoxContainer
 var _log_lbl: Label
 var _toggles := {}
+var _scale_btns := {} # texto de la escala → botón
 var _spots_box: VBoxContainer
 var _open := false
 
@@ -93,6 +94,8 @@ func _cond() -> Dictionary:
 	for s in DiagLog.SWITCHES:
 		if is_city:
 			c[s[0]] = bool(sw[s[0]])
+	c["res"] = _res_text()
+	c["res_px"] = _res_px_text()
 	var px := 0.0
 	var pz := 0.0
 	if not race.cars.is_empty():
@@ -121,6 +124,16 @@ func _cond() -> Dictionary:
 		c["weather"] = str(WEATHER_NAMES.get(race.weather.current if race.weather != null else "dia", "?"))
 		c["time"] = "(según el clima elegido)"
 	return c
+
+## ESCALA 3D (sólo se lee). «res» es lo que se compara entre pruebas («0.80», «AUTO»); «res_px» sólo se muestra
+func _res_text() -> String:
+	return "AUTO" if bool(race.res_auto) else "%.2f" % float(race.res_scale)
+
+func _res_px_text() -> String:
+	var wsz: Vector2i = race.world.size
+	if bool(race.res_auto):
+		return "ahora %.2f · mundo 3D %dx%d" % [float(race.res_scale), wsz.x, wsz.y]
+	return "mundo 3D %dx%d" % [wsz.x, wsz.y]
 
 func _where_text(px: float, pz: float, zone: String) -> String:
 	if where_label != "" and Vector2(px, pz).distance_to(where_pos) < 220.0:
@@ -183,6 +196,18 @@ func _build() -> void:
 	sc.add_child(body)
 	_lbl_info = Kit.wrap("", 13, Kit.TEXT, 100)
 	body.add_child(_lbl_info)
+	body.add_child(Kit.label("ESCALA DE RENDERIZADO 3D", 13, Kit.MUTED))
+	var rs := Kit.hbox(6)
+	body.add_child(rs)
+	for v in [0.8, 0.7, 0.6, 0.5]:
+		var sv: float = v
+		var sb0 := _pick("%.2f" % sv, func() -> void: _set_scale(sv))
+		rs.add_child(sb0)
+		_scale_btns["%.2f" % sv] = sb0
+	var sba := _pick("AUTO", func() -> void: _set_scale(0.0))
+	rs.add_child(sba)
+	_scale_btns["AUTO"] = sba
+	body.add_child(Kit.wrap("Sólo cambia a qué resolución se dibuja el mundo 3D (pantalla × escala). El HUD, la ventana y todo lo demás no cambian. AUTO es lo que hace el juego solo.", 12, Kit.MUTED, 100))
 	if is_city:
 		body.add_child(Kit.wrap("Tip: el reloj y el clima del mundo andan solos. Antes de comparar, fijá la hora y el clima con los botones de abajo (si no, la luz y la lluvia cambian en medio de la prueba).", 12, Kit.MUTED, 100))
 	if is_city:
@@ -329,6 +354,35 @@ func _toggle(key: String) -> void:
 			nm = s[1]
 	_changed("%s → %s" % [nm, DiagLog.onoff(on)])
 
+## Cambia SÓLO la resolución interna del mundo 3D (el mismo mecanismo de siempre: race.res_scale → world.size). Fija una escala = apaga el ajuste automático mientras dure la prueba
+func _set_scale(v: float) -> void:
+	var before := _scale_label()
+	if v <= 0.0:
+		race.res_auto = true
+	else:
+		race.res_auto = false
+		race.res_scale = v
+		race._on_resize()
+	var after := _scale_label()
+	if after == before:
+		return
+	_changed("ESCALA 3D: %s → %s" % [before, after])
+
+func _scale_label() -> String:
+	if bool(race.res_auto):
+		return "AUTO (ahora %.2f)" % float(race.res_scale)
+	return "%.2f" % float(race.res_scale)
+
+func _style_scale() -> void:
+	var cur := _res_text()
+	for k in _scale_btns:
+		var b: Button = _scale_btns[k]
+		var on: bool = str(k) == cur
+		var base := Color(0.10, 0.34, 0.20, 0.96) if on else Color(0.16, 0.19, 0.24, 0.96)
+		b.add_theme_stylebox_override("normal", Kit.box(base, 12, Kit.LINE, 1, 10))
+		b.add_theme_stylebox_override("hover", Kit.box(base.lightened(0.08), 12, Kit.LINE, 1, 10))
+		b.add_theme_stylebox_override("pressed", Kit.box(base.darkened(0.12), 12, Kit.ACCENT, 2, 10))
+
 func _apply_switch(key: String, on: bool) -> void:
 	match key:
 		"trees", "buildings", "veg", "decor":
@@ -467,5 +521,7 @@ func _refresh_labels() -> void:
 	l.append("ESCENA: %s%s" % [_scene_name(), (" · " + _circuit_name()) if not is_city and _circuit_name() != "" else ""])
 	l.append("UBICACIÓN: %s" % str(c["where"]))
 	l.append("ZONA: %s · SUPERFICIE: %s" % [str(c["zone"]), str(c["surface"])])
+	l.append("ESCALA 3D: %s (%s)" % [str(c["res"]), str(c["res_px"])])
 	l.append("CLIMA: %s · HORA: %s%s" % [str(c["weather"]), str(c["time"]), (" (%s)" % race.clock.clock_text()) if is_city and race.clock != null else ""])
 	_lbl_info.text = "\n".join(l)
+	_style_scale()
