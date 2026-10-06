@@ -13,3 +13,9 @@
 **Clips todavía sin usar (ya horneados):** saludos/festejo (`Waving`, `Standing_Fist_Pump`, `Clapping`…), apoyado en el auto, subir/bajar del auto (`Entering_Car`/`Exiting_Car`, pensados para «Jugar»), hablar por teléfono. Quedan para las etapas de mundo abierto y peatones.
 
 **Pendiente de ver en el teléfono:** el celular del copiloto (se pega a la mano derecha con el clip de texteo): la orientación/posición exacta se ajusta mirando el APK.
+
+## Recostarse y poses que no van (r3)
+- **Nadie se sienta ni se agacha** (no hay sillas): se sacaron `Kneeling_Inspecting`, `Taking_Item`, `Standing_Fist_Pump`, `Standing_Thumbs_Up` y la caminata agachada `Walking_3`.
+- **Recostarse sólo contra el auto** (`_lean_steps` en `showroom.gd`): camina hasta el costado del auto, se da vuelta, retrocede hasta tocar la chapa con la espalda (`LEAN_BACK` dice dónde tiene la espalda cada clip) y recién ahí hace `Leaning`, `Leaning_2` o `One_Shoulder_Lean`. Antes se recostaban en cualquier lado, en el aire.
+- Cámara libre: los mouse «inventados» a partir de los toques se ignoran (todo se movía doble). `tests/menu_input_test.gd` manda toques y rueda al menú real y mira que la cámara se mueva.
+- **Importante:** si el test de CI de la ciudad (o cualquier otro) falla, `Build Godot APK` no publica el contenido y la app liviana sigue con lo viejo sin avisar. Mirar siempre que ese workflow esté verde.

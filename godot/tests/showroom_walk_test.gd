@@ -15,12 +15,16 @@ func _init() -> void:
 	var vehicles: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
 	sr.set_car(str(vehicles.keys()[0]), {}, vehicles)
 	print("clips disponibles: ", MixamoClips.available(), " circle ", MixamoClips.has_clip("Walk_In_Circle"))
+	if OS.get_cmdline_user_args().has("--lean"):
+		await _lean_check(sr, vp, out)
+		quit()
+		return
 	var seen := {}
 	var kinds := {}
 	var inside := 0
 	var shots := 0
 	var frames := 0
-	var tmax := 150.0
+	var tmax := 240.0
 	var sim := 0.0
 	var last := Time.get_ticks_msec()
 	while sim < tmax:
@@ -49,3 +53,26 @@ func _init() -> void:
 	print("clips vistos ", seen.keys())
 	print("frames dentro del auto ", inside)
 	quit()
+
+## Recostarse sólo contra el auto: fuerza la secuencia, y verifica que la espalda quede en la chapa (a unos 5 cm adentro) y que ahí se vea apoyado
+func _lean_check(sr: Node3D, vp: SubViewport, out: String) -> void:
+	for round in 3:
+		sr.crew[0]["queue"] = []
+		sr.crew[0]["step"] = {}
+		sr.crew[1]["step"] = {}
+		sr.crew[1]["queue"] = sr._lean_steps(1, 6.0)
+		var n := 0
+		var shot := false
+		var t0 := Time.get_ticks_msec()
+		while (not sr.crew[1]["queue"].is_empty() or not sr.crew[1]["step"].is_empty()) and Time.get_ticks_msec() - t0 < 60000:
+			await process_frame
+			var st: Dictionary = sr.crew[1]["step"]
+			if not st.is_empty() and str(st.get("pose", "")) == "lean" and float(sr.crew[1]["t"]) > 3.0 and not shot:
+				var nd: Node3D = sr.crew[1]["node"]
+				var hw: float = sr.car.phys.V.trackF * 0.5 + 0.12
+				print("recostado con ", st["clip"], ": x del personaje ", snappedf(nd.position.x, 0.01), " z ", snappedf(nd.position.z, 0.01), " yaw ", snappedf(rad_to_deg(nd.rotation.y), 1.0), " semiancho auto ", snappedf(hw, 0.01))
+				if out != "":
+					vp.get_texture().get_image().save_png(out + "/lean_%d.png" % round)
+				shot = true
+			n += 1
+		print("secuencia ", round, " terminada en ", n, " cuadros, apoyó: ", shot)

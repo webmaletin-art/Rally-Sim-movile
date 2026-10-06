@@ -14,16 +14,19 @@ const MixamoClips := preload("res://game/car/mixamo_clips.gd")
 const CLIPS := {
 	"idle": ["Standing_Idle", "Breathing_Idle", "Idle_2", "weight_shift", "Neck_Stretching", "Arm_Stretching", "Looking_Behind", "Happy_Idle"],
 	"chin": ["Thinking", "Thoughtful_Head_Nod", "Looking_Down", "Looking_3", "Counting_2", "thoughtful_head_shake", "Looking"],
-	"crossed": ["Bored", "weight_shift", "Looking_Around", "Happy_Idle_2", "being_cocky", "One_Shoulder_Lean", "Leaning", "Leaning_2", "relieved_sigh", "Shrugging"],
-	"hip": ["Male_Standing_Pose_11", "Male_Standing_Pose_2", "Male_Standing_Pose_4", "Male_Standing_Pose_5", "Male_Standing_Pose_7", "Happy_Idle", "Standing_Idle", "Standing_Thumbs_Up"],
+	"crossed": ["Bored", "weight_shift", "Looking_Around", "Happy_Idle_2", "being_cocky", "relieved_sigh", "Shrugging"],
+	"hip": ["Male_Standing_Pose_11", "Male_Standing_Pose_2", "Male_Standing_Pose_4", "Male_Standing_Pose_5", "Male_Standing_Pose_7", "Happy_Idle", "Standing_Idle"],
 	"pocket": ["Idle_2", "Looking_Around", "Breathing_Idle", "Looking", "acknowledging", "head_nod_yes", "look_away_gesture"],
 	"point": ["Pointing_Forward", "Pointing_2", "Pointing_Gesture_2", "Reaching_Out", "Pointing"],
-	"paint": ["Reaching_Out", "Taking_Item", "Kneeling_Inspecting"],
-	"talk": ["Talking_7", "Talking_4", "Talking_6", "Talking_3", "Talking_5", "Arm_Gesture", "Hands_Forward_Gesture", "Agreeing_2", "happy_hand_gesture", "dismissing_gesture", "Telling_A_Secret", "Laughing", "Standing_Fist_Pump", "Standing_Greeting", "Shaking_Hands_1"],
+	"paint": ["Reaching_Out", "Pointing_2"], # (nada agachado ni sentado: sin silla no se sienta nadie)
+	"lean": ["Leaning", "Leaning_2", "One_Shoulder_Lean"], # recostarse: sólo contra el auto (ver _lean_steps)
+	"talk": ["Talking_7", "Talking_4", "Talking_6", "Talking_3", "Talking_5", "Arm_Gesture", "Hands_Forward_Gesture", "Agreeing_2", "happy_hand_gesture", "dismissing_gesture", "Telling_A_Secret", "Laughing", "Standing_Greeting", "Shaking_Hands_1"],
 	"read": ["Texting_While_Standing", "Texting", "Talking_On_A_Cell_Phone"],
 }
 ## Caminatas en el lugar (se elige una al azar en cada tramo): [clip, velocidad natural en m/s]. El tramo se camina a esa velocidad (entre 0.8 y 1.4) para que los pies no patinen
-const WALKS := [["Standard_Walk_inplace", 1.50], ["unarmed_walk_forward_inplace", 0.98], ["walking_inplace", 1.60], ["Walking_7_inplace", 1.04], ["Walking_3_inplace", 0.83], ["Walking_While_Texting_inplace", 0.83]]
+const WALKS := [["Standard_Walk_inplace", 1.50], ["unarmed_walk_forward_inplace", 0.98], ["walking_inplace", 1.60], ["Walking_7_inplace", 1.04], ["Walking_While_Texting_inplace", 0.83]]
+## Dónde queda la espalda de cada clip de recostarse respecto del personaje (z local, en metros): para apoyarla justo en la chapa del auto
+const LEAN_BACK := {"Leaning": -0.04, "Leaning_2": -0.16, "One_Shoulder_Lean": -0.21}
 const CIRC_C := Vector2(1.205, -0.07) # centro del recorrido de Walk_In_Circle (cadera, en metros del Y Bot): el clip da una vuelta ovalada de 17 s y termina donde empezó
 const CIRC_XZ := Vector2(1.5, 1.2) # cuánto se agranda ese óvalo para que rodee el auto
 
@@ -227,6 +230,24 @@ func _circle_node(hk: float) -> Vector3:
 func _can_circle() -> bool:
 	return crew[0]["mx"] != null and crew[1]["mx"] != null and MixamoClips.has_clip("Walk_In_Circle")
 
+## Recostarse: se acerca al costado del auto, se da vuelta, retrocede hasta tocarlo con la espalda y recién ahí se apoya (nunca recostado en el aire)
+func _lean_steps(i: int, dur: float) -> Array:
+	var opts: Array = []
+	for n in LEAN_BACK:
+		if MixamoClips.has_clip(str(n)):
+			opts.append(str(n))
+	if opts.is_empty() or crew[i]["mx"] == null:
+		return [_stand("crossed", dur, "car")]
+	var nm: String = opts[rng.randi() % opts.size()]
+	var k: float = float(crew[i]["h"]) / 1.76
+	var hw := (car.phys.V.trackF * 0.5 + 0.12) if car != null else 1.0
+	var contact := Vector3(hw - 0.05 - float(LEAN_BACK[nm]) * k, 0.0, _rf(-0.6, 0.9)) # siempre del lado de la cámara (+x): los recorridos del resto de la escena quedan de ese lado
+	var out_pt := contact + Vector3(6.0, 0.9, 0.0)
+	return [
+		_walk_pts([contact + Vector3(0.8, 0.0, 0.0)]),
+		{"t": "stand", "pose": "idle", "dur": 8.0, "face": "pt", "pt": out_pt, "tl": Vector3.ZERO, "lean_to": contact},
+		{"t": "stand", "pose": "lean", "dur": dur, "face": "pt", "pt": out_pt, "tl": Vector3.ZERO, "clip": nm}]
+
 func _stand(pose: String, dur: float, face = null, tl = Vector3.ZERO) -> Dictionary:
 	return {"t": "stand", "pose": pose, "dur": dur, "face": face, "tl": tl}
 
@@ -247,7 +268,7 @@ func _new_scene() -> void:
 		1: # uno señala algo del auto, el otro viene y mira
 			var ang := _rf(20, 50)
 			qa = [_walk(0, ang), _stand("point", _rf(4, 5.5), "tl", part), _stand("talk", _rf(3, 5), 1), _stand("hip", _rf(2, 3.5), "car")]
-			qb = [_stand("read", _rf(3.5, 5), "car"), _walk(1, ang + 24.0), _stand("chin", _rf(4, 6), "tl", part), _stand("crossed", _rf(2.5, 4), "car")]
+			qb = [_stand("read", _rf(3.5, 5), "car"), _walk(1, ang + 24.0), _stand("chin", _rf(4, 6), "tl", part)] + _lean_steps(1, _rf(5, 7))
 		2: # charlan entre ellos, gesticulando
 			var ang2 := _rf(30, 55)
 			qa = [_walk(0, ang2), _stand("talk", _rf(6, 8), 1), _stand("point", _rf(3, 4), "tl", part), _stand("talk", _rf(3, 5), 1)]
@@ -261,7 +282,7 @@ func _new_scene() -> void:
 			qb = qo if pf == 0 else qp
 		_: # inspección: uno al frente tocando la pintura, el otro da la vuelta
 			qa = [_walk(0, _rf(2, 14)), _stand("paint", _rf(5, 7), "tl", Vector3(0.3, 0.9, car_len * 0.5 - 0.3)), _walk(0, _rf(40, 55)), _stand("hip", _rf(3, 5), "car")]
-			qb = [_walk(1, _rf(95, 112)), _stand("hip", _rf(3, 5), "car"), _walk(1, _rf(60, 75)), _stand("chin", _rf(4, 6), "tl", part), _stand("crossed", _rf(2.5, 4), "car")]
+			qb = [_walk(1, _rf(95, 112)), _stand("hip", _rf(3, 5), "car"), _walk(1, _rf(60, 75)), _stand("chin", _rf(4, 6), "tl", part)] + _lean_steps(1, _rf(5, 7))
 	crew[0]["queue"] = qa
 	crew[1]["queue"] = qb
 	crew[0]["step"] = {}
@@ -411,6 +432,8 @@ func _target_point(c: Dictionary, step: Dictionary) -> Variant:
 			return Vector3(0.0, 0.9, car_len * 0.12)
 		if f == "tl":
 			return step["tl"]
+		if f == "pt":
+			return step["pt"]
 	elif f is int:
 		return (crew[int(f)]["node"] as Node3D).position + Vector3(0, 1.5, 0)
 	return null
@@ -487,7 +510,15 @@ func _advance(i: int, dt: float) -> void:
 		if tp != null:
 			var dv: Vector3 = (tp as Vector3) - node.position
 			desired_yaw = atan2(dv.x, dv.z)
-		if float(c["t"]) >= float(step["dur"]):
+		var done_t := float(c["t"]) >= float(step["dur"])
+		if step.has("lean_to"): # camina hacia atrás hasta tocar el auto con la espalda (ya de espaldas a él)
+			var dv2: Vector3 = (step["lean_to"] as Vector3) - node.position
+			dv2.y = 0.0
+			var yerr := absf(wrapf(desired_yaw - float(c["yaw"]), -PI, PI))
+			if yerr < 0.25 and dv2.length() > 0.02:
+				node.position += dv2.normalized() * minf(0.5 * dt, dv2.length())
+			done_t = done_t or (yerr < 0.25 and dv2.length() <= 0.02)
+		if done_t:
 			c["step"] = {}
 			var other: Dictionary = crew[1 - i]
 			c["ang"] = rad_to_deg(atan2(node.position.x, node.position.z - car_len * 0.12))
@@ -556,7 +587,7 @@ func _pose_for(i: int) -> Dictionary:
 		var tl_local := Vector3.ZERO
 		if step.get("tl", Vector3.ZERO) != Vector3.ZERO and (step["pose"] == "point" or step["pose"] == "paint"):
 			tl_local = node.global_transform.affine_inverse() * (step["tl"] as Vector3)
-		target = _pose_def(str(step["pose"]), k, ph, tl_local)
+		target = _pose_def("crossed" if str(step["pose"]) == "lean" else str(step["pose"]), k, ph, tl_local)
 	else:
 		target = _walk_pose(k, float(c["phi"]), float(c["speed"])) if float(c["speed"]) > 0.15 else _pose_def("idle", k, ph)
 		if float(c["speed"]) <= 0.15 and float(c["speed"]) > 0.0:
@@ -616,9 +647,9 @@ func _animate(i: int) -> void:
 			_step_seq += 1
 			st["sid"] = _step_seq
 		var pose := str(st["pose"])
-		var need := int(c["mx_step_id"]) != int(st["sid"]) or pl.ended()
+		var need := int(c["mx_step_id"]) != int(st["sid"]) or (pl.ended() and not st.has("clip")) # los recostados se quedan en la última pose
 		if need:
-			var n := _pick_clip(pose, str((pl.cur as Dictionary).get("name", "")) if int(c["mx_step_id"]) == int(st["sid"]) else "")
+			var n: String = str(st["clip"]) if st.has("clip") else _pick_clip(pose, str((pl.cur as Dictionary).get("name", "")) if int(c["mx_step_id"]) == int(st["sid"]) else "")
 			if n != "":
 				pl.play(MixamoClips.clip(n))
 				c["mx_step_id"] = int(st["sid"])
@@ -685,6 +716,8 @@ func _pan(rel: Vector2) -> void:
 func _unhandled_input(ev: InputEvent) -> void:
 	if not ready_ok:
 		return
+	if (ev is InputEventMouseMotion or ev is InputEventMouseButton) and ev.device == InputEvent.DEVICE_ID_EMULATION:
+		return # el mouse que Godot inventa a partir de los toques: ya llegan como toques (si no, todo se movería doble)
 	if ev is InputEventScreenTouch:
 		var te := ev as InputEventScreenTouch
 		if te.pressed:
