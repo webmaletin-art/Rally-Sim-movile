@@ -204,7 +204,7 @@ func _build() -> void:
 	body.add_child(Kit.label("ESCALA DE RENDERIZADO 3D", 13, Kit.MUTED))
 	var rs := Kit.hbox(6)
 	body.add_child(rs)
-	for v in [0.8, 0.7, 0.6, 0.5]:
+	for v in [0.8, 0.7, 0.6, 0.5, 0.4, 0.35]:
 		var sv: float = v
 		var sb0 := _pick("%.2f" % sv, func() -> void: _set_scale(sv))
 		rs.add_child(sb0)
