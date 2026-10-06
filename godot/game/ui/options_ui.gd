@@ -4,6 +4,7 @@ extends RefCounted
 
 const Kit := preload("res://game/ui/ui_kit.gd")
 const Lens := preload("res://game/fx/lens.gd")
+const Autotune := preload("res://game/autotune.gd")
 
 signal changed(key: String)
 
@@ -48,6 +49,8 @@ const OPTION_CATS := [["graficos", "🖥", "Gráficos", "calidad, resolución, �
 	["idioma", "🌐", "Idioma", "español, English, português, français, italiano, Deutsch"], ["captura", "📷", "Captura", "botón, calidad y grabaciones"]]
 ## [categoría, clave, título, valores, etiquetas]
 const OPTION_LIST := [
+	["graficos", "gfxMode", "Configuración gráfica", ["auto", "manual"], ["Automática (perfil calibrado)", "Manual"]],
+	["graficos", "frameRes", "Resolución de frame (todo el cuadro, HUD incluido)", ["auto", 0, 1, 2, 3, 4], ["Automática", "100%", "83%", "67%", "50%", "40%"]],
 	["graficos", "quality", "Calidad general", ["auto", "low", "mid", "high"], ["Automática", "Baja", "Media", "Alta"]],
 	["graficos", "res", "Resolución del 3D", [0, 0.35, 0.5, 0.7, 1.0], ["Automática", "35%", "50%", "70%", "100%"]],
 	["graficos", "showFps", "Mostrar FPS (cuadros por segundo)", [false, true], ["No", "Sí"]],
@@ -123,18 +126,21 @@ func options_page(body: VBoxContainer, cat = null) -> void:
 			profile.set_setting(key2, v)
 			if key2 == "volume":
 				sfx.volume = float(v) / 100.0
-			changed.emit(key2), sfx, 62.0)
+			var rebuild := _gfx_hook(key2, v)
+			changed.emit(key2)
+			if rebuild:
+				nav.call("options", "graficos"), sfx, 62.0)
 		g2.add_child(sel)
 	if cat == "graficos":
 		_particles_row(body)
-		body.add_child(Kit.wrap("Al abrir el juego por primera vez se eligen solos según tu teléfono y se corrigen en el menú. Si cambiaste cosas y querés volver a eso:", 12, Kit.MUTED, 300))
-		body.add_child(Kit.button("🔄 AJUSTE AUTOMÁTICO PARA MI TELÉFONO", func() -> void:
-			for k in ["quality", "trees", "shadowsQ", "textures", "particles"]:
-				profile.set_setting(k, "auto")
-			profile.set_setting("res", 0)
-			profile.set_setting("autotuned", false)
-			sfx.play("click")
-			changed.emit("retune"), false, 15, Vector2(0, 50)))
+		body.add_child(Kit.wrap(tr("Automática: usa el perfil que se calibró en este teléfono y queda fijo mientras jugás (no cambia sola). Manual: elegís cada opción vos. Lo que dejes en «Automática» sigue usando el perfil."), 12, Kit.MUTED, 300))
+		var summ := Autotune.player_summary(profile)
+		if summ != "":
+			body.add_child(Kit.wrap(summ, 13, Kit.GOLD, 300))
+		if reset_cb.is_valid(): # sólo en el menú principal (no en la pausa de una carrera)
+			body.add_child(Kit.button("🔄 " + tr("RECALIBRAR RENDIMIENTO"), func() -> void:
+				sfx.play("click")
+				changed.emit("retune"), false, 15, Vector2(0, 50)))
 	if cat == "inclinacion":
 		_accel_block(body)
 
@@ -237,6 +243,21 @@ func _accel_block(body: VBoxContainer) -> void:
 	row.add_child(tip)
 
 ## Partículas (polvo, humo de las gomas, rocío, piedritas): barra de 0 a 10 (0 = sin partículas) o AUTO
+## Opciones gráficas: pasar a Automática las deja todas en «auto» (perfil calibrado); tocar una a mano pasa a Manual. Devuelve true si hay que redibujar la página.
+func _gfx_hook(key: String, v) -> bool:
+	if key == "gfxMode":
+		if str(v) == "auto":
+			Autotune.reset_to_auto(profile)
+			profile.save()
+			return true
+		return false
+	if key in ["quality", "res", "frameRes", "trees", "shadowsQ", "textures", "particles"]:
+		var is_auto: bool = str(v) == "auto" or (key == "res" and float(v) == 0.0)
+		if not is_auto and str(profile.setting("gfxMode")) != "manual":
+			profile.set_setting("gfxMode", "manual")
+			return true
+	return false
+
 func _particles_row(body: VBoxContainer) -> void:
 	var p := Kit.panel(8, Kit.PANEL2)
 	body.add_child(p)
@@ -263,11 +284,15 @@ func _particles_row(body: VBoxContainer) -> void:
 		sfx.play("click")
 		var v = profile.setting("particles")
 		profile.set_setting("particles", int(profile.setting("autoParticles")) if str(v) == "auto" else "auto")
+		if str(profile.setting("particles")) != "auto" and str(profile.setting("gfxMode")) != "manual":
+			profile.set_setting("gfxMode", "manual")
 		changed.emit("particles")
 		refresh.call(), false, 16, Vector2(90, 44))
 	head.add_child(auto_b)
 	sl.value_changed.connect(func(v: float) -> void:
 		profile.set_setting("particles", int(v))
+		if str(profile.setting("gfxMode")) != "manual":
+			profile.set_setting("gfxMode", "manual")
 		changed.emit("particles")
 		refresh.call())
 	col.add_child(sl)

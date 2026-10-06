@@ -127,6 +127,11 @@ func _start_race(cfg: Dictionary) -> void:
 				loading.queue_free())
 	add_child(race)
 
+## Configuración gráfica automática (autotune.gd): una carrera corta de calibración en Dream City, centro del pueblo. Al terminar (JUGAR) guarda el perfil y vuelve a `back`
+func start_calibration(back: String) -> void:
+	_start_race({"type": "city", "track": "aurelia", "ai": 0, "sky": "day", "car": profile.current_id(), "state": profile.car(), "seed": 7, "back": back, "quick": true, "spawn": 0,
+		"online": false, "calib": true, "calibBack": back})
+
 func Menu_maps() -> Dictionary:
 	return JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["maps"]
 

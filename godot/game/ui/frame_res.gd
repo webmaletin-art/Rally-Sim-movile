@@ -1,5 +1,5 @@
 extends Node
-## EXPERIMENTO DE DIAGNÓSTICO (menú 📊 → RESOLUCIÓN DE FRAME): dibuja TODO el cuadro 2D (el mundo 3D ya reducido por ESCALA 3D + el HUD + los menús + el propio 📊)
+## RESOLUCIÓN DE FRAME (la usa el perfil gráfico calibrado, Opciones → Gráficos, y el menú 📊 para medir): dibuja TODO el cuadro 2D (el mundo 3D ya reducido por ESCALA 3D + el HUD + los menús + el propio 📊)
 ## en una superficie interna más chica y después la estira a la pantalla. La pantalla/ventana de Android sigue igual (p. ej. 2400×1080).
 ## Cómo: una SubViewport "frame" del tamaño elegido, con size_2d_override = el tamaño lógico de la ventana (1280×576 en este proyecto): todo se arma y se toca en las mismas
 ## coordenadas de siempre. Cada CanvasLayer (mundo 3D, HUD, diagnóstico) se redirige a esa SubViewport con `custom_viewport` (no se mueve ningún nodo de lugar) y una
@@ -7,8 +7,8 @@ extends Node
 ## NATIVA = nada de esto está activo (los CanvasLayer dibujan directo en la ventana, como antes, y la SubViewport no se renderiza).
 ## No cambia ESCALA 3D (el mundo 3D sigue midiendo pantalla × escala; no depende de esta opción).
 
-## [numerador, denominador, nombre]: tamaño = pantalla × n/d (en 2400×1080: 2400×1080 · 1920×864 · 1600×720 · 1280×576 · 960×432)
-const LEVELS := [[1, 1, "NATIVA"], [4, 5, "ALTA"], [2, 3, "MEDIA"], [8, 15, "BAJA"], [2, 5, "MUY BAJA"]]
+## [porcentaje, 100, nombre]: tamaño = pantalla × porcentaje (en 2400×1080: 2400×1080 · 1992×896 · 1608×724 · 1200×540 · 960×432). Se calcula siempre sobre la pantalla real y conserva su relación de aspecto
+const LEVELS := [[100, 100, "NATIVA"], [83, 100, "ALTA"], [67, 100, "MEDIA"], [50, 100, "BAJA"], [40, 100, "MUY BAJA"]]
 
 var level := 0
 var sub: SubViewport
@@ -44,11 +44,18 @@ func _ready() -> void:
 func screen_size() -> Vector2i:
 	return Vector2i(DisplayServer.window_get_size())
 
-## Tamaño del frame para el nivel i (pantalla × n/d)
+## Tamaño del frame para el nivel i de una pantalla de `screen` píxeles (proporcional: ambos lados × el mismo porcentaje)
+static func size_for(screen: Vector2i, i: int) -> Vector2i:
+	var l: Array = LEVELS[clampi(i, 0, LEVELS.size() - 1)]
+	var k := float(l[0]) / float(l[1])
+	return Vector2i(maxi(2, int(round(float(screen.x) * k))), maxi(2, int(round(float(screen.y) * k))))
+
+static func fraction_of(i: int) -> float:
+	var l: Array = LEVELS[clampi(i, 0, LEVELS.size() - 1)]
+	return float(l[0]) / float(l[1])
+
 func size_of(i: int) -> Vector2i:
-	var l: Array = LEVELS[i]
-	var s := screen_size()
-	return Vector2i(maxi(2, int(round(float(s.x) * float(l[0]) / float(l[1])))), maxi(2, int(round(float(s.y) * float(l[0]) / float(l[1])))))
+	return size_for(screen_size(), i)
 
 func name_of(i: int) -> String:
 	return str((LEVELS[i] as Array)[2])
@@ -112,6 +119,9 @@ func _resize() -> void:
 	rect.size = Vector2(logical)
 
 func _exit_tree() -> void:
+	# la carrera se está yendo y sus capas con ella: no hace falta devolverlas a la ventana (y tocarlas mientras salen da avisos del motor)
 	if level > 0:
 		level = 0
-		_deactivate()
+		if is_inside_tree() and get_tree().node_added.is_connected(_on_node_added):
+			get_tree().node_added.disconnect(_on_node_added)
+		_moved.clear()

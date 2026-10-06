@@ -67,7 +67,7 @@ func update(dt: float) -> void:
 func apply_setting(key: String) -> void:
 	var profile = race.profile
 	match key:
-		"quality", "trees", "shadowsQ", "textures":
+		"quality", "trees", "shadowsQ", "textures", "gfxMode":
 			world_life.set_profile(WorldLifeConfig.profile_for(profile)) # LOW / MEDIUM / HIGH según la calidad
 		"worldLife":
 			world_life.set_enabled(profile.setting("worldLife") != false)

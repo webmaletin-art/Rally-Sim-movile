@@ -32,6 +32,8 @@ const RingDriver := preload("res://game/ai/ring_driver.gd")
 const Pilot := preload("res://game/car/pilot.gd")
 const DebugPanel := preload("res://game/ui/debug_panel.gd")
 const DiagPanel := preload("res://game/ui/diag_panel.gd")
+const FrameRes := preload("res://game/ui/frame_res.gd")
+const Calibration := preload("res://game/ui/calibration.gd")
 const Controls := preload("res://game/ui/controls.gd")
 const Effects := preload("res://game/fx/effects.gd")
 const Weather := preload("res://game/fx/weather.gd")
@@ -353,11 +355,12 @@ func _ready() -> void:
 		# opciones del jugador
 		lens.apply_settings(profile)
 		lens_auto = true
+		frame_rig = FrameRes.new() # el cuadro completo (HUD incluido) a la resolución del perfil: ver frame_res.gd
+		add_child(frame_rig)
 		var rs := float(profile.setting("res"))
-		if rs > 0.0:
-			res_auto = false
-			res_scale = rs
-			_on_resize()
+		res_auto = false # la resolución NO se adapta por FPS mientras se juega: «Automática» = la del perfil calibrado (fija)
+		res_scale = rs if rs > 0.0 else float(profile.setting("autoRes"))
+		_on_resize()
 		AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(profile.setting("volume")) / 80.0, 0.001)))
 		_apply_quality_settings()
 		_apply_controls_settings()
@@ -436,7 +439,11 @@ func _ready() -> void:
 		_bench_start()
 	if pb_active:
 		_pb_start()
-	if menu_mode and profile != null and profile.setting("diagBtn") != false and not pb_active and not autobench:
+	if bool(cfg.get("calib", false)) and menu_mode:
+		calib = Calibration.new() # configuración gráfica automática: calibra, muestra el resultado y vuelve (ver autotune.gd)
+		add_child(calib)
+		calib.begin(self)
+	if menu_mode and profile != null and profile.setting("diagBtn") != false and not pb_active and not autobench and not bool(cfg.get("calib", false)):
 		diag_panel = DiagPanel.new()
 		add_child(diag_panel)
 		diag_panel.setup(self)
@@ -1712,6 +1719,8 @@ var shopshot := ""
 var _shopshot_f := 0
 
 var _fps_l: Label
+var frame_rig: Node # FrameRes: RESOLUCIÓN DE FRAME (todo el cuadro 2D a una resolución interna; la elige el perfil gráfico y la puede cambiar el 📊)
+var calib: Node # Calibration: sólo en la carrera de calibración (primer arranque / RECALIBRAR RENDIMIENTO)
 var diag_panel # DiagPanel: menú manual de diagnóstico de rendimiento (botón 📊); registra, no prueba nada solo
 
 ## Contador de FPS en una esquina (opción «Mostrar FPS» de Gráficos; viene apagado)
@@ -1957,6 +1966,12 @@ func _apply_quality_settings() -> void:
 	audio.mix["wind"] = float(profile.setting("volWind")) / 100.0
 	audio.mix["turbo"] = float(profile.setting("volTurbo")) / 100.0
 	audio.mix["gear"] = float(profile.setting("volGear")) / 100.0
+	if frame_rig != null:
+		frame_rig.set_level(_frame_level()) # RESOLUCIÓN DE FRAME: la del perfil calibrado («Automática») o la que eligió el jugador
+	if float(profile.setting("res")) <= 0.0:
+		res_auto = false
+		res_scale = float(profile.setting("autoRes")) # ESCALA 3D «Automática» = la del perfil, FIJA (no se adapta por FPS)
+		_on_resize()
 
 ## Un cambio de Opciones hecho durante la carrera: se aplica en el momento
 func _apply_live_settings(key: String) -> void:
@@ -1964,17 +1979,17 @@ func _apply_live_settings(key: String) -> void:
 		"fx":
 			lens.apply_settings(profile)
 			lens_auto = false
-		"quality", "trees", "shadowsQ", "textures":
+		"quality", "trees", "shadowsQ", "textures", "gfxMode":
 			if life != null:
 				life.apply_setting(key)
 			var old := trees_n
 			_apply_quality_settings()
 			if trees_n != old:
 				_rebuild_trees()
-		"res":
+		"res", "frameRes":
+			_apply_quality_settings() # ESCALA 3D (fija) y RESOLUCIÓN DE FRAME según el perfil o lo elegido
 			var rs := float(profile.setting("res"))
-			res_auto = rs <= 0.0
-			if not res_auto:
+			if rs > 0.0:
 				res_scale = rs
 			_on_resize()
 		"worldLife", "volAmb":
@@ -2071,6 +2086,11 @@ func _haptics(dt: float, p, impact: float) -> void:
 	if amp > 0.07:
 		Input.vibrate_handheld(55, clampf(amp, 0.0, 1.0))
 		_hap_t = 0.065
+
+## Nivel de RESOLUCIÓN DE FRAME (índice de FrameRes.LEVELS): el del perfil calibrado si está en «Automática», si no el que eligió el jugador
+func _frame_level() -> int:
+	var f = profile.setting("frameRes")
+	return clampi(int(profile.setting("autoFrame")) if str(f) == "auto" else int(f), 0, FrameRes.LEVELS.size() - 1)
 
 ## Nivel de partículas 0–10 (polvo, humo de gomas, rocío, piedritas). En automático es el que el juego aprendió que aguanta el teléfono.
 func _particle_level() -> int:

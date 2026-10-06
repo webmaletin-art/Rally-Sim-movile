@@ -24,6 +24,7 @@ const SWITCHES := [
 	["horizon", "Horizonte / montañas", "las lomas del horizonte (72 triángulos) y los dos anillos del bosque lejano; el cielo, el plano de suelo, el mar y la cámara NO se tocan"],
 ]
 
+static var profile_lines: Array = [] # resumen del perfil gráfico calibrado (autotune.gd): lo pone el panel al abrir la escena
 static var sessions: Array = []
 static var cur: Dictionary = {}
 static var _t0_ms := 0
@@ -191,12 +192,17 @@ static func export_text() -> String:
 	L.append("DIAGNÓSTICO DE RENDIMIENTO")
 	L.append("================================")
 	L.append(device_text())
+	if not profile_lines.is_empty():
+		L.append("")
+		L.append("PERFIL GRÁFICO (calibración automática):")
+		for pl in profile_lines:
+			L.append(str(pl))
 	L.append("")
 	L.append("QUÉ APAGA CADA INTERRUPTOR:")
 	for sw in SWITCHES:
 		L.append("- %s: %s" % [sw[1], sw[2]])
 	L.append("- RESOLUCIÓN DE FRAME: resolución interna a la que se dibuja TODO el cuadro (mundo 3D ya reducido + HUD + menús) antes de estirarlo a la pantalla. NATIVA = como siempre (sin superficie intermedia). No es la ESCALA 3D (ésa sólo achica el mundo 3D y se mide contra la pantalla). RESOLUCIÓN PANTALLA = la física de Android; no cambia.")
-	L.append("- ESCALA 3D: resolución a la que se dibuja el mundo 3D = pantalla × escala (0.80 = 80 %). El HUD y la ventana no cambian. AUTO = la ajusta el juego solo.")
+	L.append("- ESCALA 3D: resolución a la que se dibuja el mundo 3D = pantalla × escala (0.80 = 80 %). El HUD y la ventana no cambian. PERFIL = la escala fija del perfil gráfico calibrado.")
 	L.append("- PAPER SHADER: ORIGINAL = paper.gdshader como siempre · SIMPLE = variante de prueba sin normal por derivadas, sin líneas de borde, sin variación de tono por lote y con los pow() y las coordenadas de textura en el vértice (sólo materiales de papel del mundo abierto: terreno, calles, marcas, objetos; las fachadas, los árboles, el horizonte, las señales y los peatones no cambian)")
 	L.append("(el promedio y el mínimo se miden en tramos de 0,5 s, desde el último cambio o captura, sin contar los 2 s siguientes a un cambio)")
 	if sessions.is_empty():
@@ -231,6 +237,7 @@ static func _session_text(s: Dictionary, L: Array) -> void:
 		if c.has("screen_px"):
 			L.append("RESOLUCIÓN PANTALLA: %s" % str(c["screen_px"]))
 			L.append("RESOLUCIÓN FRAME: %s (%s)" % [str(c.get("frame", "?")), str(c.get("frame_name", "?"))])
+			L.append("ESCALA FRAME: %d%%" % int(c.get("frame_pct", 100)))
 		L.append("ESCALA 3D: %s  (%s)" % [str(c.get("res", "(no registrada)")), str(c.get("res_px", "?"))])
 		if c.has("world_px"):
 			L.append("RESOLUCIÓN MUNDO 3D: %s" % str(c["world_px"]))

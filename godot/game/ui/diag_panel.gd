@@ -11,6 +11,7 @@ const DiagSpots := preload("res://game/city/diag_spots.gd")
 const CityTrack := preload("res://game/track/city_track.gd")
 const PaperKit := preload("res://game/fx/paper_kit.gd")
 const FrameRes := preload("res://game/ui/frame_res.gd")
+const Autotune := preload("res://game/autotune.gd")
 
 const ZONES := ["Centro", "Barrio", "Campo", "Costa", "Colina", "Campo lejano"]
 const SURFACES := ["asfalto", "tierra", "banquina", "pasto", "fuera de calzada", "barro", "nieve"]
@@ -56,7 +57,8 @@ var _log_lbl: Label
 var _toggles := {}
 var _scale_btns := {} # texto de la escala → botón
 var _paper_btns := {} # «ORIGINAL» / «SIMPLE» → botón
-var frame_rig: Node # frame_res.gd (experimento RESOLUCIÓN DE FRAME)
+var frame_rig: Node # frame_res.gd (RESOLUCIÓN DE FRAME): la crea la carrera; acá se puede cambiar a mano para medir
+var _scale_profile := true # ESCALA 3D «PERFIL» = la fija del perfil gráfico calibrado (no se adapta por FPS)
 var _frame_btns: Array = []
 var _spots_box: VBoxContainer
 var _open := false
@@ -67,8 +69,9 @@ func setup(p_race) -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	is_city = race.track is CityTrack
 	PaperKit.set_simple(false) # el experimento PAPER SHADER arranca siempre en ORIGINAL
-	frame_rig = FrameRes.new() # el experimento RESOLUCIÓN DE FRAME arranca siempre en NATIVA (inactivo)
-	race.add_child(frame_rig)
+	frame_rig = race.frame_rig # la RESOLUCIÓN DE FRAME de la carrera (la del perfil calibrado, salvo que el jugador eligiera otra)
+	_scale_profile = float(race.profile.setting("res")) <= 0.0
+	DiagLog.profile_lines = Autotune.info_lines(race.profile)
 	for s in DiagLog.SWITCHES:
 		sw[s[0]] = true
 	cond = _cond()
@@ -112,6 +115,7 @@ func _cond() -> Dictionary:
 	c["screen_px"] = "%d×%d" % [scr.x, scr.y]
 	c["frame"] = "%d×%d" % [frm.x, frm.y]
 	c["frame_name"] = frame_rig.name_of(frame_rig.level)
+	c["frame_pct"] = int(round(100.0 * float(frm.x) / maxf(1.0, float(scr.x))))
 	c["world_px"] = "%d×%d" % [wld.x, wld.y]
 	var px := 0.0
 	var pz := 0.0
@@ -144,12 +148,16 @@ func _cond() -> Dictionary:
 
 ## ESCALA 3D (sólo se lee). «res» es lo que se compara entre pruebas («0.80», «AUTO»); «res_px» sólo se muestra
 func _res_text() -> String:
-	return "AUTO" if bool(race.res_auto) else "%.2f" % float(race.res_scale)
+	if bool(race.res_auto):
+		return "AUTO"
+	return "PERFIL" if _scale_profile else "%.2f" % float(race.res_scale)
 
 func _res_px_text() -> String:
 	var wsz: Vector2i = race.world.size
 	if bool(race.res_auto):
 		return "ahora %.2f · mundo 3D %dx%d" % [float(race.res_scale), wsz.x, wsz.y]
+	if _scale_profile:
+		return "del perfil: %.2f · mundo 3D %dx%d" % [float(race.res_scale), wsz.x, wsz.y]
 	return "mundo 3D %dx%d" % [wsz.x, wsz.y]
 
 func _where_text(px: float, pz: float, zone: String) -> String:
@@ -231,10 +239,10 @@ func _build() -> void:
 		var sb0 := _pick("%.2f" % sv, func() -> void: _set_scale(sv))
 		rs.add_child(sb0)
 		_scale_btns["%.2f" % sv] = sb0
-	var sba := _pick("AUTO", func() -> void: _set_scale(0.0))
+	var sba := _pick("PERFIL", func() -> void: _set_scale(0.0))
 	rs.add_child(sba)
-	_scale_btns["AUTO"] = sba
-	body.add_child(Kit.wrap("Sólo cambia a qué resolución se dibuja el mundo 3D (pantalla × escala). El HUD, la ventana y todo lo demás no cambian. AUTO es lo que hace el juego solo.", 12, Kit.MUTED, 100))
+	_scale_btns["PERFIL"] = sba
+	body.add_child(Kit.wrap("Sólo cambia a qué resolución se dibuja el mundo 3D (pantalla × escala). El HUD, la ventana y todo lo demás no cambian. PERFIL es la escala fija del perfil gráfico calibrado.", 12, Kit.MUTED, 100))
 	if is_city:
 		body.add_child(Kit.label("PAPER SHADER (sólo mundo abierto)", 13, Kit.MUTED))
 		var pr := Kit.hbox(6)
@@ -395,12 +403,14 @@ func _toggle(key: String) -> void:
 ## Cambia SÓLO la resolución interna del mundo 3D (el mismo mecanismo de siempre: race.res_scale → world.size). Fija una escala = apaga el ajuste automático mientras dure la prueba
 func _set_scale(v: float) -> void:
 	var before := _scale_label()
+	race.res_auto = false # la escala nunca se adapta por FPS
 	if v <= 0.0:
-		race.res_auto = true
+		_scale_profile = true
+		race.res_scale = float(race.profile.setting("autoRes")) # PERFIL: la escala 3D fija del perfil gráfico
 	else:
-		race.res_auto = false
+		_scale_profile = false
 		race.res_scale = v
-		race._on_resize()
+	race._on_resize()
 	var after := _scale_label()
 	if after == before:
 		return
@@ -454,6 +464,8 @@ func _exit_tree() -> void:
 func _scale_label() -> String:
 	if bool(race.res_auto):
 		return "AUTO (ahora %.2f)" % float(race.res_scale)
+	if _scale_profile:
+		return "PERFIL (%.2f)" % float(race.res_scale)
 	return "%.2f" % float(race.res_scale)
 
 func _style_scale() -> void:
@@ -608,8 +620,11 @@ func _refresh_labels() -> void:
 	l.append("ZONA: %s · SUPERFICIE: %s" % [str(c["zone"]), str(c["surface"])])
 	l.append("RESOLUCIÓN PANTALLA: %s" % str(c["screen_px"]))
 	l.append("RESOLUCIÓN FRAME: %s (%s)" % [str(c["frame"]), str(c["frame_name"])])
+	l.append("ESCALA FRAME: %d%%" % int(c["frame_pct"]))
 	l.append("ESCALA 3D: %s (%s)" % [str(c["res"]), str(c["res_px"])])
 	l.append("RESOLUCIÓN MUNDO 3D: %s" % str(c["world_px"]))
+	for pl in Autotune.info_lines(race.profile):
+		l.append(str(pl))
 	l.append("CLIMA: %s · HORA: %s%s" % [str(c["weather"]), str(c["time"]), (" (%s)" % race.clock.clock_text()) if is_city and race.clock != null else ""])
 	_lbl_info.text = "\n".join(l)
 	_style_scale()
