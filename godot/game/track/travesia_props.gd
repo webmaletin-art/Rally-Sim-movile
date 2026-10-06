@@ -46,6 +46,8 @@ func setup(p_track) -> void:
 	_update_rings()
 
 func _process(dt: float) -> void:
+	if _ring_y == 0.0:
+		_update_rings()
 	var cam := get_viewport().get_camera_3d()
 	if cam == null or _rings.is_empty():
 		return
@@ -61,6 +63,8 @@ func _process(dt: float) -> void:
 
 ## Los anillos de bosque lejano quedan a la altura del terreno más bajo que los rodea a ~350 m (nunca flotan sobre el suelo; donde el terreno sube, lo tapa)
 func _update_rings() -> void:
+	if not is_inside_tree():
+		return
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:
 		return
