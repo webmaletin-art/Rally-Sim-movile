@@ -8,7 +8,7 @@ const HorizonTrees := preload("res://game/city/horizon_trees.gd")
 const BLOCK := 60 # muestras por bloque de árboles (~260 m)
 ## Árboles por tramo: [por cada 100 m y por lado en la primera fila, bioma]. La segunda fila (más atrás) tiene un 20 % más.
 const FOREST := {"largada": [1.0, "mixed"], "bosque": [6.0, "mixed"], "barro1": [3.0, "mixed"], "pedregal": [0.8, "conifer"], "valle": [0.6, "round"], "vado": [1.5, "round"],
-	"orilla": [2.0, "round"], "ascenso": [3.5, "conifer"], "cresta": [0.4, "conifer"], "bajada_cueva": [3.0, "conifer"], "cueva": [2.0, "conifer"], "arroyo": [3.0, "round"],
+	"orilla": [2.0, "round"], "ascenso": [3.5, "conifer"], "cresta": [0.4, "conifer"], "bajada_cueva": [3.0, "conifer"], "cueva": [0.0, "conifer"], "arroyo": [3.0, "round"],
 	"escalones": [1.0, "conifer"], "bosque2": [7.0, "conifer"], "llanura": [0.5, "round"], "medanos": [0.3, "round"], "muro": [2.0, "conifer"], "cornisa": [1.5, "conifer"],
 	"pico": [1.2, "conifer"], "techo": [0.2, "conifer"], "gran_bajada": [3.0, "conifer"], "barranca": [2.5, "mixed"], "vado2": [2.0, "round"], "barro2": [3.5, "mixed"],
 	"pedregal2": [0.8, "conifer"], "pista": [0.8, "round"], "final": [1.5, "mixed"]}
