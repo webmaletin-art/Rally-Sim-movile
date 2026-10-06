@@ -20,12 +20,15 @@ const TreeCross2Planes := preload("res://game/vegbench/tree_cross.gd")
 
 signal exit_requested
 
-const SYSTEMS := ["3D ORIGINAL", "8 VISTAS PNG", "CROSS 2 PLANOS"]
+const PaperKit := preload("res://game/fx/paper_kit.gd")
+
+const SYSTEMS := ["3D ORIGINAL", ".PAP ACTUAL", "8 VISTAS PNG", "CROSS 2 PLANOS"]
+const RESULTS_FILE := "user://vegbench_results.json"
 const QUICK_COUNTS := [1000, 2000, 3000, 5000, 7500, 10000, 15000, 20000]
 const B_COUNTS := [100, 200, 400, 800, 1000]
 const CELL := 250.0 # los árboles van en bloques de 250 m (un MultiMesh por bloque y especie: el motor oculta los que no se ven)
 
-var system := 1
+var system := 2
 var count := 1000
 var b_system := 0 # edificios: 0 sin · 1 drift/aventura · 2 dream city · 3 papel
 var b_count := 200
@@ -53,6 +56,8 @@ var _sim_t := 0.0
 var _acc := 0.0
 var _species_ids: Array = []
 var _fps_min := 1e9
+var _fps_sum := 0.0
+var _fps_n := 0
 var _fps_t := 0.0
 # argumentos de prueba en PC (sólo capturas): --vb_sys=0|1|2 --vb_count=N --vb_bsys=0..3 --vb_bcount=N --vb_auto --vb_shot=ruta.png --vb_frames=N --vb_nopanel
 var _shot_path := ""
@@ -62,7 +67,7 @@ var _frame_n := 0
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--vb_sys="):
-			system = clampi(int(a.substr(9)), 0, 2)
+			system = clampi(int(a.substr(9)), 0, 3)
 		elif a.begins_with("--vb_count="):
 			count = int(a.substr(11))
 		elif a.begins_with("--vb_bsys="):
@@ -167,6 +172,8 @@ func _mesh_of(sid: String) -> Mesh:
 	if system == 0:
 		return TreeModels.original(sid)["mesh"]
 	if system == 1:
+		return PaperKit.mesh(str(TreeModels.info(sid)["src"])) # el papercraft actual del mismo árbol (geometría de pocos triángulos con color liso por cara)
+	if system == 2:
 		return TreeImpostor8View.build(sid)["mesh"]
 	return TreeCross2Planes.build(sid)["mesh"]
 
@@ -198,7 +205,7 @@ func _chunk(mesh: Mesh, list: Array) -> MultiMeshInstance3D:
 	var o := 0
 	for e in list:
 		var s := float(e[3])
-		var yaw := float(e[4]) if system != 1 else 0.0 # el impostor de 8 vistas no gira: la luz está pintada en las imágenes
+		var yaw := float(e[4]) if system != 2 else 0.0 # el impostor de 8 vistas no gira: la luz está pintada en las imágenes
 		var c := cos(yaw) * s
 		var sn := sin(yaw) * s
 		# Transform3D por filas: [bx.x by.x bz.x ox | bx.y by.y bz.y oy | bx.z by.z bz.z oz]
@@ -222,12 +229,17 @@ func _rebuild_buildings() -> void:
 # ───────────────────────── FPS ─────────────────────────
 func _reset_fps() -> void:
 	_fps_min = 1e9
+	_fps_sum = 0.0
+	_fps_n = 0
 	_fps_t = 1.5 # un momento para que se asienten los FPS tras armar
+
+func _fps_avg() -> float:
+	return float(_fps_n) / maxf(_fps_sum, 0.001)
 
 func _stats_text() -> String:
 	var s := "%d FPS" % int(Engine.get_frames_per_second())
 	if _fps_min < 1e8:
-		s += "  (mínimo %d)" % int(_fps_min)
+		s += "  (prom %d · mín %d)" % [int(_fps_avg()), int(_fps_min)]
 	s += "\nÁRBOLES: %s · %d\n" % [SYSTEMS[system], mini(count, scatter.items.size())]
 	s += "EDIFICIOS: %s" % VegBuildings.SYSTEMS[b_system]
 	if b_system > 0:
@@ -264,13 +276,13 @@ func _build_panel() -> void:
 	v.add_child(Kit.label("Pista corta de rally (%.1f km). Manejás vos; el botón de pausa abre y cierra este panel." % (float(track.length) / 1000.0), 12, Kit.MUTED))
 	# árboles
 	v.add_child(Kit.label("SISTEMA DE VEGETACIÓN", 15, Kit.GOLD))
-	var row := Kit.hbox(6)
+	var row := Kit.grid(2, 6, 6)
 	v.add_child(row)
 	for i in SYSTEMS.size():
 		var idx := i
 		_row_btn(row, str(SYSTEMS[i]), func() -> void:
 			system = idx
-			_apply_veg(), system == i, 15, 50.0)
+			_apply_veg(), system == i, 15, 46.0)
 	v.add_child(Kit.label("CANTIDAD DE ÁRBOLES: %d" % count, 17, Kit.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 	var g := Kit.grid(4, 5, 5)
 	v.add_child(g)
@@ -296,6 +308,7 @@ func _build_panel() -> void:
 		_row_btn(g3, str(qq2), func() -> void:
 			b_count = qq2
 			_apply_bld(), b_count == qq2)
+	_build_log_ui(v)
 	# otros
 	var r5 := Kit.hbox(5)
 	v.add_child(r5)
@@ -362,6 +375,8 @@ func _process(dt: float) -> void:
 		_fps_t -= dt
 	else:
 		_fps_min = minf(_fps_min, 1.0 / maxf(dt, 0.0001))
+		_fps_sum += dt
+		_fps_n += 1
 	stats_l.text = _stats_text()
 	_frame_n += 1
 	if _shot_path != "" and _frame_n == _shot_frames:
@@ -399,3 +414,108 @@ func _drive(dt: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_TAB:
 		_set_panel(not panel_open)
+
+# ───────────────────────── registro de mis pruebas ─────────────────────────
+# Lo que se ve en el teléfono se anota con un toque: el FPS (promedio y mínimo desde el último cambio) sale del contador, lo demás lo marcás vos. Queda guardado en el teléfono
+# (user://vegbench_results.json) y se copia como texto para pegarlo en el chat y analizarlo. No mide nada solo ni corre pruebas.
+const OPT_QUALITY := ["1/5 mala", "2/5", "3/5 normal", "4/5", "5/5 muy buena"]
+const OPT_STUTTER := ["NO", "POCOS", "MUCHOS"]
+const OPT_YESNO := ["NO", "SÍ"]
+const OPT_FAKE := ["NO", "UN POCO", "MUCHO"]
+const OPT_TRANSP := ["NO", "ALGO", "MUCHOS"]
+const OPT_DIST := ["NO SE NOTA", "CERCA (<30 m)", "MEDIA (30–100 m)", "LEJOS (100 m+)"]
+var _q := {"quality": 2, "stutter": 0, "tex": 0, "fake": 0, "transp": 0, "dist": 0}
+var _log: Array = []
+var _log_shown := false
+var _log_msg := ""
+
+func _load_log() -> void:
+	if not _log.is_empty() or not FileAccess.file_exists(RESULTS_FILE):
+		return
+	var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(RESULTS_FILE))
+	if d is Array:
+		_log = d
+
+func _save_log() -> void:
+	var f := FileAccess.open(RESULTS_FILE, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(_log))
+		f.close()
+
+func _cycle(key: String, opts: Array) -> void:
+	_q[key] = (int(_q[key]) + 1) % opts.size()
+	_build_panel()
+
+func _build_log_ui(v: VBoxContainer) -> void:
+	_load_log()
+	v.add_child(Kit.label("REGISTRO DE MIS PRUEBAS", 15, Kit.GOLD))
+	v.add_child(Kit.label("Probá una combinación, conducí un rato y marcá lo que ves (tocá cada botón para cambiar el valor). El FPS lo toma del contador.", 12, Kit.MUTED))
+	var g := Kit.grid(2, 6, 6)
+	v.add_child(g)
+	_row_btn(g, "CALIDAD VISUAL: " + str(OPT_QUALITY[int(_q["quality"])]), func() -> void: _cycle("quality", OPT_QUALITY), false, 13, 44.0)
+	_row_btn(g, "TIRONES: " + str(OPT_STUTTER[int(_q["stutter"])]), func() -> void: _cycle("stutter", OPT_STUTTER), false, 13, 44.0)
+	_row_btn(g, "CAMBIOS DE TEXTURA VISIBLES: " + str(OPT_YESNO[int(_q["tex"])]), func() -> void: _cycle("tex", OPT_YESNO), false, 12, 44.0)
+	_row_btn(g, "SE VE FALSO: " + str(OPT_FAKE[int(_q["fake"])]), func() -> void: _cycle("fake", OPT_FAKE), false, 13, 44.0)
+	_row_btn(g, "PROBLEMAS DE TRANSPARENCIA: " + str(OPT_TRANSP[int(_q["transp"])]), func() -> void: _cycle("transp", OPT_TRANSP), false, 12, 44.0)
+	_row_btn(g, "SE EMPIEZA A NOTAR: " + str(OPT_DIST[int(_q["dist"])]), func() -> void: _cycle("dist", OPT_DIST), false, 12, 44.0)
+	var r := Kit.hbox(5)
+	v.add_child(r)
+	_row_btn(r, "ANOTAR ÁRBOLES", func() -> void: _log_add("ÁRBOLES"), true, 14, 48.0)
+	_row_btn(r, "ANOTAR EDIFICIOS", func() -> void: _log_add("EDIFICIOS"), true, 14, 48.0)
+	var r2 := Kit.hbox(5)
+	v.add_child(r2)
+	_row_btn(r2, "VER (%d)" % _log.size(), func() -> void:
+		_log_shown = not _log_shown
+		_build_panel(), _log_shown, 14, 44.0)
+	_row_btn(r2, "COPIAR", func() -> void:
+		DisplayServer.clipboard_set(_log_text())
+		_log_msg = "Copiado: pegalo en el chat."
+		_build_panel(), false, 14, 44.0)
+	_row_btn(r2, "BORRAR", func() -> void:
+		_log.clear()
+		_save_log()
+		_log_msg = "Registro borrado."
+		_build_panel(), false, 14, 44.0)
+	if _log_msg != "":
+		v.add_child(Kit.label(_log_msg, 13, Kit.GREEN))
+	if _log_shown:
+		var l := Kit.label(_log_text(), 11, Kit.TEXT)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.custom_minimum_size = Vector2(520, 0)
+		v.add_child(l)
+
+func _log_add(kind: String) -> void:
+	if _fps_n < 30:
+		_log_msg = "Esperá unos segundos conduciendo así se arma el promedio de FPS."
+		_build_panel()
+		return
+	var e := {
+		"tipo": kind, "arboles_sistema": SYSTEMS[system], "arboles": mini(count, scatter.items.size()),
+		"edificios_sistema": VegBuildings.SYSTEMS[b_system], "edificios": mini(b_count, buildings.spots.size()) if b_system > 0 else 0,
+		"fps_prom": snappedf(_fps_avg(), 0.1), "fps_min": snappedf(_fps_min, 0.1), "segundos": snappedf(_fps_sum, 0.1),
+		"draw_calls": RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+		"triangulos": RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME),
+		"calidad": OPT_QUALITY[int(_q["quality"])], "tirones": OPT_STUTTER[int(_q["stutter"])], "cambios_textura": OPT_YESNO[int(_q["tex"])],
+		"se_ve_falso": OPT_FAKE[int(_q["fake"])], "transparencia": OPT_TRANSP[int(_q["transp"])], "se_nota": OPT_DIST[int(_q["dist"])]}
+	_log.append(e)
+	_save_log()
+	_log_msg = "Anotado (%d): %s · FPS %d (mín %d)." % [_log.size(), kind, int(e["fps_prom"]), int(e["fps_min"])]
+	_build_panel()
+
+func _log_text() -> String:
+	var lines: Array = ["INFORME DE PRUEBAS · %s · GPU: %s · Godot %s" % [OS.get_model_name(), RenderingServer.get_video_adapter_name(), Engine.get_version_info()["string"]]]
+	if _log.is_empty():
+		lines.append("(todavía no anotaste nada)")
+	var i := 0
+	for e in _log:
+		i += 1
+		var ent: Dictionary = e
+		var subject: String
+		if str(ent["tipo"]) == "ÁRBOLES":
+			subject = "ÁRBOLES %s ×%d (edificios: %s ×%d)" % [ent["arboles_sistema"], int(ent["arboles"]), ent["edificios_sistema"], int(ent["edificios"])]
+		else:
+			subject = "EDIFICIOS %s ×%d (árboles: %s ×%d)" % [ent["edificios_sistema"], int(ent["edificios"]), ent["arboles_sistema"], int(ent["arboles"])]
+		lines.append("%d) %s · FPS prom %.0f · mín %.0f (%.0f s) · llamadas %d · triáng. %d · calidad %s · tirones %s · cambios de textura %s · falso %s · transparencia %s · se nota: %s" % [
+			i, subject, float(ent["fps_prom"]), float(ent["fps_min"]), float(ent["segundos"]), int(ent["draw_calls"]), int(ent["triangulos"]), ent["calidad"], ent["tirones"],
+			ent["cambios_textura"], ent["se_ve_falso"], ent["transparencia"], ent["se_nota"]])
+	return "\n".join(lines)
