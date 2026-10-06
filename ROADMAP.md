@@ -74,6 +74,12 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 - 🔧 Cajas de cambios reales: 1ª → 2ª → 3ª… según velocidad; reducción al frenar.
 - 🔧 **Trinchera**: red de caminos hundidos (tipo cañón/mina vieja) dentro del mundo abierto, anchos para dos autos, asfalto y tierra, desvíos que se vuelven a unir, tramos subterráneos (túneles), entrada y salida al mundo abierto. Carrera de trinchera.
 
+## Versión final / Google Play (preparada)
+- Herramientas técnicas (📊 diagnóstico, RENDIMIENTO, panel de FPS por capturas) ocultas: sólo existen en compilaciones de desarrollo (`Release.tools()`), nunca en el APK/AAB final.
+- Reparto gratis / pago: aventura = 3 etapas gratis (el resto y las copas Nacional/Continental/Leyenda con `dr_adventure`); carrera rápida, Travesía X, mapas fantasía y mundo abierto (Dream City) libres; **modo online CERRADO** (`Release.ONLINE_OPEN := false`); Genesis (DR Bisonte XR) = premio de la aventura.
+- Tienda de monedas (consumibles `dr_coins_s/m/l/xl`: 5.000 / 12.000 / 30.000 / 80.000), ver `docs/PLAY_STORE.md`.
+- **Actualización futura (cuando se cierre el tiempo real / online):** los autos de los OTROS jugadores deben verse y moverse como los autos de la IA de carrera rápida (hoy se ven peores y se traban): mismo modelo/LOD, misma suavización de movimiento (interpolación). El pool de autos civiles queda como está. Después de eso poner `Release.ONLINE_OPEN := true`.
+
 ## Pendiente (cuando el juego base esté terminado)
 ### Mundo abierto con misiones (estilo MTX)
 - Todas las pistas encajadas en el mundo abierto. **Cómo funciona:** al abrir el Mundo abierto se carga el mundo con todas las pistas como zonas; al jugar una carrera suelta (rápida, contrarreloj, modo carrera o historia) se carga SOLO esa pista, con sus límites (paredes, cinta, terreno), sin dibujar el mundo entero. Hoy ya es así con La Trinchera (entrada desde el mundo).

@@ -6,6 +6,7 @@ const Kit := preload("res://game/ui/ui_kit.gd")
 const Products := preload("res://game/store/products.gd")
 const Billing := preload("res://game/store/billing.gd")
 const Release := preload("res://game/data/release.gd")
+const Tr := preload("res://game/i18n/tr.gd")
 
 var m: Node # menu.gd
 
@@ -20,20 +21,25 @@ func build() -> void:
 		m.body.add_child(Kit.wrap("Las compras funcionan en la versión de Google Play. En esta versión de prueba no están disponibles.", 15, Kit.MUTED, 300))
 	elif not ready:
 		m.body.add_child(Kit.wrap("Conectando con Google Play…", 15, Kit.MUTED, 300))
+	var coins_header := false
 	for id in Products.ORDER:
 		var pd: Dictionary = Products.PRODUCTS[id]
+		if str(pd["kind"]) == "credits" and not coins_header:
+			coins_header = true
+			m.body.add_child(Kit.label("🪙 " + Tr.t("MONEDAS"), 22, Kit.GOLD))
+			m.body.add_child(Kit.wrap("Para comprar autos de la tienda, piezas, pintura y nafta. Se pueden comprar las veces que quieras. Los autos premium y el DR Bisonte XR no se compran con monedas.", 12, Kit.MUTED, 300))
 		var have: bool = bil.owned(id)
 		var price: String = bil.price_of(id)
 		var right := "✔ TUYO" if have else (price if price != "" else "—")
 		var pid: String = id
-		var b := Kit.card_button("%s  %s" % [pd["icon"], pd["name"]], str(pd["desc"]), right, func() -> void:
+		var b := Kit.card_button("%s  %s" % [pd["icon"], Tr.t(str(pd["name"]))], str(pd["desc"]), right, func() -> void:
 			m.sfx.play("click")
 			bil.buy(pid), pd.get("best", false) == true and not have, ready and not have and not bil.busy, 82.0, 19)
 		m.body.add_child(b)
 	m.body.add_child(Kit.button("↻ RESTAURAR COMPRAS", func() -> void:
 		m.sfx.play("click")
 		bil.restore(), false, 18, Vector2(0, 50)))
-	m.body.add_child(Kit.wrap("Las compras las cobra Google Play y se hacen una sola vez: si cambiás de teléfono o reinstalás, las recuperás con RESTAURAR COMPRAS. Los autos premium quedan en tu garaje al comprarlos.", 12, Kit.MUTED, 300))
+	m.body.add_child(Kit.wrap("Las compras las cobra Google Play. Los desbloqueos se pagan una sola vez: si cambiás de teléfono o reinstalás, los recuperás con RESTAURAR COMPRAS. Los autos premium quedan en tu garaje al comprarlos. Las monedas se acreditan al instante y no se restauran.", 12, Kit.MUTED, 300))
 
 func _refresh() -> void:
 	if m != null and is_instance_valid(m) and m.screen == "iap":

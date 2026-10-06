@@ -23,7 +23,7 @@ var client = null
 var connected := false
 var details: Dictionary = {} # id → {"title", "price"}
 var busy := false
-var _pending_credits: Dictionary = {} # purchase_token → créditos a acreditar cuando Google confirme el consumo
+const TOKENS_KEPT := 60 # cuántos «recibos» de bolsas de monedas ya acreditadas se recuerdan (evita acreditar dos veces la misma compra)
 
 ## ¿Está el plugin en esta compilación?
 static func supported() -> bool:
@@ -130,8 +130,8 @@ func _handle(p: Dictionary) -> void:
 			continue
 		var pd: Dictionary = def
 		if str(pd["kind"]) == "credits":
-			_pending_credits[token] = int(pd["amount"])
-			client.consume_purchase(token)
+			_grant_credits(token, int(pd["amount"]))
+			client.consume_purchase(token) # libera la compra para poder volver a comprar la bolsa (si falla, se reintenta al abrir)
 		else:
 			_grant_unlock(str(id))
 			if p.get("is_acknowledged", false) != true:
@@ -151,15 +151,22 @@ func _grant_unlock(id: String) -> void:
 func _on_ack(_result = null) -> void:
 	pass
 
-func _on_consume(result: Dictionary) -> void:
-	if int(result.get("response_code", -1)) != OK:
+## Acredita las monedas UNA sola vez por compra: primero se guarda el recibo (token) y las monedas, y recién después se consume en Google.
+## Si el juego se cierra o falla el consumo, la compra sigue «sin consumir» en Google y al abrir se reintenta el consumo sin acreditar de nuevo.
+func _grant_credits(token: String, amount: int) -> void:
+	if profile == null or token == "":
 		return
-	var token := str(result.get("purchase_token", ""))
-	if not _pending_credits.has(token):
+	var seen: Array = profile.d.get("iapTokens", [])
+	if seen.has(token):
 		return
-	var n: int = _pending_credits[token]
-	_pending_credits.erase(token)
-	profile.earn(n)
+	seen.append(token)
+	while seen.size() > TOKENS_KEPT:
+		seen.remove_at(0)
+	profile.d["iapTokens"] = seen
+	profile.earn(amount)
 	profile.save()
-	message.emit(Tr.t("¡Gracias! Te acreditamos $ %d.") % n)
+	message.emit(Tr.t("¡Gracias! Te acreditamos $ %d.") % amount)
 	state_changed.emit()
+
+func _on_consume(_result = null) -> void:
+	pass

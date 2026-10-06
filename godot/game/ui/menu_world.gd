@@ -49,13 +49,22 @@ func spawn_screen() -> void:
 		m.body.add_child(m.menu_button("🅿 " + tr(str(SPAWN_PLACES[i][0])), tr(str(SPAWN_PLACES[i][1])), func() -> void:
 			m.sfx.play("click")
 			_start_city(idx), i == 0))
-	m.body.add_child(m.menu_button("📊 " + tr("DIAGNÓSTICO / RENDIMIENTO"), tr("registro manual de FPS: probá qué sistema los baja"), func() -> void:
-		m.sfx.play("click")
-		m.go("diag"), false))
+	if Release.tools():
+		m.body.add_child(m.menu_button("📊 " + tr("DIAGNÓSTICO / RENDIMIENTO"), tr("registro manual de FPS: probá qué sistema los baja"), func() -> void:
+			m.sfx.play("click")
+			m.go("diag"), false))
 
 ## Modo online: sin cuenta se pide una (ver _online_options); con cuenta pide el apodo la primera vez y muestra el hub del mundo online
 func online_home() -> void:
 	m.set_title(tr("MODO ONLINE"))
+	if not Release.online_open(m.profile):
+		m.body.add_child(Kit.label("🔒 " + tr("CERRADO POR AHORA"), 28, Kit.ACCENT))
+		m.body.add_child(Kit.wrap(tr("El modo online está cerrado hasta la próxima actualización: estamos afinando el tiempo real para que los autos de los demás jugadores se vean y se muevan perfecto. Mientras tanto podés recorrer Dream City sin conexión."), 15, Kit.TEXT, 300))
+		m.body.add_child(m.menu_button("🏙 " + tr("DREAM CITY"), tr("recorrer sin conexión"), func() -> void:
+			m.sfx.play("click")
+			m.world_online = false
+			m.go("spawn"), true))
+		return
 	if m.app.online == null or not m.app.online.configured():
 		m.body.add_child(Kit.wrap(tr("El modo online todavía no está disponible en esta versión. Mientras tanto podés recorrer Dream City sin conexión."), 15, Kit.TEXT, 300))
 		m.body.add_child(m.menu_button("🏙 " + tr("DREAM CITY"), tr("recorrer sin conexión"), func() -> void:

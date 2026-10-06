@@ -1936,5 +1936,19 @@
 "Un convoy de 5 autos y camiones va en fila: si acelerás, aceleran; si te quedás, te esperan un poco, pero si te perdés muy lejos los perdés. Hay que llegar a la meta con el grupo.": "Ein Konvoi aus 5 Autos und Lastwagen fährt im Gänsemarsch: Gibst du Gas, fahren sie schneller; bleibst du zurück, warten sie ein wenig, aber wenn du zu weit abfällst, verlierst du sie. Du musst mit der Gruppe ins Ziel kommen.",
 "¡LLEGASTE CON EL GRUPO!": "DU BIST MIT DER GRUPPE ANGEKOMMEN!",
 "PERDISTE AL CONVOY": "DU HAST DEN KONVOI VERLOREN",
-"Unión del grupo: %d %%": "Gruppenzusammenhalt: %d %%"
+"Unión del grupo: %d %%": "Gruppenzusammenhalt: %d %%",
+"CERRADO POR AHORA": "VORERST GESCHLOSSEN",
+"El modo online está cerrado hasta la próxima actualización: estamos afinando el tiempo real para que los autos de los demás jugadores se vean y se muevan perfecto. Mientras tanto podés recorrer Dream City sin conexión.": "Der Online-Modus ist bis zum nächsten Update geschlossen: Wir feilen noch am Echtzeit-Modus, damit die Autos der anderen Spieler perfekt aussehen und sich perfekt bewegen. Bis dahin kannst du Dream City offline erkunden.",
+"próximamente": "demnächst",
+"MONEDAS": "MÜNZEN",
+"Para comprar autos de la tienda, piezas, pintura y nafta. Se pueden comprar las veces que quieras. Los autos premium y el DR Bisonte XR no se compran con monedas.": "Zum Kauf von Shop-Autos, Teilen, Lackierung und Benzin. Du kannst sie so oft kaufen, wie du willst. Premium-Autos und der DR Bisonte XR sind nicht mit Münzen kaufbar.",
+"Las compras las cobra Google Play. Los desbloqueos se pagan una sola vez: si cambiás de teléfono o reinstalás, los recuperás con RESTAURAR COMPRAS. Los autos premium quedan en tu garaje al comprarlos. Las monedas se acreditan al instante y no se restauran.": "Käufe werden von Google Play abgerechnet. Freischaltungen zahlst du nur einmal: Bei Handywechsel oder Neuinstallation holst du sie mit KÄUFE WIEDERHERSTELLEN zurück. Premium-Autos landen beim Kauf in deiner Garage. Münzen werden sofort gutgeschrieben und nicht wiederhergestellt.",
+"Puñado de monedas": "Handvoll Münzen",
+"Bolsa de monedas": "Münzbeutel",
+"Cofre de monedas": "Münztruhe",
+"Baúl de monedas": "Münzkiste",
+"$ 5.000 para el garaje y el taller. Alcanza para un buen par de piezas.": "5.000 $ für Garage und Werkstatt. Reicht für ein paar gute Teile.",
+"$ 12.000: un 20 % más por moneda. Un auto chico o un taller completo.": "12.000 $: 20 % mehr pro Münze. Ein kleines Auto oder eine komplette Werkstatt.",
+"$ 30.000: un 50 % más por moneda. Un auto de la tienda o varias mejoras.": "30.000 $: 50 % mehr pro Münze. Ein Shop-Auto oder mehrere Upgrades.",
+"$ 80.000: el mejor precio por moneda. Para armar el auto de tus sueños.": "80.000 $: bester Preis pro Münze. Zum Bau deines Traumautos."
 }

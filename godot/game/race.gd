@@ -32,6 +32,7 @@ const RingDriver := preload("res://game/ai/ring_driver.gd")
 const Pilot := preload("res://game/car/pilot.gd")
 const DebugPanel := preload("res://game/ui/debug_panel.gd")
 const DiagPanel := preload("res://game/ui/diag_panel.gd")
+const Release := preload("res://game/data/release.gd")
 const FrameRes := preload("res://game/ui/frame_res.gd")
 const Calibration := preload("res://game/ui/calibration.gd")
 const Controls := preload("res://game/ui/controls.gd")
@@ -443,7 +444,7 @@ func _ready() -> void:
 		calib = Calibration.new() # configuración gráfica automática: calibra, muestra el resultado y vuelve (ver autotune.gd)
 		add_child(calib)
 		calib.begin(self)
-	if menu_mode and profile != null and profile.setting("diagBtn") != false and not pb_active and not autobench and not bool(cfg.get("calib", false)):
+	if menu_mode and Release.tools() and profile != null and profile.setting("diagBtn") != false and not pb_active and not autobench and not bool(cfg.get("calib", false)):
 		diag_panel = DiagPanel.new()
 		add_child(diag_panel)
 		diag_panel.setup(self)

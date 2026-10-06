@@ -50,7 +50,11 @@ La versión de prueba (APK liviano / completo de GitHub) **no cambia**: todo lo 
    | `car_truck` | no consumible | Colossus Mamut 6x6 (camión) | USD 0,99 |
    | `car_gt3` | no consumible | Altair GT3 RS | USD 0,99 |
    | `car_hyper` | no consumible | Vortex Aerion | USD 0,99 |
-   Todos son **no consumibles** (se compran una vez y se recuperan con «Restaurar compras»). **No se venden créditos.** Los precios los pone Play Console: el juego muestra el que devuelve Google.
+   | `dr_coins_s` | **consumible** | Puñado de monedas: $ 5.000 del juego | USD 0,99 |
+   | `dr_coins_m` | **consumible** | Bolsa de monedas: $ 12.000 (+20 % por moneda) | USD 1,99 |
+   | `dr_coins_l` | **consumible** | Cofre de monedas: $ 30.000 (+50 % por moneda) | USD 3,99 |
+   | `dr_coins_xl` | **consumible** | Baúl de monedas: $ 80.000 (mejor precio por moneda) | USD 7,99 |
+   Los desbloqueos son **no consumibles** (se compran una vez y se recuperan con «Restaurar compras»); las bolsas de monedas son **consumibles** (se pueden comprar las veces que se quiera: el juego acredita las monedas, guarda el recibo para no acreditar dos veces la misma compra y recién después las consume en Google). Las monedas **no compran** los autos premium ni el DR Bisonte XR (esos son aparte), así que no hay «pagar para ganar»: sólo acelera lo que igual se consigue corriendo (autos de la tienda de $ 18.000 a $ 120.000, piezas, pintura, nafta). Los precios los pone Play Console: el juego muestra el que devuelve Google; los de arriba son sólo una sugerencia que el dueño revisa antes de subir.
    También hace falta tener la cuenta de pagos de comerciante (Perfil de pagos) completa.
 8. **Probar las compras**: subí el primer AAB a **Pruebas internas**, agregá tu correo como tester y como *tester de licencia* (Configuración → Pruebas de licencia), instalá desde el link de Play y comprá (las compras de testers no cobran). **Las compras no se pueden probar con el APK de GitHub.**
 9. **Producción**: crear versión → subir AAB → notas de versión → enviar a revisión (tarda de horas a unos días).
@@ -68,6 +72,8 @@ La versión de prueba (APK liviano / completo de GitHub) **no cambia**: todo lo 
 Los íconos del lanzador (adaptativo + monocromo) ya están en `godot/store/icons/` y los usa el AAB.
 
 ## 5. Qué queda oculto o apagado en la versión de Play (ya hecho, solo en el AAB)
+- **Herramientas técnicas** (📊 diagnóstico de rendimiento, RENDIMIENTO, registro de FPS por capturas): ya no existen en el juego final; sólo en compilaciones de desarrollo (`Release.tools()`).
+- **Modo online CERRADO** (`Release.ONLINE_OPEN := false`): la ficha dice «próximamente»; no se puede crear cuenta ni activar rankings, así que no se recopila ningún dato (las respuestas de «Seguridad de los datos» son las de «sin modo online»). Se abre en una actualización futura, cuando se cierre el tiempo real.
 - **Modo desarrollador** (siete toques en la versión): no se puede activar y, aunque un perfil lo tuviera guardado, se ignora.
 - **RENDIMIENTO** (prueba de rendimiento): sin botón en el menú ni arranque directo.
 - **Descargas**: el juego va completo adentro y funciona sin conexión (los permisos de red que figuran en el AAB los agrega la biblioteca de compras de Google).
@@ -78,7 +84,7 @@ Los íconos del lanzador (adaptativo + monocromo) ya están en `godot/store/icon
 1. **Idiomas**: español, inglés, portugués, francés, italiano y alemán ya tienen traducción de los textos del juego (la voz grabada del copiloto todavía solo existe en español, ver `docs/PLAN_V1.md`).
 2. **Taller de prueba de la pausa** (ajusta todo gratis en pruebas de autos de la tienda y Carrera rápida): ¿lo dejamos para todos o solo en la prueba de autos de la tienda? Como se venden créditos, quizá convenga dejarlo solo en la tienda.
 3. **Reparto gratis / pago**: hoy son gratis las 3 primeras etapas de la aventura, la copa Debut y todos los mapas; el resto con `dr_adventure` / `dr_garage` / `dr_full`.
-4. **Créditos**: no se venden (decidido).
+4. **Créditos**: SÍ se venden (bolsas de monedas consumibles, ver tabla de productos). Precios y cantidades a revisar por el dueño antes de subir.
 5. **DR Bisonte XR** en la tienda ($250.000): se ve y se prueba, pero se compra recién al terminar la aventura. ¿Lo mantenemos así en la versión de Play?
 6. **Ícono provisorio**: ¿querés un logo propio?
 

@@ -5,6 +5,8 @@ extends SceneTree
 
 const Release := preload("res://game/data/release.gd")
 const Profile := preload("res://game/data/profile.gd")
+const Products := preload("res://game/store/products.gd")
+const Billing := preload("res://game/store/billing.gd")
 
 var fail := false
 
@@ -36,4 +38,24 @@ func _init() -> void:
 	q.d["settings"]["dev"] = false
 	Release.sync_cars(q)
 	check(Release.adventure_limit(q) == 99 and q.owns("truck") and q.owns("gt3") and q.owns("hyper"), "el juego completo da todo")
+	# modo online cerrado, herramientas técnicas sólo en desarrollo, tienda de monedas
+	check(not Release.online_open(p) and not Release.ONLINE_OPEN, "el modo online está cerrado (salvo modo desarrollador)")
+	check(not (Release.store() and Release.tools()), "la versión de Play no trae herramientas técnicas (📊, RENDIMIENTO)")
+	var packs := 0
+	for id in Products.ORDER:
+		var pd: Dictionary = Products.PRODUCTS[id]
+		if str(pd["kind"]) != "credits":
+			continue
+		packs += 1
+		check(not Release.covers(p, str(id)), "la bolsa %s siempre se puede volver a comprar" % id)
+	check(packs == 4 and int(Products.PRODUCTS["dr_coins_s"]["amount"]) < int(Products.PRODUCTS["dr_coins_m"]["amount"]) and int(Products.PRODUCTS["dr_coins_l"]["amount"]) < int(Products.PRODUCTS["dr_coins_xl"]["amount"]), "4 bolsas de monedas, de menor a mayor")
+	p.d["iapTokens"] = [] # el perfil de prueba se guarda en disco: arrancar sin recibos
+	var bil := Billing.new()
+	bil.profile = p
+	var before: int = int(p.d["credits"])
+	bil._grant_credits("token-1", 5000)
+	bil._grant_credits("token-1", 5000) # la misma compra reintentada: no acredita dos veces
+	bil._grant_credits("token-2", 12000)
+	check(int(p.d["credits"]) == before + 17000, "las monedas se acreditan una sola vez por compra (recibo) [%d → %d]" % [before, int(p.d["credits"])])
+	bil.free()
 	quit(1 if fail else 0)

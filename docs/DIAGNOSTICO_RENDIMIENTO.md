@@ -1,3 +1,5 @@
+> **Versión final:** el botón 📊, la pantalla RENDIMIENTO y el registro de FPS ya no están en el juego final (APK de prueba ni AAB). Sólo aparecen en compilaciones de desarrollo (`Release.tools()` = no «store» y `OS.is_debug_build()`). El código se conserva para volver a medir si hace falta.
+
 # Diagnóstico / rendimiento (registro manual)
 
 **Para qué sirve:** descubrir CON DATOS qué sistema del mundo abierto baja los FPS. El juego **sólo registra**: no hay benchmark, recorridos, bots ni pruebas automáticas. Vos manejás, apagás sistemas, cambiás hora/clima/lugar y apretás **📸 CAPTURAR**.

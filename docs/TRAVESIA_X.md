@@ -30,7 +30,7 @@ El generador no se ejecuta en el juego (el resultado va en `routes.json`). `pyth
 
 ## El convoy (`ai/convoy.gd`)
 * Cada auto de la fila **sigue al de adelante** (el jugador cuenta como uno más): copia su velocidad y corrige con la distancia (34 m de separación).
-* El primero va al tope del tramo (`cap` en routes.json: ~100 km/h en camino bueno, 20–30 km/h en barro, escalones y vado) si el grupo está junto. Si el último de la fila se queda, **baja el ritmo** (hasta 18 km/h) y espera. Si el jugador acelera, el tope no lo frena: los de atrás lo persiguen.
+* **Corre como los rivales de la aventura**: el primero va a todo lo que da el tramo (`cap` en routes.json: ~115–120 km/h en camino bueno, 35–55 km/h en barro, escalones y vado: frena un poco en lo peligroso y sale acelerando a fondo). Sólo **espera un poquito al jugador** si se le queda atrás: desde 110 m empieza a aflojar y a 280 m va al 60 % del tope del tramo (nunca menos de 32 km/h). Los de la fila no lo frenan: lo persiguen solos. Si el jugador acelera, el tope no lo frena.
 * **Se pierde el convoy** si el jugador queda a más de 330 m del primero del convoy (atrás, o adelante de todos) por más de 10 s. Aviso en pantalla desde los 170 m: «¡ALCANZALOS!» / «¡ESPERÁ AL CONVOY!» con cuenta regresiva.
 * Llegar a la meta sin haberlos perdido = victoria; la **unión** (tiempo a menos de 100 m del grupo) define medalla y premio. Perderlos corta la carrera con «¡LOS PERDISTE!».
 * Premios: 600–1200 de crédito y 250–450 XP si llegás (más cuanto más unido), 40 XP si los perdés. La práctica con auto de prueba no paga.

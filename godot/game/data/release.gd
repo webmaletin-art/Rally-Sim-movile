@@ -15,6 +15,16 @@ const PREMIUM_CARS := {"truck": "car_truck", "gt3": "car_gt3", "hyper": "car_hyp
 static func store() -> bool:
 	return OS.has_feature("store")
 
+## Herramientas técnicas (📊 diagnóstico de rendimiento, RENDIMIENTO, capturas de FPS): sólo en compilaciones de desarrollo, nunca en el juego final
+static func tools() -> bool:
+	return not store() and OS.is_debug_build()
+
+## El modo online está cerrado hasta terminar el tiempo real (ver «Actualización futura» en CLAUDE.md); en modo desarrollador se puede abrir para probar
+const ONLINE_OPEN := false
+
+static func online_open(profile: RefCounted) -> bool:
+	return ONLINE_OPEN or dev(profile)
+
 ## Hay compras dentro del juego para desbloquear el juego completo (si es false, lo bloqueado dice «próxima actualización»)
 const IAP_FULL := true
 

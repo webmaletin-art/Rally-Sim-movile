@@ -1936,5 +1936,19 @@
 "Un convoy de 5 autos y camiones va en fila: si acelerás, aceleran; si te quedás, te esperan un poco, pero si te perdés muy lejos los perdés. Hay que llegar a la meta con el grupo.": "Um comboio de 5 carros e caminhões anda em fila: se você acelera, eles aceleram; se ficar para trás, eles esperam um pouco, mas se se afastar demais você os perde. É preciso chegar à meta com o grupo.",
 "¡LLEGASTE CON EL GRUPO!": "VOCÊ CHEGOU COM O GRUPO!",
 "PERDISTE AL CONVOY": "VOCÊ PERDEU O COMBOIO",
-"Unión del grupo: %d %%": "União do grupo: %d %%"
+"Unión del grupo: %d %%": "União do grupo: %d %%",
+"CERRADO POR AHORA": "FECHADO POR ENQUANTO",
+"El modo online está cerrado hasta la próxima actualización: estamos afinando el tiempo real para que los autos de los demás jugadores se vean y se muevan perfecto. Mientras tanto podés recorrer Dream City sin conexión.": "O modo online está fechado até a próxima atualização: estamos ajustando o tempo real para que os carros dos outros jogadores sejam vistos e se movam perfeitamente. Enquanto isso, você pode explorar a Dream City offline.",
+"próximamente": "em breve",
+"MONEDAS": "MOEDAS",
+"Para comprar autos de la tienda, piezas, pintura y nafta. Se pueden comprar las veces que quieras. Los autos premium y el DR Bisonte XR no se compran con monedas.": "Para comprar carros da loja, peças, pintura e combustível. Você pode comprar quantas vezes quiser. Os carros premium e o DR Bisonte XR não se compram com moedas.",
+"Las compras las cobra Google Play. Los desbloqueos se pagan una sola vez: si cambiás de teléfono o reinstalás, los recuperás con RESTAURAR COMPRAS. Los autos premium quedan en tu garaje al comprarlos. Las monedas se acreditan al instante y no se restauran.": "As compras são cobradas pelo Google Play. Os desbloqueios são pagos uma só vez: se trocar de celular ou reinstalar, recupere-os com RESTAURAR COMPRAS. Os carros premium vão para sua garagem ao comprá-los. As moedas são creditadas na hora e não são restauradas.",
+"Puñado de monedas": "Punhado de moedas",
+"Bolsa de monedas": "Bolsa de moedas",
+"Cofre de monedas": "Baú de moedas",
+"Baúl de monedas": "Arca de moedas",
+"$ 5.000 para el garaje y el taller. Alcanza para un buen par de piezas.": "$ 5.000 para a garagem e a oficina. Dá para um bom par de peças.",
+"$ 12.000: un 20 % más por moneda. Un auto chico o un taller completo.": "$ 12.000: 20 % a mais por moeda. Um carro pequeno ou uma oficina completa.",
+"$ 30.000: un 50 % más por moneda. Un auto de la tienda o varias mejoras.": "$ 30.000: 50 % a mais por moeda. Um carro da loja ou várias melhorias.",
+"$ 80.000: el mejor precio por moneda. Para armar el auto de tus sueños.": "$ 80.000: o melhor preço por moeda. Para montar o carro dos seus sonhos."
 }

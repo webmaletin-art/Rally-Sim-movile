@@ -1936,5 +1936,19 @@
 "Un convoy de 5 autos y camiones va en fila: si acelerás, aceleran; si te quedás, te esperan un poco, pero si te perdés muy lejos los perdés. Hay que llegar a la meta con el grupo.": "A convoy of 5 cars and trucks drives in single file: if you speed up, they speed up; if you fall behind they wait a little, but if you get too far you lose them. You have to reach the finish with the group.",
 "¡LLEGASTE CON EL GRUPO!": "YOU ARRIVED WITH THE GROUP!",
 "PERDISTE AL CONVOY": "YOU LOST THE CONVOY",
-"Unión del grupo: %d %%": "Group cohesion: %d %%"
+"Unión del grupo: %d %%": "Group cohesion: %d %%",
+"CERRADO POR AHORA": "CLOSED FOR NOW",
+"El modo online está cerrado hasta la próxima actualización: estamos afinando el tiempo real para que los autos de los demás jugadores se vean y se muevan perfecto. Mientras tanto podés recorrer Dream City sin conexión.": "Online mode is closed until the next update: we are fine-tuning real time so other players' cars look and move perfectly. Meanwhile you can explore Dream City offline.",
+"próximamente": "coming soon",
+"MONEDAS": "COINS",
+"Para comprar autos de la tienda, piezas, pintura y nafta. Se pueden comprar las veces que quieras. Los autos premium y el DR Bisonte XR no se compran con monedas.": "To buy shop cars, parts, paint and fuel. You can buy them as many times as you like. Premium cars and the DR Bisonte XR can't be bought with coins.",
+"Las compras las cobra Google Play. Los desbloqueos se pagan una sola vez: si cambiás de teléfono o reinstalás, los recuperás con RESTAURAR COMPRAS. Los autos premium quedan en tu garaje al comprarlos. Las monedas se acreditan al instante y no se restauran.": "Purchases are charged by Google Play. Unlocks are paid once: if you change phone or reinstall, get them back with RESTORE PURCHASES. Premium cars go to your garage when bought. Coins are credited instantly and are not restored.",
+"Puñado de monedas": "Handful of coins",
+"Bolsa de monedas": "Bag of coins",
+"Cofre de monedas": "Chest of coins",
+"Baúl de monedas": "Trunk of coins",
+"$ 5.000 para el garaje y el taller. Alcanza para un buen par de piezas.": "$ 5,000 for the garage and workshop. Enough for a couple of good parts.",
+"$ 12.000: un 20 % más por moneda. Un auto chico o un taller completo.": "$ 12,000: 20 % more per coin. A small car or a full workshop job.",
+"$ 30.000: un 50 % más por moneda. Un auto de la tienda o varias mejoras.": "$ 30,000: 50 % more per coin. A shop car or several upgrades.",
+"$ 80.000: el mejor precio por moneda. Para armar el auto de tus sueños.": "$ 80,000: best price per coin. To build your dream car."
 }

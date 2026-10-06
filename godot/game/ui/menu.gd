@@ -193,7 +193,7 @@ func _ready() -> void:
 				tc["duelSkill"] = 1.0
 		launch(tc, false)
 		return
-	if perf_arg != "" and not app.autorace_used and not Release.store():
+	if perf_arg != "" and not app.autorace_used and Release.tools():
 		app.autorace_used = true
 		perf._start(perf_arg)
 		return
@@ -400,13 +400,15 @@ func go(name: String, arg = null, push := true) -> void:
 		"consent": about.consent_screen()
 		"account": account.build(arg)
 		"perf":
-			if not Release.store():
+			if Release.tools():
 				perf.build(name, arg)
 		"iap": store.build()
 		"soon": world_ui.soon_screen(str(arg))
 		"online": world_ui.online_home()
 		"spawn": world_ui.spawn_screen()
-		"diag": diag_ui.build(arg)
+		"diag":
+			if Release.tools():
+				diag_ui.build(arg)
 		"nick": world_ui.nick_screen()
 		"adventure", "adv_skills", "adv_help", "adv_stages", "adv_start": adventure.build(name, arg)
 		_: _home()
@@ -587,7 +589,7 @@ func _home() -> void:
 	var soon := Kit.grid(3, 8, 8)
 	body.add_child(soon)
 	soon.add_child(tile("🌌", "FANTASÍA", "mapas de ensueño", func(): go("fantasy"), false, 70.0))
-	soon.add_child(tile("🌐", "MODO ONLINE", "mundo abierto", func(): go("online"), false, 70.0))
+	soon.add_child(tile("🌐", "MODO ONLINE", "próximamente" if not Release.online_open(profile) else "mundo abierto", func(): go("online"), false, 70.0))
 	soon.add_child(tile("🗺", "MUNDO ABIERTO", "Dream City", func() -> void:
 		world_online = false
 		go("spawn"), false, 70.0))
@@ -607,8 +609,8 @@ func _home() -> void:
 		["ℹ", "ACERCA DE", "créditos · legales", func(): go("about"), false],
 		["💎", "COMPRAS", "juego completo · créditos", func(): go("iap"), false],
 	]
-	if not Release.store():
-		tiles.append(["📊", "RENDIMIENTO", "probá tu teléfono", func(): go("perf"), false]) # no va en la versión de Google Play
+	if Release.tools():
+		tiles.append(["📊", "RENDIMIENTO", "probá tu teléfono", func(): go("perf"), false]) # sólo en compilaciones de desarrollo
 	for tl in tiles:
 		g.add_child(tile(str(tl[0]), str(tl[1]), str(tl[2]), tl[3], bool(tl[4])))
 

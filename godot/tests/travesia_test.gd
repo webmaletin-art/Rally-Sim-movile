@@ -55,7 +55,7 @@ func _init() -> void:
 		var good: bool = (r["lost"] == bool(sc[2])) and (bool(sc[2]) or r["finished"])
 		if not good:
 			fail = true
-		print("%s %s → %s · %.0f s (%.1f min) · unión %.0f %% · máx. alejado %.0f m" % ["OK  " if good else "FALLA", sc[0], "PERDIÓ EL CONVOY" if r["lost"] else ("llegó" if r["finished"] else "no llegó"), r["t"], r["t"] / 60.0, r["coh"] * 100.0, r["maxout"]])
+		print("%s %s → %s · %.0f s (%.1f min) · unión %.0f %% · máx. alejado %.0f m · el primero del convoy va a %.0f km/h de media" % ["OK  " if good else "FALLA", sc[0], "PERDIÓ EL CONVOY" if r["lost"] else ("llegó" if r["finished"] else "no llegó"), r["t"], r["t"] / 60.0, r["coh"] * 100.0, r["maxout"], r["lead_kmh"]])
 	quit(1 if fail else 0)
 
 func _run(track, player_cap: float) -> Dictionary:
@@ -110,6 +110,7 @@ func _run(track, player_cap: float) -> Dictionary:
 	var t := 0.0
 	var maxout := 0.0
 	var finished := false
+	var lead_sum := 0.0
 	while t < 3600.0 and not cv.lost:
 		for i in cars.size():
 			var c: Vector3 = cars[i].driver.update(cars[i].phys, h)
@@ -130,7 +131,13 @@ func _run(track, player_cap: float) -> Dictionary:
 		ses.time = t
 		cv.update(h)
 		maxout = maxf(maxout, cv.out_gap)
+		var best := 1
+		for i in range(2, cars.size()):
+			if ses.prog[i] > ses.prog[best]:
+				best = i
+		var bc = cars[best].phys
+		lead_sum += sqrt(bc.vx * bc.vx + bc.vz * bc.vz) * h # el más adelantado del convoy (sin contar al «jugador»)
 		if ses.prog[0] >= (goal_m if goal_m > 0.0 else track.length):
 			finished = true
 			break
-	return {"lost": cv.lost, "finished": finished, "t": t, "coh": cv.cohesion(), "maxout": maxout}
+	return {"lost": cv.lost, "finished": finished, "t": t, "coh": cv.cohesion(), "maxout": maxout, "lead_kmh": lead_sum / maxf(t, 1.0) * 3.6}
