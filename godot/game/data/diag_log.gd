@@ -17,6 +17,11 @@ const SWITCHES := [
 	["veg", "Vegetación", "flores, arbustos y pasto de las calles y el bosque lejano del horizonte"],
 	["decor", "Decoración", "farolas, semáforos, bolardos, vallas y carteles de la calle (con sus luces de noche)"],
 	["peds", "Peatones", "los peatones (sistema «peds» de la vida del mundo, apagado de verdad)"],
+	["asphalt", "Asfalto", "la calzada de las calles pavimentadas (los cuadriláteros de asfalto de cada tramo, con la textura asphalt.png); las veredas, los cordones y las marcas viales son otras cosas y NO se apagan; tampoco el disco de asfalto de la plaza de drift"],
+	["dirt", "Caminos de tierra", "la banquina de tierra (beige) al costado de las rutas rurales: en la ciudad no hay caminos de tierra como malla propia, lo único de tierra transitable es esa banquina; la calzada, el césped y las veredas de calle NO se apagan"],
+	["terrain", "Terreno / césped", "la malla del terreno natural de cada cuadra (grilla de 16 m, 200 triángulos por cuadra); queda el plano de suelo lejano (color de la lejanía) y el mar; la vegetación NO se apaga"],
+	["fog", "Niebla", "la niebla del mundo (la de siempre, sin cambiar su color ni sus distancias); apagada se ve todo hasta el horizonte"],
+	["horizon", "Horizonte / montañas", "las lomas del horizonte (72 triángulos) y los dos anillos del bosque lejano; el cielo, el plano de suelo, el mar y la cámara NO se tocan"],
 ]
 
 static var sessions: Array = []
@@ -117,8 +122,8 @@ static func test_count() -> int:
 
 # ───────────────────────── condiciones ─────────────────────────
 ## Claves que cuentan para comparar dos pruebas (la ubicación fina, «where», sólo se muestra)
-const CMP_KEYS := ["trees", "buildings", "cars", "veg", "decor", "peds", "weather", "time", "zone", "surface", "res"]
-const KEY_NAMES := {"trees": "Árboles", "buildings": "Edificios", "cars": "Autos civiles", "veg": "Vegetación", "decor": "Decoración", "peds": "Peatones", "weather": "Clima", "time": "Hora", "zone": "Zona", "surface": "Superficie", "res": "Escala 3D"}
+const CMP_KEYS := ["trees", "buildings", "cars", "veg", "decor", "peds", "asphalt", "dirt", "terrain", "fog", "horizon", "weather", "time", "zone", "surface", "res"]
+const KEY_NAMES := {"trees": "Árboles", "buildings": "Edificios", "cars": "Autos civiles", "veg": "Vegetación", "decor": "Decoración", "peds": "Peatones", "asphalt": "Asfalto", "dirt": "Caminos de tierra", "terrain": "Terreno / césped", "fog": "Niebla", "horizon": "Horizonte / montañas", "weather": "Clima", "time": "Hora", "zone": "Zona", "surface": "Superficie", "res": "Escala 3D"}
 
 static func onoff(b) -> String:
 	return "ON" if bool(b) else "OFF"
@@ -220,6 +225,8 @@ static func _session_text(s: Dictionary, L: Array) -> void:
 		for sw in SWITCHES:
 			if c.has(sw[0]):
 				L.append("%s: %s" % [sw[1], onoff(c[sw[0]])])
+		if c.has("trees"):
+			L.append("Cielo: ON (sin interruptor: queda igual en toda la ronda)")
 		L.append("")
 		L.append("FPS promedio: %d" % int(round(float(td["avg"]))))
 		L.append("FPS mínimo: %d" % int(round(float(td["min"]))))

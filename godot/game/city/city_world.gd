@@ -36,7 +36,8 @@ var _tunnel_mat: StandardMaterial3D # el interior de los túneles y del estacion
 var _queue: Array = []
 var _frame_budget_ms := 6.0
 ## Interruptores del menú de diagnóstico (ui/diag_panel.gd): true = el sistema está como siempre. Apagar uno sólo hace que no se dibuje (ni choque) lo suyo; nada más cambia.
-var diag := {"trees": true, "buildings": true, "veg": true, "decor": true}
+var diag := {"trees": true, "buildings": true, "veg": true, "decor": true, "asphalt": true, "dirt": true, "terrain": true, "horizon": true}
+var _diag_base_todo: Array = [] # cuadras cuya malla base (terreno + calles) falta rearmar tras un cambio de asfalto / tierra / terreno
 var _diag_todo: Array = [] # cuadras que faltan rearmar tras un cambio de interruptor (unas pocas por cuadro)
 const DIAG_VEG := [CityProps.FLOWERS, CityProps.BUSH, CityProps.GRASS]
 const DIAG_DECOR := [CityProps.LAMP, CityProps.LIGHT, CityProps.BOLLARD, CityProps.FENCE, CityProps.STOP, CityProps.CURVE, CityProps.LIMIT]
@@ -259,7 +260,7 @@ func _process(_dt: float) -> void:
 		_hz.scale = Vector3(view_k, 1.0, view_k) # y se acerca junto con la niebla cuando el teléfono baja la distancia de vista
 		var in_pocket := cam.global_position.x > 3000.0 # el bolsillo de los túneles y los estacionamientos: ahí no hay bosque a lo lejos
 		for ring in _hz_trees:
-			ring.visible = not in_pocket and bool(diag["veg"])
+			ring.visible = not in_pocket and bool(diag["veg"]) and bool(diag["horizon"])
 			ring.global_position = Vector3(cam.global_position.x, 0.0, cam.global_position.z)
 			ring.scale = Vector3(view_k, 1.0, view_k)
 	update_around(cam.global_position, 1)
@@ -267,6 +268,14 @@ func _process(_dt: float) -> void:
 	var nd := 0
 	while not _diag_todo.is_empty() and nd < 3:
 		_diag_refresh(_diag_todo.pop_back())
+		nd += 1
+	nd = 0
+	while not _diag_base_todo.is_empty() and nd < 2:
+		var bk: Vector2i = _diag_base_todo.pop_back()
+		if chunks.has(bk):
+			var bmi := (chunks[bk] as Node3D).get_node_or_null("base")
+			if bmi != null:
+				_diag_base(bmi as MeshInstance3D)
 		nd += 1
 
 ## Los objetos que acaban de romperse: se arma de nuevo la malla de objetos de su cuadra (lo roto queda tirado)
@@ -280,11 +289,17 @@ func _diag_type_on(pt: int) -> bool:
 		return bool(diag["decor"])
 	return true
 
-## Prende o apaga un sistema del mundo para el diagnóstico (trees, buildings, veg, decor)
+## Prende o apaga un sistema del mundo para el diagnóstico (trees, buildings, veg, decor, asphalt, dirt, terrain, horizon)
 func diag_set(layer: String, on: bool) -> void:
 	if not diag.has(layer) or bool(diag[layer]) == on:
 		return
 	diag[layer] = on
+	if layer == "horizon":
+		_hz.visible = on # las lomas; el bosque lejano se apaga en _process con el mismo interruptor
+		return
+	if layer == "asphalt" or layer == "dirt" or layer == "terrain":
+		_diag_base_todo = chunks.keys() # la malla base de cada cuadra se arma de nuevo sin esa parte (de a pocas por cuadro)
+		return
 	if layer == "buildings":
 		for k in chunks:
 			var bn: Node = (chunks[k] as Node3D).get_node_or_null("buildings")
@@ -292,6 +307,58 @@ func diag_set(layer: String, on: bool) -> void:
 				(bn as Node3D).visible = on
 		return
 	_diag_todo = chunks.keys() # árboles, vegetación y decoración: se rearman las mallas de objetos de cada cuadra (de a pocas por cuadro)
+
+## Malla base de una cuadra (terreno + calzada/veredas + marcas + túnel) según los interruptores. Con todo prendido es EXACTAMENTE la malla original (la que se armó en _build_chunk);
+## con algo apagado se arma una copia sin esa parte: las mismas superficies y materiales, sólo que sin el terreno y/o con un índice que saltea los triángulos de asfalto o de tierra.
+func _diag_base(mi: MeshInstance3D) -> void:
+	var full: ArrayMesh = mi.get_meta("diag_full")
+	if bool(diag["asphalt"]) and bool(diag["dirt"]) and bool(diag["terrain"]):
+		mi.mesh = full
+		return
+	var roles: Array = mi.get_meta("diag_roles")
+	var out := ArrayMesh.new()
+	for i in roles.size():
+		var role: String = roles[i]
+		if role == "terrain" and not bool(diag["terrain"]):
+			continue
+		var arr: Array = full.surface_get_arrays(i)
+		if role == "road" and (not bool(diag["asphalt"]) or not bool(diag["dirt"])):
+			arr[Mesh.ARRAY_INDEX] = _diag_road_index(arr[Mesh.ARRAY_COLOR] as PackedColorArray)
+			if (arr[Mesh.ARRAY_INDEX] as PackedInt32Array).is_empty():
+				continue
+		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		out.surface_set_material(out.get_surface_count() - 1, full.surface_get_material(i))
+	mi.mesh = out
+
+## Qué triángulos de la superficie de calles quedan. En _road_segment cada cosa lleva su color: calzada = C_ASPH, banquina de las rutas rurales = C_RURAL_SIDE, el resto (veredas, ladrillo, cordones) otros colores
+func _diag_road_index(cs: PackedColorArray) -> PackedInt32Array:
+	var keep_asph := bool(diag["asphalt"])
+	var keep_dirt := bool(diag["dirt"])
+	var idx := PackedInt32Array()
+	idx.resize(cs.size())
+	var k := 0
+	var i := 0
+	while i + 2 < cs.size():
+		var c: Color = cs[i]
+		var cls := _diag_road_class(c)
+		if (cls == 0 and not keep_asph) or (cls == 1 and not keep_dirt):
+			i += 3
+			continue
+		idx[k] = i
+		idx[k + 1] = i + 1
+		idx[k + 2] = i + 2
+		k += 3
+		i += 3
+	idx.resize(k)
+	return idx
+
+## 0 = calzada de asfalto · 1 = banquina de tierra de ruta rural · 2 = otra cosa (veredas, cordones…). Los colores salen de la malla (8 bits por canal), de ahí la tolerancia
+func _diag_road_class(c: Color) -> int:
+	if absf(c.r - C_ASPH.r) < 0.012 and absf(c.g - C_ASPH.g) < 0.012 and absf(c.b - C_ASPH.b) < 0.012:
+		return 0
+	if absf(c.r - C_RURAL_SIDE.r) < 0.012 and absf(c.g - C_RURAL_SIDE.g) < 0.012 and absf(c.b - C_RURAL_SIDE.b) < 0.012:
+		return 1
+	return 2
 
 func _diag_refresh(key: Vector2i) -> void:
 	if not chunks.has(key):
@@ -583,7 +650,17 @@ func _build_chunk(key: Vector2i) -> Node3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.name = "base"
+	var roles: Array = [] # qué es cada superficie de la malla base, en el orden en que se agregaron (las vacías no se agregan)
+	for pr in [[terr, "terrain"], [rd, "road"], [mk, "marks"], [tn, "tunnel"]]:
+		var part: Array = pr
+		if (part[0] as Soup).v.size() > 0:
+			roles.append(part[1])
+	mi.set_meta("diag_full", m)
+	mi.set_meta("diag_roles", roles)
 	root.add_child(mi)
+	if not (bool(diag["asphalt"]) and bool(diag["dirt"]) and bool(diag["terrain"])):
+		_diag_base(mi)
 	if bl.v.size() > 0:
 		var bm := ArrayMesh.new()
 		_surface(bm, bl, _facade_mat)
@@ -710,6 +787,7 @@ const C_SIDE := Color(0.84, 0.80, 0.72)
 const C_CURB := Color(0.70, 0.67, 0.62)
 const C_YEL := Color(1.0, 0.82, 0.30)
 const C_WHT := Color(0.97, 0.96, 0.93)
+const C_RURAL_SIDE := Color(0.66, 0.62, 0.50) # banquina de las rutas rurales (la usa _road_segment y el diagnóstico)
 
 func _roads(rd: Soup, mk: Soup, key: Vector2i, tn: Soup) -> void:
 	var x0 := float(key.x) * CityLayout.CELL
@@ -813,7 +891,7 @@ func _road_segment(rd: Soup, mk: Soup, si: int, ni: int, tn: Soup) -> void:
 	var cu := Vector3(0, curb, 0)
 	var side_col := C_SIDE
 	if kind == "rural" or kind == "shortcut" or kind == "scenic":
-		side_col = Color(0.66, 0.62, 0.50)
+		side_col = C_RURAL_SIDE
 	elif kind == "alley":
 		side_col = Color(0.72, 0.46, 0.42) # veredas de ladrillo rojo
 	var mid := (a + b) * 0.5

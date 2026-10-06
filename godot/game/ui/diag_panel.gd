@@ -214,7 +214,7 @@ func _build() -> void:
 		body.add_child(Kit.label("INTERRUPTORES", 13, Kit.MUTED))
 		var g := Kit.grid(3, 6, 6)
 		body.add_child(g)
-		var icons := {"trees": "🌳", "buildings": "🏢", "cars": "🚗", "veg": "🌿", "decor": "💡", "peds": "🚶"}
+		var icons := {"trees": "🌳", "buildings": "🏢", "cars": "🚗", "veg": "🌿", "decor": "💡", "peds": "🚶", "asphalt": "🛣️", "dirt": "🛤️", "terrain": "🌱", "fog": "🌫️", "horizon": "⛰️"}
 		for s in DiagLog.SWITCHES:
 			var key: String = s[0]
 			var b := Kit.button("", func() -> void: _toggle(key), false, 13, Vector2(0, 46))
@@ -223,6 +223,7 @@ func _build() -> void:
 			g.add_child(b)
 			_toggles[key] = b
 			_style_toggle(key)
+		body.add_child(Kit.wrap("☁️ CIELO: siempre ON (no tiene interruptor en esta ronda). Asfalto = sólo la calzada; veredas, cordones y marcas siguen. Caminos de tierra = banquina beige de las rutas rurales.", 12, Kit.MUTED, 100))
 		body.add_child(Kit.label("HORA Y CLIMA", 13, Kit.MUTED))
 		var r1 := Kit.hbox(6)
 		body.add_child(r1)
@@ -385,8 +386,10 @@ func _style_scale() -> void:
 
 func _apply_switch(key: String, on: bool) -> void:
 	match key:
-		"trees", "buildings", "veg", "decor":
+		"trees", "buildings", "veg", "decor", "asphalt", "dirt", "terrain", "horizon":
 			race.track.world_node.diag_set(key, on)
+		"fog":
+			race.env.fog_enabled = on # sólo se prende o apaga: la distancia y el color de la niebla no se tocan
 		"cars":
 			if race.world_life != null:
 				race.world_life.set_muted("traffic", not on)
