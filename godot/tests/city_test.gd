@@ -186,14 +186,14 @@ func _init() -> void:
 			on_road += 1
 	print("     objetos: %d farolas, %d árboles, %d semáforos, %d bolardos" % [cnt[0], cnt[1], cnt[2], cnt[3]])
 	check(cnt[0] > 300 and cnt[1] > 10 and cnt[2] > 60 and cnt[3] > 100 and on_road == 0, "farolas, árboles (pocos: la ciudad es limpia), semáforos y bolardos, ninguno sobre el asfalto (%d)" % on_road)
-	# golpear un objeto lo rompe una sola vez: el primer choque empuja, el segundo ya no
+	# golpear un objeto lo rompe una sola vez y el auto SIGUE (no lo empuja ni lo hace rebotar)
 	var tr := CityTrack.new()
 	var pid := 40
 	tr.add_prop(pid, tr.city.prop_x[pid], tr.city.prop_z[pid], 0.3)
 	var hit1 := tr.push(tr.city.prop_x[pid] + 0.5, tr.city.prop_z[pid], 1.0)
 	var hit2 := tr.push(tr.city.prop_x[pid] + 0.5, tr.city.prop_z[pid], 1.0)
 	var brk := tr.take_broken()
-	check(hit1.z > 0.0 and brk.size() == 1 and brk[0] == pid and tr.broken.has(pid), "un golpe rompe el objeto (y avisa una vez)")
+	check(hit1.z <= 0.0 and hit2.z <= 0.0 and tr.take_breaks() == 1 and brk.size() == 1 and brk[0] == pid and tr.broken.has(pid), "un golpe rompe el objeto (y avisa una vez)")
 	check(tr.push(tr.city.prop_x[pid], tr.city.prop_z[pid], 0.3).z <= 0.0 or tr.city.probe(tr.city.prop_x[pid], tr.city.prop_z[pid])[6] >= 0.0, "lo roto ya no choca")
 	hit2 = hit2
 	# consulta de calle
