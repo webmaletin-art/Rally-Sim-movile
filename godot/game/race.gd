@@ -648,7 +648,14 @@ func _build_track_nodes() -> void:
 		road.material_override = road_mat
 		var sh := MeshInstance3D.new()
 		sh.mesh = track.build_shoulder_mesh()
+		if track.route_id == "travesia":
+			sh.visibility_range_end = 900.0
 		track_root.add_child(_chunked(sh))
+		if track.route_id == "travesia": # ruta de más de 40 km: la franja de cerca con la altura exacta (la grilla de fondo es muy gruesa)
+			var fs := MeshInstance3D.new()
+			fs.mesh = track.build_far_strip()
+			fs.visibility_range_end = 700.0
+			track_root.add_child(_chunked(fs))
 		var g0 := 0
 		var g1 := -1
 		if menu_mode and cfg.get("seg") is Array:
@@ -675,9 +682,14 @@ func _build_track_nodes() -> void:
 		rm.cull_mode = BaseMaterial3D.CULL_DISABLED
 		road.material_override = rm
 		road_mat = rm
+	if track is RouteTrack and track.route_id == "travesia":
+		road.visibility_range_end = 1300.0
 	track_root.add_child(_chunked(road) if track is RouteTrack else road)
 	if track is RouteTrack and (not (track as RouteTrack).water.is_empty() or str(cfg.get("track", "")) == "travesia"):
 		tprops = TravesiaProps.new()
+		tprops.vk = _view_k()
+		tprops.density = lerpf(0.55, 1.0, (_view_k() - 0.6) / 0.4) # teléfonos flojos: menos árboles
+		tprops.sun = sun
 		tprops.setup(track)
 		track_root.add_child(tprops)
 

@@ -127,6 +127,22 @@ static func pick(x: float, z: float, r: float, coast := false) -> int:
 	var mix := [3, 4, 0, 5, 6, 1, 2, 0, 3, 4]
 	return mix[int(fposmod(r * 91.7, 1.0) * float(mix.size())) % mix.size()]
 
+## Lo mismo para un bioma (la Travesía X): «conifer» (pinos y cipreses: la sierra), «round» (hojas anchas: valles y arroyos) o «mixed». Los manchones de 45 m prefieren una especie de la lista.
+static func pick_biome(x: float, z: float, r: float, biome: String) -> int:
+	var list: Array
+	match biome:
+		"conifer":
+			list = [0, 0, 0, 1, 0, 2, 0, 5]
+		"round":
+			list = [3, 4, 5, 6, 3, 4, 2, 6]
+		_:
+			list = [3, 0, 4, 0, 5, 6, 1, 3, 2, 4]
+	var cell := _h01(floorf(x / 45.0), floorf(z / 45.0))
+	var pref: int = list[int(cell * float(list.size())) % list.size()]
+	if fposmod(r * 7.31, 1.0) < 0.62:
+		return pref
+	return list[int(fposmod(r * 91.7, 1.0) * float(list.size())) % list.size()]
+
 ## Un árbol para build(): base en (x, y, z) · especie · escala (0,7…1,3) · giro · tinte (verde más claro u oscuro)
 static func item(x: float, y: float, z: float, sp: int, k: float, yaw: float, seed_v: float) -> Array:
 	var b := 0.84 + 0.26 * fposmod(seed_v * 17.3, 1.0)

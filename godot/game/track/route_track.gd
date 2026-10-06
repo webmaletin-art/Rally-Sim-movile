@@ -6,6 +6,7 @@ extends "res://game/physics/track_base.gd"
 ## godot/tests/track_test.gd compara con el código real de la versión HTML (tools/godot/track_reference.mjs).
 
 const N_SAMPLES := 1100
+const STRIP_EXT := 90.0 # Travesía X: hasta qué distancia del camino llega la franja con la altura exacta (banquina + build_far_strip)
 const BUMP_AMP := [0.005, 0.03, 0.035, 0.045, 0.05, 0.03] # por superficie: asfalto, tierra, banquina, pasto, afuera, barro
 
 var hills := 0.0 # subidas y bajadas suaves del recorrido (0 = las de la versión HTML; 1 = las de las carreras de Dream Racing)
@@ -23,7 +24,9 @@ var half_width := 5.0
 var shoulder := 2.0
 var dips: Array = []
 var water: Array = [] # lagos/vados: [{"i0","i1","y","half"}] índices de muestra, altura del agua y semiancho (la ruta Travesía X)
-var sections: Array = [] # tramos con nombre [{"i0","i1","name"}] (para el cartel de la Travesía)
+var sections: Array = [] # tramos con nombre [{"i0","i1","name","label","cap"}] (para el cartel y el ritmo del convoy de la Travesía)
+var ledges: Array = [] # escalones de roca: [{"from","to","rise","step","len"}] fracciones del recorrido (la Travesía X)
+var caves: Array = [] # cuevas (túnel de roca sobre el camino, sólo visual): [{"i0","i1"}]
 var ctrl: PackedVector3Array = PackedVector3Array()
 var samples: PackedVector3Array = PackedVector3Array()
 var tangents: PackedVector3Array = PackedVector3Array()
@@ -64,6 +67,7 @@ func _init(p_route := "", p_mode := "asphalt", reverse := false, p_hills := 0.0)
 	half_width = float(r["halfWidth"])
 	shoulder = float(r["shoulder"])
 	dips = r.get("dips", [])
+	ledges = r.get("ledges", [])
 	flat = r.get("flat", false) == true
 	n_samples = int(r.get("samples", N_SAMPLES))
 	var pts: Array = r["points"]
@@ -74,7 +78,7 @@ func _init(p_route := "", p_mode := "asphalt", reverse := false, p_hills := 0.0)
 	for p in pts:
 		ctrl.append(Vector3(p[0], p[1], p[2]))
 	_build()
-	if r.has("surf") or r.has("water") or r.has("sections"):
+	if r.has("surf") or r.has("water") or r.has("sections") or r.has("caves"):
 		_apply_zones(r, reverse)
 
 func center_xz() -> Vector2:
@@ -143,7 +147,7 @@ func _curve_point(t: float) -> Vector3:
 
 func _build() -> void:
 	# tabla de longitudes para repartir las muestras a igual distancia (como getSpacedPoints)
-	var div := 3000
+	var div := maxi(3000, ctrl.size() * 4) # las rutas largas (Travesía X) piden una tabla más fina
 	var lens := PackedFloat64Array()
 	lens.resize(div + 1)
 	var prev := _curve_point(0.0)
@@ -196,6 +200,8 @@ func _build() -> void:
 		samples[i].y = y[i]
 	if not dips.is_empty():
 		_apply_dips()
+	if not ledges.is_empty():
+		_apply_ledges()
 	tangents.resize(n)
 	laterals.resize(n)
 	for i in n:
@@ -256,7 +262,11 @@ func _apply_zones(r: Dictionary, reverse: bool) -> void:
 	for sc in r.get("sections", []):
 		var a3: int = fr.call(float(sc["from"]))
 		var b3: int = fr.call(float(sc["to"]))
-		sections.append({"i0": mini(a3, b3), "i1": maxi(a3, b3), "name": str(sc["name"])})
+		sections.append({"i0": mini(a3, b3), "i1": maxi(a3, b3), "name": str(sc["name"]), "label": str(sc.get("label", "")), "cap": float(sc.get("cap", 12.0))})
+	for cv in r.get("caves", []):
+		var a4: int = fr.call(float(cv["from"]))
+		var b4: int = fr.call(float(cv["to"]))
+		caves.append({"i0": mini(a4, b4), "i1": maxi(a4, b4)})
 
 func _apply_dips() -> void:
 	var c := PackedFloat64Array()
@@ -273,10 +283,36 @@ func _apply_dips() -> void:
 			var win := minf(1.0, minf(u * 6.0, (1.0 - u) * 6.0))
 			samples[i].y += -float(d["amp"]) * win * 0.5 * (1.0 - cos(2.0 * PI * (c[i] - s0) / float(d["wave"])))
 
+## Escalones de roca (Travesía X): el camino sube en peldaños de `rise` m cada `step` m (con una rampa de `len` m) hasta la mitad de la zona y baja igual: hay que subirlos con suspensión y acelerador
+func _apply_ledges() -> void:
+	var c := PackedFloat64Array()
+	c.resize(n)
+	for i in range(1, n):
+		c[i] = c[i - 1] + samples[i].distance_to(samples[i - 1])
+	for lg in ledges:
+		var i0 := int(floor(float(lg["from"]) * n))
+		var i1 := int(floor(float(lg["to"]) * n))
+		var s0 := c[i0]
+		var step := float(lg["step"])
+		var ramp := float(lg["len"])
+		var rise := float(lg["rise"])
+		var nst := maxi(2, int((c[i1] - s0) / step))
+		for i in range(i0, i1 + 1):
+			var s := c[i] - s0
+			var k := mini(int(floor(s / step)), nst - 1)
+			var local := s - float(k) * step
+			var f := clampf((local - (step - ramp)) / ramp, 0.0, 1.0)
+			f = f * f * (3.0 - 2.0 * f)
+			var lv0 := float(mini(k, nst - k))
+			var lv1 := float(mini(k + 1, nst - k - 1))
+			samples[i].y += rise * (lv0 + (lv1 - lv0) * f)
+
 func _road_offset(i: int) -> float:
 	if flat:
 		return 0.0
 	var t := float(i) / float(n)
+	if route_id == "travesia":
+		return 0.06 + 0.10 * sin(t * PI * 5.0) + 0.04 * sin(t * PI * 13.0) # sin los bultos de las otras rutas: ahí caerían en otro tramo
 	return 0.06 + 0.10 * sin(t * PI * 5.0) + 0.04 * sin(t * PI * 13.0) - 0.25 * exp(-pow((t - 0.43) / 0.045, 2.0)) + 0.18 * exp(-pow((t - 0.73) / 0.06, 2.0))
 
 # ───────────────────────── búsqueda del tramo más cercano ─────────────────────────
@@ -373,7 +409,9 @@ func _basin(idx: int, d: float) -> float:
 		var half: float = float(w["half"])
 		var u := clampf((half - d) / (half * 0.7), 0.0, 1.0)
 		u = u * u * (3.0 - 2.0 * u)
-		depth = maxf(depth, 1.7 * along * u)
+		var bank := clampf((d - (half_width + shoulder)) / 22.0, 0.0, 1.0) # la orilla baja de a poco desde la banquina (antes era un escalón de 1,7 m al borde del camino)
+		bank = bank * bank * (3.0 - 2.0 * bank)
+		depth = maxf(depth, 1.7 * along * u * bank)
 	return depth
 
 func _terrain_base(x: float, z: float, road_y: float) -> float:
@@ -553,8 +591,15 @@ func build_road_mesh() -> ArrayMesh:
 
 ## Banquina y franja exterior: copia lo que pisa la física (ground_smooth) y se abre en pasto
 func build_shoulder_mesh() -> ArrayMesh:
-	var ext := 26.0
-	var fr := [0.0, 1.0, 1.6, 3.2, 6.0, 10.0, 16.0, 23.0, ext]
+	return _strip_mesh([0.0, 1.0, 1.6, 3.2, 6.0, 10.0, 16.0, 23.0, 26.0], 26.0, 1, false)
+
+## Franja de cerca de la Travesía X (de 26 m a STRIP_EXT m del camino) con la altura exacta de la física, una fila cada 3 muestras: el terreno de fondo es una grilla muy gruesa (la ruta mide más de 40 km) y no
+## puede dibujar bien lo que está a la vista del camino. Empalma con la banquina (mismo color y la misma caída de 24 cm).
+func build_far_strip() -> ArrayMesh:
+	return _strip_mesh([26.0, 34.0, 46.0, 60.0, 76.0, STRIP_EXT], STRIP_EXT, 3, true)
+
+## fr: distancias (m) al borde del camino de cada columna · step: cada cuántas muestras hay una fila · flat_sink: la franja de afuera queda 24 cm bajo el suelo (como el final de la banquina)
+func _strip_mesh(fr: Array, ext: float, step: int, flat_sink: bool) -> ArrayMesh:
 	var rw := fr.size()
 	var verts := PackedVector3Array()
 	var cols := PackedColorArray()
@@ -563,7 +608,9 @@ func build_shoulder_mesh() -> ArrayMesh:
 	var c_gr := Color(0.28, 0.40, 0.24)
 	var view = make_view()
 	view.hint = -1
-	for i in n:
+	var rows := range(0, n, step)
+	for ri in rows.size():
+		var i: int = rows[ri]
 		var p := samples[i]
 		var lat := laterals[i]
 		var yc := cy[i]
@@ -586,16 +633,16 @@ func build_shoulder_mesh() -> ArrayMesh:
 					var o := half_width + shoulder + (f - 1.0)
 					x = p.x + lat.x * s * o
 					z = p.z + lat.z * s * o
-					var e := (f - 1.0) / (ext - 1.0)
+					var e := 1.0 if flat_sink else (f - 1.0) / (ext - 1.0)
 					view.hint = i
 					yy = view.ground_smooth(x, z) + 0.02 - 0.24 * e * e
 				verts.append(Vector3(x, yy, z))
 				cols.append(c_sh if f <= 1.0 else c_sh.lerp(c_gr, minf(1.0, (f - 1.0) / 3.5)))
-	for i in n:
-		var ni := (i + 1) % n
+	for ri in rows.size():
+		var ni := (ri + 1) % rows.size()
 		for side in 2:
 			for k in rw - 1:
-				var a := i * rw * 2 + side * rw + k
+				var a := ri * rw * 2 + side * rw + k
 				var b := a + 1
 				var c := ni * rw * 2 + side * rw + k
 				var d := c + 1
@@ -646,11 +693,13 @@ func terrain_row(iz: int, r: int) -> Array:
 	var pos := PackedVector3Array()
 	var col := PackedColorArray()
 	var coarse := PackedInt32Array()
-	for i in range(0, n, 6):
+	for i in range(0, n, maxi(6, n / 600)):
 		coarse.append(i)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 100 + iz
 	var sr := half_width + (span / float(r)) * 1.45
+	if route_id == "travesia":
+		sr = STRIP_EXT + (span / float(r)) * 0.9 # la franja de cerca (build_far_strip) tapa hasta STRIP_EXT m: la grilla se hunde sólo debajo de ella
 	for ix in r + 1:
 		var x := min_xz.x + span * float(ix) / float(r)
 		var bi := 0

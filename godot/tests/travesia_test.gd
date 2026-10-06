@@ -1,6 +1,6 @@
 ## Travesía X: la ruta (largo, tramos, superficies, agua) y el convoy (un jugador a buen ritmo llega con el grupo; uno muy lento los pierde).
 ## El «jugador» lo maneja la IA con un tope de velocidad distinto en cada caso. Uso: godot --headless --path godot --script res://tests/travesia_test.gd [-- --km=9]
-## (--km=9 corre solo los primeros 9 km —incluye barro, pedregal y vado—: es lo que corre la integración continua; sin eso da la vuelta entera, ~7 minutos)
+## (--km=12 corre solo los primeros 12 km —incluye barro, pedregal y el vado—: es lo que corre la integración continua; sin eso da la vuelta entera de 44 km, más de 20 minutos)
 extends SceneTree
 
 const RouteTrack := preload("res://game/track/route_track.gd")
@@ -31,13 +31,13 @@ func _init() -> void:
 		if a.begins_with("--km="):
 			goal_m = float(a.substr(5)) * 1000.0
 	var track = RouteTrack.new("travesia", "dirt", false, 0.0)
-	var okl: bool = track.length > 15000.0 and track.length < 24000.0
+	var okl: bool = track.length > 38000.0 and track.length < 52000.0
 	var muds := 0
 	for i in track.n:
 		if int(track.road_surf[i]) == 5:
 			muds += 1
-	var ok2: bool = track.sections.size() == 12 and muds > track.n / 12 and track.water.size() == 1 and track.half_width <= 3.2
-	print("%s ruta: %.1f km, %d muestras, %d con barro, %d tramos, %d lago(s), ancho %.1f m" % ["OK  " if (okl and ok2) else "FALLA", track.length / 1000.0, track.n, muds, track.sections.size(), track.water.size(), track.half_width * 2.0])
+	var ok2: bool = track.sections.size() == 27 and muds > track.n / 14 and track.water.size() == 2 and track.caves.size() == 1 and not track.ledges.is_empty() and track.half_width <= 3.2
+	print("%s ruta: %.1f km, %d muestras, %d con barro, %d tramos, %d lago(s), %d cueva(s), ancho %.1f m" % ["OK  " if (okl and ok2) else "FALLA", track.length / 1000.0, track.n, muds, track.sections.size(), track.water.size(), track.caves.size(), track.half_width * 2.0])
 	if not (okl and ok2):
 		fail = true
 	# alturas: sin saltos, pendiente máxima razonable
@@ -46,10 +46,10 @@ func _init() -> void:
 		var j: int = (i + 1) % int(track.n)
 		var g := absf(track.cy[j] - track.cy[i]) / maxf(0.5, track.samples[i].distance_to(track.samples[j]))
 		maxg = maxf(maxg, g)
-	print("%s pendiente máxima %.0f %%" % ["OK  " if maxg < 0.2 else "FALLA", maxg * 100.0])
-	if maxg >= 0.2:
+	print("%s pendiente máxima %.0f %% (el muro: a propósito)" % ["OK  " if maxg < 0.26 else "FALLA", maxg * 100.0])
+	if maxg >= 0.26:
 		fail = true
-	var scenarios: Array = [["jugador a buen ritmo (tope 11 m/s)", 11.0, false], ["jugador muy lento (tope 3 m/s)", 3.0, true]]
+	var scenarios: Array = [["jugador a buen ritmo (tope 24 m/s)", 24.0, false], ["jugador muy lento (tope 3 m/s)", 3.0, true]]
 	for sc in scenarios:
 		var r := _run(track, float(sc[1]))
 		var good: bool = (r["lost"] == bool(sc[2])) and (bool(sc[2]) or r["finished"])

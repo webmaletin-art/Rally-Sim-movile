@@ -6,14 +6,13 @@ extends RefCounted
 ##  · Se pierde el convoy si el jugador queda a más de LOSE_GAP del primero del grupo (adelante o atrás) durante LOSE_TIME. Al llegar a la meta hay que haber llegado con ellos.
 ## No dibuja nada: race.gd le pasa la sesión y los autos; el HUD lee `text`, `warn` y `lost`.
 
-const FOLLOW_GAP := 26.0 # metros entre autos de la fila
+const FOLLOW_GAP := 34.0 # metros entre autos de la fila
 const FOLLOW_K := 0.30 # 1/s: cuánto acelera por cada metro de más que lo separa del de adelante
 const LEAD_MIN := 5.0 # m/s: lo mínimo cuando espera a un rezagado (18 km/h): más lento que eso y el jugador los pierde
-## Velocidad máxima del primero en cada tramo (m/s) con el grupo junto: rápidos (bosque, valle, cresta) y lentos (barro, pedregal, vado, zigzag)
-const SECTION_CAP := {"largada": 9.0, "bosque": 12.0, "barro1": 5.0, "pedregal": 4.4, "valle": 12.5, "vado": 4.0, "orilla": 7.5, "ascenso": 6.0, "cresta": 11.0, "descenso": 7.2, "barro2": 5.0, "final": 10.5}
-const WARN_GAP := 140.0
-const LOSE_GAP := 280.0
-const LOSE_TIME := 9.0
+## Velocidad máxima del primero en cada tramo (m/s) con el grupo junto: viene de routes.json (`cap` de cada tramo): rápido donde el camino es bueno (hasta ~105 km/h) y lento en barro, pedregal, vado, escalones y zigzag
+const WARN_GAP := 170.0
+const LOSE_GAP := 330.0 # a 100 km/h son ~12 s: el convoy va rápido pero no tanto como para desaparecer
+const LOSE_TIME := 10.0
 
 var cars: Array = []
 var session
@@ -28,10 +27,6 @@ var lead_speed := 0.0
 var section := "" # tramo en el que va el jugador
 var section_new := "" # se llena un cuadro cuando entra a un tramo nuevo (el HUD lo muestra)
 var _tick := 0.0
-
-const SECTION_NAMES := {"largada": "🏁 LARGADA", "bosque": "🌲 BOSQUE RÁPIDO", "barro1": "🟤 BARRIAL", "pedregal": "🪨 PEDREGAL", "valle": "🌾 VALLE ABIERTO",
-	"vado": "🌊 EL VADO DEL LAGO", "orilla": "🏖 ORILLA", "ascenso": "⛰ ASCENSO EN ZIGZAG", "cresta": "🌄 LA CRESTA", "descenso": "💨 BAJADA SUELTA",
-	"barro2": "🟤 BARRO FINAL", "final": "🏁 RECTA FINAL"}
 
 func setup(p_cars: Array, p_session) -> void:
 	cars = p_cars
@@ -95,7 +90,7 @@ func update(dt: float) -> void:
 		if pi >= int(sc["i0"]) and pi <= int(sc["i1"]):
 			if str(sc["name"]) != section:
 				section = str(sc["name"])
-				section_new = str(SECTION_NAMES.get(section, section.to_upper()))
+				section_new = str(sc.get("label", "")) if str(sc.get("label", "")) != "" else section.to_upper()
 			break
 	# ¿el jugador sigue con el grupo?
 	total_t += h
@@ -118,7 +113,7 @@ func update(dt: float) -> void:
 
 ## Velocidad tope del primero (m/s): máxima con el grupo junto; baja hasta el mínimo cuando el último se queda lejos
 static func _lead_cap(group_gap: float, sec_cap: float) -> float:
-	var t := clampf((group_gap - 60.0) / 200.0, 0.0, 1.0)
+	var t := clampf((group_gap - 90.0) / 240.0, 0.0, 1.0)
 	t = t * t * (3.0 - 2.0 * t)
 	return lerpf(sec_cap, minf(sec_cap, LEAD_MIN), t)
 
@@ -126,5 +121,5 @@ static func _lead_cap(group_gap: float, sec_cap: float) -> float:
 func _section_cap(idx: int) -> float:
 	for sc in session.track.sections:
 		if idx >= int(sc["i0"]) and idx <= int(sc["i1"]):
-			return float(SECTION_CAP.get(str(sc["name"]), 12.0))
+			return float(sc.get("cap", 12.0))
 	return 12.0

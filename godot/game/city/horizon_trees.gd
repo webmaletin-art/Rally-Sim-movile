@@ -58,6 +58,12 @@ static func build() -> Array[MeshInstance3D]:
 		out.append(mi)
 	return out
 
+## Dónde los árboles bajan al piso (la costa de Dream City). Otras pistas lo mandan lejísimos: el bosque da toda la vuelta
+static func set_sea(from_z: float, to_z: float) -> void:
+	for m in _mats:
+		m.set_shader_parameter("sea_from", from_z)
+		m.set_shader_parameter("sea_to", to_z)
+
 static func set_night(n: float) -> void:
 	_tone = Vector3(1.0, 1.0, 1.0).lerp(Vector3(0.20, 0.24, 0.40), clampf(n, 0.0, 1.0))
 	for m in _mats:

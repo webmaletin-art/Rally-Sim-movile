@@ -106,6 +106,7 @@ static func chunk_children(root: Node, cell := CELL) -> void:
 				n.material_override = mi.material_override
 				n.cast_shadow = mi.cast_shadow
 				n.transform = mi.transform
+				n.visibility_range_end = mi.visibility_range_end # (0 = sin límite) las rutas muy largas descartan los tramos lejanos
 				root.add_child(n)
 			root.remove_child(ch)
 			ch.free()
