@@ -35,8 +35,19 @@ var view_shift := 0.5 # cuánto se corre la escena hacia la derecha (el menú oc
 var car_len := 4.6
 var clip: MeshInstance3D
 var ready_ok := false
-# cámara libre (taller, pintura, llantas…): se gira con un dedo, se acerca con pellizco o rueda; sale de la automática y vuelve al salir del taller
+# cámara libre: en TODAS las pantallas del menú se gira con un dedo, se acerca/aleja con pellizco (o rueda), se corre con dos dedos (o botón derecho) y con doble toque vuelve a la automática.
+# En el taller, pintura y llantas queda libre todo el tiempo (forced_free); en las demás, si se deja de tocar unos segundos la cámara vuelve sola, con un movimiento suave
 var free := false
+var forced_free := false
+var free_w := 0.0 # 0 = cámara automática · 1 = cámara libre (se mezclan para que no haya saltos)
+var _last_input := -100.0
+var _auto_cp := Vector3.ZERO
+var _auto_target := Vector3.ZERO
+var _shown_cp := Vector3.ZERO
+var _shown_target := Vector3.ZERO
+var _last_center := Vector2.ZERO
+var _has_center := false
+const IDLE_RETURN := 14.0
 var f_yaw := 0.6
 var f_pitch := 0.12
 var f_dist := 6.0
@@ -522,48 +533,103 @@ func _animate(i: int) -> void:
 	pl.post(dt)
 
 func set_free(on: bool) -> void:
+	forced_free = on
 	if on == free:
 		return
-	free = on
 	_touches.clear()
 	if on:
+		_enter_free(true)
+	else:
+		free = false # al salir del taller la cámara vuelve a la automática (con el fundido de free_w)
+
+## Pasa a la cámara libre. defaults: arranca desde la vista de siempre del taller; si no, desde donde está la cámara automática en este momento (no hay salto)
+func _enter_free(defaults: bool) -> void:
+	free = true
+	_last_input = t
+	if defaults:
 		f_yaw = cam_ang
 		f_pitch = 0.12
 		f_dist = car_len * 1.5 + 1.1
 		f_target = Vector3(0.0, 0.75, 0.0)
+	else:
+		var off := _shown_cp - _shown_target # donde está la cámara en este momento (automática o a medio volver): sin saltos
+		f_dist = clampf(off.length(), 1.8, car_len * 4.2)
+		f_yaw = atan2(off.x, off.z)
+		f_pitch = clampf(asin(clampf(off.y / maxf(off.length(), 0.01), -1.0, 1.0)), -0.05, 1.45)
+		f_target = _shown_target
+		free_w = 1.0
+
+func _touch_input() -> void:
+	_last_input = t
+	if not free:
+		_enter_free(false)
+
+func _orbit(rel: Vector2) -> void:
+	f_yaw -= rel.x * 0.009
+	f_pitch = clampf(f_pitch + rel.y * 0.006, -0.05, 1.45)
+
+func _pan(rel: Vector2) -> void:
+	var k := f_dist * 0.0016
+	var b := cam.global_transform.basis
+	f_target += (-b.x * rel.x + b.y * rel.y) * k
+	f_target.x = clampf(f_target.x, -6.0, 6.0)
+	f_target.y = clampf(f_target.y, 0.1, 3.0)
+	f_target.z = clampf(f_target.z, -6.0, 6.0)
 
 func _unhandled_input(ev: InputEvent) -> void:
-	if not free:
+	if not ready_ok:
 		return
 	if ev is InputEventScreenTouch:
 		var te := ev as InputEventScreenTouch
 		if te.pressed:
 			_touches[te.index] = te.position
+			if te.double_tap and free and not forced_free:
+				free = false # doble toque: vuelve a la cámara automática
+				_touches.clear()
+				return
+			if te.double_tap and forced_free:
+				_enter_free(true)
 		else:
 			_touches.erase(te.index)
 		_pinch_d = 0.0
+		_has_center = false
 	elif ev is InputEventScreenDrag:
 		var de := ev as InputEventScreenDrag
+		_touch_input()
 		_touches[de.index] = de.position
 		if _touches.size() >= 2:
 			var ks: Array = _touches.keys()
-			var d: float = (_touches[ks[0]] as Vector2).distance_to(_touches[ks[1]] as Vector2)
+			var p0: Vector2 = _touches[ks[0]]
+			var p1: Vector2 = _touches[ks[1]]
+			var d := p0.distance_to(p1)
 			if _pinch_d > 0.0:
-				f_dist = clampf(f_dist * _pinch_d / maxf(d, 1.0), 2.2, car_len * 3.2)
+				f_dist = clampf(f_dist * _pinch_d / maxf(d, 1.0), 1.8, car_len * 4.2)
 			_pinch_d = d
+			var ctr := (p0 + p1) * 0.5
+			if _has_center:
+				_pan(ctr - _last_center)
+			_last_center = ctr
+			_has_center = true
 		else:
-			f_yaw -= de.relative.x * 0.009
-			f_pitch = clampf(f_pitch + de.relative.y * 0.006, -0.05, 1.2)
-	elif ev is InputEventMouseMotion and (ev as InputEventMouseMotion).button_mask & MOUSE_BUTTON_MASK_LEFT != 0:
+			_orbit(de.relative)
+	elif ev is InputEventMouseMotion:
 		var me := ev as InputEventMouseMotion
-		f_yaw -= me.relative.x * 0.009
-		f_pitch = clampf(f_pitch + me.relative.y * 0.006, -0.05, 1.2)
+		if me.button_mask & MOUSE_BUTTON_MASK_LEFT != 0:
+			_touch_input()
+			_orbit(me.relative)
+		elif me.button_mask & (MOUSE_BUTTON_MASK_RIGHT | MOUSE_BUTTON_MASK_MIDDLE) != 0:
+			_touch_input()
+			_pan(me.relative)
 	elif ev is InputEventMouseButton and (ev as InputEventMouseButton).pressed:
 		var mb := ev as InputEventMouseButton
 		if mb.button_index == MOUSE_BUTTON_WHEEL_UP:
-			f_dist = clampf(f_dist * 0.92, 2.2, car_len * 3.2)
+			_touch_input()
+			f_dist = clampf(f_dist * 0.92, 1.8, car_len * 4.2)
 		elif mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			f_dist = clampf(f_dist * 1.08, 2.2, car_len * 3.2)
+			_touch_input()
+			f_dist = clampf(f_dist * 1.08, 1.8, car_len * 4.2)
+		elif mb.double_click and free and not forced_free:
+			free = false
 
 func _process(dt: float) -> void:
 	if not ready_ok:
@@ -574,13 +640,22 @@ func _process(dt: float) -> void:
 	var dist := car_len * 1.5 + 1.1
 	var target := Vector3(1.35, 0.85, car_len * 0.18)
 	var cp := target + Vector3(sin(cam_ang) * dist, 0.65 + 0.12 * sin(t * 0.17), cos(cam_ang) * dist)
+	_auto_cp = cp
+	_auto_target = target
+	if free and not forced_free and t - _last_input > IDLE_RETURN:
+		free = false # un rato sin tocar: la cámara vuelve sola a la automática
+	free_w = move_toward(free_w, 1.0 if free else 0.0, dt * 2.5)
 	var hd := dist
-	if free:
-		hd = f_dist
-		cp = f_target + Vector3(sin(f_yaw) * cos(f_pitch), sin(f_pitch), cos(f_yaw) * cos(f_pitch)) * f_dist
-		target = f_target
+	if free_w > 0.0:
+		var fcp := f_target + Vector3(sin(f_yaw) * cos(f_pitch), sin(f_pitch), cos(f_yaw) * cos(f_pitch)) * f_dist
+		var w := smoothstep(0.0, 1.0, free_w)
+		cp = cp.lerp(fcp, w)
+		target = target.lerp(f_target, w)
+		hd = lerpf(dist, f_dist, w)
 	cam.position = cp
 	cam.look_at(target)
+	_shown_cp = cp
+	_shown_target = target
 	cam.h_offset = -view_shift * hd * 0.5
 	if car != null:
 		car.visual.blob.visible = false

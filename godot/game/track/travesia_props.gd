@@ -24,6 +24,9 @@ var _view
 var _coarse := PackedInt32Array()
 var _acc := 0.0
 var _ring_y := 0.0
+var _forest_task := -1
+var _forest_blocks: Dictionary = {}
+var _forest_view
 
 func setup(p_track) -> void:
 	track = p_track
@@ -38,7 +41,7 @@ func setup(p_track) -> void:
 	_view.trust = true
 	for i in range(0, track.n, 12):
 		_coarse.append(i)
-	_forest()
+	_forest_task = WorkerThreadPool.add_task(_forest_compute, true, "bosque") # las posiciones de los árboles se calculan en un hilo; los nodos se arman en finish_forest()
 	for ring in HorizonTrees.build():
 		add_child(ring)
 		_rings.append(ring)
@@ -46,6 +49,8 @@ func setup(p_track) -> void:
 	_update_rings()
 
 func _process(dt: float) -> void:
+	if _forest_task != -1 and WorkerThreadPool.is_task_completed(_forest_task):
+		finish_forest()
 	if _ring_y == 0.0:
 		_update_rings()
 	var cam := get_viewport().get_camera_3d()
@@ -89,8 +94,27 @@ func _update_rings() -> void:
 	_ring_y = lerpf(_ring_y, lo + 3.5, 0.5) if _ring_y != 0.0 else lo + 3.5
 
 # ───────────────────────── bosque ─────────────────────────
+## ¿Ya están calculados los árboles? (la pantalla de carga espera a que sí)
+func forest_ready() -> bool:
+	return _forest_task == -1 or WorkerThreadPool.is_task_completed(_forest_task)
+
+## Arma los nodos de árboles con lo que calculó el hilo (espera si todavía no terminó)
+func finish_forest() -> void:
+	if _forest_task == -1:
+		return
+	WorkerThreadPool.wait_for_task_completion(_forest_task)
+	_forest_task = -1
+	for key in _forest_blocks:
+		var node := TreeSprites.build(_forest_blocks[key], vk)
+		if node != null:
+			add_child(node)
+	_forest_blocks.clear()
+
 ## Árboles de imagen a los dos lados: dos filas por tramo (la de adelante y una más atrás), en manchones de una especie, nunca sobre el camino ni sobre otro tramo que pase cerca.
-func _forest() -> void:
+## Corre en un hilo: sólo calcula posiciones (no toca nodos).
+func _forest_compute() -> void:
+	var view = track.make_view(false)
+	view.trust = true
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4711
 	var grid := {} # celdas de 40 m con las muestras del camino (para no plantar un árbol sobre otro tramo)
@@ -109,6 +133,7 @@ func _forest() -> void:
 		for i in range(int(sc["i0"]), mini(int(sc["i1"]), track.n - 1) + 1):
 			sec_of[i] = si
 	var step := 3
+	var count := 0
 	for i in range(0, track.n, step):
 		if sec_of[i] < 0:
 			continue
@@ -132,8 +157,8 @@ func _forest() -> void:
 					var z: float = p.z + l.z * float(sd) * off + tg.z * along
 					if _near_road(grid, x, z, edge + 3.5):
 						continue
-					_view.hint = i
-					var y: float = _view.ground_smooth(x, z)
+					view.hint = i
+					var y: float = view.ground_smooth(x, z)
 					var r := rng.randf()
 					var sp := TreeSprites.pick_biome(x, z, r, str(def[1]))
 					var k := rng.randf_range(0.7, 1.35) * (0.8 if y > 250.0 else 1.0) # arriba en la sierra los árboles son más chicos
@@ -141,11 +166,9 @@ func _forest() -> void:
 					if not blocks.has(key):
 						blocks[key] = []
 					(blocks[key] as Array).append(TreeSprites.item(x, y, z, sp, k, rng.randf() * TAU, r))
-					trees_count += 1
-	for key in blocks:
-		var node := TreeSprites.build(blocks[key], vk)
-		if node != null:
-			add_child(node)
+					count += 1
+	trees_count = count
+	_forest_blocks = blocks
 
 func _near_road(grid: Dictionary, x: float, z: float, r: float) -> bool:
 	var cx := floori(x / 40.0)

@@ -61,9 +61,20 @@ func _keep_in_wall() -> void:
 		var j: int = mini(i + 1, tr.n - 1)
 		lim_l = lerpf(tr.wall_l[i], tr.wall_l[j], tr.r_t)
 		lim_r = lerpf(tr.wall_r[i], tr.wall_r[j], tr.r_t)
+	var l: Vector3 = tr.laterals[tr.r_idx]
+	# el límite está pensado para el CENTRO del auto (1 m de margen: medio ancho): con el auto atravesado la trompa o la cola salen mucho más. Se descuenta lo que el auto sobresale de ese metro, según su ángulo con el camino
+	var hs := sin(phys.yaw)
+	var hc := cos(phys.yaw)
+	var tg: Vector3 = tr.tangents[tr.r_idx]
+	var s_lat := absf(hs * l.x + hc * l.z)
+	var c_len := absf(hs * tg.x + hc * tg.z)
+	var half_len: float = phys.V.wheelBase * 0.5 + 0.85
+	var half_wid: float = maxf(0.95, phys.V.trackF * 0.5 + 0.1)
+	var extra := maxf(0.0, s_lat * half_len + c_len * half_wid - 1.0)
+	lim_l -= extra
+	lim_r -= extra
 	if lat <= lim_r and lat >= -lim_l:
 		return
-	var l: Vector3 = tr.laterals[tr.r_idx]
 	var sg := 1.0 if lat > 0.0 else -1.0
 	var over := (lat - lim_r) if lat > 0.0 else (-lat - lim_l)
 	phys.px -= l.x * sg * over

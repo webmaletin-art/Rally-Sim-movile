@@ -599,37 +599,48 @@ func build_far_strip() -> ArrayMesh:
 	return _strip_mesh([26.0, 34.0, 46.0, 60.0, 76.0, STRIP_EXT], STRIP_EXT, 3, true)
 
 ## fr: distancias (m) al borde del camino de cada columna · step: cada cuántas muestras hay una fila · flat_sink: la franja de afuera queda 24 cm bajo el suelo (como el final de la banquina)
-## Hasta qué distancia del camino (m) se puede dibujar algo en el lado `side` (-1/+1) de la muestra i sin que se doble sobre sí mismo: en el lado de adentro de una curva cerrada el radio manda
-## (sin esto, la franja de pasto y el cerro de la cueva se pliegan encima del camino en las horquillas). 1e9 = sin límite (recta o lado de afuera).
-func inner_limit(i: int, side: float) -> float:
-	var k := 3
-	var a := samples[posmod(i - k, n)]
-	var b := samples[i]
-	var c := samples[posmod(i + k, n)]
-	var ab := Vector2(b.x - a.x, b.z - a.z)
-	var bc := Vector2(c.x - b.x, c.z - b.z)
-	var ac := Vector2(c.x - a.x, c.z - a.z)
-	var area2 := absf(ab.x * bc.y - ab.y * bc.x)
-	if area2 < 1e-3:
-		return 1e9
-	var r := ab.length() * bc.length() * ac.length() / (2.0 * area2)
-	var turn := bc - ab
-	var lat := laterals[i]
-	if side * (turn.x * lat.x + turn.y * lat.z) <= 0.0:
-		return 1e9 # lado de afuera de la curva
-	return maxf(half_width + shoulder + 0.5, 0.72 * r)
-
+## Las filas son independientes: se calculan en hilos (en la Travesía X son más de 11 000 filas y en un solo hilo tardaba más de un minuto). strip_begin() las lanza y strip_finish() arma la malla;
+## strip_progress() dice cuánto va (0…1) para la barra de carga.
 func _strip_mesh(fr: Array, ext: float, step: int, flat_sink: bool) -> ArrayMesh:
+	return strip_finish(strip_begin(fr, ext, step, flat_sink))
+
+func strip_begin(fr: Array, ext: float, step: int, flat_sink: bool) -> Dictionary:
+	var rows := range(0, n, step)
+	var chunks := 32
+	var h := {"fr": fr, "ext": ext, "step": step, "flat": flat_sink, "rows": rows, "per": ceili(float(rows.size()) / float(chunks)), "chunks": chunks, "res": []}
+	(h["res"] as Array).resize(chunks)
+	h["task"] = WorkerThreadPool.add_group_task(_strip_job.bind(h), chunks, -1, true, "franja")
+	return h
+
+func _strip_job(ci: int, h: Dictionary) -> void:
+	(h["res"] as Array)[ci] = _strip_rows(h, ci)
+
+func strip_progress(h: Dictionary) -> float:
+	var done := 0
+	for r in (h["res"] as Array):
+		if r != null:
+			done += 1
+	return float(done) / float(h["chunks"])
+
+func strip_done(h: Dictionary) -> bool:
+	return WorkerThreadPool.is_group_task_completed(int(h["task"]))
+
+func _strip_rows(h: Dictionary, ci: int) -> Array:
+	var fr: Array = h["fr"]
+	var ext: float = h["ext"]
+	var flat_sink: bool = h["flat"]
+	var rows: Array = h["rows"]
 	var rw := fr.size()
 	var verts := PackedVector3Array()
 	var cols := PackedColorArray()
-	var idx := PackedInt32Array()
 	var c_sh := Color(0.48, 0.42, 0.34)
 	var c_gr := Color(0.28, 0.40, 0.24)
-	var view = make_view()
+	var view = make_view(false)
 	view.hint = -1
-	var rows := range(0, n, step)
-	for ri in rows.size():
+	view.trust = true # busca sólo en una ventana alrededor de la fila (sin recorrer toda la ruta por cada punto)
+	var r0: int = ci * int(h["per"])
+	var r1: int = mini(r0 + int(h["per"]), rows.size())
+	for ri in range(r0, r1):
 		var i: int = rows[ri]
 		var p := samples[i]
 		var lat := laterals[i]
@@ -660,6 +671,19 @@ func _strip_mesh(fr: Array, ext: float, step: int, flat_sink: bool) -> ArrayMesh
 					yy = view.ground_smooth(x, z) + 0.02 - 0.24 * e * e
 				verts.append(Vector3(x, yy, z))
 				cols.append(c_sh if f <= 1.0 else c_sh.lerp(c_gr, minf(1.0, (f - 1.0) / 3.5)))
+	return [verts, cols]
+
+func strip_finish(h: Dictionary) -> ArrayMesh:
+	WorkerThreadPool.wait_for_group_task_completion(int(h["task"]))
+	var fr: Array = h["fr"]
+	var rw := fr.size()
+	var rows: Array = h["rows"]
+	var verts := PackedVector3Array()
+	var cols := PackedColorArray()
+	for r in (h["res"] as Array):
+		verts.append_array(r[0])
+		cols.append_array(r[1])
+	var idx := PackedInt32Array()
 	for ri in rows.size():
 		var ni := (ri + 1) % rows.size()
 		for side in 2:

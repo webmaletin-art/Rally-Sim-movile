@@ -1336,7 +1336,26 @@ func _garage_road(rname: String, hw: float, kind: String, plan: PackedVector3Arr
 	roads.append({"id": roads.size(), "name": rname, "num": 0, "kind": kind, "hw": hw, "sw": 0.0, "pts": plan, "cum": cum, "nj": nj})
 	_index_road(roads.size() - 1)
 
+## Aplana la ruta ri alrededor de c (a la altura y, de r0 a r1 metros se funde con la altura de siempre): el carril de entrada del estacionamiento es plano y, si la ruta tiene pendiente, la altura de una
+## y de la otra se cruzaba con un escalón de 15 a 30 cm en medio de la calzada (la «rampa invisible» que hacía saltar al auto al salir del estacionamiento)
+func _flatten_road(ri: int, c: Vector2, y: float, r0: float, r1: float) -> void:
+	var pts: PackedVector3Array = (roads[ri] as Dictionary)["pts"]
+	var base := s_road.find(ri)
+	if base < 0:
+		return
+	for i in pts.size():
+		var d := Vector2(pts[i].x - c.x, pts[i].z - c.y).length()
+		if d >= r1:
+			continue
+		var w := 1.0 - smoothstep(r0, r1, d)
+		var q := pts[i]
+		q.y = lerpf(q.y, y, w)
+		pts[i] = q
+		s_y[base + i] = q.y
+	(roads[ri] as Dictionary)["pts"] = pts
+
 func _build_garage(ri: int, fy: float, p0: Vector2, tn: Vector2, nrm: Vector2, c0: Vector2, cu: Vector2, cb: Vector2) -> void:
+	_flatten_road(ri, p0, fy, 22.0, 60.0)
 	var cs: Array = [c0, cu, cb]
 	var ys: Array = [fy, fy + GARAGE_DY, fy - GARAGE_DY]
 	var rs: Array = [GARAGE_RG, GARAGE_RU, GARAGE_RU]

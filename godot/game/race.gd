@@ -86,6 +86,7 @@ var auto_player := false
 var track_root: Node3D
 var terrain_task := -1
 var terrain_rows: Array = []
+var strip_jobs: Array = [] # franjas de terreno de la Travesía que se calculan en hilos: [{h, end}] (ver RouteTrack.strip_begin)
 var terrain_r := 0
 var track_maps: Dictionary
 var cars: Array = []
@@ -384,9 +385,38 @@ func _ready() -> void:
 	_rebuild_cars()
 	load_progress.emit(0.80, "Armando el terreno…")
 	await get_tree().process_frame
-	# el terreno se calcula en hilos: se espera a que termine (sin congelar la pantalla) y se agrega
-	while terrain_task != -1 and not WorkerThreadPool.is_group_task_completed(terrain_task):
+	# el terreno (y, en la Travesía, las franjas de cerca y los árboles) se calcula en hilos: se espera a que termine (sin congelar la pantalla, con la barra avanzando) y se agrega
+	while true:
+		var prog := 0.0
+		var cnt := 0.0
+		var pending := false
+		for j in strip_jobs:
+			prog += track.strip_progress(j["h"])
+			cnt += 1.0
+			pending = pending or not track.strip_done(j["h"])
+		if terrain_task != -1:
+			var rows_done := 0
+			for rw in terrain_rows:
+				if rw != null:
+					rows_done += 1
+			prog += float(rows_done) / float(maxi(1, terrain_rows.size()))
+			cnt += 1.0
+			pending = pending or not WorkerThreadPool.is_group_task_completed(terrain_task)
+		if tprops != null and not tprops.forest_ready():
+			cnt += 1.0
+			pending = true
+		if not pending:
+			break
+		load_progress.emit(0.80 + 0.10 * (prog / maxf(cnt, 1.0)), "Armando el terreno… %d %%" % int(100.0 * prog / maxf(cnt, 1.0)))
 		await get_tree().process_frame
+	for j in strip_jobs: # cada franja se agrega en un cuadro distinto (partirla en tramos lleva un rato)
+		load_progress.emit(0.90, "Armando el terreno… ajustando el camino")
+		await get_tree().process_frame
+		_add_strip(j)
+	strip_jobs.clear()
+	if tprops != null:
+		await get_tree().process_frame
+		tprops.finish_forest()
 	_check_terrain()
 	load_progress.emit(0.92, "Compilando efectos…")
 	# unos cuadros con todo ya dibujado (tapados por la pantalla de carga): ahí se compilan los shaders y no hay tirones al largar
@@ -571,6 +601,8 @@ func _build_track_nodes() -> void:
 	track_root = Node3D.new()
 	world.add_child(track_root)
 	terrain_task = -1
+	tprops = null
+	strip_jobs.clear()
 	if adv_mode:
 		adv_world = AdvWorld.new()
 		if adv_alt != null:
@@ -646,16 +678,15 @@ func _build_track_nodes() -> void:
 		ground.position = Vector3(track.center_xz().x, miny - 6.0, track.center_xz().y)
 		road_mat = (road.mesh as ArrayMesh).surface_get_material(0)
 		road.material_override = road_mat
-		var sh := MeshInstance3D.new()
-		sh.mesh = track.build_shoulder_mesh()
+		strip_jobs.clear()
 		if track.route_id == "travesia":
-			sh.visibility_range_end = 900.0
-		track_root.add_child(_chunked(sh))
-		if track.route_id == "travesia": # ruta de más de 40 km: la franja de cerca con la altura exacta (la grilla de fondo es muy gruesa)
-			var fs := MeshInstance3D.new()
-			fs.mesh = track.build_far_strip()
-			fs.visibility_range_end = 700.0
-			track_root.add_child(_chunked(fs))
+			# ruta de más de 40 km: la banquina y la franja de cerca con la altura exacta (la grilla de fondo es muy gruesa) se calculan en hilos mientras se arma lo demás; se agregan al final de la carga
+			strip_jobs.append({"h": track.strip_begin([0.0, 1.0, 1.6, 3.2, 6.0, 10.0, 16.0, 23.0, 26.0], 26.0, 1, false), "end": 900.0})
+			strip_jobs.append({"h": track.strip_begin([26.0, 34.0, 46.0, 60.0, 76.0, track.STRIP_EXT], track.STRIP_EXT, 3, true), "end": 700.0})
+		else:
+			var sh := MeshInstance3D.new()
+			sh.mesh = track.build_shoulder_mesh()
+			track_root.add_child(_chunked(sh))
 		var g0 := 0
 		var g1 := -1
 		if menu_mode and cfg.get("seg") is Array:
@@ -699,6 +730,18 @@ func _chunked(mi: MeshInstance3D) -> Node3D:
 	holder.add_child(mi)
 	MeshChunks.chunk_children(holder)
 	return holder
+
+## Agrega al mundo las franjas de terreno que se calcularon en hilos (espera a las que falten)
+func _finish_strips() -> void:
+	for j in strip_jobs:
+		_add_strip(j)
+	strip_jobs.clear()
+
+func _add_strip(j: Dictionary) -> void:
+	var mi := MeshInstance3D.new()
+	mi.mesh = track.strip_finish(j["h"])
+	mi.visibility_range_end = float(j["end"])
+	track_root.add_child(_chunked(mi))
 
 func _terrain_row_job(iz: int) -> void:
 	terrain_rows[iz] = track.terrain_row(iz, terrain_r)
@@ -1585,6 +1628,9 @@ func _change_track(id: String) -> void:
 	_finish_physics()
 	_make_track()
 	_build_track_nodes()
+	_finish_strips()
+	if tprops != null:
+		tprops.finish_forest()
 	fx.track = track
 	weather.track = track
 	weather.road_mat = road_mat
