@@ -10,6 +10,7 @@ const UiSfx := preload("res://game/audio/ui_sfx.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const Rewards := preload("res://game/data/rewards.gd")
 const Career := preload("res://game/ui/menu_career.gd")
+const MenuDiag := preload("res://game/ui/menu_diag.gd")
 const Garage := preload("res://game/ui/menu_garage.gd")
 const Lens := preload("res://game/fx/lens.gd")
 const OptionsUi := preload("res://game/ui/options_ui.gd")
@@ -51,6 +52,7 @@ var adventure: RefCounted
 var about: RefCounted
 var account: RefCounted
 var world_ui: RefCounted # menu_world.gd: mundo abierto y modo online
+var diag_ui: RefCounted # menu_diag.gd: diagnóstico de rendimiento (registro manual)
 const FREE_CAM_SCREENS := ["workshop", "tune", "paint", "shop"]
 var world_online := false # el mundo se abre desde Modo online (con cuenta): se activan el chat, los jugadores y el mercado
 var perf: RefCounted
@@ -127,6 +129,8 @@ func _ready() -> void:
 	account.m = self
 	world_ui = MenuWorld.new()
 	world_ui.m = self
+	diag_ui = MenuDiag.new()
+	diag_ui.m = self
 	perf = MenuPerf.new()
 	perf.m = self
 	store = MenuStore.new()
@@ -403,6 +407,7 @@ func go(name: String, arg = null, push := true) -> void:
 		"soon": world_ui.soon_screen(str(arg))
 		"online": world_ui.online_home()
 		"spawn": world_ui.spawn_screen()
+		"diag": diag_ui.build(arg)
 		"nick": world_ui.nick_screen()
 		"adventure", "adv_skills", "adv_help", "adv_stages", "adv_start": adventure.build(name, arg)
 		_: _home()

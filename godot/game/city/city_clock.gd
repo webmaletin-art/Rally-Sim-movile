@@ -39,6 +39,8 @@ var _acc := 0.0
 var _beam: MeshInstance3D
 var _beam_mat: ShaderMaterial
 var _frozen := false
+var diag_wx := "" # clima forzado a mano desde el menú de diagnóstico ("clear", "rain"…); "" = el del mundo
+var diag_hour := false # la hora la fijó el diagnóstico (no avanza hasta volver a «automático»)
 var _follow_world := true # la hora sale del reloj del mundo (WorldClock): en el online es la misma para todos; con la hora forzada de una prueba, no
 
 func setup(p_race, p_sky: ProceduralSkyMaterial) -> void:
@@ -60,6 +62,45 @@ func setup(p_race, p_sky: ProceduralSkyMaterial) -> void:
 	_apply()
 
 ## Nombre de la franja del día (para el cartel del reloj)
+## Diagnóstico: fija la hora a mano (el reloj queda quieto para poder medir con la misma luz)
+func set_manual_hour(h: float) -> void:
+	diag_hour = true
+	_follow_world = false
+	_frozen = true
+	hour = fposmod(h, 24.0)
+	_apply()
+
+## Diagnóstico: fuerza el clima ("clear", "cloudy", "rain", "storm", "fog")
+func set_manual_weather(kind: String) -> void:
+	diag_wx = kind
+	_apply()
+
+## Diagnóstico: vuelve la hora y el clima del mundo
+func release_manual() -> void:
+	diag_wx = ""
+	if diag_hour:
+		diag_hour = false
+		_frozen = bool(race.cfg.get("tod_frozen", false)) if race.cfg.get("tod") != null else false
+		_follow_world = race.cfg.get("tod") == null
+	_apply()
+	if not weather_on and _rain_on: # el clima del mundo está apagado: se corta la lluvia que había puesto el diagnóstico
+		var w = race.get("weather")
+		if w != null:
+			w._rain.emitting = false
+			w._splash.emitting = false
+			w.wet_target = 0.0
+		if race.get("audio") != null:
+			race.audio.rain(false)
+		_rain_on = false
+
+## Nombre de la franja del día (para el diagnóstico)
+func band() -> String:
+	if night >= 0.6:
+		return "Noche"
+	if night >= 0.1:
+		return "Amanecer" if hour < 12.0 else "Atardecer"
+	return "Día"
+
 func clock_text() -> String:
 	var h := int(hour)
 	var m := int((hour - float(h)) * 60.0)
@@ -110,7 +151,7 @@ func _apply() -> void:
 	race.env.ambient_light_color = k[6]
 	amb_e = float(k[7])
 	fog_col = k[8]
-	weather_on = race.cfg.get("tod") == null and race.profile.setting("worldWeather") != false and race.world_life != null and race.world_life.is_enabled()
+	weather_on = diag_wx != "" or (race.cfg.get("tod") == null and race.profile.setting("worldWeather") != false and race.world_life != null and race.world_life.is_enabled())
 	if weather_on:
 		_apply_weather()
 	elif fog_b > 0.0:
@@ -129,7 +170,11 @@ func _apply() -> void:
 
 ## Clima del mundo (Etapa 17) sobre la hora del día: nubes (menos sol, cielo gris), niebla (se acorta la vista), lluvia (gotas, calle mojada y menos agarre)
 func _apply_weather() -> void:
-	wx = WorldWeather.at(int(race.world_life.state.world_seed), race.world_life.clock.now())
+	if diag_wx != "":
+		var cc: Array = WorldWeather.COMP[diag_wx]
+		wx = {"cloud": float(cc[0]), "rain": float(cc[1]), "fog": float(cc[2]), "wet": 1.0 if float(cc[1]) > 0.5 else 0.0, "kind": diag_wx}
+	else:
+		wx = WorldWeather.at(int(race.world_life.state.world_seed), race.world_life.clock.now())
 	var cl := float(wx["cloud"])
 	var rn := float(wx["rain"])
 	var fg := float(wx["fog"])

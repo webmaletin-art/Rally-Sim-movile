@@ -31,6 +31,7 @@ const VehicleParams := preload("res://game/physics/vehicle_params.gd")
 const RingDriver := preload("res://game/ai/ring_driver.gd")
 const Pilot := preload("res://game/car/pilot.gd")
 const DebugPanel := preload("res://game/ui/debug_panel.gd")
+const DiagPanel := preload("res://game/ui/diag_panel.gd")
 const Controls := preload("res://game/ui/controls.gd")
 const Effects := preload("res://game/fx/effects.gd")
 const Weather := preload("res://game/fx/weather.gd")
@@ -435,6 +436,10 @@ func _ready() -> void:
 		_bench_start()
 	if pb_active:
 		_pb_start()
+	if menu_mode and profile != null and profile.setting("diagBtn") != false and not pb_active and not autobench:
+		diag_panel = DiagPanel.new()
+		add_child(diag_panel)
+		diag_panel.setup(self)
 	is_loaded = true
 	if OS.get_cmdline_user_args().has("--labtest"):
 		print("LABTEST: carga lista, sesión ", session)
@@ -1707,6 +1712,7 @@ var shopshot := ""
 var _shopshot_f := 0
 
 var _fps_l: Label
+var diag_panel # DiagPanel: menú manual de diagnóstico de rendimiento (botón 📊); registra, no prueba nada solo
 
 ## Contador de FPS en una esquina (opción «Mostrar FPS» de Gráficos; viene apagado)
 func _update_fps_label(fps: float) -> void:

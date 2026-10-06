@@ -79,6 +79,22 @@ func _configure_sectors() -> void:
 	sectors.configure(sectors.cell, cfg.get("activation", {}), float(state.rules.get("dist_scale", 1.0)))
 
 # ───────────────────────── ON / OFF ─────────────────────────
+## Sistemas apagados a mano desde el menú de diagnóstico (id → true). Mientras esté vacío nada cambia: ni se enteran del resto del código.
+var muted: Dictionary = {}
+
+func set_muted(id: String, on: bool) -> void:
+	var s = get_system(id)
+	if s == null or on == muted.has(id):
+		return
+	if on:
+		muted[id] = true
+		s.disable() # libera todo lo que instanció
+	else:
+		muted.erase(id)
+		if state.enabled:
+			s.enable()
+			s.rebuild()
+
 func is_enabled() -> bool:
 	return state.enabled
 
@@ -88,7 +104,8 @@ func set_enabled(on: bool) -> void:
 	state.enabled = on
 	if on:
 		for s in systems:
-			s.enable()
+			if not muted.has(s.system_id):
+				s.enable()
 		rebuild()
 	else:
 		for s in systems:
@@ -116,10 +133,12 @@ func get_system(id: String):
 func rebuild() -> void:
 	rebuilds += 1
 	for s in systems:
-		s.rebuild()
+		if not muted.has(s.system_id):
+			s.rebuild()
 	if sectors.sector.x > -99999:
 		for s in systems:
-			s.on_sector_changed()
+			if not muted.has(s.system_id):
+				s.on_sector_changed()
 
 # ───────────────────────── por cuadro ─────────────────────────
 ## Se llama una vez por cuadro con la posición del auto (x, z). Con World Life en OFF casi no hace nada.
@@ -133,6 +152,8 @@ func update(dt: float, player_xz: Vector2) -> void:
 		state.player_sector = sectors.sector
 		var t_sec := Time.get_ticks_usec()
 		for s in systems:
+			if muted.has(s.system_id):
+				continue
 			var t_s := Time.get_ticks_usec()
 			s.on_sector_changed()
 			_note(str(s.system_id), float(Time.get_ticks_usec() - t_s) / 1000.0)
@@ -140,6 +161,8 @@ func update(dt: float, player_xz: Vector2) -> void:
 	var hz_k := hz_scale()
 	for i in systems.size():
 		var sys = systems[i]
+		if muted.has(sys.system_id):
+			continue
 		_sys_acc[i] += dt
 		var period := 1.0 / maxf(float(sys.update_hz) * hz_k, 0.1)
 		if _sys_acc[i] >= period:

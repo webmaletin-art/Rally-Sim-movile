@@ -49,6 +49,9 @@ func spawn_screen() -> void:
 		m.body.add_child(m.menu_button("🅿 " + tr(str(SPAWN_PLACES[i][0])), tr(str(SPAWN_PLACES[i][1])), func() -> void:
 			m.sfx.play("click")
 			_start_city(idx), i == 0))
+	m.body.add_child(m.menu_button("📊 " + tr("DIAGNÓSTICO / RENDIMIENTO"), tr("registro manual de FPS: probá qué sistema los baja"), func() -> void:
+		m.sfx.play("click")
+		m.go("diag"), false))
 
 ## Modo online: sin cuenta se pide una (ver _online_options); con cuenta pide el apodo la primera vez y muestra el hub del mundo online
 func online_home() -> void:

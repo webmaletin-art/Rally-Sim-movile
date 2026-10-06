@@ -35,6 +35,11 @@ var glow_on := false # las luces de la calle están encendidas (las cuadras nuev
 var _tunnel_mat: StandardMaterial3D # el interior de los túneles y del estacionamiento: sin luz del sol (pintado), con franjas y lámparas
 var _queue: Array = []
 var _frame_budget_ms := 6.0
+## Interruptores del menú de diagnóstico (ui/diag_panel.gd): true = el sistema está como siempre. Apagar uno sólo hace que no se dibuje (ni choque) lo suyo; nada más cambia.
+var diag := {"trees": true, "buildings": true, "veg": true, "decor": true}
+var _diag_todo: Array = [] # cuadras que faltan rearmar tras un cambio de interruptor (unas pocas por cuadro)
+const DIAG_VEG := [CityProps.FLOWERS, CityProps.BUSH, CityProps.GRASS]
+const DIAG_DECOR := [CityProps.LAMP, CityProps.LIGHT, CityProps.BOLLARD, CityProps.FENCE, CityProps.STOP, CityProps.CURVE, CityProps.LIMIT]
 
 class Soup:
 	var v := PackedVector3Array()
@@ -254,13 +259,57 @@ func _process(_dt: float) -> void:
 		_hz.scale = Vector3(view_k, 1.0, view_k) # y se acerca junto con la niebla cuando el teléfono baja la distancia de vista
 		var in_pocket := cam.global_position.x > 3000.0 # el bolsillo de los túneles y los estacionamientos: ahí no hay bosque a lo lejos
 		for ring in _hz_trees:
-			ring.visible = not in_pocket
+			ring.visible = not in_pocket and bool(diag["veg"])
 			ring.global_position = Vector3(cam.global_position.x, 0.0, cam.global_position.z)
 			ring.scale = Vector3(view_k, 1.0, view_k)
 	update_around(cam.global_position, 1)
 	_redraw_broken()
+	var nd := 0
+	while not _diag_todo.is_empty() and nd < 3:
+		_diag_refresh(_diag_todo.pop_back())
+		nd += 1
 
 ## Los objetos que acaban de romperse: se arma de nuevo la malla de objetos de su cuadra (lo roto queda tirado)
+## ¿Se dibuja (y choca) este tipo de objeto de la calle con los interruptores de diagnóstico actuales?
+func _diag_type_on(pt: int) -> bool:
+	if pt == CityProps.TREE or pt == CityProps.RTREE:
+		return bool(diag["trees"])
+	if pt in DIAG_VEG:
+		return bool(diag["veg"])
+	if pt in DIAG_DECOR:
+		return bool(diag["decor"])
+	return true
+
+## Prende o apaga un sistema del mundo para el diagnóstico (trees, buildings, veg, decor)
+func diag_set(layer: String, on: bool) -> void:
+	if not diag.has(layer) or bool(diag[layer]) == on:
+		return
+	diag[layer] = on
+	if layer == "buildings":
+		for k in chunks:
+			var bn: Node = (chunks[k] as Node3D).get_node_or_null("buildings")
+			if bn != null:
+				(bn as Node3D).visible = on
+		return
+	_diag_todo = chunks.keys() # árboles, vegetación y decoración: se rearman las mallas de objetos de cada cuadra (de a pocas por cuadro)
+
+func _diag_refresh(key: Vector2i) -> void:
+	if not chunks.has(key):
+		return
+	var root: Node3D = chunks[key]
+	_unregister_props(key)
+	var old := root.get_node_or_null("props")
+	if old != null:
+		old.queue_free()
+		root.remove_child(old)
+	var pi := _props_instance(key)
+	if pi != null:
+		root.add_child(pi)
+	var tn := root.get_node_or_null("trees")
+	if tn != null:
+		(tn as Node3D).visible = bool(diag["trees"])
+	_register_props(key)
+
 func _redraw_broken() -> void:
 	var fresh: PackedInt32Array = track.take_broken()
 	if fresh.is_empty():
@@ -286,6 +335,7 @@ func _redraw_broken() -> void:
 			root.remove_child(oldt)
 		var ti := _trees_instance(kk)
 		if ti != null:
+			ti.visible = bool(diag["trees"])
 			root.add_child(ti)
 
 ## Los árboles de una cuadra como imágenes (tree_sprites.gd): los de la ruta (adorno, sin choque) y los de la calle (se rompen: el sano es una imagen, el roto un recorte tirado en la malla de objetos).
@@ -366,6 +416,8 @@ func _props_instance(key: Vector2i) -> MeshInstance3D:
 		var pt := int(city.prop_type[id])
 		if pt == CityProps.RTREE or (pt == CityProps.TREE and fallen == Vector2.ZERO):
 			continue # los árboles sanos son imágenes (_trees_instance)
+		if not _diag_type_on(pt):
+			continue
 		CityProps.emit(int(city.prop_type[id]), city.prop_x[id], city.prop_y[id], city.prop_z[id], city.prop_yaw[id], city.prop_seed[id], fallen, v, c, gv, gc)
 		if int(city.prop_type[id]) == CityProps.LIGHT and fallen == Vector2.ZERO and signals.head_info.has(id):
 			var hi: Vector2 = signals.head_info[id]
@@ -438,7 +490,7 @@ func _register_props(key: Vector2i) -> void:
 		return
 	for id in (city.props_in[key] as PackedInt32Array):
 		var rad: float = CityProps.RADIUS[int(city.prop_type[id])]
-		if rad > 0.0 and not track.broken.has(id):
+		if rad > 0.0 and not track.broken.has(id) and _diag_type_on(int(city.prop_type[id])):
 			track.add_prop(id, city.prop_x[id], city.prop_z[id], rad)
 
 ## El reloj de la ciudad prende o apaga las luces: n = 0 (día) … 1 (noche)
@@ -538,6 +590,8 @@ func _build_chunk(key: Vector2i) -> Node3D:
 		var bi := MeshInstance3D.new()
 		bi.mesh = bm
 		bi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		bi.name = "buildings"
+		bi.visible = bool(diag["buildings"])
 		root.add_child(bi)
 	for sp in specials:
 		root.add_child(sp)
@@ -546,6 +600,7 @@ func _build_chunk(key: Vector2i) -> Node3D:
 		root.add_child(pi)
 	var ti := _trees_instance(key)
 	if ti != null:
+		ti.visible = bool(diag["trees"])
 		root.add_child(ti)
 	_register_props(key)
 	for mo in city.mouths:
