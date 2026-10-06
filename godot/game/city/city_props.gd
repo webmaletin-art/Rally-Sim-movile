@@ -210,10 +210,8 @@ static func emit(kind: int, x: float, y: float, z: float, yaw: float, seed_v: fl
 				box(gv, gc, xf, Vector3(0, 5.1, 1.25), Vector3(0.5, 0.2, 0.76), Color(1.0, 0.88, 0.5, 1.0))
 				halo(gv, gc, xf, Vector3(0, 0.06, 1.2), 6.5, Color(1.0, 0.82, 0.45, 0.5))
 		TREE:
-			# árboles del pack de papel (con volumen: copas de ocho caras o más), de varias especies; cerca del mar, palmeras
-			var sp: Array = PALMS if seed_v > 0.93 else STREET_TREES
-			var id: String = sp[int(seed_v * 977.0) % sp.size()]
-			PieceBatch.add(id, Vector3.ZERO, seed_v * TAU, 5.5 + 2.5 * fmod(seed_v * 13.7, 1.0), v, c, xf, 1.18)
+			# el árbol de la calle sano es una imagen (tree_sprites.gd, lo arma CityWorld); acá sólo queda el que se rompió: un recorte de papel cruzado, tirado
+			card_tree(v, c, xf, seed_v)
 		RTREE:
 			card_tree(v, c, xf, seed_v) # los árboles de la ruta son recortes de papel cruzados (2,5D): casi sin triángulos
 		FLOWERS:

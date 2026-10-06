@@ -48,7 +48,13 @@ static func original(id: String) -> Dictionary:
 		return _cache[id]
 	var t := info(id)
 	var ps: PackedScene = load("%smodels/%s.glb" % [DIR, str(t["src"])])
-	var root: Node = ps.instantiate()
+	var res := from_scene(ps.instantiate(), float(t["h"]))
+	_cache[id] = res
+	return res
+
+## Lo mismo para una escena ya cargada (la libera): la usa también la herramienta que dibuja las especies del mundo abierto (tools/vegworld)
+static func from_scene(root: Node, hgt: float) -> Dictionary:
+	var t := {"h": hgt}
 	var parts: Array = []
 	_collect(root, Transform3D.IDENTITY, parts)
 	# caja y escala
@@ -98,9 +104,7 @@ static func original(id: String) -> Dictionary:
 			out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 			out.surface_set_material(out.get_surface_count() - 1, _fixed_material(mi.get_active_material(s), s == big))
 	root.free()
-	var res := {"mesh": out, "h": float(t["h"]), "radius": radius, "tris": tris}
-	_cache[id] = res
-	return res
+	return {"mesh": out, "h": float(t["h"]), "radius": radius, "tris": tris}
 
 ## El pack trae hojas como tarjetas sin material (saldrían blancas): se les da verde y marrón; todo se ve de los dos lados
 static func _fixed_material(cur: Material, is_leaf: bool) -> Material:

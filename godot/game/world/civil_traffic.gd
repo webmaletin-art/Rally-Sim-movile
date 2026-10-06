@@ -9,7 +9,7 @@ extends "res://game/world/world_life_system.gd"
 ## - Cada auto es un círculo-doble de choque sólido para el jugador (CityTrack.set_dynamic_circles). La reacción al golpe (física temporal) es la Etapa 11.
 
 const WorldSeed := preload("res://game/world/world_seed.gd")
-const CityProps := preload("res://game/city/city_props.gd")
+const CivilCarMesh := preload("res://game/world/civil_car_mesh.gd")
 const TrafficSignals := preload("res://game/world/traffic_signals.gd")
 const TrafficRoutine := preload("res://game/world/traffic_routine.gd")
 
@@ -385,27 +385,7 @@ func _ensure_render() -> void:
 	root.add_child(_mmi)
 
 func _build_mesh() -> ArrayMesh:
-	var v := PackedVector3Array()
-	var c := PackedColorArray()
-	var xf := Transform3D.IDENTITY
-	CityProps.box(v, c, xf, Vector3(0, 0.55, 0), Vector3(1.8, 0.7, 4.3), Color(1, 1, 1))
-	CityProps.box(v, c, xf, Vector3(0, 1.1, -0.2), Vector3(1.55, 0.5, 2.3), Color(0.18, 0.24, 0.32))
-	CityProps.box(v, c, xf, Vector3(0, 1.38, -0.2), Vector3(1.5, 0.08, 2.1), Color(0.85, 0.85, 0.85))
-	for wx in [-0.92, 0.92]:
-		for wz in [-1.4, 1.4]:
-			CityProps.box(v, c, xf, Vector3(float(wx), 0.32, float(wz)), Vector3(0.22, 0.64, 0.64), Color(0.10, 0.10, 0.12))
-	var m := ArrayMesh.new()
-	var arr := []
-	arr.resize(Mesh.ARRAY_MAX)
-	arr[Mesh.ARRAY_VERTEX] = v
-	arr[Mesh.ARRAY_COLOR] = c
-	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.roughness = 0.55
-	mat.metallic = 0.2
-	m.surface_set_material(0, mat)
-	return m
+	return CivilCarMesh.mesh() # la misma malla liviana que los estacionados (civil_car_mesh.gd)
 
 func update(dt: float) -> void:
 	if wl == null or not wl.state.enabled or _mm == null:

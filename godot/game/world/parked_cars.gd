@@ -6,7 +6,7 @@ extends "res://game/world/world_life_system.gd"
 
 const WorldSeed := preload("res://game/world/world_seed.gd")
 const TrafficRoutine := preload("res://game/world/traffic_routine.gd")
-const CityProps := preload("res://game/city/city_props.gd")
+const CivilCarMesh := preload("res://game/world/civil_car_mesh.gd")
 
 const SLOT := 7.0 # largo de un lugar (m)
 const MARGIN := 15.0 # distancia al cruce
@@ -21,7 +21,6 @@ var track: RefCounted
 var root: Node3D
 var _built: Dictionary = {} # Vector2i → {node: MultiMeshInstance3D, ids: [[id, x, z]], sig: int}
 var _mesh: ArrayMesh
-var _mat: StandardMaterial3D
 var _next_id := ID_BASE
 var _slot_cache: Dictionary = {}
 var _n_cars := 0
@@ -155,27 +154,7 @@ func _sig(cars: Array) -> int:
 func _ensure_mesh() -> void:
 	if _mesh != null:
 		return
-	var v := PackedVector3Array()
-	var c := PackedColorArray()
-	var xf := Transform3D.IDENTITY
-	var white := Color(1, 1, 1)
-	CityProps.box(v, c, xf, Vector3(0, 0.55, 0), Vector3(1.8, 0.7, 4.3), white)
-	CityProps.box(v, c, xf, Vector3(0, 1.1, -0.2), Vector3(1.55, 0.5, 2.3), Color(0.18, 0.24, 0.32))
-	CityProps.box(v, c, xf, Vector3(0, 1.38, -0.2), Vector3(1.5, 0.08, 2.1), Color(0.85, 0.85, 0.85))
-	for wx in [-0.92, 0.92]:
-		for wz in [-1.4, 1.4]:
-			CityProps.box(v, c, xf, Vector3(float(wx), 0.32, float(wz)), Vector3(0.22, 0.64, 0.64), Color(0.10, 0.10, 0.12))
-	_mesh = ArrayMesh.new()
-	var arr := []
-	arr.resize(Mesh.ARRAY_MAX)
-	arr[Mesh.ARRAY_VERTEX] = v
-	arr[Mesh.ARRAY_COLOR] = c
-	_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-	_mat = StandardMaterial3D.new()
-	_mat.vertex_color_use_as_albedo = true
-	_mat.roughness = 0.55
-	_mat.metallic = 0.2
-	_mesh.surface_set_material(0, _mat)
+	_mesh = CivilCarMesh.mesh() # la malla liviana compartida con el tránsito: «cajas con rampas» (civil_car_mesh.gd)
 
 const NEUTRAL := [Color(0.95, 0.95, 0.95), Color(0.12, 0.12, 0.13), Color(0.55, 0.57, 0.6)]
 

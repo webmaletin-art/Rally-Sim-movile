@@ -9,6 +9,8 @@ const PaperKit := preload("res://game/fx/paper_kit.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityProps := preload("res://game/city/city_props.gd")
 const PieceBatch := preload("res://game/city/piece_batch.gd")
+const TreeSprites := preload("res://game/city/tree_sprites.gd")
+const HorizonTrees := preload("res://game/city/horizon_trees.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CityNames := preload("res://game/city/city_names.gd")
 const FACADE := preload("res://game/fx/city_facade.gdshader")
@@ -18,7 +20,12 @@ var track # CityTrack
 var city: CityLayout
 var chunks: Dictionary = {} # Vector2i -> Node3D
 var radius := 3 # cuadras a la redonda que se mantienen armadas
-var view_k := 1.0
+var view_k := 1.0:
+	set(v):
+		view_k = v
+		if _facade_mat != null: # las fachadas pierden el detalle más cerca cuando el teléfono baja la distancia de vista
+			_facade_mat.set_shader_parameter("lod_from", 200.0 * maxf(v, 0.6))
+			_facade_mat.set_shader_parameter("lod_to", 270.0 * maxf(v, 0.6))
 var built_total := 0
 var _facade_mat: ShaderMaterial
 var glow_mat: StandardMaterial3D = make_glow_material() # luces de noche (ver _glow_instance)
@@ -68,6 +75,8 @@ func setup(p_track) -> void:
 	_facade_mat = ShaderMaterial.new()
 	_facade_mat.shader = FACADE
 	_facade_mat.set_shader_parameter("grain", PaperKit.grain())
+	_facade_mat.set_shader_parameter("lod_from", 200.0 * maxf(view_k, 0.6))
+	_facade_mat.set_shader_parameter("lod_to", 270.0 * maxf(view_k, 0.6))
 	_tunnel_mat = StandardMaterial3D.new()
 	_tunnel_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	_tunnel_mat.vertex_color_use_as_albedo = true
@@ -105,6 +114,7 @@ func _ground_plane() -> void:
 	add_child(sea)
 
 var _hz: MeshInstance3D
+var _hz_trees: Array[MeshInstance3D] = []
 
 ## Falso horizonte: dos anillos de lomas de papel (una más lejana y clara, otra más cerca y verde) que acompañan a la cámara. Donde termina lo que se arma, el mundo sigue en vez de cortarse
 ## en una tira de árboles. Son 72 triángulos, sin textura, y la niebla los va borrando con la distancia.
@@ -134,6 +144,9 @@ func _horizon() -> void:
 	_hz.extra_cull_margin = 4000.0
 	_hz.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_hz)
+	for ring in HorizonTrees.build(): # el bosque lejano: dos anillos de imágenes delante de las lomas
+		add_child(ring)
+		_hz_trees.append(ring)
 
 ## Carteles de orientación a la salida de la ciudad en cada ruta (sólo una cara mira a quien sale y la otra a quien vuelve): qué ruta es, adónde lleva y cuánto falta.
 func _route_signs() -> void:
@@ -239,6 +252,11 @@ func _process(_dt: float) -> void:
 	if _hz != null:
 		_hz.global_position = Vector3(cam.global_position.x, 0.0, cam.global_position.z) # el horizonte acompaña a la cámara: siempre está lejos
 		_hz.scale = Vector3(view_k, 1.0, view_k) # y se acerca junto con la niebla cuando el teléfono baja la distancia de vista
+		var in_pocket := cam.global_position.x > 3000.0 # el bolsillo de los túneles y los estacionamientos: ahí no hay bosque a lo lejos
+		for ring in _hz_trees:
+			ring.visible = not in_pocket
+			ring.global_position = Vector3(cam.global_position.x, 0.0, cam.global_position.z)
+			ring.scale = Vector3(view_k, 1.0, view_k)
 	update_around(cam.global_position, 1)
 	_redraw_broken()
 
@@ -262,6 +280,68 @@ func _redraw_broken() -> void:
 		var pi := _props_instance(kk)
 		if pi != null:
 			root.add_child(pi)
+		var oldt := root.get_node_or_null("trees")
+		if oldt != null:
+			oldt.queue_free()
+			root.remove_child(oldt)
+		var ti := _trees_instance(kk)
+		if ti != null:
+			root.add_child(ti)
+
+## Los árboles de una cuadra como imágenes (tree_sprites.gd): los de la ruta (adorno, sin choque) y los de la calle (se rompen: el sano es una imagen, el roto un recorte tirado en la malla de objetos).
+## Sobre cada árbol de ruta se suman 0 a 3 más, atrás, a distinta distancia del camino: así no quedan en fila y el monte se ve parejo sin costar casi nada (cuatro triángulos cada uno).
+func _trees_instance(key: Vector2i) -> Node3D:
+	return TreeSprites.build(tree_items(key), view_k)
+
+## La lista de árboles de una cuadra (x, y, z, especie, escala, giro, tinte: ver TreeSprites.item)
+func tree_items(key: Vector2i) -> Array:
+	var items: Array = []
+	if not city.props_in.has(key):
+		return items
+	for id in (city.props_in[key] as PackedInt32Array):
+		var t := int(city.prop_type[id])
+		var x: float = city.prop_x[id]
+		var z: float = city.prop_z[id]
+		var sd: float = city.prop_seed[id]
+		if t == CityProps.TREE:
+			if track.broken.has(id):
+				continue
+			var sp := TreeSprites.pick(x, z, sd, z > COAST_Z)
+			items.append(TreeSprites.item(x, city.prop_y[id], z, sp, clampf((6.5 + 3.0 * fposmod(sd * 13.7, 1.0)) / TreeSprites.height_of(sp), 0.55, 1.25), city.prop_yaw[id], sd))
+		elif t == CityProps.RTREE:
+			_road_tree(id, x, z, sd, items)
+	return items
+
+const COAST_Z := 1040.0 # desde acá (la playa) entran las palmeras
+
+## Un árbol de ruta y sus acompañantes (más chicos y más atrás del camino)
+func _road_tree(id: int, x: float, z: float, sd: float, items: Array) -> void:
+	var coast := z > COAST_Z
+	var sp := TreeSprites.pick(x, z, sd, coast)
+	var k := 0.8 + 0.5 * fposmod(sd * 23.7, 1.0)
+	items.append(TreeSprites.item(x, city.prop_y[id], z, sp, k, sd * TAU, sd))
+	var r := fposmod(sd * 311.7, 1.0)
+	var extra := 0 if r < 0.30 else (1 if r < 0.62 else (2 if r < 0.88 else 3))
+	if extra == 0:
+		return
+	var pr := city.probe(x, z)
+	if pr[0] <= -1e8:
+		return
+	var away := Vector2(-float(pr[2]), -float(pr[3]))
+	if away.length() < 0.1:
+		return
+	away = away.normalized()
+	var side := Vector2(-away.y, away.x)
+	for e in extra:
+		var q := fposmod(sd * (47.3 + 19.1 * float(e)), 1.0)
+		var q2 := fposmod(sd * (83.9 + 31.7 * float(e)), 1.0)
+		var ex := x + away.x * (3.0 + 9.0 * q) + side.x * (q2 - 0.5) * 18.0
+		var ez := z + away.y * (3.0 + 9.0 * q) + side.y * (q2 - 0.5) * 18.0
+		if float(city.probe(ex, ez)[0]) > -3.0 or city.lot_blocked(ex, ez):
+			continue
+		var s2 := fposmod(sd * (13.1 + 7.9 * float(e)), 1.0)
+		var sp2 := TreeSprites.pick(ex, ez, fposmod(sd * (3.7 + float(e)), 1.0), coast)
+		items.append(TreeSprites.item(ex, city.height(ex, ez), ez, sp2, 0.6 + 0.55 * s2, s2 * TAU, s2))
 
 ## Malla de los objetos de la calle de una cuadra (una sola llamada de dibujo; se ve a ~150 m) y sus círculos de choque
 func _props_instance(key: Vector2i) -> MeshInstance3D:
@@ -283,6 +363,9 @@ func _props_instance(key: Vector2i) -> MeshInstance3D:
 	var gc := PackedColorArray()
 	for id in (city.props_in[key] as PackedInt32Array):
 		var fallen: Vector2 = track.broken.get(id, Vector2.ZERO)
+		var pt := int(city.prop_type[id])
+		if pt == CityProps.RTREE or (pt == CityProps.TREE and fallen == Vector2.ZERO):
+			continue # los árboles sanos son imágenes (_trees_instance)
 		CityProps.emit(int(city.prop_type[id]), city.prop_x[id], city.prop_y[id], city.prop_z[id], city.prop_yaw[id], city.prop_seed[id], fallen, v, c, gv, gc)
 		if int(city.prop_type[id]) == CityProps.LIGHT and fallen == Vector2.ZERO and signals.head_info.has(id):
 			var hi: Vector2 = signals.head_info[id]
@@ -360,6 +443,8 @@ func _register_props(key: Vector2i) -> void:
 
 ## El reloj de la ciudad prende o apaga las luces: n = 0 (día) … 1 (noche)
 func set_night(n: float) -> void:
+	TreeSprites.set_night(n)
+	HorizonTrees.set_night(n)
 	if _facade_mat != null:
 		_facade_mat.set_shader_parameter("night", n)
 	glow_mat.albedo_color = Color(1, 1, 1, clampf(n * 1.1, 0.0, 1.0))
@@ -459,6 +544,9 @@ func _build_chunk(key: Vector2i) -> Node3D:
 	var pi := _props_instance(key)
 	if pi != null:
 		root.add_child(pi)
+	var ti := _trees_instance(key)
+	if ti != null:
+		root.add_child(ti)
 	_register_props(key)
 	for mo in city.mouths:
 		if city.chunk_of((mo["pos"] as Vector2).x, (mo["pos"] as Vector2).y) == key:
@@ -1115,6 +1203,7 @@ func _toll(t: Dictionary) -> Node3D:
 	var white := Color(0.97, 0.97, 0.96)
 	var red := Color(0.85, 0.18, 0.15)
 	var gray := Color(0.30, 0.32, 0.36)
+	var toll_trees: Array = []
 	# pórtico: dos postes junto a la banquina y una viga con franja roja
 	for sx in [-1.0, 1.0]:
 		CityProps.box(v, cl, xf, Vector3(float(sx) * (hw + 1.0), 3.3, 0), Vector3(0.7, 6.6, 0.7), white)
@@ -1142,14 +1231,18 @@ func _toll(t: Dictionary) -> Node3D:
 	for sx in [-1.0, 1.0]:
 		PieceBatch.add("bush_flower_box", Vector3(float(sx) * (hw + 3.2), 0.0, 3.5), 1.57, 0.0, v, cl, xf)
 		PieceBatch.add("bush_plant_box", Vector3(float(sx) * (hw + 3.2), 0.0, -4.0), 1.57, 0.0, v, cl, xf)
-		PieceBatch.add("sc_cypress", Vector3(float(sx) * (hw + 5.2), 0.0, 7.0), 0.4, 6.5, v, cl, xf, 1.15)
-		PieceBatch.add("tree_birch", Vector3(float(sx) * (hw + 5.6), 0.0, -9.0), 1.1, 6.0, v, cl, xf, 1.15)
+		for tt in [[hw + 5.2, 7.0, 1, 0.65], [hw + 5.6, -9.0, 5, 0.75]]: # dos árboles de imagen por lado
+			var tw: Vector3 = xf * Vector3(float(sx) * float(tt[0]), 0.0, float(tt[1]))
+			toll_trees.append(TreeSprites.item(tw.x, city.height(tw.x, tw.z), tw.z, int(tt[2]), float(tt[3]), 0.4 + float(tt[1]), fposmod(float(tt[1]) * 0.173 + 0.3, 1.0)))
 	var m := ArrayMesh.new()
 	PaperKit.add_surface(m, v, cl, PaperKit.material(null, 0.0, 0.2, 0.3))
 	var mi := MeshInstance3D.new()
 	mi.mesh = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
+	var ttn := TreeSprites.build(toll_trees, view_k)
+	if ttn != null:
+		root.add_child(ttn)
 	# las barreras: una barra a rayas rojas y blancas que gira sobre su poste (arm0 a la derecha, arm1 a la izquierda); viven en un marco con la orientación del peaje
 	var frame := Node3D.new()
 	frame.name = "frame"
@@ -1282,6 +1375,7 @@ func _mouth(mo: Dictionary) -> Node3D:
 	var xf := Transform3D(Basis(Vector3.UP, atan2(d.x, d.y)), Vector3(pos.x, y, pos.y)) # +z local = hacia adentro de la boca
 	var v := PackedVector3Array()
 	var c := PackedColorArray()
+	var mouth_trees: Array = []
 	if str(mo["kind"]) == "park":
 		CityProps.box(v, c, xf, Vector3(0, 2.2, 5.0), Vector3(17.0, 4.4, 10.0), Color(0.64, 0.66, 0.70))
 		CityProps.box(v, c, xf, Vector3(0, 1.6, -0.08), Vector3(8.4, 3.2, 0.3), Color(0.07, 0.07, 0.09))
@@ -1295,8 +1389,11 @@ func _mouth(mo: Dictionary) -> Node3D:
 		CityProps.frustum(v, c, xf, Vector3(15.0, 0, 9.0), 10.0, 3.5, 6.5, 7, Color(0.50, 0.58, 0.40), 0.5)
 		CityProps.box(v, c, xf, Vector3(0, 4.0, 2.0), Vector3(22.0, 8.0, 4.0), Color(0.58, 0.58, 0.54))
 		CityProps.box(v, c, xf, Vector3(-9.0, 7.6, 3.0), Vector3(6.0, 1.2, 5.0), Color(0.66, 0.66, 0.62))
-		for tk in 5:
-			CityProps.emit(CityProps.TREE, float(pos.x) + (float(tk) - 2.0) * 3.5 * cos(atan2(d.x, d.y)) + d.x * 14.0, y + 12.5 - absf(float(tk) - 2.0) * 0.8, float(pos.y) - (float(tk) - 2.0) * 3.5 * sin(atan2(d.x, d.y)) + d.y * 14.0, 0.0, 0.2 * float(tk), Vector2.ZERO, v, c)
+		for tk in 5: # algunos árboles arriba (imágenes)
+			var tx := float(pos.x) + (float(tk) - 2.0) * 3.5 * cos(atan2(d.x, d.y)) + d.x * 14.0
+			var tz := float(pos.y) - (float(tk) - 2.0) * 3.5 * sin(atan2(d.x, d.y)) + d.y * 14.0
+			var tsp := TreeSprites.pick(tx, tz, fposmod(0.2 * float(tk) + 0.13, 1.0))
+			mouth_trees.append(TreeSprites.item(tx, y + 12.5 - absf(float(tk) - 2.0) * 0.8, tz, tsp, 0.7, 0.2 * float(tk), fposmod(0.2 * float(tk) + 0.31, 1.0)))
 		CityProps.box(v, c, xf, Vector3(0, 2.7, -0.1), Vector3(10.4, 5.4, 0.3), Color(0.05, 0.05, 0.07))
 		for k in 10:
 			CityProps.box(v, c, xf, Vector3(-4.5 + 1.0 * float(k), 5.9, -0.1), Vector3(0.9, 0.7, 0.4), Color(0.95, 0.52, 0.14) if k % 2 == 0 else Color(0.10, 0.10, 0.12))
@@ -1308,6 +1405,9 @@ func _mouth(mo: Dictionary) -> Node3D:
 	mi.mesh = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
+	var mtn := TreeSprites.build(mouth_trees, view_k)
+	if mtn != null:
+		root.add_child(mtn)
 	if str(mo["kind"]) == "park":
 		var lab := Label3D.new()
 		lab.text = "P  " + Tr.t("ESTACIONAMIENTO")

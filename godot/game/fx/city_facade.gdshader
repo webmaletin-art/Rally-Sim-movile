@@ -10,8 +10,13 @@ uniform vec3 edge_col : source_color = vec3(0.96, 0.93, 0.85);
 uniform float grain_amt : hint_range(0.0, 0.5) = 0.10;
 uniform float tint_var : hint_range(0.0, 0.3) = 0.10;
 uniform float night : hint_range(0.0, 1.0) = 0.0; // 0 = de día · 1 = de noche: se prenden las luces de las ventanas y de los negocios
+// Fachada simplificada de lejos: entre lod_from y lod_to (metros a la cámara) las ventanas, postigos, balcones, vidrieras y dobleces se funden en una pared lisa del mismo color y, pasado lod_to, el shader
+// ni los calcula (a esa distancia una ventana mide menos de un píxel): es el costo de píxel más alto de la ciudad y los edificios lejanos son la mayoría. CityWorld los escala con el alcance de la vista.
+uniform float lod_from = 200.0;
+uniform float lod_to = 270.0;
 
 varying vec3 v_wpos;
+varying float v_dist;
 varying vec3 wcol;
 varying flat float seed; // sin interpolar: un error de 1 bit en la semilla cambiaría el hash en cada píxel
 
@@ -31,6 +36,7 @@ vec3 to_lin(vec3 c) {
 
 void vertex() {
 	v_wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	v_dist = length((MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).xyz);
 	wcol = COLOR.rgb;
 	seed = floor(COLOR.a * 255.0 + 0.5) / 255.0;
 }
@@ -46,7 +52,9 @@ void fragment() {
 	vec3 glow = vec3(0.0); // luz propia (ventanas prendidas de noche)
 	vec2 sz = UV2;
 	vec2 uv = UV;
-	if (sz.y > 0.5 && uv.y > 0.0) {
+	float far_k = smoothstep(lod_from, lod_to, v_dist); // 0 = cerca (todo el detalle) · 1 = lejos (pared lisa)
+	vec3 flat_col = col;
+	if (far_k < 1.0 && sz.y > 0.5 && uv.y > 0.0) {
 		float sx = mix(3.0, 4.0, fract(seed * 7.0));
 		float sy = 3.2;
 		float cols = max(1.0, floor(sz.x / sx));
@@ -104,10 +112,13 @@ void fragment() {
 			}
 			// los bordes de la pared quedan lisos (pilastras)
 		}
-	} else if (sz.y > 0.5) {
+		col = mix(col, flat_col * 0.9, far_k); // lejos: el color medio de la pared con ventanas
+		glow *= 1.0 - far_k;
+		crease *= 1.0 - far_k;
+	} else if (sz.y > 0.5 && uv.y <= 0.0) {
 		col *= 0.80; // el faldón bajo la planta baja
 	}
-	if (sz.y > 0.5) {
+	if (far_k < 1.0 && sz.y > 0.5) {
 		// bordes de la hoja de pared (costados, cornisa) y un doblez suave en cada piso
 		vec2 px = max(fwidth(uv), vec2(0.0001));
 		float dl = min(uv.x, sz.x - uv.x) / px.x;
@@ -115,7 +126,7 @@ void fragment() {
 		float edge = 1.0 - smoothstep(0.6, 1.6, min(dl, dt));
 		float fl = abs(fract(uv.y / 3.2 + 0.0) - 0.0) * 3.2 / px.y;
 		float fold = (1.0 - smoothstep(0.4, 1.2, fl)) * step(0.5, uv.y) * 0.25;
-		crease = max(crease, max(edge * (1.0 - smoothstep(0.1, 0.4, max(px.x, px.y))), fold));
+		crease = max(crease, max(edge * (1.0 - smoothstep(0.1, 0.4, max(px.x, px.y))), fold)) * (1.0 - far_k);
 	}
 	vec3 base = col * 0.96; // los colores ya están pensados para este brillo (no pasan por to_lin)
 	float t = fract(sin(dot(floor(v_wpos.xz * 0.5), vec2(12.9898, 78.233))) * 43758.5453);

@@ -1389,23 +1389,28 @@ func _build_garage(ri: int, fy: float, p0: Vector2, tn: Vector2, nrm: Vector2, c
 # ───────────────────────── objetos de la calle ─────────────────────────
 var _lot_props := false # se están poniendo los objetos de una gasolinera (los demás no pueden caer dentro de un playón ni de un peaje)
 
+## ¿Cae dentro de un playón de gasolinera, de un peaje o del Estacionamiento Central? (ahí no van objetos sueltos ni árboles de adorno)
+func lot_blocked(x: float, z: float) -> bool:
+	for st in stations:
+		for cc in st["circles"]:
+			if Vector2(x, z).distance_to(cc) < float(st["r"]) + 1.0:
+				return true
+	for tl in tolls:
+		if Vector2(x, z).distance_to(tl["pos"]) < 16.0:
+			return true
+	if not garage.is_empty():
+		for gi in 3:
+			if Vector2(x, z).distance_to(garage["c"][gi]) < float(garage["r"][gi]) + 3.0:
+				return true
+	return false
+
 func _add_prop(t: int, x: float, z: float, to_road: Vector2, y_over := NAN) -> void:
 	# nunca sobre el asfalto de ninguna calle
 	var pr := probe(x, z)
 	if pr[6] >= 0.0 and float(pr[1]) <= float(pr[5]) + 0.2:
 		return
-	if not _lot_props:
-		for st in stations:
-			for cc in st["circles"]:
-				if Vector2(x, z).distance_to(cc) < float(st["r"]) + 1.0:
-					return
-		for tl in tolls:
-			if Vector2(x, z).distance_to(tl["pos"]) < 16.0:
-				return
-		if not garage.is_empty():
-			for gi in 3:
-				if Vector2(x, z).distance_to(garage["c"][gi]) < float(garage["r"][gi]) + 3.0:
-					return
+	if not _lot_props and lot_blocked(x, z):
+		return
 	var id := prop_type.size()
 	prop_type.append(t)
 	prop_x.append(x)
