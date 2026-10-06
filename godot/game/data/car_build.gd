@@ -206,7 +206,9 @@ static func perf_of(V: Dictionary) -> Dictionary:
 	var s_aero := _cl(aero / 2.0)
 	var s_off := _cl(((float(V["travel"]) - 0.2) / 0.25) * 0.35 + ((float(sg["dirt"]) * float(V["mu"])) - 0.5) / 0.7 * 0.4 + (float(V["wheelRadius"]) - 0.3) / 0.3 * 0.25)
 	var pi := roundi(100.0 + 320.0 * s_acc + 190.0 * s_spd + 200.0 * s_grip + 100.0 * s_brk + 90.0 * s_aero)
-	return {"pi": mini(999, pi), "hp": roundi(hp), "kg": roundi(float(V["mass"])), "vmax": roundi(vmax), "pw": roundi(pw),
+	# 0-100 km/h estimado (para comparar mejoras y reglajes): sale de los kg por cv y no baja de lo que deja el agarre (75 % del peso en las ruedas que traccionan)
+	var t100 := maxf(1.25 * pow(float(V["mass"]) / maxf(hp, 1.0), 0.9), 27.8 / (maxf(grip, 0.4) * 9.81 * 0.75))
+	return {"pi": mini(999, pi), "hp": roundi(hp), "kg": roundi(float(V["mass"])), "vmax": roundi(vmax), "pw": roundi(pw), "t100": snappedf(t100, 0.1),
 		"bars": {"speed": s_spd, "accel": s_acc, "handling": _cl(s_grip * 0.8 + s_aero * 0.2), "braking": s_brk, "offroad": s_off}}
 
 static func class_of(pi: int) -> Dictionary:

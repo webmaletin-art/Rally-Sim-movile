@@ -26,6 +26,8 @@ var body_cat := 0
 const BODY_CATS := ["spoiler", "front_bumper", "rear_bumper", "side_skirt", "hood"]
 var shop := "" # taller de Dream City en el que se está (vacío: el taller completo del menú)
 var up_cat := 0
+var pv := {} # vista previa SIN comprar (mejoras, gomas y piezas): {id, kind: upg|tire|part, key, lvl, cat}. Se ve en el auto y en los números; la plata se pide recién al tocar COMPRAR
+var tune_stats_box: VBoxContainer
 var tune_grp := 0
 var paint_target := "body"
 var tune_info := ""
@@ -300,6 +302,11 @@ func _workshop() -> void:
 			m.go("workshop", null, false), 16, 40.0))
 	elif not sd.is_empty():
 		m.body.add_child(Kit.wrap(tr(str(sd["info"])), 14, Kit.MUTED, 300))
+	if not pv.is_empty():
+		var kind_of_tab := {0: "upg", 1: "tire", 4: "part", 5: "part"}
+		if str(pv["id"]) != id or str(kind_of_tab.get(ws_tab, "")) != str(pv["kind"]):
+			_pv_clear(false)
+			m.refresh_car()
 	match ws_tab:
 		0: _ws_parts(id)
 		1: _ws_tires(id, st)
@@ -308,7 +315,90 @@ func _workshop() -> void:
 		4: _ws_rims(id, st)
 		5: _ws_body(id, st)
 
+## Cómo cambia el auto con la vista previa o el reglaje: potencia, peso, velocidad, 0-100 y las barras (lo que sube en verde y lo que baja en rojo)
+func _fill_stats(box: VBoxContainer, id: String, sa: Dictionary, sb: Dictionary) -> void:
+	for c in box.get_children():
+		c.queue_free()
+	var pa := CarBuild.perf_of(CarBuild.build_params(m.vehicles[id], sa))
+	var pb := CarBuild.perf_of(CarBuild.build_params(m.vehicles[id], sb))
+	box.add_child(Kit.label(tr("Cómo cambia el auto"), 15, Kit.GOLD))
+	var ba: Dictionary = pa["bars"]
+	var bb: Dictionary = pb["bars"]
+	var rows: Array = [
+		["Potencia", float(pa["hp"]), float(pb["hp"]), " cv", true, 0],
+		["Peso", float(pa["kg"]), float(pb["kg"]), " kg", false, 0],
+		["Velocidad máxima", float(pa["vmax"]), float(pb["vmax"]), " km/h", true, 0],
+		["0 a 100 km/h (aprox.)", float(pa["t100"]), float(pb["t100"]), " s", false, 1],
+		["Aceleración", float(ba["accel"]) * 100.0, float(bb["accel"]) * 100.0, " %", true, 0],
+		["Manejo", float(ba["handling"]) * 100.0, float(bb["handling"]) * 100.0, " %", true, 0],
+		["Frenado", float(ba["braking"]) * 100.0, float(bb["braking"]) * 100.0, " %", true, 0],
+		["Off-road", float(ba["offroad"]) * 100.0, float(bb["offroad"]) * 100.0, " %", true, 0],
+		["Nivel (PI)", float(pa["pi"]), float(pb["pi"]), "", true, 0]]
+	for r in rows:
+		var a: float = r[1]
+		var b: float = r[2]
+		var better: bool = r[4]
+		var dec: int = r[5]
+		var diff := b - a
+		var changed := absf(diff) > (0.04 if dec > 0 else 0.5)
+		var good := (diff > 0.0) == better
+		var col := Kit.MUTED if not changed else (Color(0.45, 0.9, 0.5) if good else Color(1.0, 0.45, 0.4))
+		var row := Kit.hbox(6)
+		var nl := Kit.label(tr(str(r[0])), 13, Kit.TEXT if changed else Kit.MUTED)
+		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nl.clip_text = true
+		nl.custom_minimum_size.x = 40
+		row.add_child(nl)
+		var fa := "%.1f" % a if dec > 0 else str(roundi(a))
+		var fb := "%.1f" % b if dec > 0 else str(roundi(b))
+		var arrow := "" if not changed else (" ▲" if diff > 0.0 else " ▼")
+		var vl := Kit.label("%s → %s%s%s" % [fa, fb, str(r[3]), arrow] if changed else "%s%s" % [fa, str(r[3])], 13, col, HORIZONTAL_ALIGNMENT_RIGHT)
+		row.add_child(vl)
+		box.add_child(row)
+
+func _pv_clear(refresh := true) -> void:
+	pv = {}
+	if refresh:
+		m.refresh_car()
+
+## El auto con la vista previa puesta
+func _pv_state(id: String, st: Dictionary) -> Dictionary:
+	var d := st.duplicate(true)
+	match str(pv["kind"]):
+		"upg":
+			(d["upg"] as Dictionary)[str(pv["key"])] = int(pv["lvl"])
+		"tire":
+			d["tires"] = str(pv["key"])
+		"part":
+			var ctx := VehicleCustomization.context(id, m.vehicles, d)
+			VehicleCustomization.install(d, id, str(pv["key"]), ctx["V"], ctx["meta"])
+	return d
+
+## Barra de la vista previa: precio, números (si el cambio es mecánico), COMPRAR (acá recién se pide la plata) y VOLVER
+func _pv_bar(id: String, st: Dictionary, price: int, with_stats: bool, buy: Callable) -> Control:
+	var box := Kit.panel(8, Kit.PANEL2)
+	var col := Kit.vbox(5)
+	box.add_child(col)
+	col.add_child(Kit.label(tr("👁 VISTA PREVIA · todavía no es tuyo"), 14, Kit.GOLD))
+	var row := Kit.hbox(6)
+	col.add_child(row)
+	var b := Kit.button("🛒 %s %s" % [tr("COMPRAR"), Kit.fmt_cr(float(price))], buy, true, 16, Vector2(0, 44))
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(b)
+	var c := Kit.button("✖ " + tr("VOLVER"), func() -> void:
+		m.sfx.play("click")
+		_pv_clear()
+		m.go("workshop", null, false), false, 15, Vector2(0, 44))
+	c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(c)
+	if with_stats:
+		var sb := Kit.vbox(2)
+		col.add_child(sb)
+		_fill_stats(sb, id, st, _pv_state(id, st))
+	return box
+
 func _after_change() -> void:
+	pv = {}
 	m.refresh_car()
 	m.update_credits()
 	m.go("workshop", null, false)
@@ -357,8 +447,19 @@ func _ws_parts(id: String) -> void:
 		var cost := int(lv.get("cost", 0))
 		var rt := tr("EQUIPADO") if equipped else (tr("PONER") if owned_p else Kit.fmt_cr(float(cost)))
 		var lvl_i := li
-		var b := Kit.card_button(("✔ " if equipped else "") + str(lv["n"]), "", rt, func() -> void: _buy_upgrade(id, uid, lvl_i), equipped, true, 40.0, 14)
+		var previewed: bool = not pv.is_empty() and str(pv["kind"]) == "upg" and str(pv["key"]) == uid and int(pv["lvl"]) == li
+		var b := Kit.card_button(("✔ " if equipped else ("👁 " if previewed else "")) + str(lv["n"]), "", rt, func() -> void:
+			if owned_p or cost <= 0:
+				_buy_upgrade(id, uid, lvl_i) # ya es tuyo: se pone gratis
+			else:
+				m.sfx.play("click") # no es tuyo: primero se ve cómo queda (y los números); la plata se pide al comprar
+				pv = {"id": id, "kind": "upg", "key": uid, "lvl": lvl_i}
+				m.refresh_car(id, _pv_state(id, m.profile.d["owned"][id]))
+				m.go("workshop", null, false), equipped or previewed, true, 40.0, 14)
 		right.add_child(b)
+	if not pv.is_empty() and str(pv["kind"]) == "upg" and str(pv["key"]) == uid:
+		var pl := int(pv["lvl"])
+		right.add_child(_pv_bar(id, m.profile.d["owned"][id], int(levels[pl].get("cost", 0)), true, func() -> void: _buy_upgrade(id, uid, pl)))
 
 func _buy_upgrade(id: String, uid: String, lvl: int) -> void:
 	if m.profile.buy_upgrade(id, uid, lvl):
@@ -392,14 +493,28 @@ func _ws_tires(id: String, st: Dictionary) -> void:
 		var rt := tr("EQUIPADO") if eq else (tr("PONER") if have else Kit.fmt_cr(float(t["cost"])))
 		var wset: float = m.profile.tire_wear(id, tid)
 		var sub_t := str(t["info"]) if not (have and wset > 0.01) else "%s · %s %d%%" % [tr(TireWear.state_name(wset)), tr("desgaste"), roundi(wset * 100.0)]
-		var b := Kit.card_button("%s %s" % [t["icon"], t["n"]], sub_t, rt, func() -> void:
-			if m.profile.buy_tires(id, tid):
+		var tprev: bool = not pv.is_empty() and str(pv["kind"]) == "tire" and str(pv["key"]) == tid
+		var b := Kit.card_button("%s %s%s" % [t["icon"], "👁 " if tprev else "", t["n"]], sub_t, rt, func() -> void:
+			if have or int(t["cost"]) <= 0:
+				if m.profile.buy_tires(id, tid):
+					m.sfx.play("buy")
+					_after_change()
+				return
+			m.sfx.play("click") # no son tuyas: se ven los números primero, la plata se pide al comprar
+			pv = {"id": id, "kind": "tire", "key": tid}
+			m.refresh_car(id, _pv_state(id, st))
+			m.go("workshop", null, false), eq or tprev, true, 62.0, 16)
+		g.add_child(b)
+	if not pv.is_empty() and str(pv["kind"]) == "tire":
+		var ptid := str(pv["key"])
+		var pcost := int(CarBuild.tire(ptid).get("cost", 0))
+		m.body.add_child(_pv_bar(id, st, pcost, true, func() -> void:
+			if m.profile.buy_tires(id, ptid):
 				m.sfx.play("buy")
 				_after_change()
 			else:
 				m.sfx.play("error")
-				m.toast(tr("No te alcanza el dinero")), eq, true, 62.0, 16)
-		g.add_child(b)
+				m.toast(tr("No te alcanza el dinero"))))
 
 ## Llantas modulares: se ven puestas en el auto de la sala al instante. Comprar = pagar una vez por auto; cambiar entre las compradas es gratis.
 func _ws_rims(id: String, st: Dictionary) -> void:
@@ -425,6 +540,8 @@ func _ws_body(id: String, st: Dictionary) -> void:
 	_ws_part_grid(id, st, str(cats[body_cat]))
 
 func _ws_part_grid(id: String, st: Dictionary, cat: String) -> void:
+	if not pv.is_empty() and str(pv["kind"]) == "part" and str(pv.get("cat", "")) != cat:
+		_pv_clear() # cambió de categoría: se saca la pieza que se estaba viendo
 	var ctx := VehicleCustomization.context(id, m.vehicles, st)
 	var cur := str((VehicleCustomization.installed(st).get(cat, {}) as Dictionary).get("id", ""))
 	if not VehicleCustomization.supports(id):
@@ -444,15 +561,32 @@ func _ws_part_grid(id: String, st: Dictionary, cat: String) -> void:
 		var eq: bool = cur == str(pid)
 		var have: bool = own.has(str(pid))
 		var rt := tr("EQUIPADO") if eq else (tr("PONER") if have else Kit.fmt_cr(float(p.get("price", 0))))
-		var b := Kit.card_button(tr(str(p["name"])), "" if ok else tr("No entra en este auto"), rt, func() -> void:
-			var r: Dictionary = m.profile.buy_part(id, str(pid), m.vehicles)
+		var pprev: bool = not pv.is_empty() and str(pv["kind"]) == "part" and str(pv["key"]) == str(pid)
+		var b := Kit.card_button(("👁 " if pprev else "") + tr(str(p["name"])), "" if ok else tr("No entra en este auto"), rt, func() -> void:
+			if have or int(p.get("price", 0)) <= 0:
+				var r0: Dictionary = m.profile.buy_part(id, str(pid), m.vehicles)
+				if bool(r0["ok"]):
+					m.sfx.play("buy")
+					_after_change()
+				else:
+					m.sfx.play("error")
+					m.toast(tr(str(r0["reason"])))
+				return
+			m.sfx.play("click") # no es tuya: se ve puesta en el auto; la plata se pide al tocar COMPRAR
+			pv = {"id": id, "kind": "part", "key": str(pid), "cat": cat}
+			m.refresh_car(id, _pv_state(id, st))
+			m.go("workshop", null, false), eq or pprev, ok, 64.0, 16)
+		g.add_child(b)
+	if not pv.is_empty() and str(pv["kind"]) == "part" and str(pv["cat"]) == cat:
+		var ppid := str(pv["key"])
+		m.body.add_child(_pv_bar(id, st, int(PartCatalog.part(ppid).get("price", 0)), false, func() -> void:
+			var r: Dictionary = m.profile.buy_part(id, ppid, m.vehicles)
 			if bool(r["ok"]):
 				m.sfx.play("buy")
 				_after_change()
 			else:
 				m.sfx.play("error")
-				m.toast(tr(str(r["reason"]))), eq, ok, 64.0, 16)
-		g.add_child(b)
+				m.toast(tr(str(r["reason"])))))
 
 func _draft_sync(id: String, st: Dictionary) -> void:
 	if draft_id != id:
@@ -498,7 +632,20 @@ func _draft_refresh(id: String, st: Dictionary) -> void:
 	m.refresh_car(id, _draft_state(st))
 	_draft_update_bar(id, st)
 
+## Los números del reglaje que se está armando contra el auto como está hoy (se actualiza al mover cada control)
+func _tune_stats(id: String, st: Dictionary) -> void:
+	if tune_stats_box == null or not is_instance_valid(tune_stats_box) or ws_tab != 2:
+		return
+	if _tune_changes(id, st) == 0:
+		for c in tune_stats_box.get_children():
+			c.queue_free()
+		tune_stats_box.add_child(Kit.label(tr("Cómo cambia el auto"), 15, Kit.GOLD))
+		tune_stats_box.add_child(Kit.wrap(tr("Movés un control y acá ves qué sube (verde ▲) y qué baja (rojo ▼): potencia, aceleración, velocidad, manejo, frenado…"), 12, Kit.MUTED, 300))
+		return
+	_fill_stats(tune_stats_box, id, st, _draft_state(st))
+
 func _draft_update_bar(id: String, st: Dictionary) -> void:
+	_tune_stats(id, st)
 	if draft_lbl == null or not is_instance_valid(draft_lbl):
 		return
 	var fee := _fee(id, st)
@@ -585,6 +732,11 @@ func _ws_tune(id: String, st: Dictionary) -> void:
 		m.sfx.play("click")
 		m.go("workshop", null, false), 14, 36.0))
 	_draft_bar(id, st, true)
+	var tsp := Kit.panel(8, Kit.PANEL2)
+	tune_stats_box = Kit.vbox(2)
+	tsp.add_child(tune_stats_box)
+	m.body.add_child(tsp)
+	_tune_stats(id, st)
 	m.body.add_child(Kit.wrap("Debajo de cada ajuste ves qué pasa si lo bajás (▼) y si lo subís (▲).", 12, Kit.GOLD, 300))
 	var info := Kit.wrap("", 13, Kit.MUTED, 200)
 	info.max_lines_visible = 3

@@ -116,6 +116,7 @@ func _push_locked(x: float, z: float, r: float, use_dyn := true) -> Vector3:
 				_dyn_hits.append_array(PackedFloat32Array([float(di / 3 - 1), ox2 / e2 if e2 > 0.001 else 1.0, oz2 / e2 if e2 > 0.001 else 0.0, rs2 - e2]))
 			if rs2 - e2 > best.z:
 				best = Vector3(ox2 / e2 if e2 > 0.001 else 1.0, oz2 / e2 if e2 > 0.001 else 0.0, rs2 - e2)
+	var best_world := best # lo que empuja sin contar los objetos de la calle
 	var kx := int(floor(x / 16.0))
 	var kz := int(floor(z / 16.0))
 	var hit_id := -1
@@ -144,9 +145,20 @@ func _push_locked(x: float, z: float, r: float, use_dyn := true) -> Vector3:
 					hit_id = pid
 					hit_pos = Vector2(px, pz)
 	if hit_id >= 0 and best.z > 0.0 and hit_id < city.prop_type.size() and int(city.prop_type[hit_id]) < 4: # el monumento, los pilares, los autos estacionados y los portones de las salidas no se rompen
-		# el primer golpe lo tira (el auto lo siente una vez) y deja de ser obstáculo
+		# el primer golpe lo tira y el auto SIGUE (no rebota ni sale para atrás): sólo pierde un poco de velocidad (take_breaks)
 		_break_locked(hit_id, hit_pos, Vector2(-best.x, -best.y))
+		_breaks += 1
+		return best_world
 	return best
+
+var _breaks := 0 # objetos rotos desde la última consulta (los usa el auto para frenar un poco)
+## Cuántos objetos de la calle se rompieron desde la última vez que se preguntó
+func take_breaks() -> int:
+	_mx.lock()
+	var n := _breaks
+	_breaks = 0
+	_mx.unlock()
+	return n
 
 func _break_locked(id: int, pos: Vector2, dir: Vector2) -> void:
 	var k := Vector2i(int(floor(pos.x / 16.0)), int(floor(pos.y / 16.0)))

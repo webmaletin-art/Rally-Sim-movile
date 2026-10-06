@@ -2628,7 +2628,7 @@ func _circle_hit(pa, pb, ka: float, kb: float) -> float:
 	var ta := raz * nx - rax * nz
 	var tb := rbz * nx - rbx * nz
 	var denom := 1.0 / ma + 1.0 / mb + ta * ta / float(pa.V.Izz) + tb * tb / float(pb.V.Izz)
-	var j := -(1.0 + 0.22) * vn / denom
+	var j := -(1.0 + 0.05) * vn / denom # casi sin rebote: los autos se frenan al chocar, no salen despedidos para atrás
 	pa.vx -= j * nx / ma
 	pa.vz -= j * nz / ma
 	pb.vx += j * nx / mb

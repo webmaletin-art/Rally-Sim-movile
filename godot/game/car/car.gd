@@ -107,17 +107,26 @@ func _keep_out() -> void:
 		var h: Vector3 = tr.push(ph.px + s * kk * L * 0.34, ph.pz + c * kk * L * 0.34, r)
 		if h.z <= 0.0:
 			continue
-		ph.px += h.x * h.z
-		ph.pz += h.y * h.z
+		var corr := minf(h.z, 0.5) # el empuje de salida es corto: con un golpe fuerte no se tira al auto metros para atrás
+		ph.px += h.x * corr
+		ph.pz += h.y * corr
 		var vn: float = ph.vx * h.x + ph.vz * h.y # velocidad contra la normal (negativa = se mete en el obstáculo)
 		if vn < 0.0:
 			wall_hit = maxf(wall_hit, -vn)
-			ph.vx -= 1.3 * vn * h.x
-			ph.vz -= 1.3 * vn * h.y
+			ph.vx -= 1.03 * vn * h.x # se cancela lo que se mete en el obstáculo y casi nada de rebote: el auto se frena y se queda ahí, no sale volando hacia atrás
+			ph.vz -= 1.03 * vn * h.y
 			var drag := 1.0 - clampf(0.02 + (-vn) * 0.006, 0.0, 0.12)
 			ph.vx *= drag
 			ph.vz *= drag
 			ph.yawRate *= 0.9
+	if tr.has_method("take_breaks"):
+		var nb: int = tr.take_breaks()
+		if nb > 0: # se llevó puesto un poste, árbol o semáforo: pierde un poco de velocidad y sigue de largo
+			var sp := sqrt(ph.vx * ph.vx + ph.vz * ph.vz)
+			var k := clampf(1.0 - (0.04 + 0.05 * float(nb)), 0.75, 0.97)
+			ph.vx *= k
+			ph.vz *= k
+			wall_hit = maxf(wall_hit, sp * 0.3)
 
 ## Reinicia el historial del dibujado en la hora t (al colocar el auto)
 func restart_history(t: float) -> void:
