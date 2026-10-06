@@ -322,6 +322,11 @@ func _process(dt: float) -> void:
 			get_viewport().get_texture().get_image().save_png(shot_path)
 		get_tree().quit()
 
+## El mundo 3D del menú es un SubViewport: no recibe toques solo. Los que la interfaz no usó (lo que cae fuera de los paneles y botones) se le pasan para girar, acercar/alejar y correr la cámara del auto
+func _unhandled_input(ev: InputEvent) -> void:
+	if world != null and showroom != null and (ev is InputEventScreenTouch or ev is InputEventScreenDrag or ev is InputEventMouseMotion or ev is InputEventMouseButton):
+		world.push_input(ev, false)
+
 ## Abre una pantalla. Cada una arma su contenido dentro del panel de la izquierda.
 var adv_car_shown := false
 func go(name: String, arg = null, push := true) -> void:
