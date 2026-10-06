@@ -598,6 +598,26 @@ func build_shoulder_mesh() -> ArrayMesh:
 func build_far_strip() -> ArrayMesh:
 	return _strip_mesh([26.0, 34.0, 46.0, 60.0, 76.0, STRIP_EXT], STRIP_EXT, 3, true)
 
+## Hasta qué distancia del camino (m) se puede dibujar algo en el lado `side` (-1/+1) de la muestra i sin que se doble sobre sí mismo: en el lado de adentro de una curva cerrada el radio manda
+## (sin esto, la franja de pasto y el cerro de la cueva se pliegan encima del camino en las horquillas). 1e9 = sin límite (recta o lado de afuera).
+func inner_limit(i: int, side: float) -> float:
+	var k := 3
+	var a := samples[posmod(i - k, n)]
+	var b := samples[i]
+	var c := samples[posmod(i + k, n)]
+	var ab := Vector2(b.x - a.x, b.z - a.z)
+	var bc := Vector2(c.x - b.x, c.z - b.z)
+	var ac := Vector2(c.x - a.x, c.z - a.z)
+	var area2 := absf(ab.x * bc.y - ab.y * bc.x)
+	if area2 < 1e-3:
+		return 1e9
+	var r := ab.length() * bc.length() * ac.length() / (2.0 * area2)
+	var turn := bc - ab
+	var lat := laterals[i]
+	if side * (turn.x * lat.x + turn.y * lat.z) <= 0.0:
+		return 1e9 # lado de afuera de la curva
+	return maxf(half_width + shoulder + 0.5, 0.72 * r)
+
 ## fr: distancias (m) al borde del camino de cada columna · step: cada cuántas muestras hay una fila · flat_sink: la franja de afuera queda 24 cm bajo el suelo (como el final de la banquina)
 ## Las filas son independientes: se calculan en hilos (en la Travesía X son más de 11 000 filas y en un solo hilo tardaba más de un minuto). strip_begin() las lanza y strip_finish() arma la malla;
 ## strip_progress() dice cuánto va (0…1) para la barra de carga.
