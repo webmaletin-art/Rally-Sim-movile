@@ -599,6 +599,26 @@ func build_far_strip() -> ArrayMesh:
 	return _strip_mesh([26.0, 34.0, 46.0, 60.0, 76.0, STRIP_EXT], STRIP_EXT, 3, true)
 
 ## fr: distancias (m) al borde del camino de cada columna · step: cada cuántas muestras hay una fila · flat_sink: la franja de afuera queda 24 cm bajo el suelo (como el final de la banquina)
+## Hasta qué distancia del camino (m) se puede dibujar algo en el lado `side` (-1/+1) de la muestra i sin que se doble sobre sí mismo: en el lado de adentro de una curva cerrada el radio manda
+## (sin esto, la franja de pasto y el cerro de la cueva se pliegan encima del camino en las horquillas). 1e9 = sin límite (recta o lado de afuera).
+func inner_limit(i: int, side: float) -> float:
+	var k := 3
+	var a := samples[posmod(i - k, n)]
+	var b := samples[i]
+	var c := samples[posmod(i + k, n)]
+	var ab := Vector2(b.x - a.x, b.z - a.z)
+	var bc := Vector2(c.x - b.x, c.z - b.z)
+	var ac := Vector2(c.x - a.x, c.z - a.z)
+	var area2 := absf(ab.x * bc.y - ab.y * bc.x)
+	if area2 < 1e-3:
+		return 1e9
+	var r := ab.length() * bc.length() * ac.length() / (2.0 * area2)
+	var turn := bc - ab
+	var lat := laterals[i]
+	if side * (turn.x * lat.x + turn.y * lat.z) <= 0.0:
+		return 1e9 # lado de afuera de la curva
+	return maxf(half_width + shoulder + 0.5, 0.72 * r)
+
 func _strip_mesh(fr: Array, ext: float, step: int, flat_sink: bool) -> ArrayMesh:
 	var rw := fr.size()
 	var verts := PackedVector3Array()
@@ -631,6 +651,8 @@ func _strip_mesh(fr: Array, ext: float, step: int, flat_sink: bool) -> ArrayMesh
 					yy = view.ground_smooth(x, z) + 0.03
 				else:
 					var o := half_width + shoulder + (f - 1.0)
+					if route_id == "travesia":
+						o = minf(o, inner_limit(i, s))
 					x = p.x + lat.x * s * o
 					z = p.z + lat.z * s * o
 					var e := 1.0 if flat_sink else (f - 1.0) / (ext - 1.0)
@@ -714,7 +736,7 @@ func terrain_row(iz: int, r: int) -> Array:
 		view.hint = bi
 		var y0: float = view.ground_smooth(x, z) - 0.25
 		var d: float = absf(view.r_lat)
-		pos.append(Vector3(x, y0 - (0.6 if d < sr else 0.0), z))
+		pos.append(Vector3(x, y0 - ((0.35 if route_id == "travesia" else 0.6) if d < sr else 0.0), z))
 		var cc := Color(0.45, 0.38, 0.30) if d < half_width + shoulder else Color(0.29, 0.40, 0.24)
 		var q := (rng.randf() - 0.5) * 0.08
 		col.append(Color(cc.r + q, cc.g + q, cc.b + q * 0.5))

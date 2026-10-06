@@ -190,9 +190,12 @@ func _cave(z: Dictionary) -> MeshInstance3D:
 			inner.append(Vector3(p.x - l.x * w, y0 + h, p.z - l.z * w))
 		# el cerro de afuera: base enterrada, hombro y cumbre (lados espejados)
 		var outer: Array = []
+		var lim_l: float = track.inner_limit(i, -1.0) # el cerro no se pliega sobre el camino en las curvas cerradas
+		var lim_r: float = track.inner_limit(i, 1.0)
 		var prof := [[-1.0, -(wd + 26.0)], [4.5, -(wd + 12.0)], [hh + 3.0, -(wd + 3.0)], [hh + 6.5 + jit * 2.0, 0.0], [hh + 3.0, wd + 3.0], [4.5, wd + 12.0], [-1.0, wd + 26.0]]
 		for q in prof:
 			var wn := float(q[1])
+			wn = maxf(wn, -lim_l) if wn < 0.0 else minf(wn, lim_r)
 			outer.append(Vector3(p.x + l.x * wn, y0 + float(q[0]) + 0.6 * sin(float(i) * 0.37 + wn * 0.1), p.z + l.z * wn))
 		rings.append([inner, outer])
 		i += 2
