@@ -9,6 +9,7 @@ const TouchScroll := preload("res://game/ui/touch_scroll.gd")
 const DiagLog := preload("res://game/data/diag_log.gd")
 const DiagSpots := preload("res://game/city/diag_spots.gd")
 const CityTrack := preload("res://game/track/city_track.gd")
+const PaperKit := preload("res://game/fx/paper_kit.gd")
 
 const ZONES := ["Centro", "Barrio", "Campo", "Costa", "Colina", "Campo lejano"]
 const SURFACES := ["asfalto", "tierra", "banquina", "pasto", "fuera de calzada", "barro", "nieve"]
@@ -53,6 +54,7 @@ var _log_box: VBoxContainer
 var _log_lbl: Label
 var _toggles := {}
 var _scale_btns := {} # texto de la escala → botón
+var _paper_btns := {} # «ORIGINAL» / «SIMPLE» → botón
 var _spots_box: VBoxContainer
 var _open := false
 
@@ -61,6 +63,7 @@ func setup(p_race) -> void:
 	layer = 26
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	is_city = race.track is CityTrack
+	PaperKit.set_simple(false) # el experimento PAPER SHADER arranca siempre en ORIGINAL
 	for s in DiagLog.SWITCHES:
 		sw[s[0]] = true
 	cond = _cond()
@@ -94,6 +97,8 @@ func _cond() -> Dictionary:
 	for s in DiagLog.SWITCHES:
 		if is_city:
 			c[s[0]] = bool(sw[s[0]])
+	if is_city:
+		c["paper"] = "SIMPLE" if PaperKit.simple else "ORIGINAL"
 	c["res"] = _res_text()
 	c["res_px"] = _res_px_text()
 	var px := 0.0
@@ -208,6 +213,16 @@ func _build() -> void:
 	rs.add_child(sba)
 	_scale_btns["AUTO"] = sba
 	body.add_child(Kit.wrap("Sólo cambia a qué resolución se dibuja el mundo 3D (pantalla × escala). El HUD, la ventana y todo lo demás no cambian. AUTO es lo que hace el juego solo.", 12, Kit.MUTED, 100))
+	if is_city:
+		body.add_child(Kit.label("PAPER SHADER (sólo mundo abierto)", 13, Kit.MUTED))
+		var pr := Kit.hbox(6)
+		body.add_child(pr)
+		for pn in ["ORIGINAL", "SIMPLE"]:
+			var pname: String = pn
+			var pb := _pick(pname, func() -> void: _set_paper(pname == "SIMPLE"))
+			pr.add_child(pb)
+			_paper_btns[pname] = pb
+		body.add_child(Kit.wrap("Experimento: SIMPLE reemplaza paper.gdshader (terreno, calles, marcas y objetos de calle) por una variante sin normal por derivadas, sin líneas de borde ni variación de tono. Fachadas, árboles, horizonte, señales y peatones no cambian. Tocá una vez ORIGINAL ⇄ SIMPLE antes de medir (la primera vez compila el shader).", 12, Kit.MUTED, 100))
 	if is_city:
 		body.add_child(Kit.wrap("Tip: el reloj y el clima del mundo andan solos. Antes de comparar, fijá la hora y el clima con los botones de abajo (si no, la luz y la lluvia cambian en medio de la prueba).", 12, Kit.MUTED, 100))
 	if is_city:
@@ -369,6 +384,28 @@ func _set_scale(v: float) -> void:
 		return
 	_changed("ESCALA 3D: %s → %s" % [before, after])
 
+## PAPER SHADER: sólo cambia el shader de los materiales de papel (ver PaperKit.set_simple); nada más
+func _set_paper(simple: bool) -> void:
+	if PaperKit.simple == simple:
+		return
+	var before := "SIMPLE" if PaperKit.simple else "ORIGINAL"
+	PaperKit.set_simple(simple)
+	_changed("PAPER SHADER: %s → %s" % [before, "SIMPLE" if simple else "ORIGINAL"])
+
+func _style_paper() -> void:
+	var cur := "SIMPLE" if PaperKit.simple else "ORIGINAL"
+	for k in _paper_btns:
+		var b: Button = _paper_btns[k]
+		var on: bool = str(k) == cur
+		var base := Color(0.10, 0.34, 0.20, 0.96) if on else Color(0.16, 0.19, 0.24, 0.96)
+		b.add_theme_stylebox_override("normal", Kit.box(base, 12, Kit.LINE, 1, 10))
+		b.add_theme_stylebox_override("hover", Kit.box(base.lightened(0.08), 12, Kit.LINE, 1, 10))
+		b.add_theme_stylebox_override("pressed", Kit.box(base.darkened(0.12), 12, Kit.ACCENT, 2, 10))
+
+func _exit_tree() -> void:
+	if PaperKit.simple:
+		PaperKit.set_simple(false) # al salir del mundo abierto todo vuelve a paper.gdshader
+
 func _scale_label() -> String:
 	if bool(race.res_auto):
 		return "AUTO (ahora %.2f)" % float(race.res_scale)
@@ -528,3 +565,4 @@ func _refresh_labels() -> void:
 	l.append("CLIMA: %s · HORA: %s%s" % [str(c["weather"]), str(c["time"]), (" (%s)" % race.clock.clock_text()) if is_city and race.clock != null else ""])
 	_lbl_info.text = "\n".join(l)
 	_style_scale()
+	_style_paper()

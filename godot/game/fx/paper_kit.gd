@@ -4,6 +4,10 @@ extends RefCounted
 
 const DIR := "res://game/models/paper/"
 const SHADER := preload("res://game/fx/paper.gdshader")
+const SHADER_SIMPLE := preload("res://game/fx/paper_simple.gdshader") # sólo para el experimento del menú de diagnóstico (PAPER SHADER → SIMPLE)
+
+## true = los materiales de papel usan paper_simple.gdshader (experimento de diagnóstico). Arranca siempre en false: el juego usa paper.gdshader, sin cambios
+static var simple := false
 
 static var _meshes: Dictionary = {}
 static var _grain: Texture2D
@@ -50,7 +54,35 @@ static func material(detail: Texture2D = null, detail_amt := 0.0, detail_scale :
 		m.set_shader_parameter("detail_scale", detail_scale)
 	m.set_shader_parameter("edge_amt", edge_amt)
 	_mats[key] = m
+	if simple:
+		_apply_shader(m)
 	return m
+
+## Diagnóstico (menú 📊): pasa TODOS los materiales de papel ya armados (y los que se armen después) a paper_simple.gdshader o de vuelta a paper.gdshader.
+## Sólo cambia el shader: los parámetros de cada material se conservan y no se toca la geometría, la profundidad ni el culling.
+static func set_simple(on: bool) -> void:
+	simple = on
+	for k in _mats:
+		if str(k).begins_with("glint|"):
+			continue # los destellos (mapas de ensueño) no se tocan
+		_apply_shader(_mats[k] as ShaderMaterial)
+
+static func _apply_shader(m: ShaderMaterial) -> void:
+	var want: Shader = SHADER_SIMPLE if simple else SHADER
+	if m.shader == want:
+		return
+	if not m.has_meta("paper_params"):
+		var saved := {}
+		for u in SHADER.get_shader_uniform_list():
+			var nm := str((u as Dictionary)["name"])
+			var v: Variant = m.get_shader_parameter(nm)
+			if v != null:
+				saved[nm] = v
+		m.set_meta("paper_params", saved)
+	m.shader = want
+	var params: Dictionary = m.get_meta("paper_params")
+	for nm in params:
+		m.set_shader_parameter(str(nm), params[nm])
 
 ## Material de papel con destellos de sol (mapa de ensueño). sun_dir: hacia el sol, en el mundo
 static func glint_material(sun_dir: Vector3, amt := 1.0) -> ShaderMaterial:

@@ -122,8 +122,8 @@ static func test_count() -> int:
 
 # ───────────────────────── condiciones ─────────────────────────
 ## Claves que cuentan para comparar dos pruebas (la ubicación fina, «where», sólo se muestra)
-const CMP_KEYS := ["trees", "buildings", "cars", "veg", "decor", "peds", "asphalt", "dirt", "terrain", "fog", "horizon", "weather", "time", "zone", "surface", "res"]
-const KEY_NAMES := {"trees": "Árboles", "buildings": "Edificios", "cars": "Autos civiles", "veg": "Vegetación", "decor": "Decoración", "peds": "Peatones", "asphalt": "Asfalto", "dirt": "Caminos de tierra", "terrain": "Terreno / césped", "fog": "Niebla", "horizon": "Horizonte / montañas", "weather": "Clima", "time": "Hora", "zone": "Zona", "surface": "Superficie", "res": "Escala 3D"}
+const CMP_KEYS := ["trees", "buildings", "cars", "veg", "decor", "peds", "asphalt", "dirt", "terrain", "fog", "horizon", "paper", "weather", "time", "zone", "surface", "res"]
+const KEY_NAMES := {"trees": "Árboles", "buildings": "Edificios", "cars": "Autos civiles", "veg": "Vegetación", "decor": "Decoración", "peds": "Peatones", "asphalt": "Asfalto", "dirt": "Caminos de tierra", "terrain": "Terreno / césped", "fog": "Niebla", "horizon": "Horizonte / montañas", "paper": "Paper shader", "weather": "Clima", "time": "Hora", "zone": "Zona", "surface": "Superficie", "res": "Escala 3D"}
 
 static func onoff(b) -> String:
 	return "ON" if bool(b) else "OFF"
@@ -146,6 +146,8 @@ static func _cond_text(c: Dictionary) -> String:
 		if c.has(sw[0]):
 			parts.append("%s %s" % [sw[1], onoff(c[sw[0]])])
 	parts.append("Clima %s" % str(c.get("weather", "?")))
+	if c.has("paper"):
+		parts.append("Paper %s" % str(c["paper"]))
 	parts.append("Hora %s" % str(c.get("time", "?")))
 	parts.append("Escala 3D %s" % str(c.get("res", "?")))
 	return " · ".join(parts)
@@ -192,6 +194,7 @@ static func export_text() -> String:
 	for sw in SWITCHES:
 		L.append("- %s: %s" % [sw[1], sw[2]])
 	L.append("- ESCALA 3D: resolución a la que se dibuja el mundo 3D = pantalla × escala (0.80 = 80 %). El HUD y la ventana no cambian. AUTO = la ajusta el juego solo.")
+	L.append("- PAPER SHADER: ORIGINAL = paper.gdshader como siempre · SIMPLE = variante de prueba sin normal por derivadas, sin líneas de borde, sin variación de tono por lote y con los pow() y las coordenadas de textura en el vértice (sólo materiales de papel del mundo abierto: terreno, calles, marcas, objetos; las fachadas, los árboles, el horizonte, las señales y los peatones no cambian)")
 	L.append("(el promedio y el mínimo se miden en tramos de 0,5 s, desde el último cambio o captura, sin contar los 2 s siguientes a un cambio)")
 	if sessions.is_empty():
 		L.append("")
@@ -220,6 +223,8 @@ static func _session_text(s: Dictionary, L: Array) -> void:
 		L.append("Zona: %s · Superficie: %s" % [str(c.get("zone", "?")), str(c.get("surface", "?"))])
 		L.append("Clima: %s" % str(c.get("weather", "?")))
 		L.append("Hora: %s" % str(c.get("time", "?")))
+		if c.has("paper"):
+			L.append("PAPER: %s" % str(c["paper"]))
 		L.append("ESCALA 3D: %s  (%s)" % [str(c.get("res", "(no registrada)")), str(c.get("res_px", "?"))])
 		L.append("")
 		for sw in SWITCHES:
