@@ -41,6 +41,7 @@ Las tres comparten: mismo reparto, bloques de 250 m (un MultiMesh por bloque y e
 * **Sistema de vegetación**: 3D ORIGINAL · 8 VISTAS PNG · CROSS 2 PLANOS.
 * **Cantidad de árboles**: 1000 (arranque), 2000, 3000, 5000, 7500, 10000, 15000, 20000. Siempre el mismo bosque (los primeros 1000 son un subconjunto de los 5000, etc.).
 * **Edificios** (una calle de ciudad a lo largo de toda la pista, mismo reparto para los tres): SIN EDIFICIOS · **DRIFT / AVENTURA** (fachadas modulares de geometría con atlas de texturas) · **DREAM CITY** (cajas de pocas caras con las ventanas dibujadas por el shader) · **PAPEL** (cajas lisas con el material de papel). Cantidad: 100, 200, 400, 800, 1000.
+* **Cámara** (persecución, lejana, alta, capó, paragolpes; con el botón de cámara del juego o desde el panel, un dedo la gira y dos dedos hacen zoom) y **Rivales** (0 a 4 autos de la IA). **☰ MENÚ** siempre visible para reabrir el panel cuando está oculto.
 * **Maneja la IA** SÍ/NO (por defecto manejás vos con los controles táctiles del juego, o WASD en PC) y **Reiniciar auto**.
 * **FPS** arriba a la izquierda (con el mínimo desde el último cambio), más qué sistema y cuántos hay.
 Los árboles se arman en bloques de 250 m (un MultiMesh por bloque y especie: el motor oculta los que están fuera de cuadro). No hay benchmark automático.

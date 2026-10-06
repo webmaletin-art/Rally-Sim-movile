@@ -22,6 +22,8 @@ signal exit_requested
 
 const PaperKit := preload("res://game/fx/paper_kit.gd")
 
+const CAM_NAMES := ["PERSECUCIÓN", "LEJANA", "ALTA", "CAPÓ", "PARAGOLPES"]
+const RIVAL_CARS := ["hatch", "suv", "muscle", "buggy"]
 const SYSTEMS := ["3D ORIGINAL", ".PAP ACTUAL", "8 VISTAS PNG", "CROSS 2 PLANOS"]
 const RESULTS_FILE := "user://vegbench_results.json"
 const QUICK_COUNTS := [1000, 2000, 3000, 5000, 7500, 10000, 15000, 20000]
@@ -33,6 +35,13 @@ var count := 1000
 var b_system := 0 # edificios: 0 sin · 1 drift/aventura · 2 dream city · 3 papel
 var b_count := 200
 var auto_drive := false
+var cam_mode := 0 # 0 persecución · 1 lejana · 2 alta · 3 capó · 4 paragolpes
+var cam_yaw := 0.0 # giro de la cámara con el dedo (cámara libre alrededor del auto)
+var cam_pitch := 0.0
+var cam_zoom := 1.0
+var rivals_n := 0
+var rivals: Array = [] # autos de la IA
+var menu_btn: Button
 var panel_open := true
 
 var track
@@ -82,6 +91,10 @@ func _ready() -> void:
 			_shot_frames = int(a.substr(12))
 		elif a == "--vb_nopanel":
 			panel_open = false
+		elif a.begins_with("--vb_cam="):
+			cam_mode = clampi(int(a.substr(9)), 0, 4)
+		elif a.begins_with("--vb_rivals="):
+			rivals_n = clampi(int(a.substr(12)), 0, 4)
 	for t in TreeModels.TREES:
 		_species_ids.append(str(t["id"]))
 	layer = CanvasLayer.new()
@@ -148,6 +161,16 @@ func _build_world() -> void:
 	layer.add_child(controls)
 	controls.show_shot = false
 	controls.pause_pressed.connect(func() -> void: _set_panel(not panel_open))
+	controls.camera_pressed.connect(_next_cam)
+	controls.cam_drag.connect(func(rel: Vector2) -> void:
+		cam_yaw -= rel.x * 0.006
+		cam_pitch = clampf(cam_pitch + rel.y * 0.004, -0.5, 0.9))
+	controls.cam_zoom.connect(func(f: float) -> void: cam_zoom = clampf(cam_zoom / f, 0.5, 2.5))
+	# botón siempre a la vista para volver a abrir el menú cuando está oculto
+	menu_btn = Kit.button("☰ MENÚ", func() -> void: _set_panel(true), true, 16, Vector2(110, 44))
+	menu_btn.position = Vector2(10, 100)
+	menu_btn.visible = not panel_open
+	layer.add_child(menu_btn)
 	scatter = VegScatter.new()
 	scatter.setup(track, _species_ids.size())
 	buildings = VegBuildings.new()
@@ -251,6 +274,8 @@ func _set_panel(on: bool) -> void:
 	panel_open = on
 	if panel_box != null:
 		panel_box.visible = on
+	if menu_btn != null:
+		menu_btn.visible = not on
 
 func _row_btn(row: Container, text: String, cb: Callable, accent: bool, size := 15, h := 46.0) -> void:
 	var b := Kit.button(text, cb, accent, size, Vector2(0, h))
@@ -308,6 +333,17 @@ func _build_panel() -> void:
 		_row_btn(g3, str(qq2), func() -> void:
 			b_count = qq2
 			_apply_bld(), b_count == qq2)
+	v.add_child(Kit.label("CÁMARA Y RIVALES", 15, Kit.GOLD))
+	var rc := Kit.hbox(5)
+	v.add_child(rc)
+	_row_btn(rc, "CÁMARA: " + str(CAM_NAMES[cam_mode]), func() -> void:
+		_next_cam()
+		_build_panel(), false, 14, 46.0)
+	_row_btn(rc, "RIVALES: %d" % rivals_n, func() -> void:
+		rivals_n = (rivals_n + 1) % 5
+		_set_rivals()
+		_build_panel(), rivals_n > 0, 14, 46.0)
+	v.add_child(Kit.label("Con el botón de cámara del juego (o arriba) cambiás de cámara; arrastrando un dedo la girás y con dos dedos hacés zoom.", 12, Kit.MUTED))
 	_build_log_ui(v)
 	# otros
 	var r5 := Kit.hbox(5)
@@ -344,6 +380,35 @@ func _ensure_scatter(upto: int) -> void:
 		stats_l.text = "Repartiendo árboles… %d / %d" % [scatter.items.size(), upto]
 		await get_tree().process_frame
 
+func _next_cam() -> void:
+	cam_mode = (cam_mode + 1) % CAM_NAMES.size()
+	cam_yaw = 0.0
+	cam_pitch = 0.0
+	cam_zoom = 1.0
+
+## Rivales de la IA (0 a 4): autos de baja con el mismo manejo de la carrera, arrancan atrás del jugador
+func _set_rivals() -> void:
+	for r in rivals:
+		r.visual.queue_free()
+	rivals.clear()
+	var vehicles: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
+	var phys: Array = [car.phys]
+	for i in rivals_n:
+		var id: String = RIVAL_CARS[i % RIVAL_CARS.size()]
+		var st: Dictionary = Profile.new_car_state(id)
+		st["tires"] = "gravel"
+		var d: Dictionary = CarBuild.build_params(vehicles[id], st, {"abs": true, "tc": 50.0, "stab": 40.0})
+		var paints := [Color(0.1, 0.35, 0.85), Color(0.95, 0.75, 0.1), Color(0.15, 0.7, 0.35), Color(0.9, 0.9, 0.92)]
+		var c := Car.new(track.make_view(), VehicleParams.from_dict(d), false, true, paints[i % paints.size()], Color(0.2, 0.2, 0.22))
+		var sp: Array = track.start_pose(i + 1, 0)
+		c.place(sp[0], sp[1], sp[2])
+		c.driver = AIDriver.new(track.make_view(), c.phys, {"skill": 0.8 + 0.04 * float(i), "lane": (float(i % 3) - 1.0) * 1.5, "aggr": 0.4})
+		track_root.add_child(c.visual)
+		rivals.append(c)
+		phys.append(c.phys)
+	for c in rivals:
+		c.driver.others = phys
+
 func _set_auto(on: bool) -> void:
 	auto_drive = on
 	car.driver = AIDriver.new(track.make_view(), car.phys, {"skill": 0.85}) if on else null
@@ -364,6 +429,8 @@ func _process(dt: float) -> void:
 		_rebuild_veg()
 		_rebuild_buildings()
 		_state = "run"
+		if rivals_n > 0:
+			_set_rivals()
 		_build_panel()
 		if auto_drive:
 			_set_auto(true)
@@ -400,16 +467,33 @@ func _drive(dt: float) -> void:
 		_acc -= h
 		_sim_t += h
 		car.step_and_record(h, _sim_t)
+		for r in rivals:
+			r.step_and_record(h, _sim_t)
 	car.snap.sample(_sim_t - h)
 	car.update_visual(dt)
+	for r in rivals:
+		r.snap.sample(_sim_t - h)
+		r.update_visual(dt)
 	controls.speed_kmh = absf(car.snap.vLong) * 3.6
-	# cámara de seguimiento
+	car.visual.visible = cam_mode != 3 # con la cámara de capó no se ve el techo del propio auto
+	# cámara (5 modos); con el dedo se gira alrededor del auto y con dos dedos se acerca o aleja
 	var yaw: float = car.snap.yaw
 	var fwd := Vector3(sin(yaw), 0.0, cos(yaw))
 	var tgt := Vector3(car.snap.px, car.snap.py, car.snap.pz)
-	var want := tgt - fwd * 8.5 + Vector3(0, 3.4, 0)
-	cam.position = cam.position.lerp(want, clampf(dt * 5.0, 0.0, 1.0)) if cam.position.distance_to(want) < 40.0 else want
-	cam.look_at(tgt + fwd * 6.0 + Vector3(0, 1.4, 0))
+	var back: float = [8.5, 16.0, 11.0, -0.4, -2.3][cam_mode] * (cam_zoom if cam_mode < 3 else 1.0)
+	var up: float = [3.4, 6.0, 15.0, 1.25, 0.75][cam_mode]
+	var ang := yaw + PI + cam_yaw if cam_mode < 3 else yaw + cam_yaw * 0.6
+	var dir := Vector3(sin(ang), 0.0, cos(ang))
+	var want: Vector3
+	if cam_mode < 3:
+		want = tgt + dir * back + Vector3(0, up + cam_pitch * 6.0, 0)
+		cam.position = cam.position.lerp(want, clampf(dt * 5.0, 0.0, 1.0)) if cam.position.distance_to(want) < 40.0 else want
+		cam.look_at(tgt + fwd * 5.0 + Vector3(0, 1.3, 0))
+	else:
+		want = tgt + fwd * (-back) + Vector3(0, up, 0)
+		cam.position = want
+		var look := Vector3(sin(ang), -0.04 - cam_pitch * 0.5, cos(ang))
+		cam.look_at(want + look * 20.0)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and (event as InputEventKey).keycode == KEY_TAB:
