@@ -22,6 +22,10 @@ const CLIPS := {
 	"talk": ["Talking_7", "Talking_4", "Talking_6", "Talking_3", "Talking_5", "Arm_Gesture", "Hands_Forward_Gesture", "Agreeing_2", "happy_hand_gesture", "dismissing_gesture", "Telling_A_Secret", "Laughing", "Standing_Fist_Pump", "Standing_Greeting", "Shaking_Hands_1"],
 	"read": ["Texting_While_Standing", "Texting", "Talking_On_A_Cell_Phone"],
 }
+## Caminatas en el lugar (se elige una al azar en cada tramo): [clip, velocidad natural en m/s]. El tramo se camina a esa velocidad (entre 0.8 y 1.4) para que los pies no patinen
+const WALKS := [["Standard_Walk_inplace", 1.50], ["unarmed_walk_forward_inplace", 0.98], ["walking_inplace", 1.60], ["Walking_7_inplace", 1.04], ["Walking_3_inplace", 0.83], ["Walking_While_Texting_inplace", 0.83]]
+const CIRC_C := Vector2(1.205, -0.07) # centro del recorrido de Walk_In_Circle (cadera, en metros del Y Bot): el clip da una vuelta ovalada de 17 s y termina donde empezó
+const CIRC_XZ := Vector2(1.5, 1.2) # cuánto se agranda ese óvalo para que rodee el auto
 
 
 var car: Car
@@ -208,6 +212,21 @@ func _car_part() -> Vector3:
 func _walk(i: int, to_deg: float) -> Dictionary:
 	return {"t": "walk", "path": _arc_path(i, to_deg), "to": to_deg}
 
+## Caminar hasta puntos sueltos del mundo (no del círculo)
+func _walk_pts(pts: Array) -> Dictionary:
+	return {"t": "walk", "path": pts, "to": 0.0, "pts": true}
+
+func _ang_of(p: Vector3) -> float:
+	return rad_to_deg(atan2(p.x, p.z - car_len * 0.12))
+
+## Dónde queda parado el personaje al empezar la vuelta al auto (el óvalo gira media vuelta para empezar del lado de la cámara, rodeando el auto)
+func _circle_node(hk: float) -> Vector3:
+	var off := Basis(Vector3.UP, PI) * Vector3(CIRC_C.x * CIRC_XZ.x * hk, 0.0, CIRC_C.y * CIRC_XZ.y * hk)
+	return Vector3.ZERO - off
+
+func _can_circle() -> bool:
+	return crew[0]["mx"] != null and crew[1]["mx"] != null and MixamoClips.has_clip("Walk_In_Circle")
+
 func _stand(pose: String, dur: float, face = null, tl = Vector3.ZERO) -> Dictionary:
 	return {"t": "stand", "pose": pose, "dur": dur, "face": face, "tl": tl}
 
@@ -215,7 +234,9 @@ func _rf(a: float, b: float) -> float:
 	return rng.randf_range(a, b)
 
 func _new_scene() -> void:
-	var kind := rng.randi() % 4
+	var kind := rng.randi() % 5
+	if kind == 4 and not _can_circle():
+		kind = 0
 	var qa: Array = []
 	var qb: Array = []
 	var part := _car_part()
@@ -231,6 +252,13 @@ func _new_scene() -> void:
 			var ang2 := _rf(30, 55)
 			qa = [_walk(0, ang2), _stand("talk", _rf(6, 8), 1), _stand("point", _rf(3, 4), "tl", part), _stand("talk", _rf(3, 5), 1)]
 			qb = [_walk(1, ang2 + 26.0), _stand("crossed", _rf(4, 6), 0), _stand("chin", _rf(3, 4), "tl", part), _stand("read", _rf(3, 4), 0)]
+		4: # uno da la vuelta entera al auto mirándolo (Walk_In_Circle) y el otro lo mira desde su lugar
+			var pf := rng.randi() % 2
+			var hk: float = (crew[pf]["mx"] as MixamoClips.Player).hips_k
+			var qp := [_walk_pts([_circle_node(hk)]), {"t": "circle"}, _stand("chin", _rf(3, 4.5), "car"), _stand("hip", _rf(2.5, 4), "car")]
+			var qo := [_walk(1 - pf, _rf(60, 85)), _stand("crossed", _rf(6, 8), pf), _stand("chin", _rf(6, 8), pf), _stand("talk", _rf(4, 6), pf), _stand("hip", _rf(3, 4), "car")]
+			qa = qp if pf == 0 else qo
+			qb = qo if pf == 0 else qp
 		_: # inspección: uno al frente tocando la pintura, el otro da la vuelta
 			qa = [_walk(0, _rf(2, 14)), _stand("paint", _rf(5, 7), "tl", Vector3(0.3, 0.9, car_len * 0.5 - 0.3)), _walk(0, _rf(40, 55)), _stand("hip", _rf(3, 5), "car")]
 			qb = [_walk(1, _rf(95, 112)), _stand("hip", _rf(3, 5), "car"), _walk(1, _rf(60, 75)), _stand("chin", _rf(4, 6), "tl", part), _stand("crossed", _rf(2.5, 4), "car")]
@@ -412,24 +440,47 @@ func _advance(i: int, dt: float) -> void:
 		if path.is_empty():
 			c["step"] = {}
 			c["speed"] = 0.0
-			c["ang"] = float(step["to"])
+			c["ang"] = _ang_of(node.position) if step.has("pts") else float(step["to"])
 			return
-		var tgt := _ring(i, float(path[0]))
+		var mp: Variant = c["mx"]
+		if mp != null and not step.has("sid"):
+			_setup_walk(c, step, path.size())
+		var tgt: Vector3 = path[0] if path[0] is Vector3 else _ring(i, float(path[0]))
 		var d := Vector3(tgt.x - node.position.x, 0.0, tgt.z - node.position.z)
 		var dist := d.length()
-		var spd := 1.15 if i == 0 else 1.05
-		c["speed"] = lerpf(float(c["speed"]), spd, clampf(dt * 3.0, 0.0, 1.0))
-		if dist < 0.12:
-			c["ang"] = float(path[0])
-			path.pop_front()
-			return
-		desired_yaw = atan2(d.x, d.z)
-		var yaw_err := wrapf(desired_yaw - float(c["yaw"]), -PI, PI)
-		# primero gira (la velocidad cae si hay que girar mucho), después camina
-		var turn_k := clampf(1.0 - absf(yaw_err) / 1.2, 0.0, 1.0)
-		var move := float(c["speed"]) * turn_k * dt
-		node.position += d / dist * minf(move, dist)
-		c["phi"] = float(c["phi"]) + float(c["speed"]) * turn_k * dt / 1.4
+		var spd := float(step.get("spd", 1.15 if i == 0 else 1.05))
+		if bool(step.get("start", false)) and not bool(step.get("start_done", false)):
+			# arranque con el clip de Mixamo: el avance de la cadera mueve al personaje hacia el primer punto
+			var sp: MixamoClips.Player = mp
+			desired_yaw = atan2(d.x, d.z)
+			var r0 := sp.root_at(sp.t)
+			var r1 := sp.root_at(sp.t + dt)
+			node.position += Basis(Vector3.UP, float(c["yaw"])) * Vector3(r1.x - r0.x, 0.0, r1.y - r0.y)
+			c["speed"] = 0.6
+			step["rate"] = 1.0
+			if sp.t + dt >= float(sp.cur["len"]) - 0.02:
+				step["start_done"] = true
+				sp.play(MixamoClips.clip(str(step["wclip"])), true)
+				c["mx_pose"] = str(step["wclip"])
+				while path.size() > 1 and node.position.distance_to(_pt(i, path[1])) < _pt(i, path[0]).distance_to(_pt(i, path[1])):
+					path.pop_front() # el arranque ya pasó los primeros puntos
+		else:
+			c["speed"] = lerpf(float(c["speed"]), spd, clampf(dt * 3.0, 0.0, 1.0))
+			if dist < 0.12:
+				c["ang"] = _ang_of(tgt) if not (path[0] is float or path[0] is int) else float(path[0])
+				path.pop_front()
+				return
+			desired_yaw = atan2(d.x, d.z)
+			var yaw_err := wrapf(desired_yaw - float(c["yaw"]), -PI, PI)
+			# primero gira (la velocidad cae si hay que girar mucho), después camina
+			var turn_k := clampf(1.0 - absf(yaw_err) / 1.2, 0.0, 1.0)
+			var move := float(c["speed"]) * turn_k * dt
+			node.position += d / dist * minf(move, dist)
+			c["phi"] = float(c["phi"]) + float(c["speed"]) * turn_k * dt / 1.4
+			step["rate"] = (spd / float(step.get("nat", spd))) * lerpf(0.35, 1.0, turn_k)
+	elif step["t"] == "circle":
+		_circle(c, step)
+		return
 	else:
 		c["speed"] = lerpf(float(c["speed"]), 0.0, clampf(dt * 5.0, 0.0, 1.0))
 		var tp = _target_point(c, step)
@@ -443,6 +494,56 @@ func _advance(i: int, dt: float) -> void:
 	var rate := 5.5
 	c["yaw"] = float(c["yaw"]) + wrapf(desired_yaw - float(c["yaw"]), -PI, PI) * clampf(dt * rate, 0.0, 1.0)
 	node.rotation.y = c["yaw"]
+
+func _pt(i: int, p: Variant) -> Vector3:
+	return p if p is Vector3 else _ring(i, float(p))
+
+## Al empezar un tramo a pie: elige al azar una caminata de Mixamo (y a veces arranca con Start_Walking); si no hay clips, queda la caminata procedural
+func _setup_walk(c: Dictionary, step: Dictionary, n_pts: int) -> void:
+	_step_seq += 1
+	step["sid"] = _step_seq
+	var pl: MixamoClips.Player = c["mx"]
+	var opts: Array = []
+	for w in WALKS:
+		if MixamoClips.has_clip(str(w[0])) and (str(c["name"]) == "copiloto" or not str(w[0]).contains("Texting")):
+			opts.append(w)
+	if opts.is_empty():
+		return
+	var pick: Array = opts[rng.randi() % opts.size()]
+	step["wclip"] = str(pick[0])
+	step["nat"] = float(pick[1])
+	step["spd"] = clampf(float(pick[1]), 0.8, 1.4)
+	step["rate"] = 1.0
+	step["mx"] = true
+	c["mx_step_id"] = int(step["sid"])
+	if n_pts >= 3 and MixamoClips.has_clip("Start_Walking") and rng.randf() < 0.4:
+		step["start"] = true
+		pl.play(MixamoClips.clip("Start_Walking"), false, true)
+		c["mx_pose"] = "Start_Walking"
+	else:
+		pl.play(MixamoClips.clip(str(pick[0])), true)
+		c["mx_pose"] = str(pick[0])
+
+## Vuelta entera al auto con Walk_In_Circle: el personaje queda fijo y el recorrido de la cadera (agrandado) lo lleva alrededor
+func _circle(c: Dictionary, step: Dictionary) -> void:
+	var mp: MixamoClips.Player = c["mx"]
+	var node: Node3D = c["node"]
+	if not step.has("sid"):
+		_step_seq += 1
+		step["sid"] = _step_seq
+		node.position = _circle_node(mp.hips_k)
+		c["yaw"] = PI
+		node.rotation.y = PI
+		mp.play(MixamoClips.clip("Walk_In_Circle"), false, false, CIRC_XZ)
+		c["mx_pose"] = "Walk_In_Circle"
+		c["mx_step_id"] = int(step["sid"])
+		step["mx"] = true
+		step["rate"] = 1.0
+	c["speed"] = 0.9
+	if mp.t >= float(mp.cur["len"]) - 0.06:
+		c["step"] = {}
+		c["speed"] = 0.0
+		c["ang"] = _ang_of(node.position)
 
 func _pose_for(i: int) -> Dictionary:
 	var c: Dictionary = crew[i]
@@ -504,6 +605,11 @@ func _animate(i: int) -> void:
 		return
 	var pl: MixamoClips.Player = mx
 	var dt := get_process_delta_time()
+	if not st.is_empty() and bool(st.get("mx", false)): # caminando (o dando la vuelta) con un clip de Mixamo
+		pl.step(dt * float(st.get("rate", 1.0)))
+		pl.apply_clip()
+		pl.post(dt)
+		return
 	var standing: bool = (not st.is_empty()) and str(st["t"]) == "stand"
 	if standing:
 		if not st.has("sid"):
@@ -673,6 +779,8 @@ func _process(dt: float) -> void:
 		_animate(i)
 		var st: Dictionary = c["step"]
 		if i == 1 and not st.is_empty() and st["t"] == "stand" and st["pose"] == "read":
+			show_clip = true
+		elif i == 1 and not st.is_empty() and st["t"] == "walk" and str(c["mx_pose"]).begins_with("Walking_While_Texting"):
 			show_clip = true
 	clip.visible = show_clip
 	if show_clip:

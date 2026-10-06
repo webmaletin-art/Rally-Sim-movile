@@ -89,6 +89,9 @@ class Player extends RefCounted:
 	var hips_k := 1.0
 	var cur: Dictionary = {}
 	var t := 0.0
+	var loop := false # el clip da la vuelta sin cortes (caminatas en el lugar)
+	var strip := false # saca el avance de la cadera (el que mueve al personaje lo hace afuera: root_at)
+	var xz := Vector2.ONE # escala del recorrido de la cadera en x y z (para dar la vuelta al auto en un óvalo más grande)
 	var blend := 1.0
 	var _snap: Dictionary = {} # índice de hueso → Quaternion al empezar la mezcla
 	var _snap_hips := Vector3.ZERO
@@ -104,10 +107,13 @@ class Player extends RefCounted:
 			hips_k = skel.get_bone_rest(hips_i).origin.y / HIPS_REF
 
 	## Empieza un clip (mezclando desde lo último que se mostró)
-	func play(c: Dictionary) -> void:
+	func play(c: Dictionary, p_loop := false, p_strip := false, p_xz := Vector2.ONE) -> void:
 		mark_transition()
 		cur = c
 		t = 0.0
+		loop = p_loop
+		strip = p_strip
+		xz = p_xz
 
 	## Marca que lo que viene se mezcla desde la pose actual (por ejemplo al volver a la pose procedural)
 	func mark_transition() -> void:
@@ -117,10 +123,26 @@ class Player extends RefCounted:
 			blend = 0.0
 
 	func ended() -> bool:
-		return cur.is_empty() or t >= float(cur["len"])
+		return cur.is_empty() or (not loop and t >= float(cur["len"]))
 
 	func step(dt: float) -> void:
 		t += dt
+		if loop and not cur.is_empty() and t >= float(cur["len"]):
+			t = fmod(t, maxf(0.1, float(cur["len"])))
+
+	## Cuánto avanzó la cadera (x, z; ya en metros del personaje) desde el cuadro 0 hasta el instante tt del clip actual
+	func root_at(tt: float) -> Vector2:
+		if cur.is_empty():
+			return Vector2.ZERO
+		var hp: PackedVector3Array = cur["hips"]
+		var frames := int(cur["frames"])
+		if hp.size() != frames:
+			return Vector2.ZERO
+		var fpos := clampf(tt * FPS, 0.0, float(frames - 1))
+		var k0 := int(floor(fpos))
+		var k1 := mini(k0 + 1, frames - 1)
+		var v := hp[k0].lerp(hp[k1], fpos - float(k0)) - hp[0]
+		return Vector2(v.x, v.z) * hips_k
 
 	## Pone la pose del clip en el esqueleto
 	func apply_clip() -> void:
@@ -148,7 +170,14 @@ class Player extends RefCounted:
 			skel.set_bone_pose_rotation(bi, q.normalized())
 		var hp: PackedVector3Array = cur["hips"]
 		if hips_i >= 0 and hp.size() == frames:
-			skel.set_bone_pose_position(hips_i, hp[k0].lerp(hp[k1], w) * hips_k)
+			var hv := hp[k0].lerp(hp[k1], w)
+			if strip:
+				hv.x = hp[0].x
+				hv.z = hp[0].z
+			else:
+				hv.x *= xz.x
+				hv.z *= xz.y
+			skel.set_bone_pose_position(hips_i, hv * hips_k)
 
 	## Al final de cada cuadro: mezcla con la pose anterior si hace falta y recuerda la pose mostrada
 	func post(dt: float) -> void:
