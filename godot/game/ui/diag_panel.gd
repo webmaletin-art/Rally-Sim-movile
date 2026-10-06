@@ -10,6 +10,7 @@ const DiagLog := preload("res://game/data/diag_log.gd")
 const DiagSpots := preload("res://game/city/diag_spots.gd")
 const CityTrack := preload("res://game/track/city_track.gd")
 const PaperKit := preload("res://game/fx/paper_kit.gd")
+const FrameRes := preload("res://game/ui/frame_res.gd")
 
 const ZONES := ["Centro", "Barrio", "Campo", "Costa", "Colina", "Campo lejano"]
 const SURFACES := ["asfalto", "tierra", "banquina", "pasto", "fuera de calzada", "barro", "nieve"]
@@ -55,6 +56,8 @@ var _log_lbl: Label
 var _toggles := {}
 var _scale_btns := {} # texto de la escala → botón
 var _paper_btns := {} # «ORIGINAL» / «SIMPLE» → botón
+var frame_rig: Node # frame_res.gd (experimento RESOLUCIÓN DE FRAME)
+var _frame_btns: Array = []
 var _spots_box: VBoxContainer
 var _open := false
 
@@ -64,6 +67,8 @@ func setup(p_race) -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	is_city = race.track is CityTrack
 	PaperKit.set_simple(false) # el experimento PAPER SHADER arranca siempre en ORIGINAL
+	frame_rig = FrameRes.new() # el experimento RESOLUCIÓN DE FRAME arranca siempre en NATIVA (inactivo)
+	race.add_child(frame_rig)
 	for s in DiagLog.SWITCHES:
 		sw[s[0]] = true
 	cond = _cond()
@@ -101,6 +106,13 @@ func _cond() -> Dictionary:
 		c["paper"] = "SIMPLE" if PaperKit.simple else "ORIGINAL"
 	c["res"] = _res_text()
 	c["res_px"] = _res_px_text()
+	var scr: Vector2i = frame_rig.screen_size()
+	var frm: Vector2i = frame_rig.actual_size()
+	var wld: Vector2i = race.world.size
+	c["screen_px"] = "%d×%d" % [scr.x, scr.y]
+	c["frame"] = "%d×%d" % [frm.x, frm.y]
+	c["frame_name"] = frame_rig.name_of(frame_rig.level)
+	c["world_px"] = "%d×%d" % [wld.x, wld.y]
 	var px := 0.0
 	var pz := 0.0
 	if not race.cars.is_empty():
@@ -201,6 +213,16 @@ func _build() -> void:
 	sc.add_child(body)
 	_lbl_info = Kit.wrap("", 13, Kit.TEXT, 100)
 	body.add_child(_lbl_info)
+	body.add_child(Kit.label("RESOLUCIÓN DE FRAME (todo el cuadro: mundo 3D + HUD)", 13, Kit.MUTED))
+	var fg := Kit.grid(3, 6, 6)
+	body.add_child(fg)
+	for fi in FrameRes.LEVELS.size():
+		var fidx: int = fi
+		var fb := Kit.button("", func() -> void: _set_frame(fidx), false, 13, Vector2(0, 52))
+		fb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		fg.add_child(fb)
+		_frame_btns.append(fb)
+	body.add_child(Kit.wrap("Experimento: dibuja el cuadro completo (mundo 3D + HUD + este menú) a esa resolución interna y lo estira a la pantalla, que no cambia. No es lo mismo que ESCALA 3D (ésa sólo achica el mundo 3D). NATIVA = como siempre.", 12, Kit.MUTED, 100))
 	body.add_child(Kit.label("ESCALA DE RENDERIZADO 3D", 13, Kit.MUTED))
 	var rs := Kit.hbox(6)
 	body.add_child(rs)
@@ -384,6 +406,29 @@ func _set_scale(v: float) -> void:
 		return
 	_changed("ESCALA 3D: %s → %s" % [before, after])
 
+## RESOLUCIÓN DE FRAME: sólo cambia a qué resolución se dibuja el cuadro completo (ver frame_res.gd); la pantalla y ESCALA 3D no se tocan
+func _set_frame(i: int) -> void:
+	if frame_rig.level == i:
+		return
+	var before := _frame_text(frame_rig.level)
+	frame_rig.set_level(i)
+	_changed("RESOLUCIÓN DE FRAME: %s → %s" % [before, _frame_text(i)])
+
+func _frame_text(i: int) -> String:
+	var sz: Vector2i = frame_rig.screen_size() if i == 0 else frame_rig.size_of(i)
+	return "%d×%d %s" % [sz.x, sz.y, frame_rig.name_of(i)]
+
+func _style_frame() -> void:
+	for i in _frame_btns.size():
+		var b: Button = _frame_btns[i]
+		var sz: Vector2i = frame_rig.screen_size() if i == 0 else frame_rig.size_of(i)
+		b.text = "%d×%d\n%s" % [sz.x, sz.y, frame_rig.name_of(i)]
+		var on: bool = i == frame_rig.level
+		var base := Color(0.10, 0.34, 0.20, 0.96) if on else Color(0.16, 0.19, 0.24, 0.96)
+		b.add_theme_stylebox_override("normal", Kit.box(base, 12, Kit.LINE, 1, 10))
+		b.add_theme_stylebox_override("hover", Kit.box(base.lightened(0.08), 12, Kit.LINE, 1, 10))
+		b.add_theme_stylebox_override("pressed", Kit.box(base.darkened(0.12), 12, Kit.ACCENT, 2, 10))
+
 ## PAPER SHADER: sólo cambia el shader de los materiales de papel (ver PaperKit.set_simple); nada más
 func _set_paper(simple: bool) -> void:
 	if PaperKit.simple == simple:
@@ -561,8 +606,12 @@ func _refresh_labels() -> void:
 	l.append("ESCENA: %s%s" % [_scene_name(), (" · " + _circuit_name()) if not is_city and _circuit_name() != "" else ""])
 	l.append("UBICACIÓN: %s" % str(c["where"]))
 	l.append("ZONA: %s · SUPERFICIE: %s" % [str(c["zone"]), str(c["surface"])])
+	l.append("RESOLUCIÓN PANTALLA: %s" % str(c["screen_px"]))
+	l.append("RESOLUCIÓN FRAME: %s (%s)" % [str(c["frame"]), str(c["frame_name"])])
 	l.append("ESCALA 3D: %s (%s)" % [str(c["res"]), str(c["res_px"])])
+	l.append("RESOLUCIÓN MUNDO 3D: %s" % str(c["world_px"]))
 	l.append("CLIMA: %s · HORA: %s%s" % [str(c["weather"]), str(c["time"]), (" (%s)" % race.clock.clock_text()) if is_city and race.clock != null else ""])
 	_lbl_info.text = "\n".join(l)
 	_style_scale()
 	_style_paper()
+	_style_frame()

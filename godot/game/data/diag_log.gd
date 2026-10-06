@@ -122,8 +122,8 @@ static func test_count() -> int:
 
 # ───────────────────────── condiciones ─────────────────────────
 ## Claves que cuentan para comparar dos pruebas (la ubicación fina, «where», sólo se muestra)
-const CMP_KEYS := ["trees", "buildings", "cars", "veg", "decor", "peds", "asphalt", "dirt", "terrain", "fog", "horizon", "paper", "weather", "time", "zone", "surface", "res"]
-const KEY_NAMES := {"trees": "Árboles", "buildings": "Edificios", "cars": "Autos civiles", "veg": "Vegetación", "decor": "Decoración", "peds": "Peatones", "asphalt": "Asfalto", "dirt": "Caminos de tierra", "terrain": "Terreno / césped", "fog": "Niebla", "horizon": "Horizonte / montañas", "paper": "Paper shader", "weather": "Clima", "time": "Hora", "zone": "Zona", "surface": "Superficie", "res": "Escala 3D"}
+const CMP_KEYS := ["trees", "buildings", "cars", "veg", "decor", "peds", "asphalt", "dirt", "terrain", "fog", "horizon", "paper", "weather", "time", "zone", "surface", "res", "frame"]
+const KEY_NAMES := {"trees": "Árboles", "buildings": "Edificios", "cars": "Autos civiles", "veg": "Vegetación", "decor": "Decoración", "peds": "Peatones", "asphalt": "Asfalto", "dirt": "Caminos de tierra", "terrain": "Terreno / césped", "fog": "Niebla", "horizon": "Horizonte / montañas", "paper": "Paper shader", "frame": "Resolución de frame", "weather": "Clima", "time": "Hora", "zone": "Zona", "surface": "Superficie", "res": "Escala 3D"}
 
 static func onoff(b) -> String:
 	return "ON" if bool(b) else "OFF"
@@ -149,6 +149,8 @@ static func _cond_text(c: Dictionary) -> String:
 	if c.has("paper"):
 		parts.append("Paper %s" % str(c["paper"]))
 	parts.append("Hora %s" % str(c.get("time", "?")))
+	if c.has("frame"):
+		parts.append("Frame %s" % str(c["frame"]))
 	parts.append("Escala 3D %s" % str(c.get("res", "?")))
 	return " · ".join(parts)
 
@@ -193,6 +195,7 @@ static func export_text() -> String:
 	L.append("QUÉ APAGA CADA INTERRUPTOR:")
 	for sw in SWITCHES:
 		L.append("- %s: %s" % [sw[1], sw[2]])
+	L.append("- RESOLUCIÓN DE FRAME: resolución interna a la que se dibuja TODO el cuadro (mundo 3D ya reducido + HUD + menús) antes de estirarlo a la pantalla. NATIVA = como siempre (sin superficie intermedia). No es la ESCALA 3D (ésa sólo achica el mundo 3D y se mide contra la pantalla). RESOLUCIÓN PANTALLA = la física de Android; no cambia.")
 	L.append("- ESCALA 3D: resolución a la que se dibuja el mundo 3D = pantalla × escala (0.80 = 80 %). El HUD y la ventana no cambian. AUTO = la ajusta el juego solo.")
 	L.append("- PAPER SHADER: ORIGINAL = paper.gdshader como siempre · SIMPLE = variante de prueba sin normal por derivadas, sin líneas de borde, sin variación de tono por lote y con los pow() y las coordenadas de textura en el vértice (sólo materiales de papel del mundo abierto: terreno, calles, marcas, objetos; las fachadas, los árboles, el horizonte, las señales y los peatones no cambian)")
 	L.append("(el promedio y el mínimo se miden en tramos de 0,5 s, desde el último cambio o captura, sin contar los 2 s siguientes a un cambio)")
@@ -225,7 +228,12 @@ static func _session_text(s: Dictionary, L: Array) -> void:
 		L.append("Hora: %s" % str(c.get("time", "?")))
 		if c.has("paper"):
 			L.append("PAPER: %s" % str(c["paper"]))
+		if c.has("screen_px"):
+			L.append("RESOLUCIÓN PANTALLA: %s" % str(c["screen_px"]))
+			L.append("RESOLUCIÓN FRAME: %s (%s)" % [str(c.get("frame", "?")), str(c.get("frame_name", "?"))])
 		L.append("ESCALA 3D: %s  (%s)" % [str(c.get("res", "(no registrada)")), str(c.get("res_px", "?"))])
+		if c.has("world_px"):
+			L.append("RESOLUCIÓN MUNDO 3D: %s" % str(c["world_px"]))
 		L.append("")
 		for sw in SWITCHES:
 			if c.has(sw[0]):
