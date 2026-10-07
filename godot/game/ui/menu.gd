@@ -259,13 +259,14 @@ func _build_world() -> void:
 	apply_fx()
 	showroom = Showroom.new()
 	world.add_child(showroom)
+	_apply_room_quality()
 	get_tree().root.size_changed.connect(_on_resize)
 	_on_resize()
 	refresh_car()
 
 func _on_resize() -> void:
 	var win := Vector2(DisplayServer.window_get_size())
-	var sc := 0.8
+	var sc := _menu_scale()
 	world.size = Vector2i(maxi(480, int(win.x * sc)), maxi(270, int(win.y * sc)))
 	view_rect.position = Vector2.ZERO
 	view_rect.size = get_viewport().get_visible_rect().size
@@ -278,6 +279,19 @@ func _dist_scale_for(name: String) -> float:
 	if not MenuChrome.wanted(name):
 		return 1.0
 	return 1.14 if chrome.has_carousel(name) else 1.12
+
+## Resolución del 3D del menú: la del perfil gráfico calibrado del teléfono (más baja en los flojos, como en la carrera), entre 0.55 y 0.8 del tamaño de la ventana
+func _menu_scale() -> float:
+	if profile != null and str(profile.setting("gfxMode")) == "auto":
+		return clampf(float(profile.setting("autoRes")), 0.55, 0.8)
+	return 0.8
+
+## Sombras de la sala: sólo si el perfil gráfico las permite (como en la carrera)
+func _apply_room_quality() -> void:
+	if showroom == null or showroom.sun == null or profile == null:
+		return
+	var q: Variant = profile.setting("shadowsQ")
+	showroom.sun.shadow_enabled = (profile.setting("autoShadows") == true) if str(q) == "auto" else (q == true)
 
 ## Pone el auto en el medio de lo que no tapan los paneles: horizontal (el panel de la izquierda) y vertical (barra de arriba y carrusel de abajo)
 func _apply_view_shift() -> void:
@@ -335,8 +349,30 @@ func toast(t: String) -> void:
 func apply_fx() -> void:
 	lens.apply_settings(profile)
 
+var fps_l: Label
+func _update_fps() -> void:
+	if profile == null or profile.setting("showFps") != true:
+		if fps_l != null:
+			fps_l.visible = false
+		return
+	if fps_l == null:
+		fps_l = Kit.label("", 18, Color(0.6, 1.0, 0.6), HORIZONTAL_ALIGNMENT_RIGHT)
+		fps_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		fps_l.add_theme_constant_override("outline_size", 5)
+		fps_l.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		fps_l.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		fps_l.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		fps_l.offset_right = -14
+		fps_l.offset_bottom = -58
+		fps_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.add_child(fps_l)
+	fps_l.visible = true
+	if frames % 15 == 0:
+		fps_l.text = "%d FPS" % int(Engine.get_frames_per_second())
+
 func _process(dt: float) -> void:
 	lens.update(dt, 0.0)
+	_update_fps()
 	if toast_t > 0.0:
 		toast_t -= dt
 		toast_l.modulate.a = clampf(toast_t / 0.6, 0.0, 1.0)

@@ -1720,6 +1720,11 @@ var shopshot := ""
 var _shopshot_f := 0
 
 var _fps_l: Label
+## Antes de sacar la carrera: las capas 2D vuelven a dibujar en la ventana (si se liberan redirigidas al «frame», el menú que viene después queda negro)
+func release_frame() -> void:
+	if frame_rig != null and is_instance_valid(frame_rig):
+		frame_rig.set_level(0)
+
 var frame_rig: Node # FrameRes: RESOLUCIÓN DE FRAME (todo el cuadro 2D a una resolución interna; la elige el perfil gráfico y la puede cambiar el 📊)
 var calib: Node # Calibration: sólo en la carrera de calibración (primer arranque / RECALIBRAR RENDIMIENTO)
 var diag_panel # DiagPanel: menú manual de diagnóstico de rendimiento (botón 📊); registra, no prueba nada solo

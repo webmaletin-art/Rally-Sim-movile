@@ -1,18 +1,15 @@
 extends RefCounted
 ## Ambiente del garaje del menú: una sala redonda de paredes de grafito con pilares, barras de luz blancas y naranjas, piso pulido y el logo DR.
-## Pocas mallas (MultiMesh para lo repetido), materiales sin sombras ni texturas y una sola luz extra: liviano para el teléfono.
+## Liviano para el teléfono (que es lo que pesa: la pared cubre toda la pantalla): pocas mallas (MultiMesh para lo repetido), materiales SIN iluminación
+## (un color liso ya oscurecido: cuesta casi nada por píxel), sin luces extra y sin sombras.
 
 const ROOM_R := 14.0
 const ROOM_H := 7.5
 
-static func _mat(col: Color, rough := 0.7, metal := 0.0, emissive := false) -> StandardMaterial3D:
+static func _mat(col: Color, _rough := 0.7, _metal := 0.0, _emissive := true) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = col
-	m.roughness = rough
-	m.metallic = metal
-	m.metallic_specular = 0.25
-	if emissive:
-		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	return m
 
 static func _multi(parent: Node3D, mesh: Mesh, xf: Array) -> void:
@@ -34,12 +31,18 @@ static func _bar_xf(ang: float, y: float, len: float, r := ROOM_R - 0.25) -> Tra
 	b = b.scaled(Vector3(len, 1, 1))
 	return Transform3D(b, pos)
 
+static func _on(part: String) -> bool:
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("--room="): # prueba de rendimiento: sólo estas partes (wall,floor,pillars,panels,bars,labels)
+			return (a.substr(7).split(",") as PackedStringArray).has(part)
+	return true
+
 static func build(parent: Node3D) -> void:
 	var room := Node3D.new()
 	room.name = "GarageRoom"
 	parent.add_child(room)
 	# pared y techo (se ven desde adentro)
-	var wall_m := _mat(Color(0.085, 0.095, 0.118), 0.7, 0.3)
+	var wall_m := _mat(Color(0.045, 0.052, 0.068))
 	wall_m.cull_mode = BaseMaterial3D.CULL_FRONT
 	var cyl := CylinderMesh.new()
 	cyl.top_radius = ROOM_R
@@ -52,9 +55,10 @@ static func build(parent: Node3D) -> void:
 	wall.mesh = cyl
 	wall.position.y = ROOM_H * 0.5 - 0.05
 	wall.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	room.add_child(wall)
+	if _on("wall"):
+		room.add_child(wall)
 	# piso pulido (más grande que la plataforma)
-	var floor_m := _mat(Color(0.03, 0.034, 0.042), 0.38, 0.3)
+	var floor_m := _mat(Color(0.022, 0.025, 0.032))
 	var fl := CylinderMesh.new()
 	fl.top_radius = ROOM_R - 0.05
 	fl.bottom_radius = ROOM_R - 0.05
@@ -66,54 +70,59 @@ static func build(parent: Node3D) -> void:
 	floor_i.mesh = fl
 	floor_i.position.y = -0.1
 	floor_i.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	room.add_child(floor_i)
+	if _on("floor"):
+		room.add_child(floor_i)
 	# pilares verticales
 	var pil := BoxMesh.new()
 	pil.size = Vector3(0.55, ROOM_H, 0.3)
-	pil.material = _mat(Color(0.1, 0.11, 0.135), 0.55, 0.6)
+	pil.material = _mat(Color(0.085, 0.092, 0.115))
 	var xs: Array = []
-	var n := 20
+	var n := 14
 	for i in n:
 		var a := TAU * float(i) / float(n)
 		var tf := Transform3D(Basis.looking_at(-Vector3(sin(a), 0, cos(a)), Vector3.UP), Vector3(sin(a) * (ROOM_R - 0.15), ROOM_H * 0.5 - 0.05, cos(a) * (ROOM_R - 0.15)))
 		xs.append(tf)
-	_multi(room, pil, xs)
+	if _on("pillars"):
+		_multi(room, pil, xs)
 	# paneles entre pilares (un poco más claros, a media altura): dan textura industrial
 	var pan := BoxMesh.new()
 	pan.size = Vector3(1.9, 1.6, 0.12)
-	pan.material = _mat(Color(0.085, 0.095, 0.115), 0.6, 0.5)
+	pan.material = _mat(Color(0.062, 0.07, 0.09))
 	var px: Array = []
 	for i in n:
 		var a2 := TAU * (float(i) + 0.5) / float(n)
 		px.append(Transform3D(Basis.looking_at(-Vector3(sin(a2), 0, cos(a2)), Vector3.UP), Vector3(sin(a2) * (ROOM_R - 0.1), 1.4, cos(a2) * (ROOM_R - 0.1))))
 		px.append(Transform3D(Basis.looking_at(-Vector3(sin(a2), 0, cos(a2)), Vector3.UP), Vector3(sin(a2) * (ROOM_R - 0.1), 3.4, cos(a2) * (ROOM_R - 0.1))))
-	_multi(room, pan, px)
+	if _on("panels"):
+		_multi(room, pan, px)
 	# barras de luz: blancas arriba, naranjas más abajo (algunas), y un zócalo naranja tenue
 	var bar := BoxMesh.new()
 	bar.size = Vector3(1.0, 0.085, 0.06)
-	bar.material = _mat(Color(1.0, 0.96, 0.9), 0.5, 0.0, true)
+	bar.material = _mat(Color(1.0, 0.96, 0.9))
 	var wx: Array = []
-	for i in 12:
-		var a3 := TAU * (float(i) + 0.25) / 12.0
+	for i in 9:
+		var a3 := TAU * (float(i) + 0.25) / 9.0
 		wx.append(_bar_xf(a3, 5.5, 4.2))
 		wx.append(_bar_xf(a3 + 0.26, 6.25, 2.4))
-	_multi(room, bar, wx)
+	if _on("bars"):
+		_multi(room, bar, wx)
 	var bar_o := BoxMesh.new()
 	bar_o.size = Vector3(1.0, 0.09, 0.06)
-	bar_o.material = _mat(Color(1.0, 0.47, 0.09), 0.5, 0.0, true)
+	bar_o.material = _mat(Color(1.0, 0.47, 0.09))
 	var ox: Array = []
-	for i in 12:
-		var a4 := TAU * (float(i) + 0.75) / 12.0
+	for i in 9:
+		var a4 := TAU * (float(i) + 0.75) / 9.0
 		ox.append(_bar_xf(a4, 4.6, 3.4))
 		ox.append(_bar_xf(a4 - 0.22, 0.28, 4.0))
-	_multi(room, bar_o, ox)
+	if _on("bars"):
+		_multi(room, bar_o, ox)
 	# logo DR en la pared del fondo (y en otras dos para cuando se gira la cámara)
-	for k in 3:
+	for k in (3 if _on("labels") else 0):
 		var ang := PI + 0.62 + float(k) * TAU / 3.0 # el auto mira hacia el frente-izquierdo: el fondo está del lado opuesto de la cámara
 		var lab := Label3D.new()
 		lab.text = "DR"
-		lab.font_size = 380
-		lab.pixel_size = 0.0085
+		lab.font_size = 160
+		lab.pixel_size = 0.0202
 		lab.outline_size = 0
 		lab.modulate = Color(0.52, 0.55, 0.62, 0.62)
 		lab.shaded = false
@@ -126,8 +135,8 @@ static func build(parent: Node3D) -> void:
 		room.add_child(lab)
 		var sub := Label3D.new()
 		sub.text = "DREAM RACING"
-		sub.font_size = 90
-		sub.pixel_size = 0.0085
+		sub.font_size = 48
+		sub.pixel_size = 0.016
 		sub.modulate = Color(1.0, 0.47, 0.09, 0.8)
 		sub.shaded = false
 		var r2 := ROOM_R - 0.45
@@ -135,12 +144,3 @@ static func build(parent: Node3D) -> void:
 		sub.look_at_from_position(sub.position, Vector3(0, 2.15, 0), Vector3.UP)
 		sub.rotate_object_local(Vector3.UP, PI)
 		room.add_child(sub)
-	# una luz cálida baja, atrás del auto, que tiñe de naranja el borde de la carrocería
-	var warm := OmniLight3D.new()
-	warm.light_color = Color(1.0, 0.5, 0.18)
-	warm.light_energy = 1.1
-	warm.omni_range = 13.0
-	warm.shadow_enabled = false
-	warm.light_specular = 0.0 # sin brillo especular: no deja la mancha naranja en el piso pulido
-	warm.position = Vector3(-5.2, 1.4, -6.5)
-	room.add_child(warm)

@@ -78,6 +78,7 @@ func show_menu(screen := "home") -> void:
 	if oprofile != null:
 		oprofile.flush() # lo que dejó el mundo online (posición, nafta, fama) se guarda aparte del perfil offline
 	if race != null:
+		race.release_frame()
 		race.queue_free()
 		race = null
 	if menu != null:
@@ -147,6 +148,7 @@ func _on_race_finished(result: Dictionary) -> void:
 	last_cfg = race.cfg
 	pending_result = Rewards.apply(profile, last_cfg, result)
 	_submit_online(last_cfg, result)
+	race.release_frame()
 	race.queue_free()
 	race = null
 	show_menu("results")

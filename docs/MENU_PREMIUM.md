@@ -18,3 +18,11 @@ Logo, auto elegido (categoría + PI), botón grande SEGUIR CARRERA (o AVENTURA s
 - ESTADÍSTICAS (en la referencia): no hay datos de estadísticas por auto, así que no se inventó.
 - Los textos nuevos están traducidos a los 5 idiomas (en, pt, fr, it, de).
 - Tablets 4:3: el panel central estira hasta abajo (queda aire); se puede ajustar al contenido.
+
+## Rendimiento del menú
+- La sala 3D del menú ahora respeta el perfil gráfico del teléfono, como la carrera: **sombras sólo si el perfil las permite** (antes el sol del menú proyectaba sombras siempre) y **resolución del 3D = `autoRes` del perfil** (entre 0.55 y 0.8). En la prueba por software el cuadro del menú pasó de ~75 ms a ~31 ms.
+- La pared del garaje es SIN iluminación (colores lisos oscuros) y sin luces extra; los pilares/barras son pocos (MultiMesh).
+- Con «Mostrar FPS» (Opciones → Gráficos) el menú también muestra los FPS abajo a la derecha.
+
+## Salir del mundo abierto (arreglo)
+Con la RESOLUCIÓN DE FRAME activa (perfil calibrado), al salir de la carrera las capas 2D se liberaban todavía redirigidas a la superficie interna y el menú nuevo quedaba negro. Ahora `Race.release_frame()` las devuelve a la ventana antes de liberar la carrera (`app.gd`).

@@ -116,7 +116,8 @@ func _ready() -> void:
 	floor_m.mesh = cyl
 	floor_m.position.y = -0.05
 	add_child(floor_m)
-	ShowroomEnv.build(self)
+	if not OS.get_cmdline_user_args().has("--noroom"): # (prueba de rendimiento: sin la sala)
+		ShowroomEnv.build(self)
 	var rm := StandardMaterial3D.new()
 	rm.albedo_color = Color(1.0, 0.48, 0.1)
 	rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
