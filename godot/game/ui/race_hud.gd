@@ -113,6 +113,7 @@ class MiniMap extends Control:
 	var seg_b := -1
 	var cars: Array = []
 	var colors: Array = []
+	var closed_path := true
 	var minv := Vector2.ZERO
 	var scale_k := 1.0
 	var box := Vector2(210, 120)
@@ -120,6 +121,7 @@ class MiniMap extends Control:
 
 	func setup_track(track, seg, colors_in: Array) -> void:
 		colors = colors_in
+		closed_path = not (track.get("open") == true) # un mapa A→B no se cierra sobre sí mismo
 		var n: int = track.n
 		var raw := PackedVector2Array()
 		var lo := Vector2(1e9, 1e9)
@@ -179,7 +181,8 @@ class MiniMap extends Control:
 		draw_rect(Rect2(Vector2.ZERO, box), Color(0.03, 0.05, 0.08, 0.62), true)
 		draw_rect(Rect2(Vector2.ZERO, box), Color(1, 1, 1, 0.18), false, 1.5)
 		var loop := pts.duplicate()
-		loop.append(pts[0])
+		if closed_path:
+			loop.append(pts[0])
 		if not lines.is_empty():
 			for q in lines:
 				draw_polyline(q, Color(1, 1, 1, 0.28), 5.0, true)

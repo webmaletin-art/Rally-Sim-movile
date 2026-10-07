@@ -13,6 +13,8 @@ TREE_KINDS = ("none", "pine", "broadleaf", "mixed")
 EDGES = ("auto", "guardrail", "wood", "fence")
 SKIES = ("day", "overcast", "sunset", "dusk", "rain")
 STYLES = ("race", "timetrial", "adventure", "chase", "elimination")
+SLOPE_MODES = ("free", "descent", "ascent")
+MAX_DEG = 6.9                    # 12 % de pendiente = 6,84°
 TIERS = ("debut", "nacional", "continental", "leyenda", "camiones")
 
 MAX_POINTS = 3000
@@ -33,7 +35,7 @@ CROSS_ANGLE = 35.0               # un cruce necesita al menos este ángulo entre
 CROSS_DY_ERR = 8.0               # diferencia de altura en un cruce: el juego los iguala; más que esto no se puede
 CROSS_DY_WARN = 2.0
 START_STRAIGHT = 150.0
-RUNOUT = 150.0                   # lo que sigue el camino pasando B y antes de A (lo agrega el juego en el tramo de vuelta)
+RUNOUT = 200.0                   # lo que sigue el camino antes de A y pasando B (lo agrega el juego)
 
 def catmull(points, per_seg=24):
     n = len(points)
@@ -47,32 +49,65 @@ def catmull(points, per_seg=24):
             out.append(tuple(0.5 * ((2 * p1[c]) + (-p0[c] + p2[c]) * t + (2 * p0[c] - 5 * p1[c] + 4 * p2[c] - p3[c]) * t2 + (-p0[c] + 3 * p1[c] - 3 * p2[c] + p3[c]) * t3) for c in range(3)))
     return out, idx
 
-def close_open_path(pts):
-    """Igual que MapData.close_open_path del juego: A→B se cierra con un tramo de vuelta (Hermite). Devuelve (puntos del lazo, cantidad de puntos de A→B)."""
+def open_ctrl(pts):
+    """Igual que MapData.open_ctrl del juego: A→B (camino ABIERTO) lleva dos puntos «fantasma» antes de A y dos después de B. Devuelve la lista de puntos de control;
+    A es el índice 2 y B el índice len(pts)+1. El juego sólo muestrea de A − 200 m a B + 200 m (puntos 1 y len−2)."""
     n = len(pts)
     a, a2, b, b2 = pts[0], pts[1], pts[n - 1], pts[n - 2]
     def unit(dx, dz):
         l = math.hypot(dx, dz) or 1.0
         return dx / l, dz / l
+    la = math.hypot(a2[0] - a[0], a2[2] - a[2])
+    lb = math.hypot(b[0] - b2[0], b[2] - b2[2])
+    sa = max(-0.12, min(0.12, (a2[1] - a[1]) / max(la, 1.0)))
+    sb = max(-0.12, min(0.12, (b[1] - b2[1]) / max(lb, 1.0)))
     ta = unit(a2[0] - a[0], a2[2] - a[2])
     tb = unit(b[0] - b2[0], b[2] - b2[2])
-    p0 = (b[0] + tb[0] * RUNOUT, b[1], b[2] + tb[1] * RUNOUT)
-    p1 = (a[0] - ta[0] * RUNOUT, a[1], a[2] - ta[1] * RUNOUT)
-    out = [list(p) for p in pts] + [list(p0)]
-    d = math.hypot(p1[0] - p0[0], p1[2] - p0[2])
-    sc = max(d * 1.2, 420.0)
-    m0 = (tb[0] * sc, tb[1] * sc)
-    m1 = (ta[0] * sc, ta[1] * sc)
-    k = max(2, int(math.ceil(max(d, sc) / 150.0)))
-    for i in range(1, k):
-        t = i / k
-        t2, t3 = t * t, t * t * t
-        h00, h10, h01, h11 = 2 * t3 - 3 * t2 + 1, t3 - 2 * t2 + t, -2 * t3 + 3 * t2, t3 - t2
-        x = h00 * p0[0] + h10 * m0[0] + h01 * p1[0] + h11 * m1[0]
-        z = h00 * p0[2] + h10 * m0[1] + h01 * p1[2] + h11 * m1[1]
-        out.append([x, p0[1] + (p1[1] - p0[1]) * t, z])
-    out.append(list(p1))
-    return out, n
+    out = [[a[0] - ta[0] * 2 * RUNOUT, a[1] - sa * 2 * RUNOUT, a[2] - ta[1] * 2 * RUNOUT],
+           [a[0] - ta[0] * RUNOUT, a[1] - sa * RUNOUT, a[2] - ta[1] * RUNOUT]]
+    out += [list(p) for p in pts]
+    out += [[b[0] + tb[0] * RUNOUT, b[1] + sb * RUNOUT, b[2] + tb[1] * RUNOUT],
+            [b[0] + tb[0] * 2 * RUNOUT, b[1] + sb * 2 * RUNOUT, b[2] + tb[1] * 2 * RUNOUT]]
+    return out
+
+def _metrics(s, cum, closed):
+    n = len(s)
+    length = cum[-1] if closed else cum[n - 1]
+    step = max(1, int(round(10.0 / (length / n))))
+    radii = []
+    for i in range(n):
+        ia, ic = (i - step) % n, (i + step) % n
+        if not closed:
+            ia, ic = max(0, i - step), min(n - 1, i + step)
+        a, b, c = s[ia], s[i], s[ic]
+        ab, bc, ca = math.hypot(a[0] - b[0], a[2] - b[2]), math.hypot(b[0] - c[0], b[2] - c[2]), math.hypot(c[0] - a[0], c[2] - a[2])
+        area2 = abs((b[0] - a[0]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[0] - a[0]))
+        radii.append((ab * bc * ca) / area2 if area2 > 1e-6 else 1e9)
+    win = max(1, int(round(20.0 / (length / n))))
+    slopes = []
+    for i in range(n):
+        j = i + win
+        if closed:
+            ds = (cum[i + win] - cum[i]) if i + win <= n else (length - cum[i] + cum[(i + win) - n])
+            j %= n
+        else:
+            j = min(j, n - 1)
+            ds = cum[j] - cum[i]
+        slopes.append(abs(s[j][1] - s[i][1]) / ds if ds > 1e-6 else 0.0)
+    return radii, slopes
+
+def analyze_open(ctrl):
+    """Camino abierto: sólo la parte que muestrea el juego (de A − 200 m a B + 200 m). ctrl_idx[k] = índice de muestra (dentro de esa parte) del punto de control k."""
+    s_all, idx = catmull(ctrl)
+    m = len(ctrl)
+    i0, i1 = idx[1], idx[m - 2]
+    s = s_all[i0:i1 + 1]
+    n = len(s)
+    cum = [0.0]
+    for i in range(1, n):
+        cum.append(cum[-1] + math.dist(s[i], s[i - 1]))
+    radii, slopes = _metrics(s, cum, False)
+    return {"samples": s, "cum": cum, "length": cum[-1], "radii": radii, "slopes": slopes, "ctrl_idx": [k - i0 for k in idx], "open": True}
 
 def analyze(points):
     s, idx = catmull(points)
@@ -80,21 +115,8 @@ def analyze(points):
     cum = [0.0]
     for i in range(1, n + 1):
         cum.append(cum[-1] + math.dist(s[i % n], s[i - 1]))
-    length = cum[-1]
-    step = max(1, int(round(10.0 / (length / n))))
-    radii = []
-    for i in range(n):
-        a, b, c = s[(i - step) % n], s[i], s[(i + step) % n]
-        ab, bc, ca = math.hypot(a[0] - b[0], a[2] - b[2]), math.hypot(b[0] - c[0], b[2] - c[2]), math.hypot(c[0] - a[0], c[2] - a[2])
-        area2 = abs((b[0] - a[0]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[0] - a[0]))
-        radii.append((ab * bc * ca) / area2 if area2 > 1e-6 else 1e9)
-    win = max(1, int(round(20.0 / (length / n))))
-    slopes = []
-    for i in range(n):
-        j = (i + win) % n
-        ds = (cum[i + win] - cum[i]) if i + win <= n else (length - cum[i] + cum[(i + win) - n])
-        slopes.append(abs(s[j][1] - s[i][1]) / ds if ds > 1e-6 else 0.0)
-    return {"samples": s, "cum": cum, "length": length, "radii": radii, "slopes": slopes, "ctrl_idx": idx}
+    radii, slopes = _metrics(s, cum, True)
+    return {"samples": s, "cum": cum, "length": cum[-1], "radii": radii, "slopes": slopes, "ctrl_idx": idx, "open": False}
 
 def crossings(an, hw, sh):
     """Cruces del lazo: lista de {i, j, angle, dy} (una por grupo de muestras). También devuelve el conjunto de muestras marcadas (zona de cruce) y los pares 'paralelos' (error)."""
@@ -102,6 +124,8 @@ def crossings(an, hw, sh):
     n = len(s)
     r = 2.0 * (hw + sh) + 3.0
     cell = 32.0
+    if an.get("open"):
+        L = cum[-1]
     grid = {}
     for i, p in enumerate(s):
         grid.setdefault((int(p[0] // cell), int(p[2] // cell)), []).append(i)
@@ -115,7 +139,8 @@ def crossings(an, hw, sh):
             for gz in range(kz - 1, kz + 2):
                 for j in grid.get((gx, gz), ()):
                     arc = abs(cum[j] - cum[i])
-                    arc = min(arc, L - arc)
+                    if not an.get("open"):
+                        arc = min(arc, L - arc)
                     if arc <= CROSS_FAR:
                         continue
                     q = s[j]
@@ -152,6 +177,10 @@ def crossings(an, hw, sh):
         if ang < CROSS_ANGLE:
             parallel.append(info)
     return groups, marked, parallel
+
+def groups_n_ok(an, hw, sh):
+    """True si el camino tiene algún cruce."""
+    return len(crossings(an, hw, sh)[0]) > 0
 
 def validate(d):
     errs, warns, info = [], [], {}
@@ -200,17 +229,18 @@ def validate(d):
         E("sections: falta la lista de tramos (al menos uno que cubra de 0 a 1)")
         secs = []
     # largo de A→B (o del lazo)
+    nb = len(pts)
     if t == "circuit":
-        loop = [list(p) for p in pts]
-        nb = len(pts)
+        an = analyze([list(p) for p in pts])
+        a_i, b_i = 0, 0
     else:
-        loop, nb = close_open_path(pts)
-    an = analyze(loop)
+        an = analyze_open(open_ctrl(pts))
+        a_i, b_i = an["ctrl_idx"][2], an["ctrl_idx"][nb + 1]
     L = an["length"]
     s, cum = an["samples"], an["cum"]
     n = len(s)
     ctrl_idx = an["ctrl_idx"]
-    race_len = L if t == "circuit" else cum[ctrl_idx[nb - 1]]
+    race_len = L if t == "circuit" else cum[b_i] - cum[a_i]
     info = {"length": L, "race_length": race_len}
     # tramos de superficie: fracciones 0–1 del circuito (o de A→B)
     pos = 0.0
@@ -248,12 +278,28 @@ def validate(d):
     info["min_radius"] = min(an["radii"])
     if bad_r:
         i = bad_r[0]
-        where = "el tramo de vuelta que arma el juego (alejá A de B o dibujá la salida y la llegada más abiertas)" if (t == "point_to_point" and i > ctrl_idx[nb - 1]) else f"cerca del punto de control {min(range(len(ctrl_idx)), key=lambda k: abs(ctrl_idx[k] - i))}"
-        E(f"curva demasiado cerrada: radio {min(an['radii']):.1f} m en {where}; mínimo {rmin:.0f} m")
-    info["max_slope"] = max(an["slopes"])
-    if max(an["slopes"]) > MAX_SLOPE:
-        i = an["slopes"].index(max(an["slopes"]))
-        E(f"pendiente de {max(an['slopes']) * 100:.1f} % cerca del punto de control {min(range(len(ctrl_idx)), key=lambda k: abs(ctrl_idx[k] - i))} (máximo {MAX_SLOPE * 100:.0f} %)")
+        where = f"cerca del punto de control {max(0, min(range(len(ctrl_idx)), key=lambda k: abs(ctrl_idx[k] - i)) - (2 if t == 'point_to_point' else 0))}"
+        E(f"curva demasiado cerrada: radio {min(an['radii']):.1f} m {where}; mínimo {rmin:.0f} m")
+    slopes = an["slopes"]
+    info["max_slope"] = max(slopes)
+    if t == "point_to_point":
+        info["drop_m"] = s[a_i][1] - s[b_i][1] # desnivel de A a B (positivo = bajada)
+        info["avg_deg"] = math.degrees(math.atan(abs(s[a_i][1] - s[b_i][1]) / max(race_len, 1.0)))
+    if max(slopes) > MAX_SLOPE:
+        i = slopes.index(max(slopes))
+        E(f"pendiente de {max(slopes) * 100:.1f} % ({math.degrees(math.atan(max(slopes))):.1f}°) cerca del punto de control {max(0, min(range(len(ctrl_idx)), key=lambda k: abs(ctrl_idx[k] - i)) - (2 if t == 'point_to_point' else 0))} (máximo {MAX_SLOPE * 100:.0f} % = {math.degrees(math.atan(MAX_SLOPE)):.1f}°)")
+    sl = d.get("slope")
+    if sl is not None:
+        if not isinstance(sl, dict) or sl.get("mode") not in SLOPE_MODES:
+            E(f"slope.mode: uno de {SLOPE_MODES}")
+        else:
+            dg = sl.get("deg", 0)
+            if not isinstance(dg, (int, float)) or not (0 <= dg <= MAX_DEG):
+                E(f"slope.deg: entre 0 y {MAX_DEG:.1f} grados")
+            if sl["mode"] != "free" and t != "point_to_point":
+                E("slope: el descenso / ascenso continuo sólo vale para un recorrido A→B (un circuito cerrado vuelve a la misma altura)")
+            if sl["mode"] != "free" and groups_n_ok(an, hw, sh):
+                E("slope: con descenso o ascenso continuo el camino no puede cruzarse (en el cruce las dos pasadas tendrían alturas distintas)")
     # cruces
     groups, marked, parallel = crossings(an, hw, sh)
     info["crossings"] = len(groups)
@@ -267,14 +313,16 @@ def validate(d):
                 W(f"cruce en {g['x']:.0f},{g['z']:.0f}: {g['dy']:.1f} m de diferencia de altura; el juego los iguala suavemente")
     # largada (A): casi recta y fuera de un cruce; meta (B): fuera de un cruce
     sa = int(round(START_STRAIGHT / (L / n)))
-    if any(i in marked for i in range(0, sa)) or any(i in marked for i in range(n - sa // 3, n)):
+    if t == "circuit":
+        in_start = any(i in marked for i in range(0, sa)) or any(i in marked for i in range(n - sa // 3, n))
+    else:
+        in_start = any(i in marked for i in range(max(0, a_i - int(60 / (L / n))), min(n, a_i + sa)))
+    if in_start:
         E("el punto A (largada) no puede estar en un cruce ni a menos de 150 m de uno")
     if t == "point_to_point":
-        ib = ctrl_idx[nb - 1]
-        if any(((ib + k) % n) in marked for k in range(-int(100 / (L / n)), int(100 / (L / n)))):
+        if any(0 <= b_i + k < n and (b_i + k) in marked for k in range(-int(100 / (L / n)), int(100 / (L / n)))):
             E("el punto B (meta) no puede estar en un cruce ni a menos de 100 m de uno")
-    step10 = max(1, int(round(10.0 / (L / n))))
-    r_start = min(an["radii"][i] for i in range(0, sa))
+    r_start = min(an["radii"][i] for i in range(a_i, min(n, a_i + sa)))
     if r_start < 90.0:
         E(f"los primeros {START_STRAIGHT:.0f} m desde el punto A tienen que ser casi rectos (radio ≥ 90 m; tiene {r_start:.0f})")
     # escenografía, decoración, clima

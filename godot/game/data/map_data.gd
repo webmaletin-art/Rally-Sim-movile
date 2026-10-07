@@ -60,15 +60,15 @@ static func maps() -> Dictionary:
 static func patches() -> Array:
 	return load_all()["patches"]
 
-## Muestras de una curva Catmull-Rom CERRADA (la misma que arma RouteTrack): para medir el largo y dónde cae un punto de control
-static func _loop_len(pts: Array, upto: int) -> Array:
+## Largo acumulado (m) hasta cada punto de control de la curva Catmull-Rom (la misma que arma RouteTrack): arcs[k] = largo desde el punto 0 hasta el punto k (arcs[n] = el lazo completo)
+static func _ctrl_arcs(pts: Array) -> PackedFloat64Array:
 	var n := pts.size()
+	var arcs := PackedFloat64Array()
+	arcs.resize(n + 1)
 	var total := 0.0
-	var at := 0.0
 	var prev := Vector3(pts[0][0], pts[0][1], pts[0][2])
 	for i in n:
-		if i == upto:
-			at = total
+		arcs[i] = total
 		var p0 := Vector3(pts[(i - 1 + n) % n][0], pts[(i - 1 + n) % n][1], pts[(i - 1 + n) % n][2])
 		var p1 := Vector3(pts[i][0], pts[i][1], pts[i][2])
 		var p2 := Vector3(pts[(i + 1) % n][0], pts[(i + 1) % n][1], pts[(i + 1) % n][2])
@@ -78,41 +78,32 @@ static func _loop_len(pts: Array, upto: int) -> Array:
 			var q := 0.5 * ((2.0 * p1) + (-p0 + p2) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t * t + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t * t * t)
 			total += prev.distance_to(q)
 			prev = q
-	return [total, at]
+	arcs[n] = total
+	return arcs
 
-## Un recorrido de A a B (puntos abiertos) se cierra con un tramo de vuelta que el juego dibuja pero no se corre: sigue 150 m pasando la meta, vuelve en una curva suave (Hermite) y entra a la
-## largada 150 m antes de A. Devuelve {points, nb}: los puntos del lazo cerrado y la cantidad de puntos del tramo A→B (el último, B, es el índice nb - 1).
-static func close_open_path(pts: Array) -> Dictionary:
+const RUN := 200.0 # m de camino antes de la largada y después de la meta de un A→B
+
+## Puntos de control de un recorrido A→B (camino ABIERTO): los del autor más dos puntos «fantasma» antes de A y dos después de B, siguiendo la dirección y la pendiente de los extremos.
+## RouteTrack sólo muestrea de A − 200 m a B + 200 m (open_lo / open_hi): ahí hay lugar para la parrilla y para frenar pasando la meta, y no queda ningún tramo de vuelta.
+static func open_ctrl(pts: Array) -> Array:
 	var n := pts.size()
 	var a := Vector3(pts[0][0], pts[0][1], pts[0][2])
 	var a2 := Vector3(pts[1][0], pts[1][1], pts[1][2])
 	var b := Vector3(pts[n - 1][0], pts[n - 1][1], pts[n - 1][2])
 	var b2 := Vector3(pts[n - 2][0], pts[n - 2][1], pts[n - 2][2])
-	var ta := Vector3(a2.x - a.x, 0.0, a2.z - a.z).normalized()
-	var tb := Vector3(b.x - b2.x, 0.0, b.z - b2.z).normalized()
-	var run := 150.0
-	var p0 := Vector3(b.x + tb.x * run, b.y, b.z + tb.z * run) # pasando la meta
-	var p1 := Vector3(a.x - ta.x * run, a.y, a.z - ta.z * run) # antes de la largada
-	var out: Array = pts.duplicate()
-	out.append([p0.x, p0.y, p0.z])
-	var d := Vector2(p1.x - p0.x, p1.z - p0.z).length()
-	var sc := maxf(d * 1.2, 420.0) # fuerza de las tangentes: la vuelta hace una curva abierta (radio > 100 m) aunque A y B estén cerca
-	var m0 := tb * sc
-	var m1 := ta * sc
-	var k := maxi(2, int(ceil(maxf(d, sc) / 150.0)))
-	for i in range(1, k):
-		var t := float(i) / float(k)
-		var t2 := t * t
-		var t3 := t2 * t
-		var h00 := 2.0 * t3 - 3.0 * t2 + 1.0
-		var h10 := t3 - 2.0 * t2 + t
-		var h01 := -2.0 * t3 + 3.0 * t2
-		var h11 := t3 - t2
-		var q := h00 * p0 + h10 * m0 + h01 * p1 + h11 * m1
-		q.y = lerpf(p0.y, p1.y, t)
-		out.append([q.x, q.y, q.z])
-	out.append([p1.x, p1.y, p1.z])
-	return {"points": out, "nb": n}
+	var ta := Vector3(a2.x - a.x, 0.0, a2.z - a.z)
+	var tb := Vector3(b.x - b2.x, 0.0, b.z - b2.z)
+	var sa := clampf((a2.y - a.y) / maxf(ta.length(), 1.0), -0.12, 0.12) # pendiente (dy/ds) de los extremos
+	var sb := clampf((b.y - b2.y) / maxf(tb.length(), 1.0), -0.12, 0.12)
+	ta = ta.normalized()
+	tb = tb.normalized()
+	var out: Array = []
+	out.append([a.x - ta.x * 2.0 * RUN, a.y - sa * 2.0 * RUN, a.z - ta.z * 2.0 * RUN])
+	out.append([a.x - ta.x * RUN, a.y - sa * RUN, a.z - ta.z * RUN])
+	out.append_array(pts)
+	out.append([b.x + tb.x * RUN, b.y + sb * RUN, b.z + tb.z * RUN])
+	out.append([b.x + tb.x * 2.0 * RUN, b.y + sb * 2.0 * RUN, b.z + tb.z * 2.0 * RUN])
+	return out
 
 ## Archivo v2/v3 → {id, route, map, [map_rev], [patch]}. Vacío si no es un mapa válido para el juego (la validación fuerte la hace tools/route_gen/route_spec.py al importar)
 static func convert_doc(doc: Dictionary) -> Dictionary:
@@ -133,16 +124,34 @@ static func convert_doc(doc: Dictionary) -> Dictionary:
 	var mode := "asphalt" if all_asphalt else "dirt"
 	var base_mu := 1.0 if mode == "asphalt" else 0.6
 	var pts: Array = rd["points"]
-	var seg_b := -1.0 # recorrido A→B (v3 «point_to_point»): fracción del lazo cerrado donde está B
-	var frac := 1.0 # fracción del lazo que ocupa lo que dibujó el autor (1 = todo el lazo)
-	if ver == 3 and str(doc.get("type", "circuit")) == "point_to_point":
-		var cl: Dictionary = close_open_path(pts)
-		pts = cl["points"]
-		var ml: Array = _loop_len(pts, int(cl["nb"]) - 1)
-		seg_b = clampf(float(ml[1]) / maxf(float(ml[0]), 1.0), 0.05, 0.98)
-		frac = seg_b
-	var est_len: float = float(_loop_len(pts, 0)[0])
-	var route := {"halfWidth": float(rd["halfWidth"]), "shoulder": float(rd["shoulder"]), "points": pts, "custom": true, "samples": clampi(int(est_len / 4.5), 1100, 6000)}
+	var seg_a := -1.0 # recorrido A→B (v3 «point_to_point»): fracciones del camino muestreado donde están A y B
+	var seg_b := -1.0
+	var open_route := ver == 3 and str(doc.get("type", "circuit")) == "point_to_point"
+	var est_len: float
+	var n_pts := pts.size()
+	var smp := 0
+	if open_route:
+		pts = open_ctrl(pts)
+		var arcs: PackedFloat64Array = _ctrl_arcs(pts)
+		var m := pts.size()
+		var wl: float = arcs[m - 2] - arcs[1]
+		seg_a = (arcs[2] - arcs[1]) / wl
+		seg_b = (arcs[n_pts + 1] - arcs[1]) / wl
+		est_len = wl
+		smp = clampi(int(wl / 4.5), 300, 6000)
+	else:
+		est_len = _ctrl_arcs(pts)[pts.size()]
+		smp = clampi(int(est_len / 4.5), 1100, 6000)
+	var route := {"halfWidth": float(rd["halfWidth"]), "shoulder": float(rd["shoulder"]), "points": pts, "custom": true, "samples": smp}
+	if ver == 3:
+		route["flat"] = true # sin ondulaciones agregadas: la altura es la que dibujó el autor
+		route["exact_y"] = true
+	if open_route:
+		route["open"] = true
+		route["open_lo"] = 1
+		route["open_hi"] = pts.size() - 2
+	var frac := 1.0 if seg_a < 0.0 else (seg_b - seg_a)
+	var f_off := 0.0 if seg_a < 0.0 else seg_a
 	var surf: Array = []
 	var dens: Array = []
 	var labels: Array = []
@@ -154,17 +163,16 @@ static func convert_doc(doc: Dictionary) -> Dictionary:
 		var sf := str(sd.get("surface", base))
 		last_sf = sf
 		var code := int(SURF_CODE.get(sf, 1))
-		var f0 := float(sd["from"]) * frac
-		var f1 := float(sd["to"]) * frac
+		var f0 := f_off + float(sd["from"]) * frac
+		var f1 := f_off + float(sd["to"]) * frac
+		if open_route and float(sd["from"]) <= 0.0:
+			f0 = 0.0 # la largada y la llegada siguen con la superficie del primer y del último tramo
+		if open_route and float(sd["to"]) >= 1.0:
+			f1 = 1.0
 		surf.append({"from": f0, "to": f1, "s": code, "mu": float(SURF_MU.get(sf, 0.62)) / base_mu, "col": int(SURF_COL.get(sf, 1))})
 		dens.append({"from": f0, "to": f1, "d": float(sd.get("density", dflt))})
 		if str(sd.get("label", "")) != "":
 			labels.append({"from": f0, "to": f1, "label": str(sd["label"])})
-	if seg_b > 0.0 and not secs.is_empty():
-		# el tramo de vuelta: misma superficie que el final, sin árboles (nadie lo corre)
-		var code2 := int(SURF_CODE.get(last_sf, 1))
-		surf.append({"from": seg_b, "to": 1.0, "s": code2, "mu": float(SURF_MU.get(last_sf, 0.62)) / base_mu, "col": int(SURF_COL.get(last_sf, 1))})
-		dens.append({"from": seg_b, "to": 1.0, "d": 0.0})
 	if not surf.is_empty():
 		route["surf"] = surf
 		route["atlas"] = not all_asphalt or secs.size() > 0 # textura con una columna por superficie
@@ -176,8 +184,8 @@ static func convert_doc(doc: Dictionary) -> Dictionary:
 		"defaults": {"laps": int(rc.get("laps", 2)), "ai": int(riv.get("count", 3)), "skill": skill_of(float(riv.get("difficulty", 0.5)))}}
 	if rc.has("seg"):
 		map["defaults"]["seg"] = rc["seg"]
-	if seg_b > 0.0:
-		map["defaults"]["seg"] = [0.0, seg_b] # de A a B
+	if seg_a >= 0.0:
+		map["defaults"]["seg"] = [seg_a, seg_b] # de A a B
 	var dec: Dictionary = doc.get("decor", {})
 	map["decor"] = {"edge": str(dec.get("edge", "auto")), "veg": clampf(float(dec.get("vegetation", 1.0)), 0.0, 1.0)}
 	var wth: Dictionary = doc.get("weather", {})

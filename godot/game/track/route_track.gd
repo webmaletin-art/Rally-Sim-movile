@@ -15,7 +15,10 @@ var hills := 0.0 # subidas y bajadas suaves del recorrido (0 = las de la versió
 var center_line := false # línea amarilla del medio (solo para el modo aventura)
 var n_samples := N_SAMPLES # muestras del camino (las rutas muy largas piden más)
 var flat := false # sin ondulación del asfalto (la picada)
-var open := false # ruta abierta (modo aventura): la última muestra no se une con la primera
+var open := false # ruta abierta (modo aventura y mapas A→B personalizados): la última muestra no se une con la primera
+var exact_y := false # mapas personalizados v3: la altura es la de la curva por los puntos de control (sin ondulaciones agregadas)
+var open_lo := 1 # ruta abierta de un mapa personalizado: índices de los puntos de control entre los que se muestrea (los de afuera sólo dan la forma de los extremos)
+var open_hi := 0
 var road_surf := PackedByteArray() # superficie del camino por muestra (0 asfalto · 1 tierra); vacío = la del modo de la pista
 var surf_mu := PackedFloat32Array() # agarre relativo de cada muestra para la IA (vacío = igual en toda la pista)
 var atlas := false # mapa personalizado con varias superficies: el camino usa un atlas con una columna por superficie (ver _atlas_tex)
@@ -79,6 +82,10 @@ func _init(p_route := "", p_mode := "asphalt", reverse := false, p_hills := 0.0)
 	dips = r.get("dips", [])
 	ledges = r.get("ledges", [])
 	flat = r.get("flat", false) == true
+	exact_y = r.get("exact_y", false) == true
+	open = r.get("open", false) == true
+	open_lo = int(r.get("open_lo", 1))
+	open_hi = int(r.get("open_hi", 0))
 	n_samples = int(r.get("samples", N_SAMPLES))
 	var pts: Array = r["points"]
 	if reverse:
@@ -164,7 +171,9 @@ func _curve_point(t: float) -> Vector3:
 
 func _build() -> void:
 	# tabla de longitudes para repartir las muestras a igual distancia (como getSpacedPoints)
-	var div := maxi(3000, ctrl.size() * 4) # las rutas largas (Travesía X) piden una tabla más fina
+	var lc0 := ctrl.size()
+	var div := maxi(3000, lc0 * 4) # las rutas largas (Travesía X) piden una tabla más fina
+	div = int(ceil(float(div) / float(lc0))) * lc0 # múltiplo de la cantidad de puntos: cada punto de control cae justo en una fila de la tabla
 	var lens := PackedFloat64Array()
 	lens.resize(div + 1)
 	var prev := _curve_point(0.0)
@@ -173,9 +182,16 @@ func _build() -> void:
 		lens[i] = lens[i - 1] + prev.distance_to(c)
 		prev = c
 	var total := lens[div]
+	var s_lo := 0.0
+	var s_hi := total
+	if open and open_hi > open_lo:
+		s_lo = lens[open_lo * (div / lc0)] # ruta abierta: sólo se muestrea de un punto de control al otro
+		s_hi = lens[open_hi * (div / lc0)]
 	samples.resize(n_samples)
 	for i in n_samples:
 		var target := total * float(i) / float(n_samples)
+		if open and open_hi > open_lo:
+			target = s_lo + (s_hi - s_lo) * float(i) / float(n_samples - 1)
 		var lo := 0
 		var hi := div
 		while lo < hi:
@@ -201,6 +217,8 @@ func _build() -> void:
 		var a := ctrl[ii].y
 		var b2 := ctrl[(ii + 1) % lc].y
 		y[i] = a + (b2 - a) * u2 + (0.0 if flat else 0.20 * sin(t * PI * 6.0) + 0.10 * sin(t * PI * 15.0))
+		if exact_y:
+			y[i] = samples[i].y # la altura de la curva por los puntos de control: una bajada de 4° es de 4° en todo el recorrido
 		if hills > 0.0:
 			# frecuencias enteras: el recorrido cerrado empalma sin escalón
 			y[i] += hills * (7.0 * sin(t * TAU * 2.0 + 0.7) + 3.5 * sin(t * TAU * 5.0 + 2.0) + 1.2 * sin(t * TAU * 11.0 + 0.3))
@@ -210,7 +228,7 @@ func _build() -> void:
 		for i in n:
 			var s := 0.0
 			for j in range(-W, W + 1):
-				s += y[posmod(i + j, n)]
+				s += y[clampi(i + j, 0, n - 1) if open else posmod(i + j, n)]
 			o[i] = s / float(2 * W + 1)
 		y = o
 	for i in n:
@@ -223,18 +241,22 @@ func _build() -> void:
 	laterals.resize(n)
 	for i in n:
 		var tg := (samples[(i + 1) % n] - samples[(i + n - 1) % n]).normalized()
+		if open and i == 0:
+			tg = (samples[1] - samples[0]).normalized()
+		elif open and i == n - 1:
+			tg = (samples[n - 1] - samples[n - 2]).normalized()
 		tangents[i] = tg
 		laterals[i] = tg.cross(Vector3.UP).normalized()
 	cum.resize(n + 1)
 	for i in range(1, n + 1):
-		cum[i] = cum[i - 1] + samples[i - 1].distance_to(samples[i % n])
+		cum[i] = cum[i - 1] + (0.0 if (open and i == n) else samples[i - 1].distance_to(samples[i % n])) # abierta: no hay tramo de cierre
 	length = cum[n]
 	cy.resize(n)
 	for i in n:
 		cy[i] = samples[i].y + _road_offset(i)
 	min_xz = Vector2(1e9, 1e9)
 	max_xz = Vector2(-1e9, -1e9)
-	for p in ctrl:
+	for p in (samples if (open and open_hi > open_lo) else ctrl):
 		min_xz = Vector2(minf(min_xz.x, p.x), minf(min_xz.y, p.z))
 		max_xz = Vector2(maxf(max_xz.x, p.x), maxf(max_xz.y, p.z))
 	min_xz -= Vector2(180, 180)
@@ -343,7 +365,7 @@ func _apply_ledges() -> void:
 			samples[i].y += rise * (lv0 + (lv1 - lv0) * f)
 
 func _road_offset(i: int) -> float:
-	if flat:
+	if flat or exact_y:
 		return 0.0
 	var t := float(i) / float(n)
 	if route_id == "travesia":
@@ -769,7 +791,7 @@ func build_road_mesh() -> ArrayMesh:
 			var sc := Color(1, 1, 1) if int(road_surf[i]) == 0 else (Color(0.62, 0.50, 0.40) if int(road_surf[i]) == 5 else Color(1.0, 0.97, 0.92))
 			cols.append(sc)
 			cols.append(sc)
-	for i in n:
+	for i in (n - 1 if open else n):
 		var j := (i + 1) % n
 		var a := i * 2
 		var b := i * 2 + 1
@@ -915,6 +937,8 @@ func strip_finish(h: Dictionary) -> ArrayMesh:
 	var idx := PackedInt32Array()
 	for ri in rows.size():
 		var ni := (ri + 1) % rows.size()
+		if open and ri == rows.size() - 1:
+			continue # abierta: no hay cuadro de cierre entre la última fila y la primera
 		if has_cross and (cross_any[int(rows[ri])] == 1 or cross_any[int(rows[ni])] == 1):
 			continue # cruce a nivel: ahí pasa el otro camino, la banquina y el pasto no se dibujan encima
 		for side in 2:
@@ -1152,7 +1176,7 @@ func build_guardrail(rail_off: float, wood := false, style := "") -> Node3D:
 					verts.append(Vector3(ox2 + l2.x * sd * off, y1 + float(prof[q][1]), oz2 + l2.z * sd * off))
 					norms.append(Vector3(-l2.x * sd, 0.0, -l2.z * sd))
 					cols.append(base_col * (0.92 + 0.12 * float(q % 2)))
-			for i in n:
+			for i in (n - 1 if open else n):
 				var j := (i + 1) % n
 				if cut and (cross_rail[i * 2 + sdi] == 1 or cross_rail[j * 2 + sdi] == 1):
 					continue # sobre el otro camino: sin chapa

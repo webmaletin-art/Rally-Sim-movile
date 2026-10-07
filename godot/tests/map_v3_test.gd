@@ -49,16 +49,19 @@ func _init() -> void:
 	routes["ej_ab"] = ab["route"]
 	RouteTrack._routes = routes
 
-	# ───── A→B ─────
+	# ───── A→B (camino abierto, sin tramo de vuelta) ─────
 	var abm: Dictionary = ab["map"]
 	var seg: Array = abm["defaults"]["seg"]
 	var tab = RouteTrack.new("ej_ab", "dirt")
-	var race_m: float = float(seg[1]) * tab.length
-	check(seg.size() == 2 and float(seg[0]) == 0.0 and float(seg[1]) > 0.2 and float(seg[1]) < 0.7, "A→B: la meta cae en la fracción %.3f del lazo" % float(seg[1]))
-	check(absf(race_m - 2444.0) < 90.0, "A→B: se corren %.0f m (el validador dice 2444)" % race_m)
+	var race_m: float = (float(seg[1]) - float(seg[0])) * tab.length
+	check(tab.open and seg.size() == 2 and float(seg[0]) > 0.0 and float(seg[1]) < 1.0, "A→B: camino abierto, A en %.3f y B en %.3f del largo" % [float(seg[0]), float(seg[1])])
+	check(absf(race_m - 2444.0) < 60.0, "A→B: se corren %.0f m (el validador dice 2444) y el camino mide %.0f m en total" % [race_m, tab.length])
+	check(is_equal_approx(tab.cum[tab.n], tab.cum[tab.n - 1]), "A→B: no hay tramo de cierre entre la última muestra y la primera")
 	check(abm["defaults"]["style"] == "adventure" and abm["defaults"]["sky"] == "rain", "A→B: estilo aventura y clima lluvia")
-	var dens_end: float = tab.scen_w[int(tab.n * (float(seg[1]) + 0.05))]
-	check(dens_end == 0.0, "A→B: el tramo de vuelta no lleva árboles")
+	var ab_a := int(float(seg[0]) * float(tab.n))
+	check(absf(tab.samples[ab_a].y - float((_load("res://tests/data_v3/ab.json")["route"]["points"] as Array)[0][1])) < 2.5, "A→B: la altura en A es la que dibujó el autor (%.1f m)" % tab.samples[ab_a].y)
+	var mesh: ArrayMesh = tab.build_road_mesh()
+	check(mesh != null, "A→B: el camino abierto se dibuja")
 
 	# ───── ocho (cruce a nivel) ─────
 	var tr = RouteTrack.new("ej_ocho", "dirt")

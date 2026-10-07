@@ -31,7 +31,10 @@ func _init() -> void:
 			d["toeR"] = 0.1
 			d["pressF"] = 30.0
 			d["pressR"] = 30.0
-			var sp: Array = track.start_pose(0)
+			var seg: Array = (mp.get("defaults", {}) as Dictionary).get("seg", []) # A→B: sólo se corre de A a B
+			var s_from := int(floor(float(seg[0]) * float(track.n))) if seg.size() == 2 else 0
+			var goal: float = (float(seg[1]) - float(seg[0])) * track.length if seg.size() == 2 else track.length
+			var sp: Array = track.start_pose(0, s_from)
 			var ph := VehiclePhysics.new(track.make_view(), VehicleParams.from_dict(d))
 			ph.reset(sp[0], sp[1], sp[2])
 			var drv := AIDriver.new(track.make_view(), ph, {"skill": 0.95})
@@ -55,13 +58,13 @@ func _init() -> void:
 				dist += da
 				prev = a
 				max_lat = maxf(max_lat, absf(pv.r_lat))
-				if lap_t < 0.0 and dist >= track.length:
+				if lap_t < 0.0 and dist >= goal:
 					lap_t = t
 					break
 			var good: bool = lap_t > 0.0 and drv.respawns <= 1 and max_lat < track.half_width + track.shoulder + 3.0
 			if not good:
 				fail = true
-			print("%s %-14s %-7s vuelta de %.0f m en %s · máx. desvío %.1f m (camino ±%.1f) · reapariciones %d · vel. media %.0f km/h" % [
-				"OK  " if good else "FALLA", mid, car, track.length, ("%.0f s" % lap_t) if lap_t > 0.0 else "NO TERMINÓ", max_lat, track.half_width, drv.respawns, track.length / maxf(lap_t, 1.0) * 3.6])
+			print("%s %-14s %-7s %s de %.0f m en %s · máx. desvío %.1f m (camino ±%.1f) · reapariciones %d · vel. media %.0f km/h" % [
+				"OK  " if good else "FALLA", mid, car, "recorrido A→B" if seg.size() == 2 else "vuelta", goal, ("%.0f s" % lap_t) if lap_t > 0.0 else "NO TERMINÓ", max_lat, track.half_width, drv.respawns, goal / maxf(lap_t, 1.0) * 3.6])
 	print("rutas custom probadas: %d" % n)
 	quit(1 if fail else 0)

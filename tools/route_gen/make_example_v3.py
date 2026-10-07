@@ -47,7 +47,36 @@ def ab():
         pts.append([x, y, z])
     return resample(pts, 80.0, closed=False)
 
+def bajada(deg=4.0, alt0=320.0, km=4.6):
+    """Descenso continuo A→B: serpentea en planta y baja con pendiente constante (deg grados) desde alt0."""
+    pts = []
+    N = 400
+    x = -1800.0
+    for i in range(N):
+        t = i / (N - 1)
+        x = -1800.0 + 3600.0 * t
+        z = 330.0 * math.sin(t * math.pi * 4.0) * (0.35 + 0.65 * math.sin(t * math.pi))
+        pts.append([x, 0.0, z])
+    out = [pts[0]]
+    acc = 0.0
+    for i in range(1, N):
+        acc += math.dist((pts[i][0], pts[i][2]), (pts[i - 1][0], pts[i - 1][2]))
+        pts[i][1] = 0.0
+    # altura por recorrido acumulado
+    cum = [0.0]
+    for i in range(1, N):
+        cum.append(cum[-1] + math.dist((pts[i][0], pts[i][2]), (pts[i - 1][0], pts[i - 1][2])))
+    for i in range(N):
+        pts[i][1] = alt0 - cum[i] * math.tan(math.radians(deg))
+    return resample(pts, 90.0, closed=False)
+
 def doc(kind):
+    if kind == "bajada":
+        return {"format": "dreamracing-route", "version": 3, "id": "ej_bajada", "name": "Descenso 4° (ejemplo)", "icon": "🏔️", "type": "point_to_point",
+                "route": {"halfWidth": 4.8, "shoulder": 2.0, "points": bajada()},
+                "sections": [{"from": 0.0, "to": 0.6, "surface": "asphalt", "density": 0.6}, {"from": 0.6, "to": 1.0, "surface": "dirt", "label": "Piso suelto", "density": 0.8}],
+                "weather": {"sky": "overcast"}, "scenery": {"trees": "pine", "density": 0.7}, "decor": {"edge": "auto", "vegetation": 0.8},
+                "race": {"style": "timetrial"}, "rivals": {"count": 3, "difficulty": 0.5}, "slope": {"mode": "descent", "deg": 4.0}}
     if kind == "ocho":
         return {"format": "dreamracing-route", "version": 3, "id": "ejemplo_ocho", "name": "Ocho (ejemplo)", "icon": "♾️", "type": "circuit",
                 "route": {"halfWidth": 4.6, "shoulder": 2.0, "points": ocho()},

@@ -11,6 +11,7 @@ Un `.json` por mapa → **`godot/game/data/custom_maps/<id>.json`**: el juego lo
   "weather": { "sky": "day" },
   "scenery": { "trees": "mixed", "density": 0.6 },
   "decor": { "edge": "auto", "vegetation": 1.0 },
+  "slope": { "mode": "descent", "deg": 4.0 },
   "race": { "style": "chase", "laps": 2, "chase": { "maxGapM": 150 }, "elimination": { "everySec": 30 } },
   "rivals": { "count": 1, "difficulty": 0.6 },
   "career": { "tier": "continental", "event": "c1", "sky": "day", "reverse": false },
@@ -25,6 +26,7 @@ Un `.json` por mapa → **`godot/game/data/custom_maps/<id>.json`**: el juego lo
 | `weather.sky` | `day overcast sunset dusk rain` (el clima con el que arranca en Carrera rápida; el jugador lo puede cambiar). |
 | `scenery` | `trees` `none pine broadleaf mixed` · `density` 0–1. |
 | `decor` | `edge`: `auto` (el juego elige al azar: guardarraíl de chapa, tablón de madera o cerco; siempre el mismo para ese mapa), `guardrail`, `wood`, `fence` · `vegetation` 0–1 (matas junto al camino). |
+| `slope` | (opcional) `mode`: `free` `descent` `ascent` + `deg` (grados promedio, 0–6.9). Lo escribe el editor con la «varilla» de descenso/ascenso: las alturas reales van en `route.points` y el juego usa ésas; `slope` sólo sirve para reabrir el mapa en el editor. Descenso/ascenso: sólo A→B y sin cruces. |
 | `race.style` | `race` carrera · `timetrial` contrarreloj · `adventure` una sola pasada (sin vueltas) · `chase` persecución · `elimination` eliminación. Es el modo con el que arranca en Carrera rápida (el jugador lo puede cambiar). |
 | `race.laps` | circuito, 1–5. En A→B se corre una sola pasada. |
 | `race.chase.maxGapM` | persecución: distancia de escape, 60–1000 m. `race.elimination.everySec`: 15–120 s. |
@@ -33,7 +35,7 @@ Un `.json` por mapa → **`godot/game/data/custom_maps/<id>.json`**: el juego lo
 
 ## Qué hace el juego
 - **Cruces a nivel** (`RouteTrack._find_crossings`): se marcan las muestras donde otra parte del camino (a más de 160 m de recorrido) pasa a menos de `2·(halfWidth+shoulder)+3` m. Ahí: las dos alturas se igualan (con suavizado de ~80 m), el camino «de arriba» se sube 3 cm (para que no parpadeen), **no se dibuja el guardarraíl, la banquina ni la vegetación que caerían sobre el otro camino**, y el auto **sigue al camino que tiene más cerca** (se puede doblar en el cruce sin chocar con un muro invisible). El avance de la carrera es lo que recorre el auto (`Session`): cambiar de camino en el cruce no regala ni quita vueltas.
-- **A→B**: el juego cierra el lazo con un tramo de vuelta que se dibuja pero no se corre (`MapData.close_open_path`): sigue 150 m pasando la meta, vuelve en una curva suave y entra 150 m antes de A. Se corre de A a B (`seg`).
+- **A→B** (camino ABIERTO, sin tramo de vuelta): `MapData.open_ctrl` agrega 2 puntos «fantasma» antes de A y 2 después de B; `RouteTrack` sólo muestrea de A − 200 m a B + 200 m (`open_lo`/`open_hi`) y no dibuja ningún cierre. Se corre de A a B (`defaults.seg`). La altura es la de la curva por los puntos (`exact_y`): una bajada de 4° es de 4° en todo el recorrido.
 - **Persecución** (`race_rules.gd`): un rival. Quien va atrás persigue; si el de adelante se escapa a `maxGapM`, gana. Los roles cambian al pasar (con 3 m de margen). El rival adelante sostiene su ritmo (de 0,90 a 1,04 del de la IA según la dificultad: si es más rápido que vos, se escapa); atrás se pega a ~12 m y de a ratos ataca para pasarte.
 - **Eliminación**: cada `everySec` segundos sale el último (el de menos recorrido); si sos vos, perdés; gana el que queda. Sin límite de vueltas.
 - **Borde del camino**: `guardrail` (chapa acanalada), `wood` (tablón) o `fence` (cerco con dos varas). Con `auto` el juego elige uno según el id del mapa y su superficie.
@@ -41,10 +43,10 @@ Un `.json` por mapa → **`godot/game/data/custom_maps/<id>.json`**: el juego lo
 
 ## Reglas (la CI las exige; el editor las muestra en vivo)
 1. Puntos: circuito 8–3000, A→B 4–3000; entre consecutivos **30–300 m**. |x|,|z| ≤ 20000; y 0–600; `halfWidth` 3.0–5.6; `shoulder` 1.6–2.6.
-2. Largo: circuito ≥ 1000 m; A→B ≥ 800 m (A→B). Más de 15 km = aviso.
-3. Radio mínimo: 22 m (todo asfalto) · 18 m (si hay tierra, grava, barro o arena) — incluye el tramo de vuelta de un A→B.
+2. Largo: circuito ≥ 1000 m; A→B ≥ 800 m (de A a B). Más de 15 km = aviso.
+3. Radio mínimo: 22 m (todo asfalto) · 18 m (si hay tierra, grava, barro o arena).
 4. Pendiente máx. 12 % (promedio en 20 m). Primeros 150 m desde A casi rectos (radio ≥ 90 m).
-5. Cruces: ángulo ≥ 35° (si no, «se pisan en paralelo»); diferencia de altura ≤ 8 m (el editor las iguala); A fuera de un cruce (150 m) y B a más de 100 m de uno.
+5. Cruces (no valen con `slope` descent/ascent): ángulo ≥ 35° (si no, «se pisan en paralelo»); diferencia de altura ≤ 8 m (el editor las iguala); A fuera de un cruce (150 m) y B a más de 100 m de uno.
 6. Tramos seguidos de 0 a 1, ≥ 60 m, máx. 200. `race.laps` 1–5, `maxGapM` 60–1000, `everySec` 15–120, `rivals.count` 0–7.
 
 ## Cómo se integra
