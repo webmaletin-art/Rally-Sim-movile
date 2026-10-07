@@ -76,7 +76,7 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 
 ## Versión final / Google Play (preparada)
 - Herramientas técnicas (📊 diagnóstico, RENDIMIENTO, panel de FPS por capturas) ocultas: sólo existen en compilaciones de desarrollo (`Release.tools()`), nunca en el APK/AAB final.
-- Reparto gratis / pago: aventura = 3 etapas gratis (el resto y las copas Nacional/Continental/Leyenda con `dr_adventure`); carrera rápida, Travesía X, mapas fantasía y mundo abierto (Dream City) libres; **modo online CERRADO** (`Release.ONLINE_OPEN := false`); Genesis (DR Bisonte XR) = premio de la aventura.
+- Reparto gratis / pago: aventura = 3 etapas gratis (el resto y las copas Continental/Leyenda con `dr_adventure`; copas Debut y Nacional libres); carrera rápida, Travesía X, mapas fantasía y mundo abierto (Dream City) libres; **modo online CERRADO** (`Release.ONLINE_OPEN := false`); Genesis (DR Bisonte XR) = premio de la aventura.
 - Tienda de monedas (consumibles `dr_coins_s/m/l/xl`: 5.000 / 12.000 / 30.000 / 80.000), ver `docs/PLAY_STORE.md`.
 - **Actualización futura (cuando se cierre el tiempo real / online):** los autos de los OTROS jugadores deben verse y moverse como los autos de la IA de carrera rápida (hoy se ven peores y se traban): mismo modelo/LOD, misma suavización de movimiento (interpolación). El pool de autos civiles queda como está. Después de eso poner `Release.ONLINE_OPEN := true`.
 

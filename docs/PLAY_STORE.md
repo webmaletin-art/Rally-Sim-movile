@@ -45,7 +45,7 @@ La versión de prueba (APK liviano / completo de GitHub) **no cambia**: todo lo 
    | ID | Tipo | Qué es | Precio sugerido (a confirmar por vos) |
    |---|---|---|---|
    | `dr_full` | no consumible | **Juego completo**: aventura (12 etapas), todas las copas y los 3 autos premium | USD 1,99 |
-   | `dr_adventure` | no consumible | Aventura completa (12 etapas, tenés 3 gratis) y las copas Nacional, Continental y Leyenda | USD 0,99 |
+   | `dr_adventure` | no consumible | Aventura completa (12 etapas, tenés 3 gratis) y las copas Continental y Leyenda | USD 0,99 |
    | `dr_garage` | no consumible | Garaje premium: Mamut 6x6, GT3 RS y Aerion | USD 1,99 |
    | `car_truck` | no consumible | Colossus Mamut 6x6 (camión) | USD 0,99 |
    | `car_gt3` | no consumible | Altair GT3 RS | USD 0,99 |
@@ -83,7 +83,7 @@ Los íconos del lanzador (adaptativo + monocromo) ya están en `godot/store/icon
 ### Propuestas que necesitan tu OK (todavía NO las hice)
 1. **Idiomas**: español, inglés, portugués, francés, italiano y alemán ya tienen traducción de los textos del juego (la voz grabada del copiloto todavía solo existe en español, ver `docs/PLAN_V1.md`).
 2. **Taller de prueba de la pausa** (ajusta todo gratis en pruebas de autos de la tienda y Carrera rápida): ¿lo dejamos para todos o solo en la prueba de autos de la tienda? Como se venden créditos, quizá convenga dejarlo solo en la tienda.
-3. **Reparto gratis / pago**: hoy son gratis las 3 primeras etapas de la aventura, la copa Debut y todos los mapas; el resto con `dr_adventure` / `dr_garage` / `dr_full`.
+3. **Reparto gratis / pago**: hoy son gratis las 3 primeras etapas de la aventura, las copas Debut y Nacional y todos los mapas; el resto con `dr_adventure` / `dr_garage` / `dr_full`.
 4. **Créditos**: SÍ se venden (bolsas de monedas consumibles, ver tabla de productos). Precios y cantidades a revisar por el dueño antes de subir.
 5. **DR Bisonte XR** en la tienda ($250.000): se ve y se prueba, pero se compra recién al terminar la aventura. ¿Lo mantenemos así en la versión de Play?
 6. **Ícono provisorio**: ¿querés un logo propio?

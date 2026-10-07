@@ -21,7 +21,7 @@ func _init() -> void:
 	p.d["owned"] = {}
 	p.d["settings"]["dev"] = false
 	check(Release.adventure_limit(p) == 3, "gratis: 3 etapas de la aventura")
-	check(Release.tier_allowed(p, "debut") and not Release.tier_allowed(p, "nacional"), "gratis: copa Debut, no la Nacional")
+	check(Release.tier_allowed(p, "debut") and Release.tier_allowed(p, "nacional") and not Release.tier_allowed(p, "continental"), "gratis: copas Debut y Nacional, no la Continental")
 	check(not Release.car_unlocked(p, "gt3") and Release.car_unlocked(p, "gt"), "el GT3 es premium; el Kaze GT no")
 	check(not Release.can_buy(p, "hyper") and not Release.can_buy(p, "genesis") and Release.can_buy(p, "gt"), "premium y premio no se pagan con monedas")
 	p.d["iap"]["car_gt3"] = true

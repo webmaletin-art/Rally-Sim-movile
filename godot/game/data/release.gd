@@ -2,10 +2,10 @@ extends RefCounted
 ## Qué incluye la versión pública del juego y qué queda libre en el «modo desarrollador» (del dueño, para probar sin perder el
 ## progreso real). El modo desarrollador se activa en Opciones → Acerca de (tocar siete veces el número de versión).
 
-## Etapas de la aventura gratis (el resto y las copas Nacional, Continental y Leyenda se desbloquean con el paquete de aventura)
+## Etapas de la aventura gratis (el resto y las copas Continental y Leyenda se desbloquean con el paquete de aventura)
 const ADVENTURE_STAGES := 3
 ## Copas de la carrera abiertas gratis
-const PUBLIC_TIERS := ["debut"]
+const PUBLIC_TIERS := ["debut", "nacional"]
 ## Autos que solo se consiguen jugando: se ven y se prueban en la concesionaria, pero se compran recién al ganarlos
 const REWARD_CARS := ["genesis"]
 ## Autos premium: no se pagan con monedas, se desbloquean con una compra (cada uno suelto, el paquete de garaje o el juego completo)

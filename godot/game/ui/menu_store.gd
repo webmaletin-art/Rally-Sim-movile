@@ -73,7 +73,7 @@ func offer_popup() -> void:
 	var v := Kit.vbox(10)
 	p.add_child(v)
 	v.add_child(Kit.label("💎 SEGUÍ CORRIENDO", 30, Kit.ACCENT))
-	v.add_child(Kit.wrap("Ya tenés gratis la Copa Debut, 3 etapas de la aventura y todas las pistas. Desbloqueá más:", 17, Kit.TEXT, 320))
+	v.add_child(Kit.wrap("Ya tenés gratis las copas Debut y Nacional, 3 etapas de la aventura y todas las pistas. Desbloqueá más:", 17, Kit.TEXT, 320))
 	for id in ["dr_full", "dr_adventure", "dr_garage"]:
 		var pd: Dictionary = Products.PRODUCTS[id]
 		v.add_child(Kit.label("%s  %s" % [pd["icon"], pd["name"]], 20, Kit.GOLD))
