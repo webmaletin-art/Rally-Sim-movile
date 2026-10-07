@@ -9,6 +9,7 @@ const VehicleParams := preload("res://game/physics/vehicle_params.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const RigPilot := preload("res://game/car/rig_pilot.gd")
 const MixamoClips := preload("res://game/car/mixamo_clips.gd")
+const ShowroomEnv := preload("res://game/ui/showroom_env.gd")
 
 ## Qué clips de Mixamo se usan para cada pose del guion del menú (si el archivo de clips no está, quedan las poses procedurales)
 const CLIPS := {
@@ -38,7 +39,10 @@ var sun: DirectionalLight3D
 var t := 0.0
 var cam_ang := 0.0
 var rng := RandomNumberGenerator.new()
+var shown_id := "" # auto que está en la sala (para no rearmarlo si ya es ese)
 var view_shift := 0.5 # cuánto se corre la escena hacia la derecha (el menú ocupa la izquierda)
+var dist_scale := 1.0 # 1 = distancia de siempre; más que 1 aleja la cámara automática (con el marco del garaje el auto tiene menos lugar)
+var view_shift_y := 0.0 # corrimiento vertical (fracción del alto; negativo = la escena sube): deja el auto en lo que no tapan la barra de arriba y el carrusel
 var car_len := 4.6
 var clip: MeshInstance3D
 var ready_ok := false
@@ -66,13 +70,13 @@ func _ready() -> void:
 	rng.randomize()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.045, 0.06, 0.085)
+	env.background_color = Color(0.02, 0.024, 0.034)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.55, 0.6, 0.72)
-	env.ambient_light_energy = 0.6
+	env.ambient_light_color = Color(0.5, 0.55, 0.68)
+	env.ambient_light_energy = 0.5
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.045, 0.06, 0.085)
-	env.fog_density = 0.022
+	env.fog_light_color = Color(0.02, 0.024, 0.034)
+	env.fog_density = 0.014
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -97,9 +101,10 @@ func _ready() -> void:
 	add_child(fill)
 	# plataforma
 	var fm := StandardMaterial3D.new()
-	fm.albedo_color = Color(0.11, 0.125, 0.15)
-	fm.roughness = 0.55
-	fm.metallic = 0.25
+	fm.albedo_color = Color(0.035, 0.04, 0.052)
+	fm.roughness = 0.75
+	fm.metallic = 0.0
+	fm.metallic_specular = 0.12 # poco brillo: de costado el piso no se vuelve un espejo blanco
 	var floor_m := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
 	cyl.top_radius = 8.5
@@ -111,6 +116,7 @@ func _ready() -> void:
 	floor_m.mesh = cyl
 	floor_m.position.y = -0.05
 	add_child(floor_m)
+	ShowroomEnv.build(self)
 	var rm := StandardMaterial3D.new()
 	rm.albedo_color = Color(1.0, 0.48, 0.1)
 	rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -135,6 +141,7 @@ func _ready() -> void:
 
 ## Pone el auto: id del catálogo, estado guardado (mejoras, pintura) y vehicles.json
 func set_car(id: String, state: Dictionary, vehicles: Dictionary) -> void:
+	shown_id = id
 	if car != null:
 		car.visual.queue_free()
 		car = null
@@ -686,7 +693,7 @@ func _enter_free(defaults: bool) -> void:
 	if defaults:
 		f_yaw = cam_ang
 		f_pitch = 0.12
-		f_dist = car_len * 1.5 + 1.1
+		f_dist = (car_len * 1.5 + 1.1) * dist_scale
 		f_target = Vector3(0.0, 0.75, 0.0)
 	else:
 		var off := _shown_cp - _shown_target # donde está la cámara en este momento (automática o a medio volver): sin saltos
@@ -776,7 +783,7 @@ func _process(dt: float) -> void:
 	t += dt
 	# cámara: va y viene despacio alrededor del frente-izquierdo del auto
 	cam_ang = 0.62 + 0.30 * sin(t * 0.12)
-	var dist := car_len * 1.5 + 1.1
+	var dist := (car_len * 1.5 + 1.1) * dist_scale
 	var target := Vector3(1.35, 0.85, car_len * 0.18)
 	var cp := target + Vector3(sin(cam_ang) * dist, 0.65 + 0.12 * sin(t * 0.17), cos(cam_ang) * dist)
 	_auto_cp = cp
@@ -796,6 +803,7 @@ func _process(dt: float) -> void:
 	_shown_cp = cp
 	_shown_target = target
 	cam.h_offset = -view_shift * hd * 0.5
+	cam.v_offset = view_shift_y * hd * 0.69
 	if car != null:
 		car.visual.blob.visible = false
 	if crew.is_empty():

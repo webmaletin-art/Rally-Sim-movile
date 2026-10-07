@@ -71,6 +71,16 @@ func build(name: String, arg) -> void:
 			ws_tab = 3
 			_workshop()
 
+func shop_info() -> Dictionary:
+	return Shops.get_shop(shop) if shop != "" else {}
+
+## Título de la barra superior cuando se entra desde la calle (taller de Dream City o concesionario)
+func city_title() -> String:
+	var sd := shop_info()
+	if not sd.is_empty():
+		return "%s %s" % [sd["icon"], tr(str(sd.get("title", sd["name"])))]
+	return tr("TIENDA")
+
 func _cat() -> Dictionary:
 	return CarBuild.catalog()
 
@@ -117,11 +127,31 @@ func _ids(mine: bool) -> Array:
 			out.append(str(id))
 	return out
 
+## Miles con punto (2.700), como el resto del juego
+func _n(v: float) -> String:
+	return Kit.fmt_cr(v).trim_prefix("$ ")
+
+func _car_state(id: String) -> Dictionary:
+	return m.profile.d["owned"][id] if m.profile.owns(id) else m.profile.new_car_state(id)
+
+## Tarjeta de un auto para el carrusel de abajo: nombre, categoría y PI (los mismos números del garaje)
+func _card_info(id: String) -> Dictionary:
+	var cm: Dictionary = _cat()["cars"][id]
+	var pf := _perf(id, _car_state(id))
+	var cls: Dictionary = CarBuild.class_of(int(pf["pi"]))
+	return {"name": str(cm["model"]), "letter": str(cls["c"]), "col": Kit.hexc(cls["col"]), "sub": "PI %d" % int(pf["pi"])}
+
+## Ícono de una línea de datos (cv, kg, km/h, tracción)
+func _chip(icon: String, text: String) -> Control:
+	var h := Kit.hbox(5)
+	h.add_child(Kit.Icons.make(icon, Color(0.78, 0.82, 0.9), 18.0))
+	var l := Kit.label(text, 15, Kit.TEXT)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	h.add_child(l)
+	return h
+
 func _cars(mine: bool) -> void:
 	m.set_title("GARAJE" if mine else "TIENDA")
-	m.body.add_child(Kit.tabs(["🚗 MIS AUTOS", "🏬 TIENDA"], 0 if mine else 1, func(i: int) -> void:
-		m.sfx.play("click")
-		m.go("garage" if i == 0 else "dealer", null, false), 17, 40.0))
 	var ids := _ids(mine)
 	if ids.is_empty():
 		m.body.add_child(Kit.label("No hay autos para mostrar.", 20, Kit.MUTED))
@@ -135,120 +165,138 @@ func _cars(mine: bool) -> void:
 		idx = clampi(shop_i, 0, ids.size() - 1)
 	var id: String = ids[idx]
 	var owned: bool = m.profile.owns(id)
-	var st: Dictionary = m.profile.d["owned"][id] if owned else m.profile.new_car_state(id)
+	var st: Dictionary = _car_state(id)
 	var cm: Dictionary = _cat()["cars"][id]
 	var pf := _perf(id, st)
 	var cls: Dictionary = CarBuild.class_of(int(pf["pi"]))
 	var cur: bool = owned and id == m.profile.current_id()
-	var step := func(d: int) -> void:
-		m.sfx.play("click")
-		var n := posmod(idx + d, ids.size())
+	var screen_name := "garage" if mine else "dealer"
+	if m.showroom.shown_id != id: # la sala muestra el auto de la lista (al entrar a la tienda desde otra pantalla todavía estaba el anterior)
+		m.refresh_car(id, st)
+	m.body.add_theme_constant_override("separation", 5)
+	var pick := func(n: int) -> void:
 		if mine:
 			mine_i = n
 		else:
 			shop_i = n
 		var nid: String = ids[n]
-		var nst: Dictionary = m.profile.d["owned"][nid] if m.profile.owns(nid) else m.profile.new_car_state(nid)
-		m.refresh_car(nid, nst)
-		m.go("garage" if mine else "dealer", null, false)
-	var row := Kit.hbox(6)
-	m.body.add_child(row)
-	var la := Kit.button("◀", func() -> void: step.call(-1), false, 26, Vector2(46, 0))
-	la.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	row.add_child(la)
-	var p := Kit.panel(10, Kit.PANEL2)
-	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(p)
-	var ra := Kit.button("▶", func() -> void: step.call(1), false, 26, Vector2(46, 0))
-	ra.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	row.add_child(ra)
-	var v := Kit.vbox(3)
-	p.add_child(v)
-	var top := Kit.hbox(8)
-	v.add_child(top)
+		m.refresh_car(nid, _car_state(nid))
+		m.go(screen_name, null, false)
+	# carrusel + especificaciones (abajo)
+	var gears: Array = m.vehicles[id]["gears"]
+	m.chrome.build_bottom(ids, idx, _card_info, pick, {"engine": str(cm["engine"]), "gears": tr("%d velocidades") % gears.size(), "drive": str(cm["drive"]),
+		"kg": "%s kg" % _n(float(pf["kg"])), "vmax": "%d km/h" % int(pf["vmax"]), "hp": "%d cv" % int(pf["hp"])})
+	# tarjeta del auto
+	var top := Kit.hbox(10)
+	m.body.add_child(top)
 	var left := Kit.vbox(0)
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(left)
-	var bl := Kit.label(str(cm["brand"]), 13, Kit.MUTED)
+	var bl := Kit.label(str(cm["brand"]).to_upper(), 13, Kit.ACCENT)
 	bl.clip_text = true
 	bl.custom_minimum_size.x = 40
 	left.add_child(bl)
-	var nl := Kit.label(str(cm["model"]), 27, Kit.TEXT)
+	var nl := Kit.label(str(cm["model"]), 31, Kit.TEXT)
 	nl.clip_text = true
 	nl.custom_minimum_size.x = 40
 	left.add_child(nl)
-	top.add_child(_class_badge(cls))
-	top.add_child(Kit.label("PI %d" % int(pf["pi"]), 21, Kit.GOLD))
+	var pill := PanelContainer.new()
+	pill.add_theme_stylebox_override("panel", Kit.box(Color(0, 0, 0, 0.3), 10, Color(Kit.GOLD.r, Kit.GOLD.g, Kit.GOLD.b, 0.45), 1, 6))
+	pill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	top.add_child(pill)
+	var prow := Kit.hbox(8)
+	pill.add_child(prow)
+	prow.add_child(Kit.class_badge(str(cls["c"]), Kit.hexc(cls["col"]), 20))
+	var pil := Kit.label("PI %d" % int(pf["pi"]), 21, Kit.GOLD)
+	pil.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	prow.add_child(pil)
 	var ln := Kit.label("%s · %s · %s · %d" % [cm["kind"], cm["engine"], cm["drive"], int(cm["year"])], 13, Kit.MUTED)
 	ln.clip_text = true
 	ln.custom_minimum_size.x = 40
-	v.add_child(ln)
-	v.add_child(Kit.label("%d cv · %d kg · %d km/h   (%d/%d)" % [int(pf["hp"]), int(pf["kg"]), int(pf["vmax"]), idx + 1, ids.size()], 15, Kit.TEXT))
+	m.body.add_child(ln)
+	var chips := Kit.hbox(14)
+	m.body.add_child(chips)
+	chips.add_child(_chip("power", "%d cv" % int(pf["hp"])))
+	chips.add_child(_chip("weight", "%s kg" % _n(float(pf["kg"]))))
+	chips.add_child(_chip("gauge", "%d km/h" % int(pf["vmax"])))
+	chips.add_child(_chip("drive", str(cm["drive"])))
+	var cnt := Kit.label("%d/%d" % [idx + 1, ids.size()], 13, Kit.MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+	cnt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cnt.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	chips.add_child(cnt)
+	var line := ColorRect.new()
+	line.color = Color(1, 1, 1, 0.08)
+	line.custom_minimum_size = Vector2(0, 1)
+	m.body.add_child(line)
 	var b: Dictionary = pf["bars"]
-	var g := Kit.grid(2, 14, 2)
-	v.add_child(g)
-	g.add_child(_bar("Velocidad", float(b["speed"])))
-	g.add_child(_bar("Aceleración", float(b["accel"])))
-	g.add_child(_bar("Manejo", float(b["handling"])))
-	g.add_child(_bar("Frenado", float(b["braking"])))
-	g.add_child(_bar("Off-road", float(b["offroad"])))
-	var dl := Kit.wrap(str(cm["desc"]), 13, Kit.MUTED, 200)
-	dl.max_lines_visible = 3
+	var mid := Kit.hbox(8)
+	m.body.add_child(mid)
+	var bars := Kit.vbox(5)
+	bars.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mid.add_child(bars)
+	bars.add_child(Kit.stat_bar(tr("Velocidad"), float(b["speed"]), "", Kit.ACCENT, 84, 13))
+	bars.add_child(Kit.stat_bar(tr("Aceleración"), float(b["accel"]), "", Kit.ACCENT, 84, 13))
+	bars.add_child(Kit.stat_bar(tr("Manejo"), float(b["handling"]), "", Kit.ACCENT, 84, 13))
+	bars.add_child(Kit.stat_bar(tr("Frenado"), float(b["braking"]), "", Kit.ACCENT, 84, 13))
+	bars.add_child(Kit.stat_bar(tr("Off-road"), float(b["offroad"]), "", Kit.ACCENT, 84, 13))
+	mid.add_child(Kit.Radar.make([float(b["speed"]), float(b["accel"]), float(b["braking"]), float(b["offroad"]), float(b["handling"])], 112.0))
+	var dl := Kit.wrap(str(cm["desc"]), 12, Kit.MUTED, 200)
+	dl.max_lines_visible = 2
 	dl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	v.add_child(dl)
+	m.body.add_child(dl)
 	var brow := Kit.hbox(8)
 	m.body.add_child(brow)
 	if mine:
-		var use := Kit.button("✔ EN USO" if cur else "USAR ESTE AUTO", func() -> void:
+		var use := Kit.icon_button("check", tr("EN USO") if cur else tr("USAR ESTE AUTO"), func() -> void:
 			m.profile.select(id)
 			m.sfx.play("click")
 			m.refresh_car()
-			m.go("garage", null, false), not cur, 20, Vector2(0, 52))
+			m.go("garage", null, false), not cur, 18, Vector2(0, 48))
 		use.disabled = cur
 		use.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		brow.add_child(use)
 		if m.app.city_return.is_empty(): # en el concesionario de Dream City no hay taller: cada trabajo se hace en su local
-			var wb := Kit.button("🔧 TALLER", func() -> void:
+			var wb := Kit.icon_button("wrench", tr("TALLER"), func() -> void:
 				m.profile.select(id)
 				m.sfx.play("click")
 				m.refresh_car()
-				m.go("workshop", 0), false, 20, Vector2(0, 52))
+				m.go("workshop", 0), false, 18, Vector2(0, 48))
 			wb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			brow.add_child(wb)
 	else:
 		if owned:
-			var ob := Kit.button("✔ EN TU GARAJE", Callable(), false, 20, Vector2(0, 52))
+			var ob := Kit.icon_button("check", tr("EN TU GARAJE"), Callable(), false, 18, Vector2(0, 48))
 			ob.disabled = true
 			ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			brow.add_child(ob)
 		elif Release.PREMIUM_CARS.has(id) and not Release.dev(m.profile):
 			var pb := Kit.button("💎 DESBLOQUEAR EN COMPRAS", func() -> void:
 				m.sfx.play("click")
-				m.go("iap"), true, 18, Vector2(0, 52))
+				m.go("iap"), true, 17, Vector2(0, 48))
 			pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			brow.add_child(pb)
 		elif not Release.can_buy(m.profile, id):
-			var lk := Kit.button("🔒 SE GANA TERMINANDO LA AVENTURA", Callable(), false, 17, Vector2(0, 52))
+			var lk := Kit.icon_button("lock", tr("SE GANA TERMINANDO LA AVENTURA"), Callable(), false, 15, Vector2(0, 48))
 			lk.disabled = true
 			lk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			brow.add_child(lk)
 		else:
 			var price := int(cm["price"])
-			var bb := Kit.button("COMPRAR  " + Kit.fmt_cr(float(price)), func() -> void: _buy_car(id), m.profile.credits >= price, 20, Vector2(0, 52))
+			var bb := Kit.icon_button("cart", tr("COMPRAR") + "  " + Kit.fmt_cr(float(price)), func() -> void: _buy_car(id), m.profile.credits >= price, 18, Vector2(0, 48))
 			bb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			brow.add_child(bb)
 		# probar el auto antes de comprarlo (también los que ya tenés): sin premios y con el taller de prueba en la pausa
 		var trow := Kit.hbox(6)
 		m.body.add_child(trow)
-		for tt in [["🏁 ASFALTO", "lake"], ["🏜 TIERRA", "forest"], ["🌀 DRIFT", "drift"]]:
-			var tmap: String = tt[1]
-			var tb := Kit.button(tt[0], func() -> void:
+		for tt in [["road", "ASFALTO", "lake"], ["mountain", "TIERRA", "forest"], ["bolt", "DRIFT", "drift"]]:
+			var tmap: String = tt[2]
+			var tb := Kit.icon_button(str(tt[0]), tr(str(tt[1])), func() -> void:
 				m.sfx.play("click")
 				var tcfg := {"type": "free", "track": tmap, "ai": 0, "sky": "day", "car": id, "state": st.duplicate(true), "testCar": true, "back": "dealer", "seed": 7}
 				if tmap == "drift":
 					tcfg["type"] = "drift"
 					tcfg["time"] = 1800 # práctica larga: se corta desde la pausa
-				m.launch(tcfg, false), false, 17, Vector2(0, 48))
+				m.launch(tcfg, false), false, 14, Vector2(0, 36))
 			tb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			trow.add_child(tb)
 
@@ -292,7 +340,7 @@ func _workshop() -> void:
 	var allowed: Array = sd["tabs"] if not sd.is_empty() else [0, 1, 2, 3, 4, 5]
 	if not allowed.has(ws_tab):
 		ws_tab = int(allowed[0])
-	if allowed.size() > 1:
+	if allowed.size() > 1 and not m.chrome_on: # (con el marco del garaje las pestañas están en el riel de la izquierda)
 		var shown: Array = []
 		for ti in allowed:
 			shown.append(tab_names[int(ti)])
@@ -300,7 +348,7 @@ func _workshop() -> void:
 			ws_tab = int(allowed[i])
 			m.sfx.play("click")
 			m.go("workshop", null, false), 16, 40.0))
-	elif not sd.is_empty():
+	elif allowed.size() <= 1 and not sd.is_empty():
 		m.body.add_child(Kit.wrap(tr(str(sd["info"])), 14, Kit.MUTED, 300))
 	if not pv.is_empty():
 		var kind_of_tab := {0: "upg", 1: "tire", 4: "part", 5: "part"}

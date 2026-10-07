@@ -20,6 +20,7 @@ const MenuAccount := preload("res://game/ui/menu_account.gd")
 const MenuWorld := preload("res://game/ui/menu_world.gd")
 const MenuPerf := preload("res://game/ui/menu_perf.gd")
 const MenuStore := preload("res://game/ui/menu_store.gd")
+const MenuChrome := preload("res://game/ui/menu_chrome.gd")
 const Release := preload("res://game/data/release.gd")
 const Autotune := preload("res://game/autotune.gd")
 const CalibUi := preload("res://game/ui/calib_ui.gd")
@@ -54,6 +55,11 @@ var about: RefCounted
 var account: RefCounted
 var world_ui: RefCounted # menu_world.gd: mundo abierto y modo online
 var diag_ui: RefCounted # menu_diag.gd: diagnóstico de rendimiento (registro manual)
+var chrome: RefCounted # menu_chrome.gd: marco del garaje premium (barra superior, riel, carrusel y especificaciones)
+var chrome_on := false # la pantalla actual usa el marco (garaje, tienda, taller)
+var view_frac := 0.475 # hasta dónde llega lo que tapa la vista 3D por la izquierda (fracción del ancho)
+var view_top := 0.0 # px que tapa la barra superior
+var view_bottom := 0.0 # px que tapan el carrusel y las especificaciones
 const FREE_CAM_SCREENS := ["workshop", "tune", "paint", "shop"]
 var world_online := false # el mundo se abre desde Modo online (con cuenta): se activan el chat, los jugadores y el mercado
 var perf: RefCounted
@@ -136,6 +142,8 @@ func _ready() -> void:
 	perf.m = self
 	store = MenuStore.new()
 	store.m = self
+	chrome = MenuChrome.new()
+	chrome.m = self
 	_build_world()
 	_build_ui()
 	if showcar != "":
@@ -263,6 +271,23 @@ func _on_resize() -> void:
 	view_rect.size = get_viewport().get_visible_rect().size
 	if showroom != null and showroom.cam != null:
 		showroom.cam.keep_aspect = Camera3D.KEEP_HEIGHT
+	_apply_view_shift()
+
+## Cuánto se aleja la cámara del menú: con el marco del garaje el auto tiene menos lugar (más todavía en el taller, que ocupa más ancho)
+func _dist_scale_for(name: String) -> float:
+	if not MenuChrome.wanted(name):
+		return 1.0
+	return 1.14 if chrome.has_carousel(name) else 1.12
+
+## Pone el auto en el medio de lo que no tapan los paneles: horizontal (el panel de la izquierda) y vertical (barra de arriba y carrusel de abajo)
+func _apply_view_shift() -> void:
+	if showroom == null:
+		return
+	showroom.view_shift = 1.9 * view_frac - 0.26
+	showroom.dist_scale = _dist_scale_for(screen)
+	var h := maxf(1.0, get_viewport().get_visible_rect().size.y)
+	var center_y := (view_top + (h - view_bottom)) * 0.5
+	showroom.view_shift_y = (center_y - h * 0.5) / h
 
 ## Muestra en la sala el auto elegido (con sus piezas y su pintura)
 func refresh_car(override_id := "", override_state := {}) -> void:
@@ -342,34 +367,56 @@ func go(name: String, arg = null, push := true) -> void:
 		stack.append([screen, screen_arg])
 	screen = name
 	screen_arg = arg
+	showroom.dist_scale = _dist_scale_for(name) # (antes de la cámara libre: parte de esta distancia)
 	showroom.set_free(name in FREE_CAM_SCREENS) # en el taller la cámara es libre: girar con un dedo, acercar con pellizco
 	if panel != null:
 		panel.queue_free()
-	panel = Kit.panel(12)
-	panel.set_anchors_preset(Control.PRESET_LEFT_WIDE)
-	var frac := 0.385 if name == "home" else 0.475
-	panel.anchor_right = frac
-	showroom.view_shift = 1.9 * frac - 0.26 # el auto queda en el medio de lo que no tapa el panel
-	panel.offset_left = 12
-	panel.offset_top = 12
-	panel.offset_bottom = -12
-	panel.offset_right = 0
-	root.add_child(panel)
-	var col := Kit.vbox(8)
-	col_box = col
-	panel.add_child(col)
-	var head := Kit.hbox(8)
-	col.add_child(head)
-	if name != "home" and name != "consent" and not (name == "account" and arg == "welcome"):
-		var leaving: bool = stack.is_empty() and not app.city_return.is_empty()
-		head.add_child(Kit.button("🚪 SALIR" if leaving else "← ATRÁS", back, false, 16, Vector2(104, 40)))
-	title_l = Kit.label("", 26, Kit.ACCENT)
-	title_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_l.clip_text = true
-	title_l.custom_minimum_size.x = 40
-	head.add_child(title_l)
-	credits_l = Kit.label("", 18, Kit.GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
-	head.add_child(credits_l)
+	chrome.clear()
+	chrome_on = MenuChrome.wanted(name)
+	var col: VBoxContainer
+	if chrome_on:
+		panel = _chrome_panel(name)
+		col = Kit.vbox(8)
+		col_box = col
+		panel.add_child(col)
+		# el título y el dinero viven en la barra superior; estas etiquetas quedan ocultas para que set_title / update_credits no fallen
+		title_l = Kit.label("", 26, Kit.ACCENT)
+		title_l.visible = false
+		credits_l = Kit.label("", 18, Kit.GOLD)
+		credits_l.visible = false
+		col.add_child(title_l)
+		col.add_child(credits_l)
+	else:
+		panel = Kit.panel(12)
+		panel.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+		var frac := 0.385 if name == "home" else 0.475
+		panel.anchor_right = frac
+		view_frac = frac
+		view_top = 0.0
+		view_bottom = 0.0
+		panel.offset_left = 12
+		panel.offset_top = 12
+		panel.offset_bottom = -12
+		panel.offset_right = 0
+		root.add_child(panel)
+		col = Kit.vbox(8)
+		col_box = col
+		panel.add_child(col)
+		var head := Kit.hbox(8)
+		col.add_child(head)
+		if name != "home" and name != "consent" and not (name == "account" and arg == "welcome"):
+			var leaving: bool = stack.is_empty() and not app.city_return.is_empty()
+			head.add_child(Kit.button("🚪 SALIR" if leaving else "← ATRÁS", back, false, 16, Vector2(104, 40)))
+		title_l = Kit.label("", 26, Kit.ACCENT)
+		title_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		title_l.clip_text = true
+		title_l.custom_minimum_size.x = 40
+		head.add_child(title_l)
+		credits_l = Kit.label("", 18, Kit.GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
+		head.add_child(credits_l)
+		if name == "home":
+			head.visible = false # el dinero y el nivel van en la esquina de arriba a la derecha
+	_apply_view_shift()
 	update_credits()
 	var sc := TouchScroll.new() # red de seguridad: las pantallas están armadas para entrar sin desplazar
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -412,6 +459,8 @@ func go(name: String, arg = null, push := true) -> void:
 		"nick": world_ui.nick_screen()
 		"adventure", "adv_skills", "adv_help", "adv_stages", "adv_start": adventure.build(name, arg)
 		_: _home()
+	if chrome_on and screen == name: # (la tienda de la calle abre el concesionario con un go() adentro: ése ya armó su marco)
+		_chrome_finish(name)
 	if name == "home":
 		offer_calibration() # configuración gráfica automática: la primera vez (después del aviso legal y de la cuenta)
 
@@ -503,6 +552,39 @@ func on_online_failed(text: String) -> void:
 func update_credits() -> void:
 	if credits_l != null:
 		credits_l.text = "%s · Nv %d" % [Kit.fmt_cr(float(profile.credits)), int(profile.d["level"])]
+	if chrome != null:
+		chrome.refresh_stats()
+
+## Panel central del garaje premium: queda entre el riel y la mitad del ancho, debajo de la barra superior (y arriba del carrusel si lo hay)
+func _chrome_panel(name: String) -> PanelContainer:
+	var p := Kit.panel(12, Kit.GRAPHITE)
+	var rw: float = chrome.rail_width(name)
+	var frac := 0.48 if chrome.has_carousel(name) else 0.52
+	view_frac = frac
+	view_top = chrome.main_top()
+	view_bottom = chrome.bottom_height(name) if chrome.has_carousel(name) else 0.0
+	p.set_anchors_preset(Control.PRESET_FULL_RECT)
+	p.anchor_left = 0.0
+	p.anchor_top = 0.0
+	p.anchor_right = frac
+	p.anchor_bottom = 1.0
+	p.offset_left = MenuChrome.MARGIN + rw + 8.0
+	p.offset_top = chrome.main_top()
+	p.offset_right = 0
+	p.offset_bottom = -chrome.bottom_height(name)
+	root.add_child(p)
+	Kit.pop_in(p, -8.0, 0.16)
+	return p
+
+## Barra superior y riel: se arman al final, cuando la pantalla ya decidió su pestaña (el taller de la calle puede tener sólo algunas)
+func _chrome_finish(name: String) -> void:
+	var allowed: Array = [0, 1, 2, 3, 4, 5]
+	var sd: Dictionary = garage.shop_info()
+	if not sd.is_empty():
+		allowed = sd["tabs"]
+	chrome.build_top(name)
+	chrome.build_rail(name, garage.ws_tab, allowed)
+
 
 func set_title(t: String) -> void:
 	title_l.text = t
@@ -538,7 +620,10 @@ func tile(icon: String, text: String, sub: String, cb: Callable, accent := false
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	var col := Color(0.05, 0.06, 0.08) if accent else Kit.TEXT
-	v.add_child(Kit.label(icon, 22, col, HORIZONTAL_ALIGNMENT_CENTER))
+	if Kit.Icons.KINDS.has(icon): # ícono de línea (se tiñe de naranja); si no, es un emoji de las pantallas viejas
+		v.add_child(Kit.Icons.make(icon, col if accent else Kit.ACCENT, 24.0))
+	else:
+		v.add_child(Kit.label(icon, 22, col, HORIZONTAL_ALIGNMENT_CENTER))
 	var tl := Kit.label(text, 16, col, HORIZONTAL_ALIGNMENT_CENTER)
 	tl.clip_text = true
 	tl.custom_minimum_size.x = 40
@@ -559,60 +644,92 @@ func tile(icon: String, text: String, sub: String, cb: Callable, accent := false
 
 func _home() -> void:
 	title_l.text = ""
-	var t := Kit.label("DREAM RACING", 38, Kit.ACCENT)
-	body.add_child(t)
+	chrome.build_corner()
+	# logo
+	var logo := Kit.vbox(0)
+	body.add_child(logo)
+	var lrow := Kit.hbox(8)
+	logo.add_child(lrow)
+	for pr in [["DREAM", Color.WHITE], ["RACING", Kit.ACCENT]]:
+		var ll := Kit.label(str(pr[0]), 36, pr[1] as Color)
+		ll.add_theme_color_override("font_outline_color", pr[1] as Color)
+		ll.add_theme_constant_override("outline_size", 1)
+		lrow.add_child(ll)
+	var sub := Kit.label("D R I V I N G   S I M U L A T O R", 10, Kit.MUTED)
+	logo.add_child(sub)
+	# el auto elegido: categoría, nombre y PI
 	var car_id: String = profile.current_id()
 	var cm: Dictionary = CarBuild.catalog()["cars"][car_id]
 	var st: Dictionary = profile.car()
 	var V: Dictionary = CarBuild.build_params(vehicles[car_id], st)
 	var pf: Dictionary = CarBuild.perf_of(V)
 	var cls: Dictionary = CarBuild.class_of(int(pf["pi"]))
-	var chip := Kit.label("%s %s · %s %s · PI %d" % [cm["brand"], cm["model"], tr("Clase"), cls["c"], int(pf["pi"])], 14, Kit.MUTED)
-	chip.clip_text = true
-	chip.custom_minimum_size.x = 40
+	var chip := Kit.hbox(8)
 	body.add_child(chip)
-	var next_ev := _next_event()
-	if not next_ev.is_empty():
-		body.add_child(menu_button("▶ SEGUIR CARRERA", str(next_ev["name"]), func(): go("event", next_ev["id"]), true))
+	chip.add_child(Kit.class_badge(str(cls["c"]), Kit.hexc(cls["col"]), 14))
+	var cl := Kit.label("%s %s · PI %d" % [cm["brand"], cm["model"], int(pf["pi"])], 14, Kit.MUTED)
+	cl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cl.clip_text = true
+	cl.custom_minimum_size.x = 40
+	cl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chip.add_child(cl)
+	# lo principal: seguir la carrera (o, si no hay evento abierto, la aventura)
 	var ast := AdvData.state(profile)
 	var adv_sub := "¡nuevo! · %d etapas" % AdvRoute.STAGES.size()
 	if ast["done"] == true:
 		adv_sub = "🏆 completada"
 	elif ast["started"] == true:
 		adv_sub = "etapa %d/%d" % [mini(int(ast["stage"]) + 1, AdvRoute.STAGES.size()), AdvRoute.STAGES.size()]
-	body.add_child(menu_button("🌄 AVENTURA", "La Ruta de los Sueños · " + adv_sub, func(): go("adventure"), next_ev.is_empty()))
-	body.add_child(menu_button("🚙 TRAVESÍA X", "convoy off-road · 20 km · barro, lago y colina", func() -> void:
-		career.quick["fantasy"] = false
-		career.quick["travesia"] = true
-		go("quick"), false))
-	# lo que viene: cerrado, con carteles de qué va a traer
-	var soon := Kit.grid(3, 8, 8)
-	body.add_child(soon)
-	soon.add_child(tile("🌌", "FANTASÍA", "mapas de ensueño", func(): go("fantasy"), false, 70.0))
-	soon.add_child(tile("🌐", "MODO ONLINE", "próximamente" if not Release.online_open(profile) else "mundo abierto", func(): go("online"), false, 70.0))
-	soon.add_child(tile("🗺", "MUNDO ABIERTO", "Dream City", func() -> void:
-		world_online = false
-		go("spawn"), false, 70.0))
+	var next_ev := _next_event()
+	if not next_ev.is_empty():
+		body.add_child(menu_button("▶ SEGUIR CARRERA", str(next_ev["name"]), func(): go("event", next_ev["id"]), true))
+	else:
+		body.add_child(menu_button("🌄 AVENTURA", "La Ruta de los Sueños · " + adv_sub, func(): go("adventure"), true))
 	var g := Kit.grid(3, 8, 8)
 	body.add_child(g)
-	var tiles := [
-		["🏆", "CARRERA", "%d ⭐" % profile.stars(), func(): go("career"), false],
-		["⚡", "RÁPIDA", "pista y rivales", func():
-			career.quick["fantasy"] = false
-			career.quick["travesia"] = false
-			go("quick"), false],
-		["🚗", "GARAJE", "tus autos", func(): go("garage"), false],
-		["🏬", "TIENDA", "comprá autos", func(): go("dealer"), false],
-		["🔧", "TALLER", "piezas · pintura", func(): go("workshop", 0), false],
-		["⭐", "LOGROS", ("%d para cobrar" % Rewards.ach_ready(profile)) if Rewards.ach_ready(profile) > 0 else "objetivos", func(): go("goals"), false],
-		["⚙", "OPCIONES", "manejo · sonido", func(): go("options"), false],
-		["ℹ", "ACERCA DE", "créditos · legales", func(): go("about"), false],
-		["💎", "COMPRAS", "juego completo · créditos", func(): go("iap"), false],
-	]
-	if Release.tools():
-		tiles.append(["📊", "RENDIMIENTO", "probá tu teléfono", func(): go("perf"), false]) # sólo en compilaciones de desarrollo
+	var tiles: Array = []
+	if not next_ev.is_empty():
+		tiles.append(["mountain", "AVENTURA", adv_sub, func(): go("adventure"), false])
+	tiles.append(["road", "TRAVESÍA X", "convoy off-road", func() -> void:
+		career.quick["fantasy"] = false
+		career.quick["travesia"] = true
+		go("quick"), false])
+	tiles.append(["world", "MUNDO ABIERTO", "Dream City", func() -> void:
+		world_online = false
+		go("spawn"), false])
+	tiles.append(["trophy", "CARRERA", "%d ⭐" % profile.stars(), func(): go("career"), false])
+	tiles.append(["bolt", "RÁPIDA", "pista y rivales", func():
+		career.quick["fantasy"] = false
+		career.quick["travesia"] = false
+		go("quick"), false])
+	tiles.append(["star", "FANTASÍA", "mapas de ensueño", func(): go("fantasy"), false])
+	tiles.append(["car", "GARAJE", "tus autos", func(): go("garage"), false])
+	tiles.append(["wrench", "TALLER", "piezas · pintura", func(): go("workshop", 0), false])
+	tiles.append(["cart", "TIENDA", "comprá autos", func(): go("dealer"), false])
+	tiles.append(["flag", "LOGROS", ("%d para cobrar" % Rewards.ach_ready(profile)) if Rewards.ach_ready(profile) > 0 else "objetivos", func(): go("goals"), false])
+	tiles.append([("globe" if Release.online_open(profile) else "lock"), "MODO ONLINE", "próximamente" if not Release.online_open(profile) else "mundo abierto", func(): go("online"), false])
+	tiles.append(["bag", "COMPRAS", "juego completo · monedas", func(): go("iap"), false])
 	for tl in tiles:
-		g.add_child(tile(str(tl[0]), str(tl[1]), str(tl[2]), tl[3], bool(tl[4])))
+		g.add_child(tile(str(tl[0]).replace("globe", "world"), str(tl[1]), str(tl[2]), tl[3], bool(tl[4]), 64.0))
+	# ajustes y datos: botones angostos con ícono
+	var urow := Kit.hbox(8)
+	body.add_child(urow)
+	var ob := Kit.icon_button("gear", tr("OPCIONES"), func() -> void:
+		sfx.play("click")
+		go("options"), false, 14, Vector2(0, 38))
+	ob.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	urow.add_child(ob)
+	var ab := Kit.icon_button("info", tr("ACERCA DE"), func() -> void:
+		sfx.play("click")
+		go("about"), false, 14, Vector2(0, 38))
+	ab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	urow.add_child(ab)
+	if Release.tools():
+		var pb := Kit.icon_button("gauge", tr("RENDIMIENTO"), func() -> void:
+			sfx.play("click")
+			go("perf"), false, 14, Vector2(0, 38)) # sólo en compilaciones de desarrollo
+		pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		urow.add_child(pb)
 
 func _done_events() -> int:
 	var n := 0
