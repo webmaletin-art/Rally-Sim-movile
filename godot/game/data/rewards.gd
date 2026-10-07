@@ -2,6 +2,7 @@ extends RefCounted
 ## Medallas, créditos y experiencia de un resultado (medalFor / rewardFor de js/events.js + showResults de js/main.js).
 
 const CarBuild := preload("res://game/data/car_build.gd")
+const MapData := preload("res://game/data/map_data.gd")
 
 static func event_by_id(id: String) -> Dictionary:
 	for e in CarBuild.catalog()["events"]:
@@ -27,7 +28,7 @@ static var _maps: Dictionary
 ## ¿Se puede jugar este evento con lo que ya está portado? (carrera, contrarreloj y radar sobre una ruta, y drift en la plaza)
 static func playable(ev: Dictionary) -> bool:
 	if _maps.is_empty():
-		_maps = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["maps"]
+		_maps = MapData.maps()
 	var mp: Dictionary = _maps.get(str(ev["map"]), {})
 	if str(mp.get("kind", "")) == "drift":
 		return str(ev["type"]) == "drift"

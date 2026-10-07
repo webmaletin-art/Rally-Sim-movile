@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-"""Reglas y validador del formato «dreamracing-route» v1 (el que exporta el generador HTML de rutas).
+"""Reglas y validador del formato «dreamracing-route» v2 (el que exporta el generador HTML de rutas; la v1 se acepta y se convierte).
 Las mismas reglas están escritas en FORMATO.md y en PROMPT_DEEPSEEK.md: si se cambia un número acá, cambiarlo ahí.
 Uso: python3 route_spec.py archivo.json   → imprime errores (❌) y avisos (⚠) y sale con 1 si hay errores."""
 import json, math, re, sys
 
 FORMAT = "dreamracing-route"
-VERSION = 1
+VERSION = 2
+SECTION_SURFACES = ("asphalt", "dirt", "gravel", "mud", "sand")
+TREE_KINDS = ("none", "pine", "broadleaf", "mixed")
+MAX_SECTIONS = 24
+MIN_SECTION_M = 80.0      # un tramo de superficie no puede medir menos de esto
+TIERS = ("debut", "nacional", "continental", "leyenda", "camiones")
+SKIES = ("day", "overcast", "sunset", "dusk", "rain")
 TYPES = ("circuit", "point_to_point", "drag")
 SURFACES = ("asphalt", "dirt")
 TREES = ("pino", "cipres", "alamo", "hoja_ancha", "roble", "abedul", "sasafras", "palmera", "coco")
@@ -74,12 +80,25 @@ def _arc_to(an, i, frac):
     """Índice de muestra a `frac` (0..1) del lazo desde la muestra i."""
     return int(round(i + frac * len(an["samples"]))) % len(an["samples"])
 
+def normalize(d):
+    """v1 → v2 (una sola superficie, árboles «mixed», 3 rivales de dificultad media). Devuelve una copia."""
+    d = json.loads(json.dumps(d))
+    if d.get("version") == 1:
+        d["version"] = 2
+        if d.get("type") != "drag":
+            d["sections"] = [{"from": 0.0, "to": 1.0, "surface": d.get("surface", "asphalt")}]
+        sc = d.get("scenery", {}) or {}
+        d["scenery"] = {"trees": "mixed" if sc.get("trees") else "pine", "density": sc.get("density", 0.6), "ground": sc.get("ground", "grass")}
+        d.setdefault("rivals", {"count": 3, "difficulty": 0.5})
+    return d
+
 def validate(d):
+    d = normalize(d)
     errs, warns = [], []
     def E(m): errs.append(m)
     def W(m): warns.append(m)
     if d.get("format") != FORMAT or d.get("version") != VERSION:
-        E(f"format/version: tiene que ser «{FORMAT}» y {VERSION}")
+        E(f"format/version: tiene que ser «{FORMAT}» y {VERSION} (o 1)")
     rid = str(d.get("id", ""))
     if not re.fullmatch(r"[a-z0-9_]{3,24}", rid):
         E("id: sólo minúsculas, números y _ (3 a 24 caracteres)")
@@ -94,9 +113,8 @@ def validate(d):
         E(f"surface: uno de {SURFACES}")
         surf = "asphalt"
     sc = d.get("scenery", {}) or {}
-    for tr in sc.get("trees", []):
-        if tr not in TREES:
-            E(f"scenery.trees: «{tr}» no existe (hay {TREES})")
+    if sc.get("trees", "mixed") not in TREE_KINDS:
+        E(f"scenery.trees: uno de {TREE_KINDS}")
     if sc.get("ground", "grass") not in GROUNDS:
         E(f"scenery.ground: uno de {GROUNDS}")
     dens = sc.get("density", 0.5)
@@ -195,6 +213,47 @@ def validate(d):
                 E(f"la parte que se corre mide {rl:.0f} m; tiene que ser {LENGTH_P2P_RACE[0]:.0f}–{LENGTH_P2P_RACE[1]:.0f}")
             if sg[0] != 0:
                 W("race.seg: lo normal es largar en el punto A (desde = 0)")
+    # --- tramos de superficie (fracciones del lazo, seguidos, de 0 a 1) ---
+    secs = d.get("sections")
+    if not isinstance(secs, list) or not secs:
+        E("sections: falta la lista de tramos (al menos uno que cubra de 0 a 1)")
+    else:
+        if len(secs) > MAX_SECTIONS:
+            E(f"sections: máximo {MAX_SECTIONS} tramos")
+        pos = 0.0
+        for i, sc2 in enumerate(secs):
+            if not isinstance(sc2, dict) or sc2.get("surface") not in SECTION_SURFACES:
+                E(f"sections[{i}].surface: uno de {SECTION_SURFACES}")
+                continue
+            a, b = sc2.get("from"), sc2.get("to")
+            if not (isinstance(a, (int, float)) and isinstance(b, (int, float))):
+                E(f"sections[{i}]: from/to numéricos (fracciones 0–1)")
+                continue
+            if abs(a - pos) > 1e-4:
+                E(f"sections[{i}]: empieza en {a} pero el tramo anterior terminó en {pos} (tienen que ser seguidos, sin huecos)")
+            if b <= a:
+                E(f"sections[{i}]: to tiene que ser mayor que from")
+            elif (b - a) * L < MIN_SECTION_M:
+                E(f"sections[{i}] «{sc2.get('label', sc2['surface'])}»: mide {(b - a) * L:.0f} m; mínimo {MIN_SECTION_M:.0f} m")
+            dn = sc2.get("density", sc.get("density", 0.6))
+            if not (isinstance(dn, (int, float)) and 0 <= dn <= 1):
+                E(f"sections[{i}].density: entre 0 y 1")
+            pos = b
+        if abs(pos - 1.0) > 1e-3:
+            E(f"sections: los tramos terminan en {pos}; tienen que llegar a 1")
+    rv = d.get("rivals", {})
+    if not (isinstance(rv.get("count"), int) and 0 <= rv["count"] <= 7):
+        E("rivals.count: entero de 0 a 7")
+    if not (isinstance(rv.get("difficulty"), (int, float)) and 0 <= rv["difficulty"] <= 1):
+        E("rivals.difficulty: entre 0 y 1 (0.01 = 1 % … 1 = 100 %)")
+    cr = d.get("career")
+    if cr is not None:
+        if cr.get("tier") not in TIERS:
+            E(f"career.tier: uno de {TIERS}")
+        if not str(cr.get("event", "")):
+            E("career.event: falta el id del evento que reemplaza (por ejemplo c1)")
+        if cr.get("sky", "day") not in SKIES:
+            E(f"career.sky: uno de {SKIES}")
     return errs, warns, info
 
 def main():

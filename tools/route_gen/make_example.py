@@ -4,6 +4,17 @@ Uso: python3 make_example.py [--seed N] [--type circuit|point_to_point] [--surfa
 import argparse, json, math, random
 import route_spec as S
 
+def make_sections(rnd, base):
+    """Tramos seguidos de 0 a 1: la superficie base y, a veces, tierra / barro / arena / grava en el medio."""
+    cuts = sorted(rnd.sample([i / 20 for i in range(2, 19)], rnd.choice([0, 2, 3, 4])))
+    edges = [0.0] + cuts + [1.0]
+    out, prev = [], base
+    for i in range(len(edges) - 1):
+        sf = base if i == 0 else rnd.choice([x for x in S.SECTION_SURFACES if x != prev])
+        prev = sf
+        out.append({"from": round(edges[i], 4), "to": round(edges[i + 1], 4), "surface": sf, "label": f"Tramo {i + 1}", "density": round(rnd.uniform(0.2, 1.0), 2)})
+    return out
+
 def make(seed, typ="circuit", surface="asphalt", tries=4000):
     rnd = random.Random(seed)
     for attempt in range(tries):
@@ -30,9 +41,11 @@ def make(seed, typ="circuit", surface="asphalt", tries=4000):
                 best, bi = sc, i
         pts = pts[bi:] + pts[:bi]
         hw = round(rnd.uniform(*S.HALF_WIDTH[surface]), 1)
-        doc = {"format": S.FORMAT, "version": 1, "id": f"ejemplo_{typ}_{seed}", "name": f"Ejemplo {typ} {seed}", "icon": "🏁", "type": typ, "surface": surface,
+        doc = {"format": S.FORMAT, "version": 2, "id": f"ej_{typ.split(chr(95))[0]}_{seed}", "name": f"Ejemplo {typ} {seed}", "icon": "🏁", "type": typ, "surface": surface,
                "route": {"halfWidth": hw, "shoulder": round(rnd.uniform(*S.SHOULDER), 1), "points": pts},
-               "scenery": {"trees": ["pino", "roble"] if surface == "dirt" else ["alamo", "cipres"], "density": 0.5, "ground": "grass"},
+               "sections": make_sections(rnd, surface),
+               "scenery": {"trees": rnd.choice(["pine", "mixed", "broadleaf"]), "density": round(rnd.uniform(0.3, 0.9), 2), "ground": "grass"},
+               "rivals": {"count": rnd.choice([1, 3, 5]), "difficulty": round(rnd.uniform(0.2, 0.8), 2)},
                "meta": {"generator": "make_example.py", "seed": seed}}
         if typ == "circuit":
             doc["race"] = {"laps": 2}

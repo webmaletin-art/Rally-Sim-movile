@@ -2,6 +2,7 @@ extends RefCounted
 ## Pantallas del modo carrera (copas, eventos, detalle) y de la carrera rápida.
 
 const Kit := preload("res://game/ui/ui_kit.gd")
+const MapData := preload("res://game/data/map_data.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const Rewards := preload("res://game/data/rewards.gd")
 const Release := preload("res://game/data/release.gd")
@@ -16,7 +17,7 @@ var quick := {"dmode": "free", "map": "lake", "mode": "race", "laps": 2, "ai": 3
 
 func _maps() -> Dictionary:
 	if maps.is_empty():
-		maps = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["maps"]
+		maps = MapData.maps()
 	return maps
 
 ## Vista previa de una pista: dos tomas del recorrido que se alternan con un fundido (como una cámara que pasa por la pista)
@@ -243,7 +244,7 @@ func _event(id: String) -> void:
 func _start_event(ev: Dictionary, tier: Dictionary, ask := true) -> void:
 	var pid: String = m.profile.current_id()
 	var cfg := {"type": ev["type"], "track": ev["map"], "laps": int(ev.get("laps", 1)), "ai": int(ev.get("ai", 0)), "time": ev.get("time", 0), "sky": ev.get("sky", "day"),
-		"maxPI": int(tier["maxPI"]), "skill": float(tier["skill"]) * (1.03 if ev.get("final", false) else 1.0), "aiCar": str(tier.get("car", "")), "event": ev, "tier": tier,
+		"maxPI": int(tier["maxPI"]), "skill": float(ev["skill"]) if ev.has("skill") else float(tier["skill"]) * (1.03 if ev.get("final", false) else 1.0), "aiCar": str(tier.get("car", "")), "event": ev, "tier": tier,
 		"seed": int(str(ev["id"]).unicode_at(1)), "car": pid, "state": m.profile.car(), "back": "events:" + str(tier["id"])}
 	if ev.has("seg"):
 		cfg["seg"] = ev["seg"]
@@ -378,6 +379,7 @@ func _quick() -> void:
 			if key == "dmode":
 				m.go("quick", null, false)
 			if key == "map":
+				_apply_map_defaults(str(v))
 				if _map_kind(str(v)) != _map_kind(str(prev)):
 					m.go("quick", null, false) # cambian los ajustes que se muestran
 				else:
@@ -390,6 +392,21 @@ func _quick() -> void:
 	if adv:
 		m.body.add_child(Kit.wrap(tr("Práctica: corrés la etapa con el auto que elijas; no cuenta para tu avance ni da premios. La aventura de verdad sigue con el DR Bisonte."), 13, Kit.MUTED, 300))
 	m.body.add_child(Kit.button("¡CORRER!", func(): _start_quick(), true, 26, Vector2(0, 58)))
+
+## Mapa personalizado (generador HTML): arranca con las vueltas, los rivales y el nivel que le puso su autor (el jugador los puede cambiar)
+func _apply_map_defaults(id: String) -> void:
+	var df: Dictionary = (_maps().get(id, {}) as Dictionary).get("defaults", {})
+	if df.is_empty():
+		return
+	var pick := func(opts: Array, want: float) -> Variant:
+		var best: Variant = opts[0]
+		for o in opts:
+			if absf(float(o) - want) < absf(float(best) - want):
+				best = o
+		return best
+	quick["laps"] = pick.call([1, 2, 3, 5], float(df.get("laps", 2)))
+	quick["ai"] = pick.call([0, 1, 3, 5, 7], float(df.get("ai", 3)))
+	quick["skill"] = pick.call([0.85, 1.0, 1.08], float(df.get("skill", 1.0)))
 
 ## Familia del mapa de la Carrera rápida: cambia qué ajustes se muestran
 func _map_kind(id: String) -> String:

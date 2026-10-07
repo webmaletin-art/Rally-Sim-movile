@@ -1,14 +1,15 @@
-## Las rutas importadas del generador HTML (marcadas «custom» en routes.json): la IA da una vuelta completa sin salirse ni trabarse.
+## Los mapas personalizados (godot/game/data/custom_maps, marcados «custom»): la IA da una vuelta completa sin salirse ni trabarse.
 ## Uso: godot --headless --path godot --script res://tests/custom_route_test.gd [-- --id=<ruta>]   (sin --id prueba todas las «custom»)
 extends SceneTree
 
+const MapData := preload("res://game/data/map_data.gd")
 const RouteTrack := preload("res://game/track/route_track.gd")
 const AIDriver := preload("res://game/ai/ai_driver.gd")
 const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
 const VehicleParams := preload("res://game/physics/vehicle_params.gd")
 
 func _init() -> void:
-	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))
+	var data: Dictionary = MapData.load_all()
 	var only := ""
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--id="):

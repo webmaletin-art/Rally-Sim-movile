@@ -6,8 +6,10 @@ extends "res://game/physics/track_base.gd"
 ## godot/tests/track_test.gd compara con el código real de la versión HTML (tools/godot/track_reference.mjs).
 
 const N_SAMPLES := 1100
+const MapData := preload("res://game/data/map_data.gd")
+
 const STRIP_EXT := 90.0 # Travesía X: hasta qué distancia del camino llega la franja con la altura exacta (banquina + build_far_strip)
-const BUMP_AMP := [0.005, 0.03, 0.035, 0.045, 0.05, 0.03] # por superficie: asfalto, tierra, banquina, pasto, afuera, barro
+const BUMP_AMP := [0.005, 0.03, 0.035, 0.045, 0.05, 0.03, 0.025] # por superficie: asfalto, tierra, banquina, pasto, afuera, barro
 
 var hills := 0.0 # subidas y bajadas suaves del recorrido (0 = las de la versión HTML; 1 = las de las carreras de Dream Racing)
 var center_line := false # línea amarilla del medio (solo para el modo aventura)
@@ -16,6 +18,9 @@ var flat := false # sin ondulación del asfalto (la picada)
 var open := false # ruta abierta (modo aventura): la última muestra no se une con la primera
 var road_surf := PackedByteArray() # superficie del camino por muestra (0 asfalto · 1 tierra); vacío = la del modo de la pista
 var surf_mu := PackedFloat32Array() # agarre relativo de cada muestra para la IA (vacío = igual en toda la pista)
+var atlas := false # mapa personalizado con varias superficies: el camino usa un atlas con una columna por superficie (ver _atlas_tex)
+var road_col := PackedByteArray() # columna del atlas de cada muestra (sólo con atlas)
+var scen_w := PackedFloat32Array() # densidad de árboles de cada muestra, 0..1 (mapas personalizados; vacío = pareja)
 var wall_l := PackedFloat32Array() # límite lateral por muestra (modo aventura; vacío = el del auto)
 var wall_r := PackedFloat32Array()
 var route_id := ""
@@ -60,7 +65,7 @@ func _init(p_route := "", p_mode := "asphalt", reverse := false, p_hills := 0.0)
 		return
 	hills = p_hills
 	if _routes.is_empty():
-		_routes = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["routes"]
+		_routes = MapData.load_all()["routes"]
 	var r: Dictionary = _routes[p_route]
 	route_id = p_route
 	mode = p_mode
@@ -78,7 +83,7 @@ func _init(p_route := "", p_mode := "asphalt", reverse := false, p_hills := 0.0)
 	for p in pts:
 		ctrl.append(Vector3(p[0], p[1], p[2]))
 	_build()
-	if r.has("surf") or r.has("water") or r.has("sections") or r.has("caves"):
+	if r.has("surf") or r.has("water") or r.has("sections") or r.has("caves") or r.has("dens"):
 		_apply_zones(r, reverse)
 
 func center_xz() -> Vector2:
@@ -243,6 +248,15 @@ func _apply_zones(r: Dictionary, reverse: bool) -> void:
 			for i in range(i0, i1 + 1):
 				road_surf[i] = int(z["s"])
 				surf_mu[i] = (1.0 if base_code == 0 else 0.6) * float(z.get("mu", 1.0))
+		if r.get("atlas", false) == true: # mapa personalizado: columna del atlas de cada muestra
+			atlas = true
+			road_col.resize(n)
+			road_col.fill(0)
+			for z in surf_list:
+				var ca: int = fr.call(float(z["from"]))
+				var cb: int = fr.call(float(z["to"]))
+				for i in range(mini(ca, cb), maxi(ca, cb) + 1):
+					road_col[i] = int(z.get("col", 1))
 		# transición suave del agarre de la IA (frena antes de entrar y no acelera de golpe al salir)
 		var sm := surf_mu.duplicate()
 		for i in n:
@@ -250,6 +264,15 @@ func _apply_zones(r: Dictionary, reverse: bool) -> void:
 			for j in range(-6, 7):
 				acc += sm[posmod(i + j, n)]
 			surf_mu[i] = acc / 13.0
+	var dens_list: Array = r.get("dens", [])
+	if not dens_list.is_empty():
+		scen_w.resize(n)
+		scen_w.fill(1.0)
+		for z in dens_list:
+			var da: int = fr.call(float(z["from"]))
+			var db: int = fr.call(float(z["to"]))
+			for i in range(mini(da, db), maxi(da, db) + 1):
+				scen_w[i] = clampf(float(z["d"]), 0.0, 1.0)
 	for wz in r.get("water", []):
 		var a2: int = fr.call(float(wz["from"]))
 		var b2: int = fr.call(float(wz["to"]))
@@ -542,6 +565,35 @@ func _asphalt_tex() -> ImageTexture:
 	img.generate_mipmaps()
 	return ImageTexture.create_from_image(img)
 
+## Atlas del camino de los mapas con varias superficies: 5 columnas de 128 px (asfalto con sus líneas, tierra con huellas, grava, barro oscuro y arena)
+func _atlas_tex() -> ImageTexture:
+	var cols := [Color(0.20, 0.205, 0.22), Color(0.36, 0.29, 0.22), Color(0.50, 0.46, 0.40), Color(0.22, 0.16, 0.11), Color(0.80, 0.70, 0.46)]
+	var img := Image.create(128 * 5, 256, false, Image.FORMAT_RGB8)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	for c in 5:
+		var base: Color = cols[c]
+		var noise := 0.07 if c != 2 else 0.14 # la grava tiene más grano
+		for y in 256:
+			for x in 128:
+				var q := (rng.randf() - 0.5) * noise
+				img.set_pixel(c * 128 + x, y, Color(base.r + q, base.g + q, base.b + q))
+		if c == 0:
+			for y in 256:
+				for x in range(8, 14):
+					img.set_pixel(x, y, Color(0.92, 0.92, 0.88))
+				for x in range(114, 120):
+					img.set_pixel(x, y, Color(0.92, 0.92, 0.88))
+		elif c == 1 or c == 3 or c == 4: # huellas de las ruedas
+			for y in 256:
+				for xs in [38, 90]:
+					var ox := int(sin(float(y) * 0.05) * 3.0)
+					for x in range(xs - 9 + ox, xs + 9 + ox):
+						var px := c * 128 + clampi(x, 0, 127)
+						img.set_pixel(px, y, img.get_pixel(px, y).darkened(0.16 if c != 3 else 0.28))
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
 ## Camino: una cinta de dos vértices por muestra
 func build_road_mesh() -> ArrayMesh:
 	var verts := PackedVector3Array()
@@ -554,9 +606,16 @@ func build_road_mesh() -> ArrayMesh:
 		var y := cy[i] + 0.015
 		verts.append(Vector3(p.x - lat.x * half_width, y, p.z - lat.z * half_width))
 		verts.append(Vector3(p.x + lat.x * half_width, y, p.z + lat.z * half_width))
-		uvs.append(Vector2(0, float(i) * 0.22))
-		uvs.append(Vector2(1, float(i) * 0.22))
-		if road_surf.size() == n:
+		if atlas and road_col.size() == n:
+			var cc := float(road_col[i])
+			uvs.append(Vector2(cc / 5.0, float(i) * 0.22))
+			uvs.append(Vector2((cc + 1.0) / 5.0, float(i) * 0.22))
+			cols.append(Color(1, 1, 1))
+			cols.append(Color(1, 1, 1))
+		else:
+			uvs.append(Vector2(0, float(i) * 0.22))
+			uvs.append(Vector2(1, float(i) * 0.22))
+		if not atlas and road_surf.size() == n:
 			var sc := Color(1, 1, 1) if int(road_surf[i]) == 0 else (Color(0.62, 0.50, 0.40) if int(road_surf[i]) == 5 else Color(1.0, 0.97, 0.92))
 			cols.append(sc)
 			cols.append(sc)
@@ -581,7 +640,7 @@ func build_road_mesh() -> ArrayMesh:
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	var mat := StandardMaterial3D.new()
-	mat.albedo_texture = _asphalt_tex()
+	mat.albedo_texture = _atlas_tex() if atlas else _asphalt_tex()
 	mat.vertex_color_use_as_albedo = not cols.is_empty()
 	mat.roughness = 0.9
 	mat.uv1_scale = Vector3(1, 1, 1)

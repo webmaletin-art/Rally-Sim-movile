@@ -1,0 +1,3 @@
+Mapas personalizados (formato «dreamracing-route» v2, ver tools/route_gen/FORMATO.md).
+Todo archivo .json que se ponga en esta carpeta lo lee el juego solo al arrancar: aparece en Carrera rápida y, si trae un bloque «career», reemplaza ese evento de la carrera.
+Se cargan con tools/route_gen/import_route.py (valida antes de copiar).

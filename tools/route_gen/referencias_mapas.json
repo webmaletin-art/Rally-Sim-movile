@@ -1,0 +1,567 @@
+{
+ "_leeme": "Medido en el juego real (Linux, GL por software, al largar, presupuesto de 3000 árboles). Los draws/prims dependen de hacia dónde mira la cámara: sirven para COMPARAR mapas, no son los FPS de tu teléfono. costIndex: 100 = Bajada de los Badenes.",
+ "mapasDelJuego": [
+  {
+   "ctrlPoints": 34,
+   "draws": 260,
+   "frameMsSw": 49.4,
+   "heightRangeM": 71.8,
+   "id": "forest",
+   "lengthM": 4463.0,
+   "objs": 293,
+   "prims": 181030,
+   "samples": 1100,
+   "trees": 3000,
+   "videoMemMB": 62.8,
+   "name": "Bosque de Tierra",
+   "surface": "dirt",
+   "lapKm": 4.46,
+   "costIndex": 99
+  },
+  {
+   "ctrlPoints": 28,
+   "draws": 147,
+   "frameMsSw": 45.3,
+   "heightRangeM": 27.0,
+   "id": "lake",
+   "lengthM": 2605.0,
+   "objs": 180,
+   "prims": 151313,
+   "samples": 1100,
+   "trees": 3000,
+   "videoMemMB": 64.6,
+   "name": "Circuito del Lago",
+   "surface": "asphalt",
+   "lapKm": 2.6,
+   "costIndex": 68
+  },
+  {
+   "ctrlPoints": 26,
+   "draws": 169,
+   "frameMsSw": 52.9,
+   "heightRangeM": 36.5,
+   "id": "quarry",
+   "lengthM": 1863.0,
+   "objs": 202,
+   "prims": 195717,
+   "samples": 1100,
+   "trees": 3000,
+   "videoMemMB": 64.3,
+   "name": "Cantera Roja",
+   "surface": "dirt",
+   "lapKm": 1.86,
+   "costIndex": 83
+  },
+  {
+   "ctrlPoints": 22,
+   "draws": 175,
+   "frameMsSw": 49.3,
+   "heightRangeM": 78.4,
+   "id": "asphaltLong",
+   "lengthM": 3398.0,
+   "objs": 208,
+   "prims": 183918,
+   "samples": 1100,
+   "trees": 3000,
+   "videoMemMB": 64.6,
+   "name": "Montaña Asfalto",
+   "surface": "asphalt",
+   "lapKm": 3.4,
+   "costIndex": 81
+  },
+  {
+   "ctrlPoints": 24,
+   "draws": 232,
+   "frameMsSw": 47.3,
+   "heightRangeM": 161.4,
+   "id": "descent",
+   "lengthM": 5131.0,
+   "objs": 265,
+   "prims": 211045,
+   "samples": 1100,
+   "trees": 3000,
+   "videoMemMB": 65.9,
+   "name": "Bajada de los Badenes",
+   "surface": "asphalt",
+   "lapKm": 5.13,
+   "costIndex": 100
+  }
+ ],
+ "presupuestoDeArbolesPorTelefono": {
+  "baja": 1500,
+  "media": 3000,
+  "alta": 6000,
+  "nota": "El juego nunca dibuja más árboles que el presupuesto del teléfono (perfil gráfico calibrado). densidad 1.0 = todo el presupuesto repartido por la ruta; 0.5 = la mitad; 0 = ninguno. En un mapa largo los mismos árboles quedan más ralos."
+ },
+ "resolucion3D": {
+  "nota": "La resolución del 3D no depende del mapa: la fija el perfil gráfico del teléfono (0.5 a 0.9 de la pantalla). Un teléfono de 2400x1080 dibuja entre 1200x540 y 2160x972 píxeles de 3D."
+ },
+ "modeloDeCosto": {
+  "nota": "Estimación ±25 % (L = largo del lazo en metros, T = árboles = 3000 × densidad media)",
+  "draws": "110 + 0.027*L",
+  "prims": "135000 + 10.5*T + 6*L",
+  "costIndex": "100*(0.5*draws/232 + 0.5*prims/211045)"
+ },
+ "dificultad": {
+  "formula": "habilidad de la IA = 0.62 + 0.42 * (porcentaje/100)",
+  "copas": [
+   {
+    "id": "debut",
+    "name": "Copa Debut",
+    "skill": 0.76,
+    "stars": 0,
+    "free": true,
+    "difficultyPctEquivalent": 33
+   },
+   {
+    "id": "nacional",
+    "name": "Campeonato Nacional",
+    "skill": 0.84,
+    "stars": 12,
+    "free": true,
+    "difficultyPctEquivalent": 52
+   },
+   {
+    "id": "continental",
+    "name": "Serie Continental",
+    "skill": 0.9,
+    "stars": 28,
+    "free": false,
+    "difficultyPctEquivalent": 67
+   },
+   {
+    "id": "leyenda",
+    "name": "Leyenda Dream",
+    "skill": 0.96,
+    "stars": 46,
+    "free": false,
+    "difficultyPctEquivalent": 81
+   },
+   {
+    "id": "camiones",
+    "name": "Rally Raid de Camiones",
+    "skill": 0.82,
+    "stars": 6,
+    "free": false,
+    "difficultyPctEquivalent": 48
+   }
+  ],
+  "bandas": [
+   [
+    1,
+    25,
+    "Fácil (más suave que Debut)"
+   ],
+   [
+    26,
+    45,
+    "Media (Debut a Nacional)"
+   ],
+   [
+    46,
+    70,
+    "Difícil (Nacional a Continental)"
+   ],
+   [
+    71,
+    90,
+    "Extrema (Continental a Leyenda)"
+   ],
+   [
+    91,
+    100,
+    "Imposible (más que Leyenda)"
+   ]
+  ]
+ },
+ "eventosDeLaCarrera": [
+  {
+   "id": "d1",
+   "tier": "debut",
+   "type": "timetrial",
+   "name": "Primer Tramo",
+   "map": "forest",
+   "laps": null,
+   "seg": [
+    0,
+    0.22
+   ],
+   "ai": null,
+   "final": false
+  },
+  {
+   "id": "d2",
+   "tier": "debut",
+   "type": "race",
+   "name": "Vuelta al Lago",
+   "map": "lake",
+   "laps": 2,
+   "seg": null,
+   "ai": 3,
+   "final": false
+  },
+  {
+   "id": "d3",
+   "tier": "debut",
+   "type": "parking",
+   "name": "Cochera Exprés",
+   "map": "parking",
+   "laps": null,
+   "seg": null,
+   "ai": null,
+   "final": false
+  },
+  {
+   "id": "d4",
+   "tier": "debut",
+   "type": "race",
+   "name": "Polvo en la Cantera",
+   "map": "quarry",
+   "laps": 2,
+   "seg": null,
+   "ai": 3,
+   "final": false
+  },
+  {
+   "id": "d5",
+   "tier": "debut",
+   "type": "drift",
+   "name": "Plaza de Trompos",
+   "map": "drift",
+   "laps": null,
+   "seg": null,
+   "ai": null,
+   "final": false
+  },
+  {
+   "id": "d8",
+   "tier": "debut",
+   "type": "race",
+   "name": "Picada del Domingo",
+   "map": "picada",
+   "laps": 1,
+   "seg": null,
+   "ai": 1,
+   "final": false
+  },
+  {
+   "id": "d6",
+   "tier": "debut",
+   "type": "rush",
+   "name": "Cazador del Valle",
+   "map": "offroad",
+   "laps": null,
+   "seg": null,
+   "ai": null,
+   "final": false
+  },
+  {
+   "id": "d7",
+   "tier": "debut",
+   "type": "race",
+   "name": "Final: Bosque Salvaje",
+   "map": "forest",
+   "laps": null,
+   "seg": [
+    0,
+    0.42
+   ],
+   "ai": 5,
+   "final": true
+  },
+  {
+   "id": "n1",
+   "tier": "nacional",
+   "type": "timetrial",
+   "name": "Montaña Contrarreloj",
+   "map": "asphaltLong",
+   "laps": null,
+   "seg": [
+    0,
+    0.38
+   ],
+   "ai": null,
+   "final": false
+  },
+  {
+   "id": "n2",
+   "tier": "nacional",
+   "type": "race",
+   "name": "Atardecer en el Lago",
+   "map": "lake",
+   "laps": 3,
+   "seg": null,
+   "ai": 5,
+   "final": false
+  },
+  {
+   "id": "n3",
+   "tier": "nacional",
+   "type": "trap",
+   "name": "Radar de la Recta",
+   "map": "lake",
+   "laps": null,
+   "seg": [
+    0.97,
+    0.22
+   ],
+   "ai": null,
+   "final": false
+  },
+  {
+   "id": "n4",
+   "tier": "nacional",
+   "type": "race",
+   "name": "Cantera al Revés",
+   "map": "quarryRev",
+   "laps": 2,
+   "seg": null,
+   "ai": 5,
+   "final": false
+  },
+  {
+   "id": "n5",
+   "tier": "nacional",
+   "type": "drift",
+   "name": "Drift en la Plaza (Pro)",
+   "map": "drift",
+   "laps": null,
+   "seg": null,
+   "ai": null,
+   "final": false
+  },
+  {
+   "id": "n9",
+   "tier": "nacional",
+   "type": "race",
+   "name": "Picada Nocturna",
+   "map": "picada",
+   "laps": 1,
+   "seg": null,
+   "ai": 1,
+   "final": false
+  },
+  {
+   "id": "n6",
+   "tier": "nacional",
+   "type": "race",
+   "name": "Bosque Inverso",
+   "map": "forestRev",
+   "laps": null,
+   "seg": [
+    0,
+    0.45
+   ],
+   "ai": 5,
+   "final": false
+  },
+  {
+   "id": "n7",
+   "tier": "nacional",
+   "type": "rush",
+   "name": "Valle: 10 Banderas",
+   "map": "offroad",
+   "laps": null,
+   "seg": null,
+   "ai": null,
+   "final": false
+  },
+  {
+   "id": "n8",
+   "tier": "nacional",
+   "type": "race",
+   "name": "Gran Premio Nacional",
+   "map": "asphaltLong",
+   "laps": 1,
+   "seg": null,
+   "ai": 5,
+   "final": true
+  },
+  {
+   "id": "c1",
+   "tier": "continental",
+   "type": "race",
+   "name": "Rally del Bosque",
+   "map": "forest",
+   "laps": 1,
+   "seg": null,
+   "ai": 5,
+   "final": false
+  },
+  {
+   "id": "c2",
+   "tier": "continental",
+   "type": "timetrial",
+   "name": "Cantera: 3 Vueltas",
+   "map": "quarry",
+   "laps": 3,
+   "seg": null,
+   "ai": null,
+   "final": false
+  },
+  {
+   "id": "c3",
+   "tier": "continental",
+   "type": "race",
+   "name": "Lago: Resistencia",
+   "map": "lake",
+   "laps": 4,
+   "seg": null,
+   "ai": 5,
+   "final": false
+  },
+  {
+   "id": "c4",
+   "tier": "continental",
+   "type": "drift",
+   "name": "Rey de la Plaza",
+   "map": "drift",
+   "laps": null,
+   "seg": null,
+   "ai": null,
+   "final": false
+  },
+  {
+   "id": "c5",
+   "tier": "continental",
+   "type": "race",
+   "name": "Montaña Inversa",
+   "map": "asphaltRev",
+   "laps": 1,
+   "seg": null,
+   "ai": 5,
+   "final": false
+  },
+  {
+   "id": "c6",
+   "tier": "continental",
+   "type": "parking",
+   "name": "Cochera de Precisión",
+   "map": "parking",
+   "laps": null,
+   "seg": null,
+   "ai": null,
+   "final": false
+  },
+  {
+   "id": "c7",
+   "tier": "continental",
+   "type": "race",
+   "name": "Final Continental",
+   "map": "forestRev",
+   "laps": 1,
+   "seg": null,
+   "ai": 5,
+   "final": true
+  },
+  {
+   "id": "l1",
+   "tier": "leyenda",
+   "type": "race",
+   "name": "Montaña: Dos Vueltas",
+   "map": "asphaltLong",
+   "laps": 2,
+   "seg": null,
+   "ai": 5,
+   "final": false
+  },
+  {
+   "id": "l2",
+   "tier": "leyenda",
+   "type": "timetrial",
+   "name": "Récord del Bosque",
+   "map": "forest",
+   "laps": 1,
+   "seg": null,
+   "ai": null,
+   "final": false
+  },
+  {
+   "id": "l3",
+   "tier": "leyenda",
+   "type": "race",
+   "name": "Cantera Inversa: Maratón",
+   "map": "quarryRev",
+   "laps": 4,
+   "seg": null,
+   "ai": 5,
+   "final": false
+  },
+  {
+   "id": "l4",
+   "tier": "leyenda",
+   "type": "trap",
+   "name": "Radar de la Montaña",
+   "map": "asphaltLong",
+   "laps": null,
+   "seg": [
+    0.5,
+    0.72
+   ],
+   "ai": null,
+   "final": false
+  },
+  {
+   "id": "l5",
+   "tier": "leyenda",
+   "type": "race",
+   "name": "Leyenda Dream",
+   "map": "forest",
+   "laps": 1,
+   "seg": null,
+   "ai": 5,
+   "final": true
+  },
+  {
+   "id": "k1",
+   "tier": "camiones",
+   "type": "race",
+   "name": "Duelo de Titanes",
+   "map": "quarry",
+   "laps": 2,
+   "seg": null,
+   "ai": 3,
+   "final": false
+  },
+  {
+   "id": "k2",
+   "tier": "camiones",
+   "type": "timetrial",
+   "name": "Raid del Bosque",
+   "map": "forest",
+   "laps": null,
+   "seg": [
+    0,
+    0.3
+   ],
+   "ai": null,
+   "final": false
+  },
+  {
+   "id": "k3",
+   "tier": "camiones",
+   "type": "rush",
+   "name": "Travesía del Valle",
+   "map": "offroad",
+   "laps": null,
+   "seg": null,
+   "ai": null,
+   "final": false
+  }
+ ],
+ "superficies": {
+  "asphalt": "asfalto (líneas blancas)",
+  "dirt": "tierra",
+  "gravel": "grava",
+  "mud": "barro (agarre bajo, oscuro)",
+  "sand": "arena (agarre medio-bajo, clara)",
+  "agarreRelativoIA": {
+   "asphalt": 1.0,
+   "gravel": 0.72,
+   "dirt": 0.62,
+   "sand": 0.55,
+   "mud": 0.42
+  }
+ },
+ "nota_picada": "La picada (aceleración 201/402/804 m) todavía no la importa el juego: se adapta a mano cuando el dueño mande una."
+}

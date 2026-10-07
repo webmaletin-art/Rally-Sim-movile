@@ -3,6 +3,7 @@ extends Node
 ## de pruebas (así siguen andando las capturas y el informe de rendimiento).
 
 const Profile := preload("res://game/data/profile.gd")
+const MapData := preload("res://game/data/map_data.gd")
 const MenuScript := preload("res://game/ui/menu.gd")
 const Rewards := preload("res://game/data/rewards.gd")
 const Loading := preload("res://game/ui/loading.gd")
@@ -134,7 +135,7 @@ func start_calibration(back: String) -> void:
 		"online": false, "calib": true, "calibBack": back})
 
 func Menu_maps() -> Dictionary:
-	return JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["maps"]
+	return MapData.maps()
 
 func start_race(cfg: Dictionary) -> void:
 	_start_race(cfg)

@@ -8,7 +8,26 @@ static var cat: Dictionary
 static func catalog() -> Dictionary:
 	if cat.is_empty():
 		cat = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/catalog.json"))
+		_apply_map_patches(cat)
 	return cat
+
+## Los mapas personalizados (data/custom_maps) pueden reemplazar el mapa, las vueltas o el tramo, los rivales y la dificultad de un evento de la carrera
+static func _apply_map_patches(c: Dictionary) -> void:
+	var MapData := preload("res://game/data/map_data.gd")
+	for p in MapData.patches():
+		for e in c["events"]:
+			if str(e["id"]) == str(p["event"]):
+				e["map"] = p["map"]
+				e["ai"] = p["ai"]
+				e["skill"] = p["skill"]
+				if p.has("seg"):
+					e["seg"] = p["seg"]
+					e.erase("laps")
+				elif p.has("laps"):
+					e["laps"] = p["laps"]
+					e.erase("seg")
+				if p.has("sky"):
+					e["sky"] = p["sky"]
 
 static func upgrade(id: String) -> Dictionary:
 	for u in catalog()["upgrades"]:

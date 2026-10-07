@@ -5,6 +5,7 @@ extends Node3D
 ## (autos, árboles, pilotos, sombras) para medir hasta dónde llega el teléfono.
 
 const CircuitTrack := preload("res://game/track/circuit_track.gd")
+const MapData := preload("res://game/data/map_data.gd")
 const RouteTrack := preload("res://game/track/route_track.gd")
 const DriftTrack := preload("res://game/track/drift_track.gd")
 const CityTrack := preload("res://game/track/city_track.gd")
@@ -253,7 +254,7 @@ func _ready() -> void:
 			if OS.get_cmdline_user_args().has("--advintro"):
 				cfg["intro"] = true
 	vehicles = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
-	track_maps = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/routes.json"))["maps"]
+	track_maps = MapData.maps()
 	menu_mode = not cfg.is_empty()
 	adv_mode = str(cfg.get("type", "")) == "adventure"
 	pb_active = str(cfg.get("type", "")) == "bench"
@@ -865,6 +866,26 @@ func _rebuild_trees() -> void:
 	world.add_child(trees_node)
 	if trees_n <= 0 or adv_mode or track is DriftTrack or track is PaperTrack or track is DreamTrack:
 		return
+	# mapas personalizados (generador HTML): la densidad y el tipo de árbol salen del mapa; el tope sigue siendo el presupuesto de árboles del teléfono
+	var n_trees := trees_n
+	var bl_share := 0.18 # parte de árboles de hojas anchas (el resto pinos)
+	var w_max := 1.0
+	var weighted := false
+	if track is RouteTrack:
+		var scen: Dictionary = (track_maps.get(str(cfg.get("track", "")), {}) as Dictionary).get("scenery", {})
+		if not scen.is_empty():
+			var kind := str(scen.get("trees", "mixed"))
+			bl_share = {"pine": 0.0, "broadleaf": 0.85, "mixed": 0.4}.get(kind, 0.4)
+			var avg := clampf(float(scen.get("density", 0.6)), 0.0, 1.0)
+			if track.scen_w.size() == track.n:
+				weighted = true
+				var sum := 0.0
+				w_max = 0.001
+				for wv in track.scen_w:
+					sum += wv
+					w_max = maxf(w_max, wv)
+				avg = sum / float(track.n)
+			n_trees = 0 if kind == "none" else int(float(trees_n) * avg)
 	var trunk := CylinderMesh.new()
 	trunk.top_radius = 0.13
 	trunk.bottom_radius = 0.26
@@ -917,7 +938,7 @@ func _rebuild_trees() -> void:
 				grid[gk] = []
 			grid[gk].append(si)
 		track.hint = -1
-	for i in trees_n:
+	for i in n_trees:
 		var px := 0.0
 		var pz := 0.0
 		var py := 0.0
@@ -925,6 +946,8 @@ func _rebuild_trees() -> void:
 			var ok := false
 			for attempt in 6:
 				var si: int = rng.randi() % int(track.n)
+				if weighted and rng.randf() > track.scen_w[si] / w_max:
+					continue # tramos con menos árboles: se descarta (rechazo por densidad)
 				var sp: Vector3 = track.samples[si]
 				var l: Vector3 = track.laterals[si]
 				var off := rng.randf_range(near_min, near_min + 250.0) * (1.0 if rng.randf() < 0.5 else -1.0)
@@ -983,9 +1006,9 @@ func _rebuild_trees() -> void:
 		for k in list.size():
 			var e: Array = list[k]
 			var hsh := fposmod(float(e[0]) * 0.731 + float(e[1]) * 0.377, 1.0)
-			if hsh < 0.18:
+			if hsh < bl_share:
 				lc.append(e)
-			elif hsh < 0.6:
+			elif hsh < bl_share + (1.0 - bl_share) * 0.52:
 				la.append(e)
 			else:
 				lb.append(e)
