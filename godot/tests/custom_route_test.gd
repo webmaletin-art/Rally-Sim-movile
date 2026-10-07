@@ -45,7 +45,7 @@ func _init() -> void:
 			var t := 0.0
 			var lap_t := -1.0
 			var h := 1.0 / 120.0
-			while t < 900.0:
+			while t < maxf(900.0, goal / 12.0):
 				var c: Vector3 = drv.update(ph, h)
 				ph.step(h, c.x, c.y, c.z, false, drv.nitro)
 				t += h
