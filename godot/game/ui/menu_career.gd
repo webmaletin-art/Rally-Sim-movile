@@ -13,7 +13,8 @@ const MEDAL_N := ["Sin medalla", "Bronce", "Plata", "Oro"]
 
 var m # menu.gd
 var maps: Dictionary
-var quick := {"dmode": "free", "map": "lake", "mode": "race", "laps": 2, "ai": 3, "sky": "day", "skill": 1.0, "car": "cur", "stage": 0, "fantasy": false}
+var quick := {"dmode": "free", "map": "lake", "mode": "race", "laps": 2, "ai": 3, "sky": "day", "skill": 1.0, "car": "cur", "stage": 0, "fantasy": false, "chaseGap": 150}
+const MODE_N := {"race": "Carrera", "timetrial": "Contrarreloj", "chase": "Persecución", "elim": "Eliminación"}
 
 func _maps() -> Dictionary:
 	if maps.is_empty():
@@ -351,7 +352,12 @@ func _quick() -> void:
 	if adv:
 		defs.append(["Etapa", "stage", stages, func(v): return "%d · %s" % [int(v) + 1, str(AdvRoute.STAGES[int(v)]["name"])]])
 	elif not convoy:
-		defs.append(["Modo", "mode", ["race", "timetrial"], func(v): return tr("Carrera") if v == "race" else tr("Contrarreloj")])
+		var modes: Array = ["race", "timetrial"]
+		if _rules_ok(str(quick["map"])): # persecución y eliminación: en los mapas de ruta (los del juego y los personalizados)
+			modes = ["race", "timetrial", "chase", "elim"]
+		if not modes.has(str(quick["mode"])):
+			quick["mode"] = "race"
+		defs.append(["Modo", "mode", modes, func(v): return tr(str(MODE_N.get(str(v), "Carrera")))])
 	if car_ids.size() > 0:
 		defs.append(["Auto", "car", car_ids, func(v): return _quick_car_name(v)])
 	if not adv:
@@ -366,8 +372,18 @@ func _quick() -> void:
 		elif str(quick["map"]) == "picada":
 			defs.append(["Nivel del rival", "skill", [0.85, 1.0, 1.08], func(v): return {0.85: tr("Fácil"), 1.0: tr("Normal"), 1.08: tr("Difícil")}[v]]) # un solo rival, a la par
 		elif str(quick["map"]) != "drift":
-			defs.append(["Vueltas", "laps", [1, 2, 3, 5], func(v): return str(v)])
-			defs.append(["Rivales", "ai", [0, 1, 3, 5, 7], func(v): return str(v)])
+			var rule_mode: bool = str(quick["mode"]) == "chase" or str(quick["mode"]) == "elim"
+			var seg_map: bool = _map_seg(str(quick["map"])).size() == 2 # de A a B: una sola pasada, sin vueltas
+			if not rule_mode and not seg_map:
+				defs.append(["Vueltas", "laps", [1, 2, 3, 5], func(v): return str(v)])
+			if str(quick["mode"]) == "chase":
+				defs.append(["Escape a", "chaseGap", [100, 150, 250, 400], func(v): return "%d m" % int(v)])
+			elif str(quick["mode"]) == "elim":
+				if not [3, 5, 7].has(int(quick["ai"])):
+					quick["ai"] = 5
+				defs.append(["Rivales", "ai", [3, 5, 7], func(v): return str(v)])
+			else:
+				defs.append(["Rivales", "ai", [0, 1, 3, 5, 7], func(v): return str(v)])
 			defs.append(["Nivel de los rivales", "skill", [0.85, 1.0, 1.08], func(v): return {0.85: tr("Fácil"), 1.0: tr("Normal"), 1.08: tr("Difícil")}[v]])
 	for o in defs:
 		var key: String = o[1]
@@ -376,15 +392,20 @@ func _quick() -> void:
 			quick[key] = v
 			if key == "car":
 				m.refresh_car(str(v), m.profile.d["owned"][str(v)]) # el auto elegido aparece en la escena, junto a los pilotos
-			if key == "dmode":
-				m.go("quick", null, false)
+			if key == "dmode" or key == "mode":
+				m.go("quick", null, false) # cambian los ajustes que se muestran
 			if key == "map":
 				_apply_map_defaults(str(v))
-				if _map_kind(str(v)) != _map_kind(str(prev)):
+				var with_defaults: bool = (_maps().get(str(v), {}) as Dictionary).has("defaults") or (_maps().get(str(prev), {}) as Dictionary).has("defaults")
+				if with_defaults or _map_kind(str(v)) != _map_kind(str(prev)):
 					m.go("quick", null, false) # cambian los ajustes que se muestran
 				else:
 					refresh_pv.call(), m.sfx, 60.0)
 		g.add_child(sel)
+	if str(quick["mode"]) == "chase" and not fantasy and not tv and not adv:
+		m.body.add_child(Kit.wrap(tr("Persecución: perseguís a un rival. Si se escapa a más de la distancia elegida, perdés; si lo pasás, ahora te persigue a vos. Gana el que se escapa."), 13, Kit.MUTED, 300))
+	elif str(quick["mode"]) == "elim" and not fantasy and not tv and not adv:
+		m.body.add_child(Kit.wrap(tr("Eliminación: cada 30 segundos sale el último. Gana el que queda."), 13, Kit.MUTED, 300))
 	if fantasy:
 		m.body.add_child(Kit.wrap(tr(str(_maps()[str(quick["map"])].get("tagline", ""))) + " " + tr("Los rivales te siguen el ritmo. No pertenece a ninguna copa."), 13, Kit.MUTED, 300))
 	if convoy:
@@ -407,6 +428,20 @@ func _apply_map_defaults(id: String) -> void:
 	quick["laps"] = pick.call([1, 2, 3, 5], float(df.get("laps", 2)))
 	quick["ai"] = pick.call([0, 1, 3, 5, 7], float(df.get("ai", 3)))
 	quick["skill"] = pick.call([0.85, 1.0, 1.08], float(df.get("skill", 1.0)))
+	var style := str(df.get("style", "race"))
+	quick["mode"] = {"race": "race", "adventure": "race", "timetrial": "timetrial", "chase": "chase", "elimination": "elim"}.get(style, "race")
+	quick["chaseGap"] = pick.call([100, 150, 250, 400], float(df.get("chaseGap", 150)))
+	if str(df.get("sky", "")) != "" and SKY_N.has(str(df["sky"])):
+		quick["sky"] = str(df["sky"])
+
+## Persecución y eliminación sólo en los mapas de ruta (RouteTrack): los del juego y los personalizados
+func _rules_ok(id: String) -> bool:
+	return str(_maps().get(id, {}).get("kind", "")) == "route" and not bool(_maps().get(id, {}).get("convoy", false))
+
+## Mapa de A a B (mapas personalizados «point_to_point»): [0, fracción de B]; vacío si da vueltas
+func _map_seg(id: String) -> Array:
+	var sg: Variant = (_maps().get(id, {}) as Dictionary).get("defaults", {}).get("seg", [])
+	return sg if sg is Array else []
 
 ## Familia del mapa de la Carrera rápida: cambia qué ajustes se muestran
 func _map_kind(id: String) -> String:
@@ -436,8 +471,19 @@ func _start_quick() -> void:
 		q["mode"] = "race"
 		q["laps"] = 1
 		q["ai"] = 5
-	var cfg := {"type": "drift" if is_drift else q["mode"], "track": q["map"], "laps": 1 if is_drag else int(q["laps"]), "ai": (1 if is_drag else int(q["ai"])) if (q["mode"] == "race" and not is_drift) else 0, "sky": q["sky"], "maxPI": maxi(560, pi + 20),
+	var rule := str(q["mode"]) if (str(q["mode"]) == "chase" or str(q["mode"]) == "elim") and _rules_ok(str(q["map"])) else ""
+	var seg := _map_seg(str(q["map"]))
+	var cfg := {"type": "drift" if is_drift else ("race" if rule != "" else q["mode"]), "track": q["map"], "laps": 1 if is_drag else int(q["laps"]), "ai": (1 if is_drag else int(q["ai"])) if ((q["mode"] == "race" or rule != "") and not is_drift) else 0, "sky": q["sky"], "maxPI": maxi(560, pi + 20),
 		"skill": 0.9 * float(q["skill"]), "quick": true, "seed": 7, "car": pid, "state": st, "back": "quick"}
+	if rule != "":
+		cfg["rule"] = rule
+		cfg["laps"] = 99 # sin límite de vueltas: termina la regla (se escapan / queda uno)
+		if rule == "chase":
+			cfg["ai"] = 1
+			cfg["chaseGap"] = float(q.get("chaseGap", 150))
+	if seg.size() == 2:
+		cfg["seg"] = seg # de A a B
+		cfg["laps"] = 1
 	if test_car:
 		cfg["testCar"] = true
 	if is_convoy:

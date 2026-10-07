@@ -19,8 +19,8 @@ for f in files:
         bad += 1
         continue
     e, w, info = S.validate(d)
-    if d.get("version") != 2:
-        e.append("el archivo tiene que ser versión 2 (convertilo con tools/route_gen/import_route.py)")
+    if d.get("version") not in (2, 3):
+        e.append("el archivo tiene que ser versión 2 o 3 (convertilo con tools/route_gen/import_route.py)")
     if d.get("id") != name[:-5]:
         e.append(f"el archivo se tiene que llamar {d.get('id')}.json")
     if d.get("id") in ids:

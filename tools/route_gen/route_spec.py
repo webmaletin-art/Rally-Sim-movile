@@ -98,6 +98,9 @@ def normalize(d):
     return d
 
 def validate(d):
+    if isinstance(d, dict) and d.get("version") == 3:
+        import route_spec3
+        return route_spec3.validate(d)
     d = normalize(d)
     errs, warns = [], []
     def E(m): errs.append(m)

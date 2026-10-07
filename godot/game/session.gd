@@ -29,10 +29,16 @@ var trap_kmh := 0.0
 var last_pos := 0
 var last_lap_shown := false
 var messages: Array = [] # avisos para mostrar (texto, tipo)
+var rule_text := "" # reglas especiales (persecución, eliminación): lo que muestra el HUD en lugar de las vueltas
+var rule_sub := ""
+var rule_warn := false # el aviso va en rojo
 var _tick := 0.0
+var cross := false # la pista se cruza a nivel consigo misma (ocho, cruz)
+var out_t: PackedFloat64Array = PackedFloat64Array() # eliminación: -1 = sigue en carrera · si no, el momento en que lo eliminaron
 
 func _init(p_track, cfg: Dictionary, n_cars: int) -> void:
 	track = p_track
+	cross = track.get("has_cross") == true
 	type = str(cfg.get("type", "race"))
 	L = track.length
 	s0 = 0
@@ -52,6 +58,8 @@ func _init(p_track, cfg: Dictionary, n_cars: int) -> void:
 	prog.resize(n_cars)
 	last_s.resize(n_cars)
 	finish_time.resize(n_cars)
+	out_t.resize(n_cars)
+	out_t.fill(-1.0)
 	for i in n_cars:
 		finished.append(false)
 		names.append("")
@@ -79,6 +87,12 @@ func standings(n_cars: int) -> Array:
 	for i in n_cars:
 		ids.append(i)
 	ids.sort_custom(func(a: int, b: int) -> bool:
+		var oa: bool = out_t[a] >= 0.0
+		var ob: bool = out_t[b] >= 0.0
+		if oa or ob:
+			if oa and ob:
+				return out_t[a] > out_t[b] # el que duró más, mejor puesto
+			return ob # los eliminados van después de los que siguen
 		if finished[a] and finished[b]:
 			return finish_time[a] < finish_time[b]
 		if finished[a]:
@@ -117,7 +131,7 @@ func update(dt: float, cars: Array) -> void:
 	_tick = 0.0
 	var n := cars.size()
 	for i in n:
-		if finished[i]:
+		if finished[i] or out_t[i] >= 0.0:
 			continue
 		var sn = cars[i].snap
 		var s := _arc(i, sn)
@@ -127,6 +141,8 @@ func update(dt: float, cars: Array) -> void:
 		if ds > L / 2.0:
 			ds -= L
 		var sp := sqrt(sn.vx * sn.vx + sn.vz * sn.vz)
+		if cross and absf(ds) > sp * h * 3.0 + 25.0:
+			ds = 0.0 # en un cruce a nivel el auto pasó a seguir al otro camino: el avance es lo que recorre, no el salto de posición
 		ds = minf(ds, sp * h * 1.3 + 0.6)
 		prog[i] += ds
 		last_s[i] = s

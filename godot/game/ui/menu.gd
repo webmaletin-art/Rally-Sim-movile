@@ -184,6 +184,19 @@ func _ready() -> void:
 			tc["skill"] = 0.9
 			tc["testCar"] = false
 			tc["quick"] = true
+		if at.size() > 2 and at[1].begins_with("rule:"): # persecución / eliminación sobre un mapa de ruta (prueba): --autotest=gt@rule:chase@prueba_04
+			tc["type"] = "race"
+			tc["track"] = at[2]
+			tc["rule"] = at[1].substr(5)
+			tc["ai"] = 1 if tc["rule"] == "chase" else 5
+			tc["laps"] = 99
+			tc["skill"] = 0.9
+			tc["testCar"] = false
+			tc["quick"] = true
+			tc["chaseGap"] = 150.0
+			var mp: Dictionary = career._maps().get(at[2], {})
+			if (mp.get("defaults", {}) as Dictionary).has("seg"):
+				tc["seg"] = mp["defaults"]["seg"]
 		if at.size() > 1 and at[1] == "picada": # picada contra un rival (prueba)
 			tc["type"] = "race"
 			tc["track"] = "picada"
@@ -869,7 +882,11 @@ func _results() -> void:
 	var big := ""
 	var sub := "" # línea de abajo (duelo de drift, cambios de la picada)
 	match t:
-		"race": big = "%d° %s" % [int(r["pos"]), tr("puesto")]
+		"race":
+			big = "%d° %s" % [int(r["pos"]), tr("puesto")]
+			if str(r.get("rule", "")) != "": # persecución / eliminación
+				big = tr(str(r.get("note", big)))
+				sub = "%d° %s" % [int(r["pos"]), tr("puesto")]
 		"trap": big = "%d km/h" % int(r["value"])
 		"convoy":
 			big = tr("¡LLEGASTE CON EL GRUPO!") if r.get("win", false) == true else tr("PERDISTE AL CONVOY")
@@ -881,7 +898,7 @@ func _results() -> void:
 		_: big = Kit.fmt_time(float(r["time"]))
 	if r.get("drag", false) == true and int(r.get("shifts", 0)) > 0:
 		sub = tr("⚡ Cambios perfectos: %d de %d") % [int(r["perfect"]), int(r["shifts"])]
-	l0.add_child(Kit.label(big, 44 if big.length() < 14 else 26, Kit.RED if (t == "convoy" and r.get("win", false) != true) else Kit.GOLD))
+	l0.add_child(Kit.label(big, 44 if big.length() < 14 else 26, Kit.RED if ((t == "convoy" or str(r.get("rule", "")) != "") and r.get("win", false) != true) else Kit.GOLD))
 	if sub != "":
 		l0.add_child(Kit.label(sub, 18, Kit.GREEN))
 	if bool(r.get("show_medal", false)):

@@ -19,6 +19,7 @@ var in_steer := 0.0
 var in_handbrake := false
 var in_nitro := false
 var in_shift := 0 # cambio pedido (se consume en el primer paso)
+var out := false # eliminado de la carrera (regla «eliminación»): no se simula ni se dibuja
 var solid := false # la pista tiene obstáculos (paredes, edificios, islas): track.push() los consulta
 var wall := 0.0 # límite lateral (m desde el centro del camino): más allá hay un "muro de árboles" que lo devuelve; 0 = sin límite
 
@@ -35,6 +36,8 @@ func place(x: float, z: float, yaw: float) -> void:
 	snap.reset_to(0.0, phys)
 
 func step(dt: float) -> void:
+	if out:
+		return
 	if driver != null:
 		var c: Vector3 = driver.update(phys, dt)
 		phys.step(dt, c.x, c.y, c.z, driver.get("hb") == true, driver.get("nitro") == true)

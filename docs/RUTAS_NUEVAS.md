@@ -22,3 +22,13 @@ Bajada de los Badenes 5,13 km · Bosque 4,46 km · Montaña asfalto 3,40 km · L
 - Miniaturas de los mapas nuevos (`ui/tracks/<id>_0.jpg`, `_1.jpg`): se sacan con `tools/godot/run_shot.sh`; sin ellas el menú funciona igual.
 - El «suelo» (`scenery.ground`) todavía se ignora en el juego; las especies de árbol del visor son sólo vista previa (el juego usa sus pinos y árboles de hojas procedurales).
 - Si un mapa nuevo trae problemas de IA (se sale/traba), la CI frena: ajustar el mapa o la IA.
+
+
+## Formato v3 (editor de trazados, sin visor 3D) — vigente
+El generador v2 (con visor 3D) no le gustó al dueño: ahora el HTML es **sólo una grilla** para trazar (`tools/route_gen/PROMPT_EDITOR_V3.md`, formato en `FORMATO_V3.md`, reglas en `route_spec3.py`). El editor define el trazado (a mano alzada, curvas ilimitadas, **cruces a nivel**: ochos y cruces), alturas, superficie por tramo, clima, estilo de carrera, rivales y dificultad; **árboles, vegetación y borde del camino los pone el juego solo**.
+- **Cruces a nivel**: `RouteTrack._find_crossings` (sólo mapas con `custom`): alturas iguales, sin guardarraíl/banquina/vegetación sobre el otro camino, el auto sigue al camino más cercano (`_pick_branch`), y `Session` mide el avance como distancia recorrida (los saltos de camino no cuentan).
+- **A→B**: `MapData.close_open_path` cierra el lazo con un tramo de vuelta que no se corre; `defaults.seg = [0, B]`.
+- **Estilos** (`race.style`): carrera, contrarreloj, aventura (una pasada), **persecución** y **eliminación** (`race_rules.gd`, `cfg["rule"]`). En Carrera rápida el selector «Modo» ofrece las cuatro en TODOS los mapas de ruta (los del juego también), no sólo en los personalizados.
+- **Borde del camino**: `RouteTrack.build_guardrail(rail_off, wood, style)` con `guardrail` / `wood` / `fence`; `decor.edge = auto` lo elige al azar con el id del mapa (`Race._pick_edge`).
+- Pruebas: `tests/map_v3_test.gd` (cruce, A→B, reglas, persecución simulada con física real); `--autotest=gt@rule:chase|elim|race@<mapa>` arranca esa carrera directo (con `--auto` maneja la IA).
+- Mapas de prueba en `custom_maps/`: `prueba_04` (ocho, persecución) y `prueba_05` (A→B con barro, lluvia, aventura). Se pueden borrar cuando lleguen los del dueño.

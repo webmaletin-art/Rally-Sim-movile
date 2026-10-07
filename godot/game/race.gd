@@ -51,6 +51,7 @@ const CarBuild := preload("res://game/data/car_build.gd")
 const AiCars := preload("res://game/data/ai_cars.gd")
 const Profile := preload("res://game/data/profile.gd")
 const Convoy := preload("res://game/ai/convoy.gd")
+const RaceRules := preload("res://game/race_rules.gd")
 const TravesiaProps := preload("res://game/track/travesia_props.gd")
 const Session := preload("res://game/session.gd")
 const RaceHud := preload("res://game/ui/race_hud.gd")
@@ -176,6 +177,7 @@ var cam_index := 1
 var lab_state: Dictionary = {} # taller de prueba de la pausa: estado del auto con ajustes (vacío = el auto tal cual)
 var lab_orig: Dictionary = {}
 var _pausetest_done := false
+var rules: RaceRules = null # persecución o eliminación (cfg["rule"]), ver race_rules.gd
 var convoy: Convoy = null # Travesía X: el convoy que hay que acompañar (ver ai/convoy.gd)
 var tprops: Node3D = null # agua del vado y piedras de la Travesía
 var wall_on := false # pista solo de camino: límite lateral con árboles (se activa en las carreras del menú)
@@ -710,10 +712,12 @@ func _build_track_nodes() -> void:
 		if g1 >= 0:
 			track_root.add_child(track.build_start_gate(g1, "📸 RADAR" if str(cfg.get("type")) == "trap" else "META", Color(1.0, 0.35, 0.3)))
 		if wall_on:
-			var gr: Node3D = track.build_guardrail(rail_off(), track.mode == "dirt")
+			var dec: Dictionary = (track_maps.get(track_id, {}) as Dictionary).get("decor", {}) # mapa personalizado: borde y vegetación a elección del autor, o «auto» (al azar con semilla fija)
+			var gr: Node3D = track.build_guardrail(rail_off(), track.mode == "dirt", _pick_edge(str(dec.get("edge", "")), track_id) if not dec.is_empty() else "")
 			MeshChunks.chunk_children(gr)
 			track_root.add_child(gr)
 			var tn := 1500 if (menu_mode and str(profile.setting("quality")) == "low") else (6000 if (menu_mode and str(profile.setting("quality")) == "high") else 3500)
+			tn = int(float(tn) * float(dec.get("veg", 1.0)))
 			track_root.add_child(track.build_tufts(tn, rail_off() + 0.6, 4242))
 		var dims: Dictionary = track.terrain_dims()
 		terrain_r = int(dims["R"])
@@ -779,6 +783,17 @@ func _check_terrain() -> void:
 ##   lejos  (500–950 m)   una cuarta parte de los árboles, más grandes: una "cortina" que se nota que hay bosque
 ## Al acercarte, las capas se cambian solas. Antes se dibujaba todo el campo.
 const CHUNK := 200.0
+
+## Borde del camino de un mapa personalizado: lo que pidió el autor ("guardrail", "wood", "fence") o, con "auto", uno al azar que depende del mapa (siempre el mismo) y de su superficie
+func _pick_edge(edge: String, id: String) -> String:
+	if edge == "guardrail" or edge == "wood" or edge == "fence":
+		return edge
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(id)
+	var u := rng.randf()
+	if track.mode == "asphalt":
+		return "guardrail" if u < 0.6 else ("fence" if u < 0.85 else "wood")
+	return "wood" if u < 0.45 else ("fence" if u < 0.85 else "guardrail")
 
 ## Distancia del guardarraíl al centro del camino (sobre el borde de la banquina)
 func rail_off() -> float:
@@ -1247,6 +1262,7 @@ func _rebuild_cars() -> void:
 ## Cuenta regresiva + vueltas + meta (solo con el menú; la escena de pruebas anda libre)
 func _start_session() -> void:
 	session = null
+	rules = null
 	if pb_active:
 		return # la prueba de rendimiento maneja sola, sin cuenta regresiva ni puestos
 	if adv_mode:
@@ -1307,6 +1323,10 @@ func _start_session() -> void:
 		convoy.setup(cars, session)
 		if race_hud != null:
 			race_hud.convoy = convoy
+	var rule := str(cfg.get("rule", ""))
+	if t == "race" and (rule == "chase" or rule == "elim") and convoy == null:
+		rules = RaceRules.new()
+		rules.setup(rule, session, cars, race_hud, {"max_gap": float(cfg.get("chaseGap", 150.0)), "every": float(cfg.get("elimEvery", 30.0)), "skill": float(cfg.get("skill", 0.9)), "names": session.names})
 	if OS.get_cmdline_user_args().has("--finishtest"):
 		session.race_len = 120.0 # prueba: meta a los 120 m
 	session.beep.connect(_on_beep)
@@ -1902,6 +1922,8 @@ func _tick_session(dt: float) -> void:
 			print("CITYDRIVE NO LLEGÓ en 240 s: pos=(%d,%d)" % [int(ph.px), int(ph.pz)])
 			get_tree().quit()
 	session.update(dt, cars)
+	if rules != null:
+		rules.update(dt)
 	if convoy != null:
 		convoy.update(dt)
 		if convoy.lost and session.state == "run":
@@ -1915,7 +1937,7 @@ func _tick_session(dt: float) -> void:
 		if cf.new_hits > 0:
 			session.on_cones(cf.new_hits)
 			cf.new_hits = 0
-	if session.state == "run" and str(cfg.get("type")) == "race" and convoy == null:
+	if session.state == "run" and str(cfg.get("type")) == "race" and convoy == null and rules == null:
 		# goma elástica suave: nadie se escapa demasiado
 		for i in range(1, cars.size()):
 			var d = cars[i].driver
@@ -1955,6 +1977,12 @@ func _make_result() -> Dictionary:
 				r["win"] = session.duel_won
 		_:
 			r["value"] = session.finish_time[0]
+	if rules != null:
+		r["rule"] = rules.kind
+		r["win"] = rules.win
+		r["note"] = rules.note
+		r["pos"] = rules.result_pos()
+		r["value"] = float(r["pos"])
 	if convoy != null:
 		r["type"] = "convoy"
 		r["convoy"] = true

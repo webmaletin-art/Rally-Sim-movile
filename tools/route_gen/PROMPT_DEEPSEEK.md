@@ -1,4 +1,4 @@
-# Prompt para que DeepSeek (o cualquier IA) arme el GENERADOR / EDITOR DE MAPAS de Dream Racing en un solo HTML
+# (REEMPLAZADO por PROMPT_EDITOR_V3.md — editor sólo de trazados, sin visor 3D, con cruces) Prompt para que DeepSeek arme el GENERADOR / EDITOR DE MAPAS de Dream Racing en un solo HTML (formato v2)
 
 Copiá desde «=== PROMPT ===» hasta «=== FIN ===» y pegalo. Si la IA deja adjuntar archivos, subile `dreamracing_route_assets.zip` (si no, no hace falta: el HTML mismo lo carga con un botón).
 Pedile **un único archivo `generador_mapas.html`** completo. Cuando ande, dibujá/generá un mapa, tocá EXPORTAR y subí el `.json` que baja a la carpeta `godot/game/data/custom_maps/` del repositorio: el juego lo lee solo (la CI lo valida y lo prueba con la IA antes de compilar). Si querés que reemplace un evento de la carrera, elegilo en el HTML (campo «Evento de la carrera»); si no, queda en Carrera rápida.

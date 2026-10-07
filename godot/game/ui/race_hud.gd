@@ -193,6 +193,8 @@ class MiniMap extends Control:
 			draw_circle(pts[maxi(seg_a, 0)], 4.0, Color(0.3, 0.9, 0.5))
 		for i in range(cars.size() - 1, -1, -1):
 			var c: Array = cars[i]
+			if absf(float(c[0])) > 5.0e4:
+				continue # auto eliminado (fuera de la pista)
 			var pos := _to_map(float(c[0]), float(c[1]))
 			if i == 0:
 				draw_circle(pos, 6.0, Color.WHITE)
@@ -261,7 +263,13 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 		pos_l.visible = false
 	elif t == "race":
 		pos_l.text = "%d/%d" % [s.position_of(0, n_cars), n_cars]
-	if t == "drift":
+	var rule_t: Variant = s.get("rule_text") # sólo las sesiones de ruta lo tienen
+	if rule_t is String and rule_t != "": # persecución / eliminación: el texto y el aviso los arma race_rules.gd
+		lap_l.text = rule_t
+		drift_l.text = str(s.get("rule_sub"))
+		drift_l.add_theme_color_override("font_color", Color(1.0, 0.35, 0.3) if s.get("rule_warn") == true else Color(0.6, 1.0, 0.7))
+		drift_l.add_theme_font_size_override("font_size", 24)
+	elif t == "drift":
 		time_l.text = Kit.fmt_time(s.remaining()) if s.state != "countdown" else Kit.fmt_time(s.limit)
 		pos_l.visible = true
 		pos_l.text = "x%d" % s.mult

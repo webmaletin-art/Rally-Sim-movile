@@ -21,6 +21,11 @@ var surf_mu := PackedFloat32Array() # agarre relativo de cada muestra para la IA
 var atlas := false # mapa personalizado con varias superficies: el camino usa un atlas con una columna por superficie (ver _atlas_tex)
 var road_col := PackedByteArray() # columna del atlas de cada muestra (sólo con atlas)
 var scen_w := PackedFloat32Array() # densidad de árboles de cada muestra, 0..1 (mapas personalizados; vacío = pareja)
+var has_cross := false # el camino se cruza a nivel consigo mismo (un ocho, una cruz): mapas personalizados
+var cross_any := PackedByteArray() # 1 = en esta muestra otra parte del camino pasa pegada (se pisan los caminos o las banquinas)
+var cross_rail := PackedByteArray() # por muestra y lado (i*2 + 0 izquierdo · 1 derecho): 1 = el guardarraíl de ese lado cae sobre el otro camino
+var cross_pt := PackedInt32Array() # muestra del otro tramo más cercana a ésta (-1 = ninguna)
+var _xhash: Dictionary = {} # Vector2i → muestras (para buscar el otro camino cerca de un punto)
 var wall_l := PackedFloat32Array() # límite lateral por muestra (modo aventura; vacío = el del auto)
 var wall_r := PackedFloat32Array()
 var route_id := ""
@@ -83,6 +88,8 @@ func _init(p_route := "", p_mode := "asphalt", reverse := false, p_hills := 0.0)
 	for p in pts:
 		ctrl.append(Vector3(p[0], p[1], p[2]))
 	_build()
+	if r.get("custom", false) == true:
+		_find_crossings()
 	if r.has("surf") or r.has("water") or r.has("sections") or r.has("caves") or r.has("dens"):
 		_apply_zones(r, reverse)
 
@@ -118,6 +125,11 @@ func make_view(register := true) -> Object:
 	v.sections = sections
 	v.wall_l = wall_l
 	v.wall_r = wall_r
+	v.has_cross = has_cross
+	v.cross_any = cross_any
+	v.cross_rail = cross_rail
+	v.cross_pt = cross_pt
+	v._xhash = _xhash
 	_copy_view(v)
 	if register:
 		views.append(v)
@@ -338,6 +350,142 @@ func _road_offset(i: int) -> float:
 		return 0.06 + 0.10 * sin(t * PI * 5.0) + 0.04 * sin(t * PI * 13.0) # sin los bultos de las otras rutas: ahí caerían en otro tramo
 	return 0.06 + 0.10 * sin(t * PI * 5.0) + 0.04 * sin(t * PI * 13.0) - 0.25 * exp(-pow((t - 0.43) / 0.045, 2.0)) + 0.18 * exp(-pow((t - 0.73) / 0.06, 2.0))
 
+# ───────────────────────── cruces a nivel (un ocho, una cruz) ─────────────────────────
+## Mapas personalizados: el camino puede pasar por encima de sí mismo en el dibujo (un 8, una cruz): en el juego es un cruce a nivel, como una esquina.
+## Se marcan las muestras donde otra parte del camino pasa pegada; ahí (1) los dos caminos quedan a la misma altura, (2) se saltea el guardarraíl, la banquina y la vegetación
+## que caerían sobre el otro camino, y (3) el auto sigue al camino que tiene más cerca (para que doblar en el cruce no lo choque contra un muro invisible).
+const CROSS_FAR := 160.0 # recorrido mínimo (m) entre dos partes para que sea un cruce y no la misma curva
+const CROSS_CELL := 32.0
+
+func _hash_key(x: float, z: float) -> Vector2i:
+	return Vector2i(floori(x / CROSS_CELL), floori(z / CROSS_CELL))
+
+func _find_crossings() -> void:
+	var step_len := maxf(length / float(n), 0.5)
+	var far := maxi(24, int(CROSS_FAR / step_len))
+	var r_cross := 2.0 * half_width + shoulder + 3.0 + step_len * 0.5 # entre centros: por debajo de esto los caminos (o las banquinas) se pisan
+	var rail_off := half_width + shoulder - 0.3
+	var r_rail := half_width + 3.5 + step_len * 0.5 # el guardarraíl se corta a 3,5 m del borde del otro camino
+	_xhash = {}
+	for i in n:
+		var k := _hash_key(samples[i].x, samples[i].z)
+		if not _xhash.has(k):
+			_xhash[k] = []
+		(_xhash[k] as Array).append(i)
+	cross_any = PackedByteArray()
+	cross_any.resize(n)
+	cross_rail = PackedByteArray()
+	cross_rail.resize(n * 2)
+	cross_pt = PackedInt32Array()
+	cross_pt.resize(n)
+	cross_pt.fill(-1)
+	var any_n := 0
+	for i in n:
+		var p := samples[i]
+		var l := laterals[i]
+		var best := INF
+		var bj := -1
+		var kc := _hash_key(p.x, p.z)
+		for gx in range(kc.x - 1, kc.x + 2):
+			for gz in range(kc.y - 1, kc.y + 2):
+				var lst: Array = _xhash.get(Vector2i(gx, gz), [])
+				for j in lst:
+					var dj := absi(int(j) - i)
+					if mini(dj, n - dj) <= far:
+						continue
+					var q := samples[j]
+					var d2 := (q.x - p.x) * (q.x - p.x) + (q.z - p.z) * (q.z - p.z)
+					if d2 < best:
+						best = d2
+						bj = j
+					for sd in 2:
+						var sg := -1.0 if sd == 0 else 1.0
+						var rx := p.x + l.x * sg * rail_off
+						var rz := p.z + l.z * sg * rail_off
+						if (q.x - rx) * (q.x - rx) + (q.z - rz) * (q.z - rz) < r_rail * r_rail:
+							cross_rail[i * 2 + sd] = 1
+		if bj >= 0 and best < r_cross * r_cross:
+			cross_any[i] = 1
+			cross_pt[i] = bj
+			any_n += 1
+	has_cross = any_n > 0
+	if not has_cross:
+		return
+	# 1) a la misma altura: cada muestra del cruce va hacia el promedio con la del otro camino; el cambio se apaga de a poco a lo largo del camino
+	var win := maxi(8, int(80.0 / step_len))
+	for _it in 4:
+		var delta := PackedFloat64Array()
+		delta.resize(n)
+		for i in n:
+			if cross_any[i] == 1:
+				delta[i] = 0.5 * (cy[cross_pt[i]] - cy[i])
+		var near_d := PackedInt32Array()
+		near_d.resize(n)
+		near_d.fill(1 << 20)
+		var near_v := PackedFloat64Array()
+		near_v.resize(n)
+		for pass_i in 2:
+			var seq := range(0, 2 * n) if pass_i == 0 else range(2 * n - 1, -1, -1)
+			var cur_d := 1 << 20
+			var cur_v := 0.0
+			for t in seq:
+				var i2: int = int(t) % n
+				if cross_any[i2] == 1:
+					cur_d = 0
+					cur_v = delta[i2]
+				else:
+					cur_d += 1
+				if cur_d < near_d[i2]:
+					near_d[i2] = cur_d
+					near_v[i2] = cur_v
+		for i in n:
+			if near_d[i] > win:
+				continue
+			var u := 1.0 - float(near_d[i]) / float(win)
+			var w := u * u * (3.0 - 2.0 * u)
+			var dy := near_v[i] * (1.0 if cross_any[i] == 1 else w)
+			samples[i].y += dy
+			cy[i] += dy
+	# 2) el camino de arriba (el de mayor índice) 3 cm más alto: dos asfaltos a la misma altura parpadean en la pantalla
+	for i in n:
+		if cross_any[i] == 1 and i > cross_pt[i]:
+			cy[i] += 0.03
+
+## En un cruce el auto sigue al camino que tiene más cerca: si el otro tramo está claramente más cerca que el suyo, cambia de camino
+func _pick_branch(x: float, z: float) -> void:
+	var pj := cross_pt[_bi]
+	if pj < 0:
+		return
+	var own_d := _bd
+	var own_i := _bi
+	var own_t := _bt
+	_bd = INF
+	_scan(x, z, pj - 40, 81)
+	if _bd < own_d * 0.55 - 0.5:
+		return # el otro camino está claramente más cerca: _bi/_bt ya son los suyos
+	_bd = own_d
+	_bi = own_i
+	_bt = own_t
+
+## ¿Hay otro tramo del camino (lejos en recorrido) a menos de `r` m de este punto? (vegetación y árboles que no deben caer sobre el otro camino)
+func near_other_road(x: float, z: float, si: int, r: float) -> bool:
+	if not has_cross:
+		return false
+	var step_len := maxf(length / float(n), 0.5)
+	var far := maxi(24, int(CROSS_FAR / step_len))
+	var kc := _hash_key(x, z)
+	for gx in range(kc.x - 1, kc.x + 2):
+		for gz in range(kc.y - 1, kc.y + 2):
+			var lst: Array = _xhash.get(Vector2i(gx, gz), [])
+			for j in lst:
+				var dj := absi(int(j) - si)
+				if mini(dj, n - dj) <= far:
+					continue
+				var q := samples[j]
+				if (q.x - x) * (q.x - x) + (q.z - z) * (q.z - z) < r * r:
+					return true
+	return false
+
 # ───────────────────────── búsqueda del tramo más cercano ─────────────────────────
 func _seg_d(x: float, z: float, i: int) -> float:
 	var a := samples[i]
@@ -409,6 +557,8 @@ func nearest(x: float, z: float) -> void:
 			_scan(x, z, 0, n)
 	else:
 		_scan(x, z, 0, n)
+	if has_cross and cross_any[_bi] == 1:
+		_pick_branch(x, z)
 	hint = _bi
 	var a := samples[_bi]
 	var b := samples[(_bi + 1) % n]
@@ -765,6 +915,8 @@ func strip_finish(h: Dictionary) -> ArrayMesh:
 	var idx := PackedInt32Array()
 	for ri in rows.size():
 		var ni := (ri + 1) % rows.size()
+		if has_cross and (cross_any[int(rows[ri])] == 1 or cross_any[int(rows[ni])] == 1):
+			continue # cruce a nivel: ahí pasa el otro camino, la banquina y el pasto no se dibujan encima
 		for side in 2:
 			for k in rw - 1:
 				var a := ri * rw * 2 + side * rw + k
@@ -936,14 +1088,20 @@ func build_start_gate(gi := 0, text := "DREAM RACING", color := Color(1, 1, 1)) 
 
 ## Guardarraíl a los dos lados del camino (sobre el borde de la banquina): postes en un MultiMesh y dos cintas de chapa acanalada.
 ## rail_off: distancia al centro del camino. wood: valla de madera (tierra) en vez de chapa galvanizada.
-func build_guardrail(rail_off: float, wood := false) -> Node3D:
+## style: "guardrail" (chapa acanalada de metal) · "wood" (poste y tablón de madera) · "fence" (cerco de postes finos con dos alambres/varas). Vacío = el de siempre (madera en tierra, metal en asfalto).
+## En un cruce a nivel (has_cross) se corta donde el guardarraíl caería sobre el otro camino.
+func build_guardrail(rail_off: float, wood := false, style := "") -> Node3D:
+	if style == "":
+		style = "wood" if wood else "guardrail"
+	var metal := style == "guardrail"
+	var fence := style == "fence"
 	var g := Node3D.new()
 	var post_mesh := BoxMesh.new()
-	post_mesh.size = Vector3(0.14, 0.95, 0.14) if not wood else Vector3(0.2, 1.1, 0.2)
+	post_mesh.size = Vector3(0.14, 0.95, 0.14) if metal else (Vector3(0.12, 1.15, 0.12) if fence else Vector3(0.2, 1.1, 0.2))
 	var pm := StandardMaterial3D.new()
-	pm.albedo_color = Color(0.45, 0.47, 0.5) if not wood else Color(0.33, 0.22, 0.13)
+	pm.albedo_color = Color(0.45, 0.47, 0.5) if metal else (Color(0.40, 0.31, 0.22) if fence else Color(0.33, 0.22, 0.13))
 	pm.roughness = 0.6
-	pm.metallic = 0.5 if not wood else 0.0
+	pm.metallic = 0.5 if metal else 0.0
 	post_mesh.material = pm
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -953,15 +1111,20 @@ func build_guardrail(rail_off: float, wood := false) -> Node3D:
 	var norms := PackedVector3Array()
 	var cols := PackedColorArray()
 	var idx := PackedInt32Array()
-	# perfil de la chapa (distancia hacia afuera, altura): acanalado en W; cada lado es una cinta continua
-	var prof: Array = [[0.0, 0.40], [0.035, 0.46], [0.0, 0.53], [0.05, 0.62], [0.0, 0.71], [0.035, 0.78], [0.0, 0.84]]
-	if wood:
-		prof = [[0.0, 0.50], [0.0, 0.66], [0.0, 0.80], [0.0, 0.96]]
-	var base_col := Color(0.78, 0.8, 0.83) if not wood else Color(0.42, 0.29, 0.18)
+	# perfiles de la chapa (distancia hacia afuera, altura): el guardarraíl es acanalado en W; la madera, un tablón; el cerco, dos varas finas. Cada lado es una cinta continua por perfil
+	var profs: Array = []
+	if metal:
+		profs.append([[0.0, 0.40], [0.035, 0.46], [0.0, 0.53], [0.05, 0.62], [0.0, 0.71], [0.035, 0.78], [0.0, 0.84]])
+	elif fence:
+		profs.append([[0.0, 0.40], [0.0, 0.47]])
+		profs.append([[0.0, 0.84], [0.0, 0.91]])
+	else:
+		profs.append([[0.0, 0.50], [0.0, 0.66], [0.0, 0.80], [0.0, 0.96]])
+	var base_col := Color(0.78, 0.8, 0.83) if metal else (Color(0.50, 0.40, 0.28) if fence else Color(0.42, 0.29, 0.18))
+	var cut := has_cross and cross_rail.size() == n * 2
 	var k := 0
 	for sd in [-1.0, 1.0]:
-		var v0 := verts.size()
-		var np: int = prof.size()
+		var sdi := 0 if sd < 0.0 else 1
 		for i in n:
 			var p: Vector3 = samples[i]
 			var l: Vector3 = laterals[i]
@@ -971,21 +1134,34 @@ func build_guardrail(rail_off: float, wood := false) -> Node3D:
 			# poste (un poco más afuera que la chapa)
 			var t: Vector3 = tangents[i]
 			var b := Basis(Vector3.UP, atan2(t.x, t.z))
+			if cut and cross_rail[i * 2 + sdi] == 1:
+				b = b.scaled(Vector3.ZERO) # sobre el otro camino: sin poste
 			mm.set_instance_transform(k, Transform3D(b, Vector3(ox + l.x * sd * 0.12, y0 + post_mesh.size.y * 0.5, oz + l.z * sd * 0.12)))
 			k += 1
-			for q in np:
-				var off: float = prof[q][0]
-				verts.append(Vector3(ox + l.x * sd * off, y0 + float(prof[q][1]), oz + l.z * sd * off))
-				norms.append(Vector3(-l.x * sd, 0.0, -l.z * sd))
-				cols.append(base_col * (0.92 + 0.12 * float(q % 2)))
-		for i in n:
-			var j := (i + 1) % n
-			for q in range(np - 1):
-				var a := v0 + i * np + q
-				var b2 := v0 + i * np + q + 1
-				var c := v0 + j * np + q
-				var d := v0 + j * np + q + 1
-				idx.append_array([a, b2, c, b2, d, c])
+		for prof in profs:
+			var v0 := verts.size()
+			var np: int = prof.size()
+			for i in n:
+				var p2: Vector3 = samples[i]
+				var l2: Vector3 = laterals[i]
+				var y1: float = cy[i] - 0.06
+				var ox2: float = p2.x + l2.x * sd * rail_off
+				var oz2: float = p2.z + l2.z * sd * rail_off
+				for q in np:
+					var off: float = prof[q][0]
+					verts.append(Vector3(ox2 + l2.x * sd * off, y1 + float(prof[q][1]), oz2 + l2.z * sd * off))
+					norms.append(Vector3(-l2.x * sd, 0.0, -l2.z * sd))
+					cols.append(base_col * (0.92 + 0.12 * float(q % 2)))
+			for i in n:
+				var j := (i + 1) % n
+				if cut and (cross_rail[i * 2 + sdi] == 1 or cross_rail[j * 2 + sdi] == 1):
+					continue # sobre el otro camino: sin chapa
+				for q in range(np - 1):
+					var a2 := v0 + i * np + q
+					var b2 := v0 + i * np + q + 1
+					var c := v0 + j * np + q
+					var d := v0 + j * np + q + 1
+					idx.append_array([a2, b2, c, b2, d, c])
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = verts
@@ -997,7 +1173,7 @@ func build_guardrail(rail_off: float, wood := false) -> Node3D:
 	var rm := StandardMaterial3D.new()
 	rm.vertex_color_use_as_albedo = true
 	rm.roughness = 0.45
-	rm.metallic = 0.55 if not wood else 0.0
+	rm.metallic = 0.55 if metal else 0.0
 	rm.cull_mode = BaseMaterial3D.CULL_DISABLED
 	am.surface_set_material(0, rm)
 	var rail := MeshInstance3D.new()
@@ -1093,6 +1269,12 @@ func build_tufts(count: int, from_off: float, seed_v: int) -> MultiMeshInstance3
 		var sg := 1.0 if rng.randf() < 0.5 else -1.0
 		var x: float = p.x + l.x * sg * off
 		var z: float = p.z + l.z * sg * off
+		if has_cross and near_other_road(x, z, si, half_width + 2.0):
+			for cr in 2: # cae sobre el otro camino de un cruce: la mata queda sin tamaño (no se ve)
+				mm.set_instance_transform(k, Transform3D(Basis().scaled(Vector3.ZERO), Vector3.ZERO))
+				mm.set_instance_color(k, Color.WHITE)
+				k += 1
+			continue
 		view.hint = si
 		var y: float = view.ground_smooth(x, z) - 0.02
 		var sc := rng.randf_range(0.7, 1.5)

@@ -145,6 +145,8 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 			medal = 3 if n == 1 else (2 if n == 2 else (1 if n == 3 else 0))
 			# Carrera rápida paga poquito (es práctica): por vuelta y rivales, con tope, y por puesto como en la Copa
 			var laps := maxi(1, int(cfg.get("laps", 1)))
+			if str(cfg.get("rule", "")) != "":
+				laps = 3 # persecución / eliminación no tienen vueltas: paga como una carrera corta
 			var pos := int(r["value"])
 			var by_pos: float = [1.0, 0.6, 0.4, 0.2][pos - 1] if pos >= 1 and pos <= 4 else 0.08
 			cr = mini(400, int(round(50.0 * float(laps) * (1.0 + float(cfg.get("ai", 0)) / 6.0) * by_pos / 10.0)) * 10)
