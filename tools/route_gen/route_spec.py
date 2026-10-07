@@ -83,6 +83,11 @@ def _arc_to(an, i, frac):
 def normalize(d):
     """v1 → v2 (una sola superficie, árboles «mixed», 3 rivales de dificultad media). Devuelve una copia."""
     d = json.loads(json.dumps(d))
+    # Los generadores en JS pueden escribir 2.0 en vez de 2: los enteros «con coma» se aceptan como enteros.
+    for blk, key in (("race", "laps"), ("rivals", "count")):
+        b = d.get(blk)
+        if isinstance(b, dict) and isinstance(b.get(key), float) and b[key].is_integer():
+            b[key] = int(b[key])
     if d.get("version") == 1:
         d["version"] = 2
         if d.get("type") != "drag":
