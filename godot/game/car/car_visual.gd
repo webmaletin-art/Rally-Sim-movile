@@ -162,6 +162,8 @@ func set_inside(v: bool) -> void:
 func _own_paint(pattern: int, paint: Color, accent: Color, finish: String, accent2: Color, inside := false) -> ShaderMaterial:
 	var sm := _paint_material(pattern, paint, accent, finish, accent2, inside)
 	sm.set_shader_parameter("vk", 1.0)
+	if pattern >= 7:
+		_set_decal(sm, pattern)
 	var g: Variant = meta.get("glass")
 	if g is Dictionary:
 		var gd: Dictionary = g
@@ -196,6 +198,30 @@ static func _glass_material() -> StandardMaterial3D:
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	return m
 
+## Letras del rotulado en las puertas: la fila del atlas (según el patrón) y el rectángulo sobre la puerta, medido con los pasos de rueda y la línea de cintura del GLB
+func _set_decal(sm: ShaderMaterial, pattern: int) -> void:
+	var rows: Dictionary = _decal_rows.get("rows", {})
+	var key := str(meta.get("id", "")) if pattern == 10 else ("dream" if pattern == 7 else ("sr" if pattern == 8 else "sport"))
+	var total := float(_decal_rows.get("total", 1))
+	var r := float(rows.get(key, 0))
+	sm.set_shader_parameter("decal_v", Vector2((r + 0.04) / total, (r + 0.96) / total))
+	var ar: Array = meta.get("arches", [])
+	var lift := float(meta.get("lift", 0.1))
+	var zc := 0.0
+	var gap := 1.6
+	if ar.size() >= 2:
+		var za := float((ar[0] as Dictionary)["z"])
+		var zb := float((ar[1] as Dictionary)["z"])
+		zc = (za + zb) * 0.5
+		gap = absf(za - zb)
+	var belt := lift + 0.45 * (float(meta.get("H", 1.2)) - lift)
+	var g: Variant = meta.get("glass")
+	if g is Dictionary:
+		var pl: Array = (g as Dictionary)["poly"]
+		belt = minf(float(pl[0][1]), float(pl[3][1]))
+	var hz := minf(gap * 0.30, 1.0)
+	sm.set_shader_parameter("decal_rect", Vector4(zc, lift + (belt - lift) * 0.5, hz, hz / 8.0))
+
 ## Colores de piezas desde el perfil: {tire, rim, spring, caliper, disc}
 func set_parts(pp: Dictionary) -> void:
 	if parts != null:
@@ -203,9 +229,14 @@ func set_parts(pp: Dictionary) -> void:
 
 ## Rotulados: dibujos de pintura calculados sobre la carrocería (no hace falta textura): franjas, banda lateral, la «onda»
 ## de Dream Racing, bicolor y el rally con el círculo del número en las puertas. 0 = liso.
-const LIVERIES := ["Liso", "Franjas", "Banda lateral", "Onda Dream", "Bicolor", "Rally", "Camuflaje Multicam"]
+const LIVERIES := ["Liso", "Franjas", "Banda lateral", "Onda Dream", "Bicolor", "Rally", "Camuflaje Multicam", "Dream Racing", "SRGamestudios", "Sport", "Nombre del auto"]
 const CAMO_TEX := "res://game/models/cars/camo_multicam.png"
+## rotulados con letras (patrones 7 a 10): una fila del atlas decals.png (tools/cars/gen_decals.py) proyectada sobre las puertas; 7 = DREAM RACING, 8 = SRGamestudios, 9 = SPORT, 10 = el nombre del auto
+const DECAL_TEX := "res://game/models/cars/decals.png"
+const DECAL_JSON := "res://game/models/cars/decals.json"
 static var _camo: Texture2D
+static var _decal: Texture2D
+static var _decal_rows: Dictionary = {}
 const LIVERY_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
@@ -226,6 +257,9 @@ uniform vec4 sp1 = vec4(0.0);
 uniform vec2 clip = vec2(-1000.0, 0.0); // vista interior: no se dibuja la carrocería dentro de la cabina (z menor que clip.x y |x| menor que clip.y)
 uniform float cab_hw = 0.6;
 uniform sampler2D camo_tex : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2D decal_tex : source_color, filter_linear_mipmap;
+uniform vec4 decal_rect = vec4(0.0, 0.6, 1.0, 0.125); // letras en las puertas: centro (z, y) y semiancho / semialto
+uniform vec2 decal_v = vec2(0.0, 0.03); // franja del atlas (v) de la fila elegida
 varying vec3 lp;
 varying vec3 ln;
 void vertex() {
@@ -307,6 +341,29 @@ void fragment() {
 		c = mix(c, accent2, disc);
 		c = mix(c, accent, ring);
 		c = mix(c, accent, band(ax, 0.0, 0.22) * top * step(0.0, lp.z));
+	} else if (pattern >= 7) { // letras en las puertas (se leen de adelante hacia atrás desde afuera, de los dos lados) + un detalle de franjas según el rotulado
+		float sx = lp.x >= 0.0 ? 1.0 : -1.0;
+		float du = 0.5 - sx * (lp.z - decal_rect.x) / (2.0 * decal_rect.z);
+		float dv = 0.5 - (lp.y - decal_rect.y) / (2.0 * decal_rect.w);
+		float inside = step(0.0, du) * step(du, 1.0) * step(0.0, dv) * step(dv, 1.0);
+		float a = texture(decal_tex, vec2(du, mix(decal_v.x, decal_v.y, clamp(dv, 0.02, 0.98)))).a * inside * side;
+		float ys = decal_rect.y - decal_rect.w;
+		float zr = abs(lp.z - decal_rect.x);
+		float line = band(lp.y, ys - 0.07, ys - 0.045) * side * (1.0 - smoothstep(decal_rect.z * 0.9, decal_rect.z * 1.0, zr));
+		if (pattern == 7) { // doble franja en el capó y el techo
+			c = mix(c, accent, band(ax, 0.07, 0.15) * top);
+			c = mix(c, accent2, band(ax, 0.17, 0.19) * top);
+			c = mix(c, accent2, line);
+		} else if (pattern == 8) { // una franja central
+			c = mix(c, accent, band(ax, 0.0, 0.10) * top);
+			c = mix(c, accent2, line);
+		} else if (pattern == 9) { // franja ancha
+			c = mix(c, accent, band(ax, 0.0, 0.28) * top);
+			c = mix(c, accent2, band(ax, 0.30, 0.33) * top);
+		} else { // nombre: solo la línea
+			c = mix(c, accent, line);
+		}
+		c = mix(c, accent, a);
 	} else if (pattern == 6) { // camuflaje multicam: textura proyectada en tres ejes (la carrocería no necesita UV); el color de pintura la tiñe (blanco = camuflaje puro)
 		vec3 w = pow(abs(ln), vec3(4.0));
 		w /= max(w.x + w.y + w.z, 0.001);
@@ -360,6 +417,11 @@ static func _paint_material(pattern: int, paint: Color, accent: Color, finish: S
 		if _camo == null:
 			_camo = load(CAMO_TEX)
 		sm.set_shader_parameter("camo_tex", _camo)
+	elif pattern >= 7:
+		if _decal == null:
+			_decal = load(DECAL_TEX)
+			_decal_rows = JSON.parse_string(FileAccess.get_file_as_string(DECAL_JSON))
+		sm.set_shader_parameter("decal_tex", _decal)
 	sm.set_shader_parameter("metal", float(fin[0]))
 	sm.set_shader_parameter("rough", float(fin[1]))
 	return sm

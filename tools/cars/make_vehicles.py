@@ -58,6 +58,12 @@ CARS = {
                           desc='Camioneta militar de camuflaje multicam: ruedas todo terreno, suspensión de recorrido largo y un V6 que no se queja del barro.', paint=dict(body='#ffffff', accent='#2c3a1e', rim='#d9a21c', livery=6))),
 }
 NEW_ORDER = ['hatch', 'suv', 'buggy', 'muscle', 'gt', 'gt3', 'hyper', 'camo']
+try:                                   # segunda tanda (14 modelos): tools/cars/batch2.py
+    import batch2
+    CARS.update(batch2.SPEC)
+    NEW_ORDER = NEW_ORDER + batch2.ORDER
+except ImportError:
+    pass
 
 def build_entry(cid, spec, meta, v):
     d = copy.deepcopy(v[spec['base']])
@@ -104,6 +110,7 @@ def main():
         cat['cars'][cid] = c
         if cid not in cat['order']:
             cat['order'].append(cid)
+    cat['order'] = [x for x in cat['order'] if x not in NEW_ORDER] + NEW_ORDER   # los autos nuevos, en el orden del script (de menor a mayor precio)
     done = {'Hatch Rally R2', 'Buggy Dakar SSV', 'Muscle V8 ’70', 'Hypercar Eléctrico'}
     cat['coming'] = [c for c in cat['coming'] if c['name'] not in done]
     json.dump(v, open(vp, 'w'), ensure_ascii=False, indent=1)

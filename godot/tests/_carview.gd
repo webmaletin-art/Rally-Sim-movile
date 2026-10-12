@@ -18,10 +18,12 @@ func _init() -> void:
 	d["comHeight"] = float(d["comHeight"]) + lift
 	var V: VehicleParams = VehicleParams.from_dict(d)
 	var vis := CarVisual.new()
-	vis.setup(V, false, Color(0.75, 0.08, 0.1), Color(0.8, 0.82, 0.86), "gloss")
+	var body := Color(OS.get_environment("PAINT")) if OS.has_environment("PAINT") else Color(0.75, 0.08, 0.1)
+	vis.setup(V, false, body, Color(0.8, 0.82, 0.86), str(OS.get_environment("FINISH")) if OS.has_environment("FINISH") else "gloss")
 	vp.add_child(vis)
 	if OS.has_environment("LIV"): # prueba: rotulado (LIV=1..5) con color de franja naranja
-		vis.set_livery(int(OS.get_environment("LIV")), Color(1, 1, 1) if int(OS.get_environment("LIV")) == 6 else Color(0.1, 0.3, 0.9), Color(1.0, 0.5, 0.1), "gloss")
+		var acc := Color(OS.get_environment("ACCENT")) if OS.has_environment("ACCENT") else Color(1.0, 0.5, 0.1)
+		vis.set_livery(int(OS.get_environment("LIV")), Color(1, 1, 1) if int(OS.get_environment("LIV")) == 6 else (body if OS.has_environment("PAINT") else Color(0.1, 0.3, 0.9)), acc, str(OS.get_environment("FINISH")) if OS.has_environment("FINISH") else "gloss")
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.45, 0.52, 0.6)

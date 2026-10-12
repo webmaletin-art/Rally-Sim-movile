@@ -6,3 +6,5 @@ android/
 build/
 __pycache__/
 *.pyc
+tools/cars/src/car1[0-9].glb
+tools/cars/src/car2[0-9].glb

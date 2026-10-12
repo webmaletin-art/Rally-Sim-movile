@@ -46,6 +46,13 @@ WHEELS = {
     'hatch':  dict(spring_col='#e11d2a', caliper_col='#e11d2a', style='multi5', rim=0.205, tw=0.225, tw_r=0.225, tread='road', spring='coil', susp='car'),
 }
 
+try:
+    import batch2
+    CARS.update(batch2.MODEL)
+    WHEELS.update(batch2.WHEEL)
+except ImportError:
+    pass
+
 def vertex_normals(V, F, crease_deg=42.0):
     """Normales por esquina de triángulo, promediando solo los vecinos dentro del ángulo de filo. Devuelve (V2, F2, N2)."""
     tri = V[F]
@@ -224,6 +231,44 @@ def glass_segments(V, F, poly, cfg):
     out['profile'] = [[float(a), float(b)] for a, b in zip(zs[::5], ys[::5])]
     return out
 
+def auto_glass(V, F, L, ground, belt_k=0.64, ws_len=None, rg_len=None):
+    """Polígono de los vidrios (z, y) medido sobre el perfil del techo en el eje central: base del parabrisas, borde del techo adelante, borde del techo atrás y base de la luneta.
+    Los bordes del techo salen del perfil; las bases, de la línea de cintura (belt_k de la altura del techo): el perfil baja hasta ahí en el capó / baúl. Si el modelo trae el parabrisas o la luneta
+    casi verticales (los vidrios de estos modelos de IA faltan o salen aplastados), se les da una inclinación razonable. Se usa cuando el modelo no trae un polígono a mano (glass='auto')."""
+    mesh = trimesh.Trimesh(V, F, process=False)
+    zs, ys = top_profile(mesh, 0.5 * L - 0.02, -0.5 * L + 0.02, dz=0.02)
+    ys = np.convolve(np.pad(ys, 2, mode='edge'), np.ones(5) / 5, mode='valid')
+    mid = np.abs(zs) < 0.30 * L
+    y_roof = float(ys[mid].max())
+    near = np.where(mid & (ys >= y_roof - 0.07))[0]
+    i_f, i_r = int(near.min()), int(near.max())          # zs decrece con el índice: i_f = borde de adelante del techo
+    y_belt = ground + belt_k * (y_roof - ground)
+    h = y_roof - y_belt
+    n = len(zs)
+    # parabrisas: desde el borde del techo hacia adelante hasta que el perfil baja a la cintura
+    zt = float(zs[i_f])
+    j = i_f
+    while j > 0 and ys[j] > y_belt and abs(zs[j] - zt) < h / 0.35:
+        j -= 1
+    zb = float(zs[j])
+    zb = min(max(zb, zt + h / 0.95), zt + h / 0.32)       # largo del parabrisas entre h/0,95 y h/0,32 (pendiente 0,32–0,95)
+    if ws_len is not None:
+        zb = zt + ws_len                                   # camionetas y camiones: largo fijado a mano
+    yb = float(np.interp(-zb, -zs, ys))
+    ws = [(zb, min(yb, y_belt + 0.08)), (zt, y_roof)]
+    # luneta: desde el borde de atrás del techo hacia atrás hasta la cintura (sin pasar el 40 % del largo)
+    zr = float(zs[i_r])
+    j = i_r
+    while j < n - 1 and ys[j] > y_belt and abs(zs[j] - zr) < h / 0.28 and zs[j] > -0.40 * L:
+        j += 1
+    zb2 = float(zs[j])
+    zb2 = min(max(zb2, zr - h / 0.28), zr - h / 3.0)
+    if rg_len is not None:
+        zb2 = zr - rg_len
+    yb2 = float(np.interp(-zb2, -zs, ys))
+    rg = [(zr, y_roof), (zb2, min(max(yb2, y_belt - 0.15), y_roof - 0.15))]
+    return [ws[0], ws[1], rg[0], rg[1]]
+
 def classify(V, F, N, meta, cfg):
     """Colores de vértice (oscuros: bajos, interior de pasos de rueda) y triángulos de vidrio (dentro del polígono del vidrio)."""
     H = meta['H']; hw = meta['hw']
@@ -251,7 +296,7 @@ def classify(V, F, N, meta, cfg):
     gface = np.zeros(len(F), bool)
     return col, gface
 
-def remesh_skin(V, F, voxel=0.008, sigma=1.0, relax=8):
+def remesh_skin(V, F, voxel=0.008, sigma=1.0, relax=8, close=1):
     """Piel nueva y limpia: voxeliza la malla, descarta todo lo que no se ve desde afuera (interiores, piezas dobladas, calados con
     doble pared) y saca una superficie lisa con marching cubes. Los modelos originales son de IA y traen capas internas y triángulos
     retorcidos que, al reducirlos, se ven como rajaduras negras y paragolpes arrugados."""
@@ -270,11 +315,11 @@ def remesh_skin(V, F, voxel=0.008, sigma=1.0, relax=8):
     ijk = np.floor((P - lo) / voxel).astype(int)
     surf = np.zeros(shape, bool)
     surf[ijk[:, 0], ijk[:, 1], ijk[:, 2]] = True
-    wall = ndimage.binary_dilation(surf, iterations=1)                 # cierra las rendijas entre piezas
+    wall = ndimage.binary_dilation(surf, iterations=close)             # cierra las rendijas entre piezas (los modelos con agujeros grandes piden más)
     lab, nl = ndimage.label(~wall)
     outside = lab == lab[0, 0, 0]                                      # el aire de afuera (toca el borde de la caja)
     solid = ~outside
-    solid = ndimage.binary_erosion(solid, iterations=1)                # devuelve lo que sumó la dilatación
+    solid = ndimage.binary_erosion(solid, iterations=close)            # devuelve lo que sumó la dilatación
     # el piso del auto queda abierto hacia abajo: se cierra con una tapa en y mínimo para que no se llene al revés
     fld = ndimage.gaussian_filter(solid.astype(np.float32), sigma)
     vv, ff, _, _ = measure.marching_cubes(fld, 0.5, spacing=(voxel, voxel, voxel))
@@ -301,8 +346,16 @@ def build(cid):
     V *= s
     V[:, 0] *= cfg['wscale']
     V[:, 1] -= V[:, 1].min()
+    if 'H' in cfg:                                 # altura total real del auto (m): los modelos de IA salen más altos de lo que corresponde
+        V[:, 1] *= (cfg['H'] - cfg.get('ground', 0.1)) / V[:, 1].max()
     hx = np.abs(V[:, 0]).max()
     arch = arch_fit(V, hx)
+    if 'arch_pick' in cfg:                          # nos quedamos con los pasos de rueda en ese rango de z (fracción del largo: −0.5 atrás … +0.5 adelante)
+        lo, hi = cfg['arch_pick']
+        arch = [a for a in arch if lo <= a['z'] / cfg['L'] <= hi]
+    arch = [a for a in arch if a['r'] < 0.62]        # un «paso de rueda» más grande que una rueda no es un paso (alerones, tomas de aire)
+    if 'arches' in cfg:                             # a mano (camión sin pasos de rueda): (z, altura del borde superior del paso, radio) en metros, ya escalado
+        arch = [dict(z=float(z), y=float(top - r), r=float(r), top=float(top)) for z, top, r in cfg['arches']]
     assert len(arch) == 2, (cid, arch)
     rear, front = sorted(arch, key=lambda a: a['z'])
     top = (rear['top'] + front['top']) / 2
@@ -326,6 +379,18 @@ def build(cid):
     for a in arches:     # x del borde externo a la altura de la rueda (para la trocha)
         sel = (np.abs(V[:, 2] - a['z']) < a['r'] * 0.9) & (V[:, 1] > R * 0.4) & (V[:, 1] < 2 * R)
         a['x_out'] = float(np.abs(V[sel, 0]).max()) if sel.any() else hw
+    remeshed = False
+    if cfg['glass'] == 'auto':
+        # el perfil del techo se mide sobre la piel nueva y cerrada (los modelos de IA traen techos y vidrios abiertos que rompen el perfil)
+        if cfg.get('remesh', True):
+            V, F = remesh_skin(V, F, cfg.get('voxel', 0.012), close=cfg.get('close', 1))
+            remeshed = True
+        cfg = dict(cfg, glass=auto_glass(V, F, cfg['L'], ground, cfg.get('belt_k', 0.64), cfg.get('ws_len'), cfg.get('rg_len')))   # V ya tiene el piso y el centro de masa puestos
+        cfg['Lref'] = cfg['L']
+        cfg['wf_ref'] = cfg['wf']
+        # el polígono ya está en el auto centrado y con el piso puesto: se deshace lo que build() vuelve a sumar
+        cfg['glass'] = [(z, y - ground) for z, y in cfg['glass']]
+        print('   vidrios automáticos:', [(round(z, 2), round(y + ground, 2)) for z, y in cfg['glass']])
     kk = cfg['L'] / cfg.get('Lref', cfg['L'])      # los polígonos del vidrio se midieron con el largo de referencia
     dzw = wheelbase * (cfg.get('wf_ref', cfg['wf']) - cfg['wf'])   # el centro de masa se corrió respecto del de referencia
     glass = None if cfg['glass'] is None else [(float(z * kk + dzw), float(y * kk + ground)) for z, y in cfg['glass']]
@@ -342,8 +407,8 @@ def build(cid):
         glass_meta = None
     meta = dict(id=cid, L=cfg['L'], H=H, hw=hw, scale=float(s), wheelbase=float(wheelbase), a=float(a_f), b=float(b_r), R=R, lift=float(ground),
                 weightFront=cfg['wf'], arch_top=float(top + ground), arches=arches, glass=glass_meta, wheel=WHEELS[cid])
-    if cfg.get('remesh', True):
-        V, F = remesh_skin(V, F, cfg.get('voxel', 0.012))
+    if cfg.get('remesh', True) and not remeshed:
+        V, F = remesh_skin(V, F, cfg.get('voxel', 0.012), close=cfg.get('close', 1))
     # variantes hi / lo
     outs = {}
     for tag, faces in (('', cfg.get('tris', 24000)), ('_lo', 5000)):

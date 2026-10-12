@@ -341,6 +341,7 @@ func _ready() -> void:
 	if track is CityTrack:
 		_city_atmosphere()
 	audio = CarAudio.new()
+	audio.set_vehicle(str(cfg.get("car", "")))
 	add_child(audio)
 	sfx = UiSfx.new()
 	add_child(sfx)

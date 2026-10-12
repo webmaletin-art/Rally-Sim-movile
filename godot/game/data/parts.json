@@ -173,7 +173,10 @@
      "suv",
      "buggy",
      "truck",
-     "hatch"
+     "hatch",
+     "kodiak",
+     "safari",
+     "titan"
     ]
    }
   },
@@ -218,7 +221,17 @@
      "gt",
      "gt3",
      "hyper",
-     "buggy"
+     "buggy",
+     "trilux",
+     "trilux_s",
+     "trilux_gt",
+     "veltor",
+     "veltor_s",
+     "veltor_gtr",
+     "volcan",
+     "kl5",
+     "rally80",
+     "clasico60"
     ]
    }
   },
@@ -239,7 +252,11 @@
      "hatch",
      "muscle",
      "gt",
-     "buggy"
+     "buggy",
+     "torito",
+     "clasico60",
+     "safari",
+     "kodiak"
     ]
    }
   },
@@ -270,7 +287,12 @@
      "muscle",
      "gt",
      "gt3",
-     "hyper"
+     "hyper",
+     "trilux_gt",
+     "veltor",
+     "veltor_s",
+     "veltor_gtr",
+     "volcan"
     ]
    }
   },

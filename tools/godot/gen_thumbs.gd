@@ -1,6 +1,6 @@
 ## Genera las miniaturas de los autos del carrusel del garaje (godot/game/ui/thumbs/<id>.png): cada auto, con su pintura de fábrica, sobre la plataforma oscura.
 ## Uso (con pantalla virtual): xvfb-run -a godot --path godot --rendering-driver opengl3 --script res://../tools/godot/gen_thumbs.gd
-## (se corre una sola vez o cuando cambian los modelos; los PNG se versionan)
+## (se corre una sola vez o cuando cambian los modelos; los PNG se versionan). Sin `-- --all` solo hace los que faltan.
 extends SceneTree
 
 const Showroom := preload("res://game/ui/showroom.gd")
@@ -30,7 +30,10 @@ func _run() -> void:
 	cam.make_current()
 	var out_dir := ProjectSettings.globalize_path("res://game/ui/thumbs")
 	DirAccess.make_dir_recursive_absolute(out_dir)
+	var only_new := not OS.get_cmdline_user_args().has("--all") # sin --all: solo los autos que todavía no tienen miniatura
 	for id in CarBuild.catalog()["order"]:
+		if only_new and FileAccess.file_exists("%s/%s.png" % [out_dir, str(id)]):
+			continue
 		sh.set_car(str(id), prof.new_car_state(str(id)), vehicles)
 		for c in sh.crew:
 			(c["node"] as Node3D).visible = false

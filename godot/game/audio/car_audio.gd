@@ -15,10 +15,37 @@ const DIR := "res://game/audio/samples/"
 const SND := {"master": 0.55, "engine": 0.62, "tires": 0.35, "squeal": 0.28, "gravel": 0.45, "wind": 0.25, "turbo": 0.10, "whistle": 0.06, "flutter": 0.75, "whine": 0.06, "pops": 0.35, "impacts": 0.8}
 const TURBO_SND := {
 	"pickup": {"f": 1.0, "spool": 0.55, "w": 1.0, "fl": 1.0}, "t1plus": {"f": 1.12, "spool": 0.42, "w": 0.8, "fl": 0.9},
-	"truck": {"f": 0.55, "spool": 0.9, "w": 0.9, "fl": 1.2}, "genesis": {"f": 1.3, "spool": 0.3, "w": 1.1, "fl": 1.0}}
+	"truck": {"f": 0.55, "spool": 0.9, "w": 0.9, "fl": 1.2}, "genesis": {"f": 1.3, "spool": 0.3, "w": 1.1, "fl": 1.0},
+	"torito": {"f": 0.9, "spool": 0.8, "w": 0.3, "fl": 0.5}, "clasico60": {"f": 1.0, "spool": 0.8, "w": 0.3, "fl": 0.5},
+	"kodiak": {"f": 0.9, "spool": 0.6, "w": 1.1, "fl": 1.1}, "titan": {"f": 0.5, "spool": 1.0, "w": 1.2, "fl": 1.3},
+	"rally80": {"f": 1.1, "spool": 0.35, "w": 1.4, "fl": 1.5}, "kl5": {"f": 1.2, "spool": 0.5, "w": 0.4, "fl": 0.6},
+	"trilux": {"f": 1.1, "spool": 0.45, "w": 0.9, "fl": 1.0}, "trilux_s": {"f": 1.15, "spool": 0.4, "w": 1.1, "fl": 1.1},
+	"trilux_gt": {"f": 1.2, "spool": 0.35, "w": 1.3, "fl": 1.3}, "safari": {"f": 0.8, "spool": 0.6, "w": 0.6, "fl": 0.8},
+	"veltor": {"f": 1.25, "spool": 0.4, "w": 0.8, "fl": 0.9}, "veltor_s": {"f": 1.3, "spool": 0.35, "w": 0.9, "fl": 1.0},
+	"volcan": {"f": 1.35, "spool": 0.3, "w": 0.8, "fl": 0.8}, "veltor_gtr": {"f": 1.4, "spool": 0.3, "w": 1.0, "fl": 1.2}}
 const GEAR_SND := {
 	"pickup": {"k": 0.55, "tooth": 40.0}, "t1plus": {"k": 1.0, "tooth": 48.0},
-	"truck": {"k": 0.8, "tooth": 34.0}, "genesis": {"k": 0.8, "tooth": 44.0}}
+	"truck": {"k": 0.8, "tooth": 34.0}, "genesis": {"k": 0.8, "tooth": 44.0},
+	"torito": {"k": 0.3, "tooth": 30.0}, "clasico60": {"k": 0.45, "tooth": 36.0}, "kodiak": {"k": 0.6, "tooth": 34.0}, "titan": {"k": 0.8, "tooth": 28.0},
+	"rally80": {"k": 0.9, "tooth": 46.0}, "kl5": {"k": 0.6, "tooth": 44.0}, "trilux": {"k": 0.6, "tooth": 42.0}, "trilux_s": {"k": 0.7, "tooth": 44.0},
+	"trilux_gt": {"k": 0.9, "tooth": 46.0}, "safari": {"k": 0.7, "tooth": 32.0}, "veltor": {"k": 0.5, "tooth": 52.0}, "veltor_s": {"k": 0.6, "tooth": 54.0},
+	"volcan": {"k": 1.0, "tooth": 58.0}, "veltor_gtr": {"k": 1.2, "tooth": 40.0}}
+## Carácter del motor de los autos nuevos (los de siempre conservan su voz): tono (f), brillo del filtro (cut), volumen (eng), ruido mecánico (noise) y petardeos (pops)
+const VOICE := {
+	"torito": {"f": 0.92, "cut": 0.85, "eng": 1.10, "noise": 1.3, "pops": 1.2},
+	"clasico60": {"f": 1.08, "cut": 0.90, "eng": 0.95, "noise": 1.2, "pops": 1.0},
+	"kodiak": {"f": 0.85, "cut": 0.80, "eng": 1.10, "noise": 1.5, "pops": 0.8},
+	"titan": {"f": 0.72, "cut": 0.65, "eng": 1.25, "noise": 1.8, "pops": 0.4},
+	"rally80": {"f": 1.00, "cut": 1.15, "eng": 1.00, "noise": 1.1, "pops": 1.6},
+	"kl5": {"f": 1.10, "cut": 1.30, "eng": 0.95, "noise": 0.9, "pops": 1.0},
+	"trilux": {"f": 1.00, "cut": 1.00, "eng": 1.00, "noise": 1.0, "pops": 1.0},
+	"trilux_s": {"f": 1.00, "cut": 1.10, "eng": 1.00, "noise": 1.0, "pops": 1.1},
+	"trilux_gt": {"f": 1.02, "cut": 1.20, "eng": 1.05, "noise": 1.1, "pops": 1.3},
+	"safari": {"f": 0.90, "cut": 1.00, "eng": 1.20, "noise": 1.4, "pops": 0.9},
+	"veltor": {"f": 1.00, "cut": 1.25, "eng": 0.95, "noise": 0.9, "pops": 1.0},
+	"veltor_s": {"f": 1.00, "cut": 1.30, "eng": 0.95, "noise": 0.9, "pops": 1.1},
+	"volcan": {"f": 1.00, "cut": 1.15, "eng": 0.95, "noise": 0.8, "pops": 0.8},
+	"veltor_gtr": {"f": 1.00, "cut": 1.40, "eng": 1.10, "noise": 1.2, "pops": 1.4}}
 ## constante de tiempo de cada parámetro (como setTargetAtTime de Web Audio)
 const TIME_K := {"f0": 0.012, "cut": 0.03, "eng": 0.03, "engn": 0.05, "roll": 0.08, "sq": 0.05, "sqf": 0.03, "grav": 0.03, "wind": 0.1, "windf": 0.1,
 	"gw": 0.05, "wf": 0.03, "gwe": 0.04, "gwef": 0.02, "tw": 0.05, "twf": 0.06, "tb": 0.08, "tbf": 0.05, "rain": 0.4, "ai": 0.08, "aif": 0.05}
@@ -33,6 +60,7 @@ var ai_bus := -1
 var lp_engine: AudioEffectLowPassFilter
 var active := true
 var vehicle_id := "t1plus"
+var voice := {} # carácter del motor (VOICE) del auto actual; vacío = la voz de siempre
 var pop_t := -10.0 # última vez que sonó un petardeo (pausa mínima entre ráfagas)
 var pops_ok := false # lo calcula update(): hay petardeo/flutter solo en 1ª–2ª o bajando de marcha
 var mix := {"eng": 1.0, "surf": 0.3, "wind": 0.3, "turbo": 1.0, "gear": 1.0}
@@ -181,6 +209,12 @@ func set_active(v: bool) -> void:
 func rain(on: bool) -> void:
 	tgt["rain"] = 0.10 if on else 0.0
 
+## elige la voz del auto: los autos nuevos tienen la suya (VOICE, TURBO_SND, GEAR_SND); los demás siguen como estaban
+func set_vehicle(id: String) -> void:
+	if VOICE.has(id):
+		vehicle_id = id
+		voice = VOICE[id]
+
 func _r() -> float:
 	return rng.randf()
 
@@ -192,7 +226,7 @@ func pops(_n: int) -> void:
 	for i in _n:
 		var d := 0.03 + _r() * 0.35
 		var f := 700.0 + _r() * 700.0
-		var a: float = SND["pops"] * (0.35 + _r() * 0.35)
+		var a: float = SND["pops"] * float(voice.get("pops", 1.0)) * (0.35 + _r() * 0.35)
 		get_tree().create_timer(d).timeout.connect(_shoot.bind("pop", a, f / 1000.0))
 
 ## el pedal que se usa para decidir los petardeos (el valor del cuadro)
@@ -224,14 +258,14 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 	var rpm := p.rpm
 	var rn := clampf((rpm - V.idleRpm) / (V.maxRpm - V.idleRpm), 0.0, 1.0)
 	var load := clampf(p.load, 0.0, 1.0)
-	var f0 := rpm / 60.0 * V.firingOrder
+	var f0 := rpm / 60.0 * V.firingOrder * float(voice.get("f", 1.0))
 	tgt["f0"] = f0
-	tgt["cut"] = 260.0 + load * 1500.0 + rn * 1600.0
+	tgt["cut"] = (260.0 + load * 1500.0 + rn * 1600.0) * float(voice.get("cut", 1.0))
 	var sp := sqrt(p.vx * p.vx + p.vz * p.vz)
 	# parado y sin acelerar el motor no suena (el ralentí sonaba a motor de turismo carretera con petardeos): el sonido entra con el pedal o al andar
 	var alive := clampf(maxf(p.throttle * 2.5, (sp - 0.6) / 3.0), 0.0, 1.0)
-	tgt["eng"] = SND["engine"] * mix["eng"] * (0.35 + 0.25 * rn) * (0.62 + 0.38 * load) * alive
-	tgt["engn"] = 0.25 * load
+	tgt["eng"] = SND["engine"] * float(voice.get("eng", 1.0)) * mix["eng"] * (0.35 + 0.25 * rn) * (0.62 + 0.38 * load) * alive
+	tgt["engn"] = 0.25 * load * float(voice.get("noise", 1.0))
 	var asf := 0.0
 	var loose := 0.0
 	var sl := 0.0
