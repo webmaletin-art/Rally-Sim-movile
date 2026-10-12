@@ -17,7 +17,7 @@ const PRODUCTS := {
 	"car_hyper": {"kind": "unlock", "name": "Vortex Aerion", "icon": "🚀", "desc": "Hypercar híbrido de 1.000 cv con tracción integral."},
 	# Bolsas de monedas (consumibles). Precio sugerido en USD (a confirmar en Play Console): cada bolsa rinde más que la anterior.
 	# Las monedas NO compran los autos premium ni el DR Bisonte XR (esos van aparte), así que nada de esto rompe el juego:
-	# sólo acelera lo que igual se consigue corriendo (autos de la tienda de $18.000 a $120.000, piezas, pintura, nafta).
+	# sólo acelera lo que igual se consigue corriendo (autos de la tienda de $9.000 a $225.000, piezas, pintura, nafta).
 	"dr_coins_s": {"kind": "credits", "amount": 5000, "name": "Puñado de monedas", "icon": "🪙",
 		"desc": "$ 5.000 para el garaje y el taller. Alcanza para un buen par de piezas."},
 	"dr_coins_m": {"kind": "credits", "amount": 12000, "name": "Bolsa de monedas", "icon": "💰",

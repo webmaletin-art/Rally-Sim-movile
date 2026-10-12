@@ -5,6 +5,7 @@ extends RefCounted
 
 const Kit := preload("res://game/ui/ui_kit.gd")
 const Tr := preload("res://game/i18n/tr.gd")
+const Release := preload("res://game/data/release.gd")
 
 var m # menu.gd
 var mail := "" # lo escrito, para que no se pierda si se redibuja la pantalla
@@ -15,9 +16,9 @@ var first_run := false # la pantalla de bienvenida del primer inicio (sin botón
 func _online() -> Node:
 	return m.app.online
 
-## La cuenta ya no se ofrece al abrir el juego (sólo hace falta para el modo online)
-static func should_offer(_profile: RefCounted, _online: Node) -> bool:
-	return false
+## La cuenta no se ofrece al abrir el juego (sólo hace falta para el modo online), salvo que esté encendido «iniciar sesión para jugar» (Release.LOGIN_REQUIRED)
+static func should_offer(profile: RefCounted, online: Node) -> bool:
+	return Release.login_wall(profile, online)
 
 func build(arg) -> void:
 	var mode := str(arg) if arg != null else "menu"
@@ -39,10 +40,13 @@ func _intro(first: bool) -> void:
 	first_run = first
 	m.set_title("TU CUENTA")
 	m.body.add_child(Kit.label("Cuenta para el modo online", 24, Kit.ACCENT))
-	m.body.add_child(Kit.wrap("El modo online (rankings y, más adelante, carreras contra otros pilotos) necesita una cuenta con tu correo. El resto del juego funciona sin conexión y sin cuenta, y tu progreso (autos y créditos) se guarda en este teléfono.", 15, Kit.TEXT, 300))
+	if Release.LOGIN_REQUIRED:
+		m.body.add_child(Kit.wrap("Para jugar iniciá sesión con tu correo. Con la cuenta tu garaje, tus créditos y tus marcas quedan a salvo y los podés usar desde otro teléfono. Una vez adentro, el juego también anda sin conexión.", 15, Kit.TEXT, 300))
+	else:
+		m.body.add_child(Kit.wrap("El modo online (rankings y, más adelante, carreras contra otros pilotos) necesita una cuenta con tu correo. El resto del juego funciona sin conexión y sin cuenta, y tu progreso (autos y créditos) se guarda en este teléfono.", 15, Kit.TEXT, 300))
 	m.body.add_child(Kit.button("✉ CREAR CUENTA CON CORREO", func() -> void: m.go("account", "signup"), true, 19, Vector2(0, 58)))
 	m.body.add_child(Kit.button("Ya tengo cuenta · Iniciar sesión", func() -> void: m.go("account", "login"), false, 17, Vector2(0, 50)))
-	if first:
+	if first and not Release.LOGIN_REQUIRED:
 		m.body.add_child(Kit.button("Jugar sin cuenta", func() -> void:
 			_skip()
 			m.go("home", null, false), false, 17, Vector2(0, 50)))

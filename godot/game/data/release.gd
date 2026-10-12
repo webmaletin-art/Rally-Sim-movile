@@ -25,6 +25,15 @@ const ONLINE_OPEN := false
 static func online_open(profile: RefCounted) -> bool:
 	return ONLINE_OPEN or dev(profile)
 
+## «Iniciar sesión para jugar»: con true (y el modo online abierto y Supabase configurado) la primera pantalla pide la cuenta con correo y no deja entrar sin ella.
+## Apagado a propósito: TODO el juego anda sin conexión y sin cuenta (y Google Play pide que se pueda revisar sin registrarse); sólo el modo online pide cuenta, y el servidor
+## ya la exige para la economía, el mercado, el chat y la presencia (migración require_account). Para encenderlo, junto con ONLINE_OPEN: poner true acá (ver docs/ONLINE_SUPABASE.md).
+const LOGIN_REQUIRED := false
+
+## ¿Hay que mostrar la pared de «creá tu cuenta / iniciá sesión»? (`required` sólo se cambia en las pruebas)
+static func login_wall(profile: RefCounted, online: Node, required := LOGIN_REQUIRED) -> bool:
+	return required and online != null and online.configured() and online_open(profile) and not online.is_account()
+
 ## Hay compras dentro del juego para desbloquear el juego completo (si es false, lo bloqueado dice «próxima actualización»)
 const IAP_FULL := true
 

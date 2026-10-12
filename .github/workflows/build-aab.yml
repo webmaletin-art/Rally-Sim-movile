@@ -180,6 +180,16 @@ jobs:
           godot --headless --export-release "Google Play (AAB)" ../build/DreamRacing-play.aab
           ls -la ../build
 
+      - name: Revisar páginas de 16 KB (exigencia de Google Play)
+        # Godot 4.4.1 NO cumple (libgodot_android.so queda alineada a 4 KB): el AAB sale igual para poder probarlo, pero Play lo va a rechazar. Con Godot 4.5+ pasa a verde;
+        # entonces sacar el continue-on-error. Ver docs/PLAY_STORE.md, sección 7.1.
+        continue-on-error: true
+        run: |
+          if ! python3 tools/export/check_aab_alignment.py build/DreamRacing-play.aab; then
+            echo "::warning::El AAB tiene bibliotecas de 64 bits sin alinear a 16 KB: Google Play lo rechaza. Hace falta Godot 4.5 o más nuevo (docs/PLAY_STORE.md, 7.1)"
+            exit 1
+          fi
+
       - name: Nombre del archivo según firma y compras
         run: |
           n=DreamRacing-play-v${VERSION_CODE}
