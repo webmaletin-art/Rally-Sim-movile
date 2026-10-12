@@ -8,3 +8,6 @@ __pycache__/
 *.pyc
 tools/cars/src/car1[0-9].glb
 tools/cars/src/car2[0-9].glb
+
+# texturas que Godot extrae de los GLB al importarlos (se regeneran solas)
+godot/game/models/cars/*_[0-9].png
