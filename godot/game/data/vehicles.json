@@ -2977,5 +2977,123 @@
   "dragCoef": 0.84,
   "stabilityAssist": 0.3,
   "powerScale": 1
+ },
+ "veltor_gtr_hd": {
+  "name": "Veltor Max Pro GTR Original",
+  "visualType": "veltor_gtr_hd",
+  "icon": "👑",
+  "tagline": "Hypercar de pista · textura original, sin reducir",
+  "firingOrder": 12,
+  "mass": 1600,
+  "weightFront": 0.43,
+  "comHeight": 0.42,
+  "Ixx": 672,
+  "Iyy": 1905,
+  "Izz": 2251,
+  "wheelBase": 2.488,
+  "trackF": 1.639,
+  "trackR": 1.657,
+  "wheelRadius": 0.322,
+  "rimRadius": 0.26,
+  "tireWidth": 0.3,
+  "wheelInertia": 8.0,
+  "rideOffset": 0.0,
+  "hardpointY": 0,
+  "travel": 0.1,
+  "freqF": 1.8,
+  "freqR": 1.9,
+  "zetaBump": 0.4,
+  "zetaRebound": 0.68,
+  "arbF": 3700,
+  "arbR": 1850,
+  "bumpStopK": 240000,
+  "bumpStopC": 6700,
+  "antiSquat": 0.6,
+  "antiDive": 0.4,
+  "rollCenter": 0.2,
+  "mu": 1.18,
+  "gripFront": 1,
+  "gripRear": 1,
+  "slipPeakLong": 0.11,
+  "slipPeakLat": 0.15,
+  "tireFalloff": 1.45,
+  "rolling": 0.012,
+  "surfGrip": {
+   "asphalt": 1,
+   "dirt": 0.62,
+   "shoulder": 0.72,
+   "grass": 0.45,
+   "outside": 0.4,
+   "mud": 0.35
+  },
+  "peakTorque": 1160,
+  "idleRpm": 900,
+  "launchRpm": 3780,
+  "maxRpm": 9000,
+  "torqueCurve": [
+   [
+    0,
+    0.4
+   ],
+   [
+    1250,
+    0.62
+   ],
+   [
+    3050,
+    0.88
+   ],
+   [
+    4950,
+    1
+   ],
+   [
+    7400,
+    1
+   ],
+   [
+    8550,
+    0.9
+   ],
+   [
+    9450,
+    0.6
+   ]
+  ],
+  "engineInertia": 0.16,
+  "engineBrake": 255,
+  "gears": [
+   3.2,
+   2.3,
+   1.8,
+   1.45,
+   1.2,
+   1.02,
+   0.87,
+   0.76
+  ],
+  "reverseRatio": 3.2,
+  "finalDrive": 3.7,
+  "efficiency": 0.88,
+  "clutchTime": 0.3,
+  "shiftUpRpm": 8370,
+  "shiftDownRpm": 3780,
+  "shiftTime": 0.06,
+  "driveType": "AWD",
+  "frontDriveRatio": 0.4,
+  "rearDriveRatio": 0.6,
+  "centerDiffBias": 0.35,
+  "lsd": 1300,
+  "tractionControl": true,
+  "tcSlip": 0.2,
+  "brakeTorque": 7200,
+  "brakeBiasFront": 0.62,
+  "abs": true,
+  "absSlip": 0.14,
+  "maxSteer": 0.5,
+  "steerResponse": 11.5,
+  "dragCoef": 0.84,
+  "stabilityAssist": 0.3,
+  "powerScale": 1
  }
 }

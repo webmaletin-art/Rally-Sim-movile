@@ -40,6 +40,12 @@ reduce a ~24 k (alta) y ~5 k (baja) triángulos, igual que los anteriores. Los v
 Los 14 se compran con créditos del juego (ninguno es premium de Play). Pruebas: `cars_test.gd` (aceleración/frenada/viraje de todos), capturas con
 `tools/godot/run_shot.sh out.png --menu --autotest=<id> --auto --cam=chase|cabin`.
 
+### Versión «original» (textura propia, sin bajar polígonos)
+`veltor_gtr_hd` = el Veltor Max Pro GTR tal como vino del modelador: 345 mil triángulos y su textura de 1024². `python3 tools/cars/build_hd.py veltor_gtr_hd veltor_gtr <crudo.glb>`
+lo pone en el mismo lugar que el GTR normal (misma escala, piso y centro; mismo json con `"textured": true`), así ruedas, suspensión y física calzan. `car_visual.gd` no lo
+repinta (ni colores ni rotulados) y con la cámara interior dibuja solo las caras de frente. La versión lejana (`_lo`) es la liviana del GTR pintada por el juego.
+Pesa unos 13 MB y más en el teléfono: es para probar la calidad máxima. Para hacer lo mismo con otro auto: agregarlo a `batch2.py` (SPEC y ORDER), correr `build_hd.py`, `make_vehicles.py`, `gen_decals.py`, `gen_thumbs.gd`.
+
 ### Sonido por auto
 `car_audio.gd` tiene `VOICE` (tono, brillo, volumen, ruido y petardeos), `TURBO_SND` (silbido, flutter) y `GEAR_SND` (aullido de la caja) por id para los autos nuevos
 (`set_vehicle(id)` en `race.gd`). Los 12 autos anteriores conservan su voz.

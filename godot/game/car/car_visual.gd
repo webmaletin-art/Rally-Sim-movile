@@ -134,11 +134,21 @@ func _setup_own(paint: Color, rim: Color, finish: String) -> void:
 ## Pone la pintura (afuera: doble cara · adentro: solo caras de frente, así con la cámara interior se ve el capó real y no el techo)
 func _apply_own_mats(pattern: int, paint: Color, accent: Color, finish: String, accent2: Color) -> void:
 	_own_mats.clear()
+	var textured: bool = bool(meta.get("textured", false)) and not lo # versión «original»: lleva su propia textura, no se repinta
 	for mi in _mesh_instances(shell):
 		var mesh: Mesh = mi.mesh
 		for s in mesh.get_surface_count():
 			var mat := mesh.surface_get_material(s)
 			var nm := mat.resource_name if mat else ""
+			if textured:
+				if mat is BaseMaterial3D:
+					var m_out := (mat as BaseMaterial3D).duplicate() as BaseMaterial3D
+					m_out.cull_mode = BaseMaterial3D.CULL_DISABLED
+					var m_in := m_out.duplicate() as BaseMaterial3D
+					m_in.cull_mode = BaseMaterial3D.CULL_BACK # con la cámara adentro: solo las caras de frente (se ve el capó real y no el techo)
+					mi.set_surface_override_material(s, m_out)
+					_own_mats.append({"mi": mi, "s": s, "out": m_out, "in": m_in})
+				continue
 			if nm == "glass":
 				mi.set_surface_override_material(s, _glass_material())
 				continue

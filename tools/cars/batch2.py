@@ -111,5 +111,13 @@ SPEC = {
                         'La bestia del club: alerón gigante, gomas slick y más de mil caballos. En una pista seca no hay nada que se le acerque.', '#1a4fe0', '#0b0c0e', '#00b4d8')),
 }
 
+# versión «original» del Veltor Max Pro GTR: el modelo crudo con su textura y sin bajarle los polígonos (tools/cars/build_hd.py); misma física que el GTR
+import copy
+SPEC['veltor_gtr_hd'] = copy.deepcopy(SPEC['veltor_gtr'])
+SPEC['veltor_gtr_hd']['name'] = 'Veltor Max Pro GTR Original'
+SPEC['veltor_gtr_hd']['tagline'] = 'Hypercar de pista · textura original, sin reducir'
+SPEC['veltor_gtr_hd']['cat'].update(model='Max Pro GTR Original', kind='Hypercar de pista (original)', price=50000,
+                                    desc='El GTR tal como vino del modelador: con su pintura y detalles originales y todos sus polígonos. Para probar la calidad máxima (pesa más en el teléfono).')
+
 # orden de aparición en la tienda (de menor a mayor precio)
-ORDER = ['torito', 'clasico60', 'titan', 'kodiak', 'rally80', 'kl5', 'trilux', 'trilux_s', 'safari', 'trilux_gt', 'veltor', 'veltor_s', 'volcan', 'veltor_gtr']
+ORDER = ['torito', 'clasico60', 'titan', 'kodiak', 'rally80', 'kl5', 'trilux', 'trilux_s', 'safari', 'trilux_gt', 'veltor', 'veltor_s', 'volcan', 'veltor_gtr', 'veltor_gtr_hd']

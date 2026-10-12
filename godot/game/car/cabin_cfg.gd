@@ -34,6 +34,7 @@ const OVR := {
 	"veltor": {"wmul": 1.60, "eye_h": 0.20, "back": -0.95, "cage": false},
 	"veltor_s": {"wmul": 1.60, "eye_h": 0.20, "back": -0.95, "cage": false},
 	"veltor_gtr": {"wmul": 1.55, "eye_h": 0.20, "back": -0.95, "cage": true},
+	"veltor_gtr_hd": {"wmul": 1.55, "eye_h": 0.20, "back": -0.95, "cage": true},
 	"volcan": {"wmul": 1.40, "eye_h": 0.20, "back": -0.9, "cage": false},
 	"buggy": {"cage": false, "cowlZ": 0.45, "cowlY": 0.9, "eyeZ": -0.35, "eyeY": 1.32, "back": -1.2, "halfW": 0.6},
 }
