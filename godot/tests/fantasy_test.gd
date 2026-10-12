@@ -94,7 +94,7 @@ func _init() -> void:
 		var w := FantasyWorld.new()
 		w.setup_world(t, 0.75, str(m["world"]))
 		check(w.inst_total > 15000, "el mundo coloca %d piezas" % w.inst_total)
-		_duel(t, vehicles, "gt", "hatch")
+		_duel(t, vehicles, "gt", "muscle")
 	quit(1 if fail else 0)
 
 func _car(t, vehicles: Dictionary, id: String, slot: int, skill: float) -> Array:

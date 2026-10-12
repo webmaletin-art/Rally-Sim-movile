@@ -16,7 +16,7 @@ func check(ok: bool, msg: String) -> void:
 ## Un «servidor» mínimo con las mismas reglas que el SQL para las acciones que se prueban
 class FakeOnline extends Node:
 	var credits := 100000
-	var veh: Dictionary = {"instance": "i-1", "vehicle": "pickup", "upg": {}, "tires": "street", "tiresOwned": ["street"], "tireWear": {}, "paint": {"body": "#b31f24", "accent": "#1b1d22", "rim": "#23262b"}, "partsOwned": [], "mods": {}, "km": 0, "status": "garage"}
+	var veh: Dictionary = {"instance": "i-1", "vehicle": "pickup", "upg": {}, "tires": "street", "tiresOwned": ["street"], "tireWear": {}, "paint": {"body": "#b31f24", "accent": "#1b1d22", "rim": "#23262b", "livery": 11}, "partsOwned": [], "mods": {}, "km": 0, "status": "garage"}
 	var at_shop := false
 	var calls: Array = []
 	func call_fn(fn: String, args: Dictionary, _need := true) -> Dictionary:

@@ -53,3 +53,7 @@ Los modelos crudos (`Autos_texturas.part*.rar` + `MoustExtreme.glb`) NO están e
 
 ## Paquetes de contenido
 Los autos pesan ~500 MB: el contenido se parte en `content.pck` (todo menos `game/models/cars/`) y `cars.pck` (los autos). `tools/export/split_presets.py` arma el preset «Cars»; el APK liviano baja los dos (ver `bootstrap/boot.gd`), `cars.pck` solo si cambió (su versión es su hash). Ya no se arma el APK «completo». El AAB de Play (preset.3) lleva todo adentro y supera el límite: hay que usar Play Asset Delivery antes de subirlo.
+
+## Pendiente para abrir el modo online
+- Sumar los 26 autos a `tools/online/online_catalog.json` + migración de Supabase (la pintura de fábrica de todos es `livery: 11`).
+- El color de las letras (`paint.text`) todavía no viaja al servidor (`SERVER_PAINT_KEYS` en `online_profile.gd`): hay que agregarlo junto con la migración.

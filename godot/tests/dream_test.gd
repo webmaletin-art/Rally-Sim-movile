@@ -84,7 +84,7 @@ func _init() -> void:
 	check(dw.inst_total > 60000, "el mundo planta %d flores, arbustos y árboles" % dw.inst_total)
 	# el rival se queda a la par: un auto «jugador» (IA a fondo) contra un rival con otro auto; la distancia entre los dos se mantiene corta
 	var vehicles: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
-	for pair in [["gt", "hatch"], ["hatch", "gt"]]:
+	for pair in [["gt", "muscle"], ["muscle", "gt"]]:
 		_duel(t, vehicles, str(pair[0]), str(pair[1]))
 	quit(1 if fail else 0)
 
