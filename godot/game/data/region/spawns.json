@@ -1,0 +1,66 @@
+[
+ {
+  "name": "Bahía Ámbar",
+  "sub": "estación de servicio",
+  "x": -36501.4,
+  "z": -1968.0,
+  "yaw": 2.2249,
+  "kind": "ciudad"
+ },
+ {
+  "name": "Monte Sol",
+  "sub": "estación de servicio",
+  "x": 29631.8,
+  "z": -47159.3,
+  "yaw": -2.0564,
+  "kind": "ciudad"
+ },
+ {
+  "name": "Paso del Cóndor",
+  "sub": "estación de servicio",
+  "x": -49578.6,
+  "z": -29334.6,
+  "yaw": 2.6345,
+  "kind": "ciudad"
+ },
+ {
+  "name": "Puerto Alba",
+  "sub": "estación de servicio",
+  "x": 42893.3,
+  "z": -90.2,
+  "yaw": 2.8296,
+  "kind": "ciudad"
+ },
+ {
+  "name": "Quebrada Roja",
+  "sub": "estación de servicio",
+  "x": 4421.1,
+  "z": -80665.2,
+  "yaw": 0.661,
+  "kind": "ciudad"
+ },
+ {
+  "name": "Río Hondo",
+  "sub": "estación de servicio",
+  "x": 49660.3,
+  "z": -21776.1,
+  "yaw": -2.8633,
+  "kind": "ciudad"
+ },
+ {
+  "name": "Santa Aurora",
+  "sub": "estación de servicio",
+  "x": 2470.4,
+  "z": -37428.7,
+  "yaw": -2.2547,
+  "kind": "ciudad"
+ },
+ {
+  "name": "Villa Cóndor",
+  "sub": "estación de servicio",
+  "x": -34079.4,
+  "z": -51958.8,
+  "yaw": 0.8483,
+  "kind": "ciudad"
+ }
+]

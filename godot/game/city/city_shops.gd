@@ -32,6 +32,8 @@ func setup(p_race, p_world, p_city) -> void:
 		pass # al volver de un taller el auto ya está sobre el círculo: no se activa hasta que se aleje
 
 func _node(p: Dictionary) -> Node3D:
+	if p.get("region", false):
+		return world.region_world.service_node("shop_" + str(p["id"])) if world.region_world != null else null
 	var k: Vector2i = city.chunk_of(float((p["pos"] as Vector2).x), float((p["pos"] as Vector2).y))
 	if not world.chunks.has(k):
 		return null

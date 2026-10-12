@@ -16,7 +16,11 @@ const PARK_R := 44.0 # radio de la calle que rodea al Parque del Drift
 const AVE := [[12.0, 1.0], [30.0, 1.0], [9.0, 2.0], [36.0, 1.0], [14.0, 2.0], [26.0, 1.0], [10.0, 2.0], [32.0, 1.0]] # por avenida: [desvío máximo (m), vueltas de curva cada 260 m]: no todas salen igual
 const GRID_A0 := 135.0 # el barrio de manzanas cuadradas ocupa el sector entre la avenida 4 (135°) y la 5 (180°)
 const GRID_A1 := 180.0
-const POCKET := Vector2(6000.0, 0.0) # centro del túnel en cruz: un «bolsillo» del mundo, lejos de la ciudad (se entra y se sale por las bocas, con un fundido)
+const POCKET := Vector2(90000.0, 0.0) # centro del túnel en cruz: un «bolsillo» del mundo, lejos de la ciudad y de la región (se entra y se sale por las bocas, con un fundido)
+const POCKET_X0 := 75000.0 # desde acá (x) es el bolsillo
+const REGION_R := 2250.0 # más allá de este radio el terreno lo da la región (si está cargada)
+static func in_pocket(x: float) -> bool:
+	return x > POCKET_X0
 const GARAGE_RG := 26.0 # Estacionamiento Central: radio de la planta baja (al nivel de la calle)
 const GARAGE_RU := 20.0 # radio de la planta alta y del subsuelo
 const GARAGE_RAMP := 40.0 # largo de cada rampa entre las paredes de las salas
@@ -27,7 +31,7 @@ const RINGS := [130.0, 260.0, 390.0, 520.0, 650.0, 780.0, 910.0, 1040.0]
 const COAST_R := 1120.0
 const RURAL_END := 2300.0
 const EXIT_TO := {20: "adventure", 60: "plaza"} # las salidas abiertas: la Ruta 20 sigue por la Ruta de los Sueños (Aventura); la Ruta 60 termina en la Plaza de Drift (está ahí mismo: no hay otro mapa)
-const WORLD_VERSION := 5 # sube cuando cambia el mapa (la «última ubicación» guardada de una versión anterior ya no sirve)
+const WORLD_VERSION := 6 # sube cuando cambia el mapa (la «última ubicación» guardada de una versión anterior ya no sirve)
 const DRIFT_GATE := 0.996 # la abertura de la plaza donde entra la ruta (coseno del ángulo: unos 8 m a cada lado)
 const DRIFT_R := 90.0 # radio de la Plaza de Drift, al final de la Ruta 60
 const HILL_C := Vector2(-1086.0, -1086.0) # centro de la colina (al noroeste)
@@ -92,9 +96,18 @@ static func _mount(x: float, z: float, m: Vector4) -> float:
 	return m.w * (1.0 - smoothstep(0.0, m.z, md))
 
 ## Altura del terreno en (x, z): una meseta (la ciudad), el mar al sur, lomas suaves afuera y una colina al noroeste
+var region # RegionData (o null): el terreno y los caminos de todo lo que rodea a la ciudad
+
+## Altura del terreno del MUNDO: la de la ciudad y, más allá de REGION_R, la de la región (montañas, llanuras y los cortes de las rutas)
 func height(x: float, z: float) -> float:
-	if x > 3000.0:
+	if x > POCKET_X0:
 		return 0.0 # el bolsillo de los túneles y del estacionamiento es plano
+	if region != null and x * x + z * z > REGION_R * REGION_R:
+		return region.height(x, z)
+	return base_height(x, z)
+
+## Altura de la ciudad sin la región (una función pura de la posición)
+func base_height(x: float, z: float) -> float:
 	var r := sqrt(x * x + z * z)
 	var h := 9.0 * smoothstep(SEA_Z, SEA_Z - 220.0, z)
 	h += 1.4 * sin(x * 0.0021 + 1.0) * cos(z * 0.0017)

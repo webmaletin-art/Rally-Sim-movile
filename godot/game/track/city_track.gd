@@ -6,8 +6,12 @@ extends "res://game/track/drift_track.gd"
 const WorldSurfaces := preload("res://game/world/world_surfaces.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityWorld := preload("res://game/city/city_world.gd")
+const RegionData := preload("res://game/region/region_data.gd")
+const RegionWorld := preload("res://game/region/region_world.gd")
+const RegionServices := preload("res://game/region/region_services.gd")
 
 var city: CityLayout
+var region: RegionData # el mundo de afuera de la ciudad (montañas, rutas, pueblos); null si falta el archivo
 var world_node: Node3D
 var props := {} # Vector2i (16 m) -> PackedFloat32Array [x, z, r, id, …] de cosas que se pueden golpear (postes, árboles, semáforos)
 var _prop_alive := {} # id -> true
@@ -20,13 +24,21 @@ var _mx := Mutex.new() # la física corre en hilos aparte: los objetos se tocan 
 func _init() -> void:
 	city = CityLayout.new()
 	city.build()
+	var rg := RegionData.new()
+	if rg.load_file(city):
+		region = rg
+		city.region = rg
+		RegionServices.install(city, rg)
 	cones = ConeField.new()
 	cones.setup(PackedVector2Array())
 	samples = [Vector3(0, 0, 0)]
 	n = 1
 	map_bounds = Rect2(-RURAL_END_X, -RURAL_END_X, RURAL_END_X + 3000.0, RURAL_END_X * 2.0) # (llega hasta x = 3000: la Ruta Panorámica sale al este)
+	if region != null:
+		map_bounds = Rect2(region.x0, region.z0, float(region.gw) * region.cell, float(region.gh) * region.cell)
 
 const RURAL_END_X := 2300.0
+const REGION_R2 := 2250.0 * 2250.0 # más allá de este radio manda la región
 
 func _layout() -> void:
 	pass # la plaza de drift no se arma: la ciudad viene de CityLayout
@@ -34,6 +46,15 @@ func _layout() -> void:
 # ───────────────────────── interfaz de pista ─────────────────────────
 func ground_info(x: float, z: float) -> Vector2:
 	var pr := city.probe(x, z)
+	var far := region != null and x * x + z * z > REGION_R2 and x < CityLayout.POCKET_X0
+	if far:
+		# los caminos de la región (la circunvalación, las autopistas…): gana el que tenga más holgura (los de la ciudad terminan donde empiezan los de la región)
+		var rp := region.probe(x, z, RegionData.REACH)
+		var city_in: bool = pr[0] > -0.05
+		if rp[0] > -0.05 and not (city_in and float(pr[0]) >= float(rp[0])):
+			return region.ground(x, z)
+		if not city_in:
+			return region.ground(x, z)
 	if pr[0] > -0.05:
 		return Vector2(float(pr[4]), 0.0 if float(pr[1]) <= float(pr[5]) else 2.0)
 	var gh := city.height(x, z)
@@ -88,10 +109,19 @@ func push_world(x: float, z: float, r: float) -> Vector3:
 func _push_locked(x: float, z: float, r: float, use_dyn := true) -> Vector3:
 	var pr := city.probe(x, z)
 	var best := Vector3.ZERO
-	if pr[6] >= 0.0:
+	var rw := Vector3.ZERO
+	var rp_in := false
+	if region != null and x * x + z * z > REGION_R2 and x < CityLayout.POCKET_X0:
+		# las rutas de la región: pared invisible a unos metros de la banquina; la unión con los corredores de la ciudad (donde una sigue a la otra) no empuja
+		var rpr := region.probe(x, z, 30.0)
+		rp_in = rpr[0] > -1e8 and rpr[4] < rpr[5] + region.wall_at(int(rpr[1]), x, z)
+		rw = region.wall_push(x, z, r)
+	if pr[6] >= 0.0 and not (rp_in and float(pr[0]) < 0.0):
 		var pen := r - float(pr[0])
 		if pen > 0.0:
 			best = Vector3(float(pr[2]), float(pr[3]), minf(pen, 6.0))
+	if rw.z > best.z:
+		best = rw
 	if not city.drift.is_empty(): # la pared invisible de la plaza de drift (el cerco), con una abertura donde entra la ruta
 		var dc: Vector2 = city.drift["c"]
 		var dd := Vector2(x, z) - dc
@@ -231,6 +261,12 @@ func _remove_prop_locked(id: int, x: float, z: float) -> void:
 func build_world() -> Node3D:
 	world_node = CityWorld.new()
 	(world_node as CityWorld).setup(self)
+	if region != null:
+		var rw := RegionWorld.new()
+		rw.name = "region"
+		rw.setup(self, world_node)
+		world_node.add_child(rw)
+		(world_node as CityWorld).region_world = rw
 	road_mat = StandardMaterial3D.new() # el clima no toca estos materiales
 	ground_mat = StandardMaterial3D.new()
 	return world_node

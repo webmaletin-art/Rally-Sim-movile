@@ -3,6 +3,7 @@ extends RefCounted
 ## world/world_activities.gd; acá se detecta lo que hace el auto cada cuadro, se dibujan las marcas y se guarda lo logrado en el perfil (offline: profile.d["act"]).
 ## Online todavía no: los créditos online los dará el servidor (ver docs/ECONOMIA_ONLINE.md), así que con cfg.online no hace nada.
 
+const CityLayout := preload("res://game/city/city_layout.gd")
 const WA := preload("res://game/world/world_activities.gd")
 const WP := preload("res://game/world/world_progress.gd")
 const CityProps := preload("res://game/city/city_props.gd")
@@ -106,7 +107,7 @@ func update(dt: float) -> void:
 	if not active or race.cars.is_empty():
 		return
 	var ph = race.cars[0].phys
-	if ph.px > 3000.0:
+	if CityLayout.in_pocket(ph.px):
 		return # bajo tierra
 	var pos := Vector2(ph.px, ph.pz)
 	var spd := sqrt(ph.vx * ph.vx + ph.vz * ph.vz)
@@ -148,7 +149,7 @@ func _fame_tick(pos: Vector2, dt: float) -> void:
 	var vis: Dictionary = _rep()["visited"]
 	for p in city.pois:
 		var id := str(p["id"])
-		if vis.has(id):
+		if vis.has(id) or p.get("region", false):
 			continue
 		if (p["pos"] as Vector2).distance_to(pos) < 28.0:
 			vis[id] = true
@@ -237,8 +238,8 @@ func _delivery(pos: Vector2, spd: float, dt: float) -> void:
 					bd = d
 					best = o
 					best["seq"] = seq + k
-			if best.is_empty():
-				return
+			if best.is_empty() or bd > 3500.0 * 3500.0:
+				return # lejos de la ciudad (en la región) no se ofrecen encargos
 			offer = best
 			del_state = "pickup"
 			_toast(Tr.t("📦 Encargo: pasá a buscarlo por %s") % CityNames.t(str(sites[int(offer["from"])]["name"])))

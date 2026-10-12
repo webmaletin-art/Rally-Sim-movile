@@ -97,7 +97,7 @@ static func trial_reward(new_medal: int, old_medal: int) -> int:
 static func delivery_sites(layout: RefCounted) -> Array:
 	var out: Array = []
 	for p in layout.pois:
-		if DELIVERY_KINDS.has(str(p["kind"])) and p.has("front"):
+		if DELIVERY_KINDS.has(str(p["kind"])) and p.has("front") and not p.get("region", false):
 			out.append({"name": str(p["name"]), "pos": p["front"] as Vector2, "id": str(p["id"])})
 	return out
 

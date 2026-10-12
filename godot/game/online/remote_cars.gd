@@ -3,6 +3,7 @@ extends Node3D
 ## Entre una lectura y la otra se estima dónde está (la última posición + rumbo × velocidad) y el auto se acerca suave a ese punto, así se ve fluido aunque lleguen pocos datos.
 ## Sólo se muestran los más cercanos (hasta MAX_SHOWN, a menos de SHOW_R metros). Sin física compartida: no se chocan.
 
+const CityLayout := preload("res://game/city/city_layout.gd")
 const PaperKit := preload("res://game/fx/paper_kit.gd")
 const CityProps := preload("res://game/city/city_props.gd")
 const CarVisual := preload("res://game/car/car_visual.gd")
@@ -106,7 +107,7 @@ func _poll() -> void:
 		if bool(p.get("is_me", false)):
 			continue
 		var pos := Vector2(float(p.get("x", 0.0)), float(p.get("z", 0.0)))
-		if (pos.x > 3000.0) != (me.x > 3000.0):
+		if CityLayout.in_pocket(pos.x) != CityLayout.in_pocket(me.x):
 			continue # uno está en el estacionamiento/túnel (el bolsillo) y el otro no: no se ven
 		var d := pos.distance_to(me)
 		if d < SHOW_R:

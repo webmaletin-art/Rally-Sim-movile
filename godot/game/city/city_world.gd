@@ -23,10 +23,13 @@ var radius := 3 # cuadras a la redonda que se mantienen armadas
 var view_k := 1.0:
 	set(v):
 		view_k = v
+		if region_world != null:
+			region_world.view_k = v
 		if _facade_mat != null: # las fachadas pierden el detalle más cerca cuando el teléfono baja la distancia de vista
 			_facade_mat.set_shader_parameter("lod_from", 200.0 * maxf(v, 0.6))
 			_facade_mat.set_shader_parameter("lod_to", 270.0 * maxf(v, 0.6))
 var built_total := 0
+var region_world: Node3D # RegionWorld: el terreno y las rutas de más allá de la ciudad
 var _facade_mat: ShaderMaterial
 var glow_mat: StandardMaterial3D = make_glow_material() # luces de noche (ver _glow_instance)
 var signal_mat: ShaderMaterial # lámparas de los semáforos (fx/city_signal.gdshader): el color sale de la hora del mundo
@@ -258,9 +261,11 @@ func _process(_dt: float) -> void:
 	if _hz != null:
 		_hz.global_position = Vector3(cam.global_position.x, 0.0, cam.global_position.z) # el horizonte acompaña a la cámara: siempre está lejos
 		_hz.scale = Vector3(view_k, 1.0, view_k) # y se acerca junto con la niebla cuando el teléfono baja la distancia de vista
-		var in_pocket := cam.global_position.x > 3000.0 # el bolsillo de los túneles y los estacionamientos: ahí no hay bosque a lo lejos
+		var rk: float = region_world.region_k(cam.global_position.x, cam.global_position.z) if region_world != null else 0.0
+		_hz.visible = rk < 0.5 # en la región las montañas son de verdad
+		var in_pocket := CityLayout.in_pocket(cam.global_position.x) # el bolsillo de los túneles y los estacionamientos: ahí no hay bosque a lo lejos
 		for ring in _hz_trees:
-			ring.visible = not in_pocket and bool(diag["veg"]) and bool(diag["horizon"])
+			ring.visible = not in_pocket and bool(diag["veg"]) and bool(diag["horizon"]) and rk < 0.5
 			ring.global_position = Vector3(cam.global_position.x, 0.0, cam.global_position.z)
 			ring.scale = Vector3(view_k, 1.0, view_k)
 	update_around(cam.global_position, 1)
@@ -591,6 +596,11 @@ func update_around(p: Vector3, max_new: int, budget_ms := -1.0) -> void:
 		for dz in range(-rad, rad + 1):
 			var k := Vector2i(ck.x + dx, ck.y + dz)
 			if not chunks.has(k):
+				if region_world != null and not CityLayout.in_pocket(p.x):
+					var qx := (float(k.x) + 0.5) * CityLayout.CELL
+					var qz := (float(k.y) + 0.5) * CityLayout.CELL
+					if qx * qx + qz * qz > 3750.0 * 3750.0:
+						continue # más allá lo arma la región
 				want.append(k)
 	want.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return (a - ck).length_squared() < (b - ck).length_squared())
 	var t0 := Time.get_ticks_usec()
@@ -617,6 +627,8 @@ func update_around(p: Vector3, max_new: int, budget_ms := -1.0) -> void:
 ## Arma ya todas las de alrededor (la carga de la pista, antes de empezar)
 func warm(p: Vector3) -> void:
 	update_around(p, 999, 1e9)
+	if region_world != null:
+		region_world.warm(p)
 
 func stats() -> Dictionary:
 	var tris := 0
@@ -684,10 +696,10 @@ func _build_chunk(key: Vector2i) -> Node3D:
 		if city.chunk_of((mo["pos"] as Vector2).x, (mo["pos"] as Vector2).y) == key:
 			root.add_child(_mouth(mo))
 	for st in city.stations:
-		if city.chunk_of((st["center"] as Vector2).x, (st["center"] as Vector2).y) == key:
+		if not st.get("region", false) and city.chunk_of((st["center"] as Vector2).x, (st["center"] as Vector2).y) == key:
 			root.add_child(_station(st))
 	for tl in city.tolls:
-		if city.chunk_of((tl["pos"] as Vector2).x, (tl["pos"] as Vector2).y) == key:
+		if not tl.get("region", false) and city.chunk_of((tl["pos"] as Vector2).x, (tl["pos"] as Vector2).y) == key:
 			root.add_child(_toll(tl))
 	for h in city.halls:
 		if city.chunk_of((h["pos"] as Vector2).x, (h["pos"] as Vector2).y) == key:

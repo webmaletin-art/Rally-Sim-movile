@@ -3,6 +3,7 @@ extends RefCounted
 ## (por juego de gomas: cada neumático comprado conserva su propio desgaste) y le baja el agarre a la física. Se cambian en el taller de ruedas. Sólo offline: el desgaste online lo
 ## guardará el servidor (instancias de autos online; ver docs/ECONOMIA_ONLINE.md).
 
+const CityLayout := preload("res://game/city/city_layout.gd")
 const TireWear := preload("res://game/car/tire_wear.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 
@@ -56,7 +57,7 @@ func update(dt: float) -> void:
 	var h := _acc
 	_acc = 0.0
 	var ph = race.cars[0].phys
-	if ph.px > 3000.0:
+	if CityLayout.in_pocket(ph.px):
 		return # bajo tierra: no se gasta
 	var spd := sqrt(ph.vx * ph.vx + ph.vz * ph.vz)
 	var asphalt: bool = true

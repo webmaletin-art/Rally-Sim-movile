@@ -5,6 +5,8 @@ extends Control
 const Kit := preload("res://game/ui/ui_kit.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CityGps := preload("res://game/city/city_gps.gd")
+const WorldGps := preload("res://game/city/world_gps.gd")
+const RegionData := preload("res://game/region/region_data.gd")
 const CityNames := preload("res://game/city/city_names.gd")
 
 const MINI := 176.0 # lado del minimapa (px)
@@ -15,6 +17,13 @@ const KIND_ICON := {"dealer": "🚗", "garage": "🔧", "view": "⛰", "fuel": "
 var city
 var track
 var gps
+var region: RegionData # (o null)
+var profile # perfil (para recordar si se ven o no las referencias del mapa)
+var places: Array = [] # lugares de la región: {name, pos, kind, front}
+var refs_on := true # referencias y lugares en el mapa (se oculta con el botón del mapa grande)
+var avg_v := 25.0 # velocidad promedio (m/s) para el tiempo estimado de llegada
+var eta_l: Label
+var _map_tex: Texture2D
 var segs: Array = [] # cada tramo: {box: Rect2, pts: PackedVector2Array, hw: float, kind: String}
 var car_pos := Vector2.ZERO
 var heading := 0.0 # yaw del auto (adelante = (sin, cos) en x, z)
@@ -34,11 +43,23 @@ var _toast_cb: Callable
 var _exit_warned := {}
 var arrive_r := 28.0 # a esta distancia del destino se da por llegado
 
-func setup(p_track, toast_cb: Callable) -> void:
+func setup(p_track, toast_cb: Callable, p_profile = null) -> void:
 	track = p_track
 	city = track.city
 	_toast_cb = toast_cb
-	gps = CityGps.new(city)
+	profile = p_profile
+	region = track.region if "region" in track else null
+	gps = WorldGps.new(CityGps.new(city), region)
+	if profile != null:
+		refs_on = profile.setting("mapRefs") != false
+	if region != null:
+		for i in region.nodes.size():
+			var n: Array = region.nodes[i]
+			var kd := int(n[3])
+			if kd >= 3 and kd <= 5:
+				places.append({"name": str(n[4]), "pos": Vector2(float(n[1]), float(n[2])), "kind": ["ciudad", "pueblo", "villa"][kd - 3]})
+		places.append({"name": "Dream City", "pos": Vector2.ZERO, "kind": "ciudad"})
+		_map_tex = load("res://game/data/region/region_map.png") as Texture2D
 	for rd in city.roads:
 		if str(rd["kind"]) in ["tunnel", "bay"] and not str(rd["name"]).begins_with("Entrada Estacionamiento"):
 			continue # los túneles están ocultos y las entradas de los locales son muy cortas (la del estacionamiento sí se ve)
@@ -175,6 +196,17 @@ func _build_big() -> void:
 	var zout := Kit.button("－", func() -> void: _zoom_big(1.0 / 1.5), false, 26, Vector2(60, 56))
 	zout.position = Vector2(618, 12)
 	_big.add_child(zout)
+	var refs := Kit.button(Tr.t("🏷 REFERENCIAS") + (" ✓" if refs_on else " ✕"), Callable(), false, 16, Vector2(190, 56))
+	refs.position = Vector2(690, 12)
+	refs.name = "refs"
+	refs.pressed.connect(func() -> void:
+		refs_on = not refs_on
+		refs.text = Tr.t("🏷 REFERENCIAS") + (" ✓" if refs_on else " ✕")
+		if profile != null:
+			profile.set_setting("mapRefs", refs_on)
+		(_big.get_node("map") as Control).queue_redraw()
+		_mini.queue_redraw())
+	_big.add_child(refs)
 	var hint := Kit.label(Tr.t("Tocá un lugar para ir con el GPS · arrastrá para mover · dos dedos para el zoom"), 18, Kit.MUTED)
 	hint.position = Vector2(16, 76)
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -218,7 +250,14 @@ var _moved := 0.0
 func _center_big() -> void:
 	var mv: MapView = _big.get_node("map")
 	mv.pan = car_pos
-	mv.zoom = 2.2
+	mv.zoom = 2.2 if (region == null or car_pos.length() < 2800.0) else 0.5
+	mv.queue_redraw()
+
+## Prueba: zoom y centro del mapa grande
+func test_view(z: float, c: Vector2) -> void:
+	var mv: MapView = _big.get_node("map")
+	mv.zoom = z
+	mv.pan = c
 	mv.queue_redraw()
 
 func _zoom_big(f: float) -> void:
@@ -278,10 +317,35 @@ func _pick(p: Vector2) -> void:
 	var best := -1
 	var bd := 34.0 / mv.scale_px()
 	for i in city.pois.size():
+		if city.pois[i].get("region", false):
+			continue # los de la región se eligen más abajo
 		var d: float = (city.pois[i]["pos"] as Vector2).distance_to(w)
 		if d < bd:
 			bd = d
 			best = i
+	# un lugar de la región (ciudad, pueblo, villa, estación o gomería)
+	var rb := ""
+	var rpos := Vector2.ZERO
+	if refs_on and region != null:
+		var bd2 := 34.0 / mv.scale_px()
+		for pl in places:
+			var dd: float = (pl["pos"] as Vector2).distance_to(w)
+			if dd < bd2 and (str(pl["kind"]) != "villa" or mv.view_m() < 9000.0) and (str(pl["kind"]) != "pueblo" or mv.view_m() < 45000.0):
+				bd2 = dd
+				rb = CityNames.t(str(pl["name"]))
+				rpos = pl["pos"]
+		if mv.view_m() < 14000.0:
+			for pp in region.pois:
+				var pv := Vector2(float(pp["x"]), float(pp["z"]))
+				var dd2 := pv.distance_to(w)
+				if dd2 < bd2:
+					bd2 = dd2
+					rb = CityNames.t(str(pp["name"]))
+					rpos = pv
+		if rb != "" and (best < 0 or bd2 < bd):
+			set_dest(rpos, rb)
+			_set_big(false)
+			return
 	if best >= 0:
 		set_dest(city.pois[best]["front"], CityNames.t(str(city.pois[best]["name"])))
 	else:
@@ -323,6 +387,37 @@ func _layout_fuel() -> void:
 	fuel_bar.position = Vector2(cx, 62.0)
 	clock_l.position = Vector2(cx, 74.0)
 
+var _big_t := 0.0
+
+## Nombre de la ruta de la región donde está el auto y hacia dónde va: «AU-3 → Santa Aurora · 23 km»
+func _region_street() -> String:
+	var rp: PackedFloat64Array = region.probe(car_pos.x, car_pos.y, 40.0)
+	if rp[0] < -22.0:
+		return ""
+	var ei := int(rp[1])
+	var k := int(rp[2])
+	var cls := region.edge_cls(ei)
+	if cls == "calle":
+		var best := ""
+		var bd := 500.0
+		for pl in places:
+			var d: float = (pl["pos"] as Vector2).distance_to(car_pos)
+			if d < bd:
+				bd = d
+				best = CityNames.t(str(pl["name"]))
+		return ("%s %s" % [Tr.t("Calle de"), best]) if best != "" else Tr.t("Calle")
+	var nm := region.edge_name(ei)
+	var a := region.edge_point(ei, k - int((region.edges[ei] as Array)[6]))
+	var b := region.edge_point(ei, mini(k - int((region.edges[ei] as Array)[6]) + 1, region.edge_n(ei) - 1))
+	var fwd := (b - a).dot(Vector2(sin(heading), cos(heading))) >= 0.0
+	var s := region.arc_at(ei, k, float(rp[3]))
+	var dst: Array = region.edge_dest(ei, s, fwd)
+	var txt := nm
+	if str(dst[0]) != "":
+		var dkm := float(dst[1]) / 1000.0
+		txt += " → %s · %s" % [CityNames.t(str(dst[0])), (("%.1f km" % dkm) if dkm >= 1.0 else ("%d m" % int(round(float(dst[1]) / 10.0) * 10.0)))]
+	return txt
+
 func update_hud(dt: float, car) -> void:
 	car_pos = Vector2(car.phys.px, car.phys.pz)
 	heading = car.phys.yaw
@@ -333,11 +428,17 @@ func update_hud(dt: float, car) -> void:
 	var step := _t
 	_t = 0.0
 	_mini.queue_redraw()
-	if big:
-		(_big.get_node("map") as Control).queue_redraw()
+	_big_t += step
+	if big and _big_t > 0.25:
+		_big_t = 0.0
+		(_big.get_node("map") as Control).queue_redraw() # (el mapa grande cuesta más: se redibuja 4 veces por segundo)
+	var spd := sqrt(car.phys.vx * car.phys.vx + car.phys.vz * car.phys.vz)
+	avg_v = lerpf(avg_v, maxf(spd, 14.0), clampf(step * 0.25, 0.0, 1.0))
 	var loc: Dictionary = city.locate(car_pos.x, car_pos.y)
 	if int(loc["road"]) >= 0 or str(loc["name"]) != "":
 		street_l.text = "%s · %s %d" % [CityNames.t(str(loc["name"])), Tr.t("cuadra"), int(loc["cuadra"])]
+	elif region != null and _region_street() != "":
+		street_l.text = _region_street()
 	else:
 		street_l.text = Tr.t("Fuera de calle")
 	for ex in city.exits:
@@ -418,10 +519,12 @@ func _gps_text() -> void:
 			break
 		i += 1
 	var dist_txt := ("%d m" % int(round(left / 10.0) * 10.0)) if left < 1000.0 else ("%.1f km" % (left / 1000.0))
+	var eta_s := left / maxf(avg_v, 14.0)
+	var eta_txt := ("%d s" % int(round(eta_s / 5.0) * 5.0)) if eta_s < 90.0 else (("%d min" % int(round(eta_s / 60.0))) if eta_s < 3600.0 else ("%d h %02d min" % [int(eta_s / 3600.0), int(fmod(eta_s, 3600.0) / 60.0)]))
 	if turn != "":
-		gps_l.text = "%s · %d m\n%s %s" % [turn, int(round(turn_d / 10.0) * 10.0), route_name, dist_txt]
+		gps_l.text = "%s · %d m\n%s %s · %s" % [turn, int(round(turn_d / 10.0) * 10.0), route_name, dist_txt, eta_txt]
 	else:
-		gps_l.text = "%s\n%s %s" % [Tr.t("Seguí derecho"), route_name, dist_txt]
+		gps_l.text = "%s\n%s %s · %s" % [Tr.t("Seguí derecho"), route_name, dist_txt, eta_txt]
 
 ## Un mapa: el chico gira con el auto y el grande es fijo con el norte arriba
 class MapView extends Control:
@@ -436,9 +539,13 @@ class MapView extends Control:
 			return minf(size.x, size.y) / 2600.0 * zoom
 		return size.x * 0.5 / MINI_R
 
+	## ancho (m) que muestra el mapa grande
+	func view_m() -> float:
+		return minf(size.x, size.y) / maxf(scale_px(), 1e-6) if big else MINI_R * 2.0
+
 	func zoom_by(f: float, at: Vector2) -> void:
 		var w0 := to_world(at)
-		zoom = clampf(zoom * f, 0.45, 16.0)
+		zoom = clampf(zoom * f, 0.012 if hud.region != null else 0.45, 16.0)
 		pan = w0 - (at - size * 0.5) / scale_px() # el punto bajo los dedos no se mueve
 		_clamp_pan()
 		queue_redraw()
@@ -449,7 +556,10 @@ class MapView extends Control:
 		queue_redraw()
 
 	func _clamp_pan() -> void:
-		pan = pan.clamp(Vector2(-3200.0, -3200.0), Vector2(3200.0, 3200.0))
+		if hud.region != null:
+			pan = pan.clamp(Vector2(hud.region.x0, hud.region.z0), Vector2(hud.region.x0 + float(hud.region.gw) * hud.region.cell, hud.region.z0 + float(hud.region.gh) * hud.region.cell))
+		else:
+			pan = pan.clamp(Vector2(-3200.0, -3200.0), Vector2(3200.0, 3200.0))
 
 	## mundo → pantalla del control
 	func _xf() -> Transform2D:
@@ -466,6 +576,83 @@ class MapView extends Control:
 	func to_world(p: Vector2) -> Vector2:
 		return _xf().affine_inverse() * p
 
+	## ciudades, pueblos y villas de la región con su nombre, y las estaciones, gomerías y peajes cuando se ve de cerca
+	func _draw_region_places(xf: Transform2D, f: Font) -> void:
+		var vm := view_m()
+		var rect := Rect2(Vector2.ZERO, size).grow(14.0)
+		for pl in hud.places:
+			var kd := str(pl["kind"])
+			if kd == "villa" and (not big or vm > 9000.0):
+				continue
+			if kd == "pueblo" and (not big or vm > 45000.0):
+				continue
+			var sp: Vector2 = xf * (pl["pos"] as Vector2)
+			if not rect.has_point(sp):
+				continue
+			var rad := 9.0 if kd == "ciudad" else (6.5 if kd == "pueblo" else 4.5)
+			draw_circle(sp, rad + 2.0, Color(0, 0, 0, 0.75))
+			draw_circle(sp, rad, Color(1.0, 0.92, 0.45) if kd == "ciudad" else (Color(0.95, 0.95, 0.95) if kd == "pueblo" else Color(0.75, 0.85, 0.95)))
+			if big:
+				var fs := 21 if kd == "ciudad" else (17 if kd == "pueblo" else 14)
+				var nm := CityNames.t(str(pl["name"]))
+				draw_string_outline(f, sp + Vector2(rad + 5.0, 6.0), nm, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 5, Color(0, 0, 0, 0.85))
+				draw_string(f, sp + Vector2(rad + 5.0, 6.0), nm, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
+		if vm < 14000.0:
+			for p in hud.region.pois:
+				var sp2: Vector2 = xf * Vector2(float(p["x"]), float(p["z"]))
+				if not rect.has_point(sp2):
+					continue
+				var col := Color(0.95, 0.32, 0.28) if str(p["kind"]) == "fuel" else Color(1.0, 0.6, 0.15)
+				draw_circle(sp2, 6.0, Color(0, 0, 0, 0.7))
+				draw_circle(sp2, 4.2, col)
+			for t in hud.region.tolls:
+				var sp3: Vector2 = xf * Vector2(float(t["x"]), float(t["z"]))
+				if rect.has_point(sp3):
+					draw_rect(Rect2(sp3 - Vector2(5, 5), Vector2(10, 10)), Color(0.95, 0.95, 0.95))
+
+	const REG_COL := [Color(0.98, 0.98, 0.98), Color(0.98, 0.98, 0.98), Color(0.94, 0.93, 0.86), Color(0.98, 0.90, 0.58), Color(0.88, 0.80, 0.62), Color(0.72, 0.56, 0.40), Color(0.97, 0.68, 0.84), Color(0.82, 0.82, 0.84), Color(0.94, 0.93, 0.86)]
+	const REG_PX := [5.5, 5.5, 4.2, 3.4, 2.8, 2.4, 3.0, 2.0, 3.6] # grosor mínimo en píxeles por clase (anillo, autopista, ruta, provincial, camino, tierra, montaña, calle, conector)
+
+	## Las rutas de la región: en el mapa grande por calle (decimadas si se ve mucho), en el chico los tramos de las celdas cercanas
+	func _draw_region(view_w: Rect2, s: float) -> void:
+		var rg = hud.region
+		if big:
+			var vm := view_m()
+			var step := 1 if vm < 1800.0 else (4 if vm < 9000.0 else 0)
+			if step == 0:
+				return # el mapa de afuera ya trae las rutas dibujadas
+			for pass_i in 2:
+				for ei in rg.edges.size():
+					var cls := int((rg.edges[ei] as Array)[2])
+					if cls == 7 and vm > 3000.0:
+						continue
+					if not view_w.intersects(rg.edge_box(ei)):
+						continue
+					var poly: PackedVector2Array = rg.edge_poly(ei, step)
+					var wpx := maxf(float(rg.e_hw[ei]) * 2.0, float(REG_PX[cls]) / s) + (3.0 / s if pass_i == 0 else 0.0)
+					draw_polyline(poly, Color(0.12, 0.14, 0.18, 0.95) if pass_i == 0 else REG_COL[cls], wpx, false)
+		else:
+			var kx0 := int(floor(view_w.position.x / 128.0))
+			var kx1 := int(floor(view_w.end.x / 128.0))
+			var kz0 := int(floor(view_w.position.y / 128.0))
+			var kz1 := int(floor(view_w.end.y / 128.0))
+			var segs: Array = [[], []]
+			var seen := {}
+			for cx in range(kx0, kx1 + 1):
+				for cz in range(kz0, kz1 + 1):
+					var lst: Variant = rg.cells.get(Vector2i(cx, cz))
+					if lst == null:
+						continue
+					for k in (lst as PackedInt32Array):
+						if seen.has(k):
+							continue
+						seen[k] = true
+						var a := Vector2(float(rg.pts[k * 2]) * 0.1, float(rg.pts[k * 2 + 1]) * 0.1)
+						var b := Vector2(float(rg.pts[k * 2 + 2]) * 0.1, float(rg.pts[k * 2 + 3]) * 0.1)
+						var cls := int((rg.edges[rg.pe[k]] as Array)[2])
+						draw_line(a, b, Color(0.92, 0.94, 0.97, 0.9), maxf(float(rg.e_hw[rg.pe[k]]) * 2.0 + 3.0, 4.2 / s), false)
+						draw_line(a, b, REG_COL[cls].darkened(0.35), maxf(float(rg.e_hw[rg.pe[k]]) * 2.0, 3.2 / s), false)
+
 	func _draw() -> void:
 		if hud == null or hud.city == null:
 			return
@@ -480,8 +667,14 @@ class MapView extends Control:
 			view_w = view_w.expand(to_world(q))
 		view_w = view_w.grow(6.0)
 		draw_set_transform_matrix(xf)
-		var sea := PackedVector2Array([Vector2(-5000.0, 1260.0), Vector2(5000.0, 1260.0), Vector2(5000.0, 5000.0), Vector2(-5000.0, 5000.0)])
-		draw_colored_polygon(sea, Color(0.16, 0.34, 0.50, 0.9))
+		if hud.region != null and big and hud._map_tex != null:
+			# el relieve de toda la región (una imagen: 1 píxel = 100 m)
+			draw_texture_rect(hud._map_tex, Rect2(hud.region.x0, hud.region.z0, float(hud.region.gw) * hud.region.cell, float(hud.region.gh) * hud.region.cell), false)
+		else:
+			var sea := PackedVector2Array([Vector2(-5000.0, 1260.0), Vector2(5000.0, 1260.0), Vector2(5000.0, 5000.0), Vector2(-5000.0, 5000.0)])
+			draw_colored_polygon(sea, Color(0.16, 0.34, 0.50, 0.9))
+		if hud.region != null:
+			_draw_region(view_w, s)
 		# calles: primero un borde claro y encima el asfalto
 		for pass_i in 2:
 			for sg in hud.segs:
@@ -499,7 +692,11 @@ class MapView extends Control:
 		draw_set_transform_matrix(Transform2D.IDENTITY)
 		# lugares
 		var f := ThemeDB.fallback_font
-		for p in hud.city.pois:
+		if hud.region != null and hud.refs_on:
+			_draw_region_places(xf, f)
+		for p in (hud.city.pois if (hud.refs_on and (not big or view_m() < 6000.0)) else []):
+			if p.get("region", false):
+				continue
 			var sp: Vector2 = xf * (p["pos"] as Vector2)
 			if not Rect2(Vector2.ZERO, sz).grow(12.0).has_point(sp):
 				continue
@@ -508,7 +705,7 @@ class MapView extends Control:
 			draw_circle(sp, 7.0 if big else 5.0, col)
 			if big:
 				draw_string(f, sp + Vector2(12.0, 6.0), CityNames.t(str(p["name"])), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color.WHITE)
-		for ex in hud.city.exits:
+		for ex in (hud.city.exits if (not big or view_m() < 6000.0) else []):
 			var sp: Vector2 = xf * (ex["pos"] as Vector2)
 			if Rect2(Vector2.ZERO, sz).grow(12.0).has_point(sp):
 				draw_rect(Rect2(sp - Vector2(5, 5), Vector2(10, 10)), Color(0.3, 0.9, 0.5))

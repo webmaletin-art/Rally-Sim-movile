@@ -7,6 +7,7 @@ const Release := preload("res://game/data/release.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const OnlineSocial := preload("res://game/online/online_social.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
+const RegionServices := preload("res://game/region/region_services.gd")
 
 var m # menu.gd
 
@@ -49,10 +50,59 @@ func spawn_screen() -> void:
 		m.body.add_child(m.menu_button("🅿 " + tr(str(SPAWN_PLACES[i][0])), tr(str(SPAWN_PLACES[i][1])), func() -> void:
 			m.sfx.play("click")
 			_start_city(idx), i == 0))
+	_region_spawns()
 	if Release.tools():
 		m.body.add_child(m.menu_button("📊 " + tr("DIAGNÓSTICO / RENDIMIENTO"), tr("registro manual de FPS: probá qué sistema los baja"), func() -> void:
 			m.sfx.play("click")
 			m.go("diag"), false))
+
+## Pueblos y ciudades de la región: se elige uno, el mapa muestra dónde queda y se aparece en su estación de servicio
+func _region_spawns() -> void:
+	var list := RegionServices.spawn_list()
+	if list.is_empty():
+		return
+	var sel := clampi(int(m.profile.setting("regionSpawn") if m.profile.setting("regionSpawn") != null else 0), 0, list.size() - 1)
+	var map := Control.new()
+	map.custom_minimum_size = Vector2(0, 230)
+	map.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map.clip_contents = true
+	var tex := load("res://game/data/region/region_map.png") as Texture2D
+	var rect := RegionServices.MAP_RECT
+	var to_px := func(p: Vector2, sz: Vector2) -> Vector2:
+		var f := (p - rect.position) / rect.size
+		return Vector2(f.x * sz.x, f.y * sz.y)
+	map.draw.connect(func() -> void:
+		var sz := map.size
+		if tex != null:
+			map.draw_texture_rect(tex, Rect2(Vector2.ZERO, sz), false)
+		else:
+			map.draw_rect(Rect2(Vector2.ZERO, sz), Color(0.12, 0.14, 0.12))
+		var f: Font = ThemeDB.fallback_font
+		var dc: Vector2 = to_px.call(Vector2.ZERO, sz)
+		map.draw_circle(dc, 5.0, Color(1, 1, 1))
+		map.draw_string(f, dc + Vector2(7, 4), "Dream City", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1))
+		for i in list.size():
+			var q: Vector2 = to_px.call(Vector2(float(list[i]["x"]), float(list[i]["z"])), sz)
+			map.draw_circle(q, 3.5, Color(0.95, 0.75, 0.2))
+		var c: Vector2 = to_px.call(Vector2(float(list[sel]["x"]), float(list[sel]["z"])), sz)
+		map.draw_circle(c, 11.0, Color(1, 0.15, 0.1, 0.35))
+		map.draw_circle(c, 6.0, Color(1, 0.2, 0.1))
+		map.draw_arc(c, 11.0, 0.0, TAU, 24, Color(1, 1, 1), 2.0)
+		var nm := str(list[sel]["name"])
+		var off := Vector2(-60.0 if c.x > sz.x * 0.6 else 14.0, -14.0 if c.y > 24.0 else 24.0)
+		map.draw_string(f, c + off, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 0.9, 0.5)))
+	m.body.add_child(Kit.label("🗺 " + tr("PUEBLOS Y RUTAS"), 17, Kit.GOLD))
+	m.body.add_child(map)
+	var names: Array = []
+	for i in list.size():
+		names.append(i)
+	m.body.add_child(Kit.selector(tr("LUGAR"), names, sel, func(v) -> String: return str(list[int(v)]["name"]), func(v) -> void:
+		sel = int(v)
+		m.profile.set_setting("regionSpawn", sel)
+		map.queue_redraw(), m.sfx))
+	m.body.add_child(m.menu_button("🚗 " + tr("APARECER AHÍ"), tr("en la estación de servicio del lugar elegido"), func() -> void:
+		m.sfx.play("click")
+		_start_city(SPAWN_PLACES.size() + sel), false))
 
 ## Modo online: sin cuenta se pide una (ver _online_options); con cuenta pide el apodo la primera vez y muestra el hub del mundo online
 func online_home() -> void:

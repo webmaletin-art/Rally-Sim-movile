@@ -59,6 +59,8 @@ func _set_solid(i: int, lane: int, on: bool) -> void:
 			track.remove_prop(id, q.x, q.y)
 
 func _node(t: Dictionary) -> Node3D:
+	if t.get("region", false):
+		return world.region_world.service_node("toll_" + str(t["id"])) if world.region_world != null else null
 	var pos: Vector2 = t["pos"]
 	var k: Vector2i = city.chunk_of(pos.x, pos.y)
 	if not world.chunks.has(k):

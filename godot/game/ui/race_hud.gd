@@ -233,7 +233,7 @@ func setup(s: RefCounted, c: Dictionary, r: Array) -> void:
 		minimap.visible = false
 		city_hud = CityHud.new()
 		add_child(city_hud)
-		city_hud.setup(s.track, func(m: String) -> void: toast(m))
+		city_hud.setup(s.track, func(m: String) -> void: toast(m), opts.profile if opts != null else null)
 		pos_l.visible = false
 	elif t == "drift":
 		var polys: Array = (s.track.map_lines as Array)

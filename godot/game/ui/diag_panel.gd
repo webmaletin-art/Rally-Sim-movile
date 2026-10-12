@@ -4,6 +4,7 @@ extends CanvasLayer
 ## muestra la escena/ubicación/superficie/clima/hora, tiene los interruptores del mundo abierto (árboles, edificios, autos civiles, vegetación, decoración, peatones),
 ## el cambio manual de hora y clima, el respawn y el registro (VER REGISTRO / COPIAR TODO). El texto lo arma diag_log.gd. No hay pruebas ni recorridos automáticos.
 
+const CityLayout := preload("res://game/city/city_layout.gd")
 const Kit := preload("res://game/ui/ui_kit.gd")
 const TouchScroll := preload("res://game/ui/touch_scroll.gd")
 const DiagLog := preload("res://game/data/diag_log.gd")
@@ -126,7 +127,7 @@ func _cond() -> Dictionary:
 	c["surface"] = SURFACES[clampi(int(ground.y), 0, SURFACES.size() - 1)]
 	if is_city:
 		var city = race.track.city
-		if px > 3000.0:
+		if CityLayout.in_pocket(px):
 			c["zone"] = "Subsuelo (túnel / estacionamiento)"
 		else:
 			c["zone"] = ZONES[clampi(city.zone_of(px, pz), 0, ZONES.size() - 1)]

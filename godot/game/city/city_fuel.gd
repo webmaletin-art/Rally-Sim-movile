@@ -2,6 +2,7 @@ extends RefCounted
 ## Nafta de Dream City. El tanque dura mucho (unos 80 km manejando normal), se guarda en el perfil y se carga en las gasolineras: frenás sobre un círculo verde, la carga tarda
 ## unos segundos y se paga con créditos. Si se acaba el auto no acelera, pero se avisa antes (y el GPS marca la gasolinera más cercana) para no andar mirando el tanque.
 
+const CityLayout := preload("res://game/city/city_layout.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CityNames := preload("res://game/city/city_names.gd")
 const Release := preload("res://game/data/release.gd")
@@ -79,7 +80,7 @@ func update(dt: float) -> void:
 	var ph = race.cars[0].phys
 	var pos := Vector2(ph.px, ph.pz)
 	var spd := sqrt(ph.vx * ph.vx + ph.vz * ph.vz)
-	if ph.px > 3000.0:
+	if CityLayout.in_pocket(ph.px):
 		return # bajo tierra (túnel, estacionamiento): no se gasta
 	if refueling:
 		_refuel_step(dt, pos, spd)

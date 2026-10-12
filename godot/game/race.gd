@@ -9,6 +9,7 @@ const MapData := preload("res://game/data/map_data.gd")
 const RouteTrack := preload("res://game/track/route_track.gd")
 const DriftTrack := preload("res://game/track/drift_track.gd")
 const CityTrack := preload("res://game/track/city_track.gd")
+const CityWorld := preload("res://game/city/city_world.gd")
 const CitySession := preload("res://game/city_session.gd")
 const NetTrack := preload("res://game/net/net_track.gd")
 const NetSession := preload("res://game/net/net_session.gd")
@@ -250,6 +251,16 @@ func _ready() -> void:
 				"state": Profile.new_car_state("pickup"), "back": "home", "testCar": true, "sim": "mid", "maxPI": 999}
 			if a.begins_with("--convoy="):
 				view_at = float(a.substr(9))
+		elif a.begins_with("--world") and cfg.is_empty():
+			# prueba: arranca directo el mundo abierto (con DR_POS=x,z,grados para elegir el punto)
+			cfg = {"type": "city", "track": "aurelia", "ai": 0, "sky": "day", "car": "hatch", "state": Profile.new_car_state("hatch"), "seed": 7, "back": "home", "quick": true, "spawn": 0, "online": false, "sim": "mid", "maxPI": 999, "tod": 13.0, "tod_frozen": true}
+			if a.begins_with("--world=bigmap"):
+				cfg["bigmap"] = true
+			elif a.begins_with("--world=map:"):
+				var mp := a.substr(12).split(":")
+				cfg["mapview"] = [float(mp[0]), float(mp[1]), float(mp[2])]
+			elif a.begins_with("--world=gpsto:"):
+				cfg["gpsto"] = a.substr(14)
 		elif a.begins_with("--net") and cfg.is_empty():
 			# prueba: arranca directo la Red de rutas (--net, --net=chase o --net=flee:3 → modo y estación)
 			var np := a.substr(6).split(":") if a.length() > 6 else PackedStringArray()
@@ -1347,7 +1358,14 @@ func _start_session() -> void:
 			life.setup(self)
 			if social != null and social.active:
 				life.join_online(online)
-			if cfg.has("bigmap") and race_hud.city_hud != null:
+			if cfg.has("gpsto") and race_hud.city_hud != null:
+				for pl in race_hud.city_hud.places: # prueba: GPS hasta un lugar de la región por su nombre
+					if str(pl["name"]) == str(cfg["gpsto"]):
+						race_hud.city_hud.set_dest(pl["pos"], str(pl["name"]))
+			if cfg.has("mapview") and race_hud.city_hud != null: # prueba: --world=map:zoom:x:z
+				race_hud.city_hud.call_deferred("_set_big", true)
+				race_hud.city_hud.call_deferred("test_view", float(cfg["mapview"][0]), Vector2(float(cfg["mapview"][1]), float(cfg["mapview"][2])))
+			if cfg.has("bigmap") and race_hud.city_hud != null and not cfg.has("gpsto") and not cfg.has("mapview"):
 				race_hud.city_hud.set_dest(race_hud.city_hud.city.pois[0]["front"], str(race_hud.city_hud.city.pois[0]["name"]))
 				race_hud.city_hud.call_deferred("_set_big", true)
 		return
@@ -1927,13 +1945,18 @@ func _underground_light(dt: float) -> void:
 		if clock.fog_b > 0.0:
 			_ug_base[3] = clock.fog_b
 			_ug_base[4] = clock.fog_e
-	var inside: bool = cars[0].phys.px > 3000.0
+	var inside: bool = CityLayout.in_pocket(cars[0].phys.px)
 	_ug = move_toward(_ug, 1.0 if inside else 0.0, dt * 3.0)
 	sun.light_energy = lerpf(float(_ug_base[0]), 0.10, _ug)
 	env.ambient_light_energy = lerpf(float(_ug_base[1]), 0.30, _ug)
 	env.fog_light_color = (_ug_base[2] as Color).lerp(Color(0.03, 0.03, 0.04), _ug)
-	env.fog_depth_begin = lerpf(float(_ug_base[3]), 25.0, _ug)
-	env.fog_depth_end = lerpf(float(_ug_base[4]), 170.0, _ug)
+	# en la región (lejos de la ciudad) la niebla se aleja: se ven las montañas de verdad
+	var rk := 0.0
+	if track is CityTrack and track.world_node != null and (track.world_node as CityWorld).region_world != null:
+		rk = (track.world_node as CityWorld).region_world.region_k(cars[0].phys.px, cars[0].phys.pz)
+	env.fog_depth_begin = lerpf(float(_ug_base[3]) * (1.0 + 3.0 * rk), 25.0, _ug)
+	env.fog_depth_end = lerpf(float(_ug_base[4]) * (1.0 + 8.0 * rk), 170.0, _ug)
+	cam.far = lerpf(1600.0, 17000.0, rk)
 
 func on_teleport() -> void:
 	_ug_base = _ug_base # (la luz cambia sola con la posición)
@@ -1974,7 +1997,7 @@ func _tick_session(dt: float) -> void:
 		_cd_t += dt
 		if int(_cd_t) % 5 == 0 and fmod(_cd_t, 1.0) < dt:
 			print("LINKTEST t=%d pos=(%d,%d) v=%d km/h calle=%s" % [int(_cd_t), int(phl.px), int(phl.pz), int(sqrt(phl.vx * phl.vx + phl.vz * phl.vz) * 3.6), chl.street_l.text])
-		if _link_stage == 0 and phl.px > 3000.0:
+		if _link_stage == 0 and CityLayout.in_pocket(phl.px):
 			_link_stage = 1
 			for l in chl.city.links:
 				if str(l["id"]) == str(_link_test[1]):
@@ -1983,7 +2006,7 @@ func _tick_session(dt: float) -> void:
 						cars[0].driver.goal = l["pos"]
 					chl.arrive_r = 2.0
 			print("LINKTEST entró al subsuelo en t=%d s" % int(_cd_t))
-		elif _link_stage == 1 and phl.px < 3000.0:
+		elif _link_stage == 1 and not CityLayout.in_pocket(phl.px):
 			print("LINKTEST salió a la superficie en (%d,%d) t=%d s" % [int(phl.px), int(phl.pz), int(_cd_t)])
 			get_tree().quit()
 		elif _cd_t > 400.0:
