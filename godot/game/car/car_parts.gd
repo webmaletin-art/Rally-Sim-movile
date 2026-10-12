@@ -47,6 +47,14 @@ func build(body: Node3D, V: RefCounted, p_meta: Dictionary, p_lo: bool, rim_col:
 		if not OS.has_environment("CAR_NOWHEEL"):
 			_mi(asm, WheelGen.tire_mesh(R, rr, tw, tread, lo), {"tire": mats["tire"]})
 			_mi(asm, WheelGen.rim_mesh(str(W["style"]), rr, wr, lo), {"rim": mats["rim"], "dark": mats["dark"], "steel": mats["steel"]})
+		if bool(W.get("dual", false)) and not front: # ruedas gemelas atrás (camiones): una segunda goma con su llanta pegada por dentro, con la cara hacia adentro
+			var asm2 := Node3D.new()
+			asm2.scale = Vector3(-side, 1.0, 1.0)
+			asm2.position.x = -side * (tw + 0.03)
+			spin.add_child(asm2)
+			if not OS.has_environment("CAR_NOWHEEL"):
+				_mi(asm2, WheelGen.tire_mesh(R, rr, tw, tread, lo), {"tire": mats["tire"]})
+				_mi(asm2, WheelGen.rim_mesh(str(W["style"]), rr, wr, lo), {"rim": mats["rim"], "dark": mats["dark"], "steel": mats["steel"]})
 		# freno de disco (atrás de la llanta) y pinza (no gira)
 		if not lo: # de lejos (rivales) el disco y la pinza no se ven: se ahorran 3 llamadas de dibujo por rueda
 			var r_out := (rr - 0.012) * 0.90
