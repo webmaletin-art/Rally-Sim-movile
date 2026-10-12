@@ -16,7 +16,7 @@ func _init(p_title: String, p_values: Array, p_cur, p_fmt: Callable, p_cb: Calla
 	values = p_values
 	fmt = p_fmt
 	cb = p_cb
-	idx = maxi(0, values.find(p_cur))
+	idx = maxi(0, Kit.find_value(values, p_cur))
 	custom_minimum_size = Vector2(0, h)
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_theme_stylebox_override("panel", Kit.box(Kit.PANEL2, 12, Kit.LINE, 1, 10))
@@ -62,7 +62,7 @@ func step(d: int) -> void:
 		cb.call(values[idx])
 
 func set_value(v) -> void:
-	idx = maxi(0, values.find(v))
+	idx = maxi(0, Kit.find_value(values, v))
 	_refresh()
 
 func _gui_input(ev: InputEvent) -> void:

@@ -12,6 +12,7 @@ const AdvData := preload("res://game/adventure/adv_data.gd")
 const RACE_SCENE := preload("res://game/race.tscn")
 const Tr := preload("res://game/i18n/tr.gd")
 const Release := preload("res://game/data/release.gd")
+const MusicPlayer := preload("res://game/audio/music_player.gd")
 const Billing := preload("res://game/store/billing.gd")
 const Online := preload("res://game/online/online.gd")
 const OnlineEconomy := preload("res://game/online/online_economy.gd")
@@ -26,6 +27,7 @@ var eco: RefCounted # economía online (servidor): billetera y autos online
 var oprofile: RefCounted # perfil del modo online (espejo del servidor); el offline es `profile`
 var menu: Node
 var race: Node
+var music: Node # la música de fondo (radio de los menús; ver audio/music_player.gd)
 
 func _ready() -> void:
 	profile = Profile.new()
@@ -34,6 +36,9 @@ func _ready() -> void:
 	billing = Billing.new()
 	add_child(billing)
 	billing.setup(profile)
+	music = MusicPlayer.new()
+	music.profile = profile
+	add_child(music)
 	online = Online.new()
 	online.profile = profile
 	add_child(online)
@@ -75,6 +80,8 @@ func start_vegbench() -> void:
 	add_child(vb)
 
 func show_menu(screen := "home") -> void:
+	if music != null:
+		music.set_context("menu")
 	AdvData.practice = {} # la práctica de la Ruta de los Sueños no deja rastro
 	if oprofile != null:
 		oprofile.flush() # lo que dejó el mundo online (posición, nafta, fama) se guarda aparte del perfil offline
@@ -98,6 +105,8 @@ func show_menu(screen := "home") -> void:
 
 ## cfg: ver race.gd (car, state, track, weather, ai, laps, seg, type, event, tier…). {} = escena de pruebas
 func _start_race(cfg: Dictionary) -> void:
+	if music != null:
+		music.set_context("game")
 	if menu != null:
 		menu.queue_free()
 		menu = null

@@ -30,4 +30,12 @@ T = {
 "Cuatro en el garaje": e("Four in the garage", "Quatro na garagem", "Quatre au garage", "Quattro in garage", "Vier in der Garage"),
 "Tené 4 autos en el garaje.": e("Own 4 cars in your garage.", "Tenha 4 carros na garagem.", "Aie 4 voitures au garage.", "Possiedi 4 auto in garage.", "Besitze 4 Autos in deiner Garage."),
 "Tené 10 autos en el garaje.": e("Own 10 cars in your garage.", "Tenha 10 carros na garagem.", "Aie 10 voitures au garage.", "Possiedi 10 auto in garage.", "Besitze 10 Autos in deiner Garage."),
+# música
+"Música": e("Music", "Música", "Musique", "Musica", "Musik"),
+"Sólo en los menús": e("Menus only", "Só nos menus", "Seulement dans les menus", "Solo nei menu", "Nur in den Menüs"),
+"También jugando": e("Also while playing", "Também jogando", "Aussi en jouant", "Anche mentre giochi", "Auch beim Spielen"),
+"Volumen de la música": e("Music volume", "Volume da música", "Volume de la musique", "Volume della musica", "Musiklautstärke"),
+"Bajo (radio)": e("Low (radio)", "Baixo (rádio)", "Bas (radio)", "Basso (radio)", "Leise (Radio)"),
+"Muy alto": e("Very high", "Muito alto", "Très fort", "Molto alto", "Sehr laut"),
+"Los temas del menú (Motor de Sueños, Nacidos Para Correr, Rally en el Suelo Digital, Rally Thunder, Rally Horizon y Rally Ready) fueron generados con inteligencia artificial en MusicGPT para Dream Racing.": e("The menu tracks (Motor de Sueños, Nacidos Para Correr, Rally en el Suelo Digital, Rally Thunder, Rally Horizon and Rally Ready) were generated with artificial intelligence on MusicGPT for Dream Racing.", "As músicas do menu (Motor de Sueños, Nacidos Para Correr, Rally en el Suelo Digital, Rally Thunder, Rally Horizon e Rally Ready) foram geradas com inteligência artificial no MusicGPT para o Dream Racing.", "Les morceaux du menu (Motor de Sueños, Nacidos Para Correr, Rally en el Suelo Digital, Rally Thunder, Rally Horizon et Rally Ready) ont été générés par intelligence artificielle avec MusicGPT pour Dream Racing.", "I brani del menu (Motor de Sueños, Nacidos Para Correr, Rally en el Suelo Digital, Rally Thunder, Rally Horizon e Rally Ready) sono stati generati con intelligenza artificiale su MusicGPT per Dream Racing.", "Die Menü-Titel (Motor de Sueños, Nacidos Para Correr, Rally en el Suelo Digital, Rally Thunder, Rally Horizon und Rally Ready) wurden mit künstlicher Intelligenz auf MusicGPT für Dream Racing erzeugt."),
 }

@@ -1,0 +1,76 @@
+{
+ "tracks": [
+  {
+   "id": "motor_suenos_a",
+   "title": "Motor de Sueños",
+   "file": "motor_suenos_a.ogg",
+   "dur": 187.2,
+   "src_lufs": -12.5,
+   "gain_db": -3.5
+  },
+  {
+   "id": "motor_suenos_b",
+   "title": "Motor de Sueños (versión B)",
+   "file": "motor_suenos_b.ogg",
+   "dur": 191.2,
+   "src_lufs": -13.0,
+   "gain_db": -3.0
+  },
+  {
+   "id": "nacidos_a",
+   "title": "Nacidos Para Correr",
+   "file": "nacidos_a.ogg",
+   "dur": 225.6,
+   "src_lufs": -12.9,
+   "gain_db": -3.1
+  },
+  {
+   "id": "nacidos_b",
+   "title": "Nacidos Para Correr (versión B)",
+   "file": "nacidos_b.ogg",
+   "dur": 242.8,
+   "src_lufs": -12.6,
+   "gain_db": -3.4
+  },
+  {
+   "id": "horizon_a",
+   "title": "Rally Horizon",
+   "file": "horizon_a.ogg",
+   "dur": 161.2,
+   "src_lufs": -13.3,
+   "gain_db": -2.7
+  },
+  {
+   "id": "ready_a",
+   "title": "Rally Ready",
+   "file": "ready_a.ogg",
+   "dur": 147.6,
+   "src_lufs": -13.5,
+   "gain_db": -2.5
+  },
+  {
+   "id": "thunder",
+   "title": "Rally Thunder",
+   "file": "thunder.ogg",
+   "dur": 193.4,
+   "src_lufs": -13.4,
+   "gain_db": -2.6
+  },
+  {
+   "id": "suelo_digital_a",
+   "title": "Rally en el Suelo Digital",
+   "file": "suelo_digital_a.ogg",
+   "dur": 199.6,
+   "src_lufs": -12.8,
+   "gain_db": -3.2
+  },
+  {
+   "id": "suelo_digital_b",
+   "title": "Rally en el Suelo Digital (versión B)",
+   "file": "suelo_digital_b.ogg",
+   "dur": 200.9,
+   "src_lufs": -13.2,
+   "gain_db": -2.8
+  }
+ ]
+}

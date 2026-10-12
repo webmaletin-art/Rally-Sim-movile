@@ -91,6 +91,7 @@ jobs:
           timeout -k 5 600 godot --headless --script res://tests/region_test.gd
           timeout -k 5 900 godot --headless --script res://tests/region_drive_test.gd
           timeout -k 5 600 godot --headless --script res://tests/spawn_menu_test.gd -- --menu --noconsent
+          timeout -k 5 600 godot --headless --script res://tests/music_test.gd
           timeout -k 5 600 godot --headless --script res://tests/world_ambient_test.gd
           timeout -k 5 600 godot --headless --script res://tests/ambient_peds_test.gd
           timeout -k 5 600 godot --headless --script res://tests/world_budget_test.gd

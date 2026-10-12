@@ -111,6 +111,18 @@ static func hexc(h) -> Color:
 # ───────────────────────── piezas compactas (menús sin scroll) ─────────────────────────
 const DARK := Color(0.05, 0.06, 0.08)
 
+## Índice de `cur` en `vals`. Lo guardado en el perfil vuelve del JSON siempre como decimal (80 → 80.0) y Array.find no lo iguala con el entero 80: por eso las opciones
+## numéricas mostraban el primer valor («Silencio», «Ninguno»…) después de reiniciar. Los números se comparan por valor.
+static func find_value(vals: Array, cur) -> int:
+	var i := vals.find(cur)
+	if i >= 0:
+		return i
+	if cur is float or cur is int:
+		for k in vals.size():
+			if (vals[k] is float or vals[k] is int) and not (vals[k] is bool) and is_equal_approx(float(vals[k]), float(cur)):
+				return k
+	return -1
+
 ## Selector de tarjeta: título chico arriba y, abajo, ◀ valor ▶ (toca la mitad izquierda para ir atrás, la derecha para adelante).
 ## values: lista de valores · fmt: Callable(valor) → texto · cb: Callable(valor) cuando cambia. Devuelve un PanelContainer con set_value().
 static func selector(title: String, values: Array, cur, fmt: Callable, cb: Callable, sfx: Node = null, h := 64.0) -> PanelContainer:

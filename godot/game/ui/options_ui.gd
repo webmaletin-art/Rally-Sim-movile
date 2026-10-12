@@ -71,6 +71,8 @@ const OPTION_LIST := [
 	["sonido", "volAmb", "Ambiente del mundo (ciudad, tránsito, clima)", [0, 40, 70, 100], ["Silencio", "Bajo", "Normal", "Fuerte"]],
 	["sonido", "volTurbo", "Turbo", [0, 50, 100, 140], ["Silencio", "Bajo", "Normal", "Fuerte"]],
 	["sonido", "volGear", "Caja de cambios", [0, 50, 100, 140], ["Silencio", "Bajo", "Normal", "Fuerte"]],
+	["sonido", "musicMode", "Música", ["menu", "always", "off"], ["Sólo en los menús", "También jugando", "Apagada"]],
+	["sonido", "volMusic", "Volumen de la música", [0, 10, 25, 40, 60, 80], ["Silencio", "Muy bajo", "Bajo (radio)", "Medio", "Alto", "Muy alto"]],
 	["sonido", "copilot", "Voz del copiloto (campeonato)", [false, true], ["No", "Sí"]],
 	["manejo", "gearbox", "Caja de cambios", ["auto", "manual"], ["Automática", "Manual"]],
 	["manejo", "steerMode", "Dirección", ["wheel", "slider"], ["Volante", "Barra"]],
@@ -121,8 +123,8 @@ func options_page(body: VBoxContainer, cat = null) -> void:
 		var vals: Array = o[3]
 		var labels: Array = o[4]
 		var cur = profile.setting(key2)
-		if vals.find(cur) < 0:
-			cur = vals[0]
+		var ci := Kit.find_value(vals, cur)
+		cur = vals[maxi(0, ci)]
 		var sel := Kit.selector(tr(str(o[2])), vals, cur, func(v) -> String: return tr(str(labels[vals.find(v)])), func(v) -> void:
 			profile.set_setting(key2, v)
 			if key2 == "volume":

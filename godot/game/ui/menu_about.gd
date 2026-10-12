@@ -19,6 +19,7 @@ const CREDITS := [
 	["Dream Racing", "Un juego de rally y carreras de simulación hecho para jugar desde el celular, con pilotos y copilotos que viven cada curva."],
 	["Autos", "Los autos del juego fueron diseñados y modelados por el equipo de Dream Racing."],
 	["Personajes y animaciones", "Los pilotos y sus animaciones usan modelos y movimientos de Mixamo (Adobe), utilizados según su licencia."],
+	["Música", "Los temas del menú (Motor de Sueños, Nacidos Para Correr, Rally en el Suelo Digital, Rally Thunder, Rally Horizon y Rally Ready) fueron generados con inteligencia artificial en MusicGPT para Dream Racing."],
 	["Escenarios y objetos", "Algunos modelos de casas y objetos provienen de Sweet Home 3D (bibliotecas de uso libre)."],
 	["Motor", "Hecho con Godot Engine, software libre bajo licencia MIT (godotengine.org)."],
 	["Gracias", "A quienes probaron el juego, mandaron ideas y ayudaron a que cada versión salga mejor."],
