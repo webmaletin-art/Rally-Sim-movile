@@ -306,5 +306,54 @@ begin
   perform tt.ok(got, 'después de muchas acciones seguidas el servidor frena el abuso');
 end $$;
 
+-- ───────── Realtime: canales privados del mundo (políticas de realtime.messages) ─────────
 reset role;
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000d1', 'd@t') on conflict do nothing;
+set role authenticated;
+select tt.set_user(1);
+select tt.set_account();
+select set_config('realtime.topic', 'world:0:0', false);
+do $$
+begin
+  insert into realtime.messages (topic, extension) values ('world:0:0', 'broadcast');
+  insert into realtime.messages (topic, extension) values ('world:0:0', 'presence');
+  perform tt.ok(true, 'una cuenta con correo manda broadcast y presencia al canal privado world:0:0');
+exception when others then
+  perform tt.ok(false, 'una cuenta con correo manda al canal privado (' || sqlerrm || ')');
+end $$;
+do $$
+begin
+  perform tt.ok((select count(*) from realtime.messages where topic = 'world:0:0') = 2, 'y la cuenta con correo oye lo que se mandó al canal');
+end $$;
+select set_config('realtime.topic', 'chat:otro', false);
+select tt.expect_err($$insert into realtime.messages (topic, extension) values ('chat:otro', 'broadcast')$$, 'row-level security', 'un tema que no es «world:…» no se puede usar');
+select set_config('realtime.topic', 'world:3:-4', false);
+select tt.expect_err($$insert into realtime.messages (topic, extension) values ('world:3:-4', 'postgres_changes')$$, 'row-level security', 'sólo broadcast y presencia (no otras extensiones)');
+select tt.set_anon();
+select tt.expect_err($$insert into realtime.messages (topic, extension) values ('world:3:-4', 'broadcast')$$, 'row-level security', 'un anónimo no manda mensajes al mundo');
+do $$
+begin
+  perform tt.ok((select count(*) from realtime.messages) = 0, 'ni oye lo que pasa en el mundo (no ve ningún mensaje)');
+end $$;
+select tt.set_account();
+select tt.set_user(1);
+reset role;
+insert into public.realtime_bans (player_id, reason) values ('00000000-0000-0000-0000-0000000000b1', 'prueba');
+set role authenticated;
+select tt.set_user(1);
+select tt.expect_err($$insert into realtime.messages (topic, extension) values ('world:3:-4', 'broadcast')$$, 'row-level security', 'una cuenta suspendida no manda mensajes');
+reset role;
+update public.realtime_bans set until = now() - interval '1 minute' where player_id = '00000000-0000-0000-0000-0000000000b1';
+set role authenticated;
+select tt.set_user(1);
+do $$
+begin
+  insert into realtime.messages (topic, extension) values ('world:3:-4', 'broadcast');
+  perform tt.ok(true, 'la suspensión vencida ya no frena');
+exception when others then
+  perform tt.ok(false, 'la suspensión vencida ya no frena (' || sqlerrm || ')');
+end $$;
+reset role;
+delete from public.realtime_bans;
+delete from realtime.messages;
 select 'ECONOMIA_ONLINE_TEST OK' as resultado;

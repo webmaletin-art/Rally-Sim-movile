@@ -25,6 +25,10 @@ const ONLINE_OPEN := false
 static func online_open(profile: RefCounted) -> bool:
 	return ONLINE_OPEN or dev(profile)
 
+## Posiciones del mundo online por Supabase Realtime (world_sync.gd) en vez de la consulta periódica de online_social.gd. Apagado hasta que se conecte Realtime
+## (docs/ONLINE_SUPABASE.md, «Tiempo real»); sólo tiene efecto con el modo online abierto, el mundo online y Supabase configurado.
+const REALTIME := false
+
 ## «Iniciar sesión para jugar»: con true (y el modo online abierto y Supabase configurado) la primera pantalla pide la cuenta con correo y no deja entrar sin ella.
 ## Apagado a propósito: TODO el juego anda sin conexión y sin cuenta (y Google Play pide que se pueda revisar sin registrarse); sólo el modo online pide cuenta, y el servidor
 ## ya la exige para la economía, el mercado, el chat y la presencia (migración require_account). Para encenderlo, junto con ONLINE_OPEN: poner true acá (ver docs/ONLINE_SUPABASE.md).

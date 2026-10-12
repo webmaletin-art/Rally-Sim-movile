@@ -94,6 +94,26 @@ func _process(dt: float) -> void:
 			_snap.wheel_omega = PackedFloat64Array([w, w, w, w])
 			vis.sync_from(_snap, dt)
 
+## Posición en vivo (Realtime, varias veces por segundo): sólo para los autos que la consulta periódica ya conoce (de ahí salen el nombre y el modelo).
+## Mientras llegan datos en vivo, la consulta periódica no pisa la posición.
+func apply_live(id: String, st: Dictionary) -> void:
+	if not cars.has(id):
+		return
+	var c: Dictionary = cars[id]
+	var pos := Vector2(float(st["x"]), float(st["z"]))
+	c["yaw"] = float(st["yaw"])
+	if pos.distance_to(c["pos"]) > 60.0:
+		c["pos"] = pos
+	c["target"] = pos
+	c["speed"] = float(st["kmh"]) / 3.6
+	c["t"] = Time.get_ticks_msec() / 1000.0
+	c["live_t"] = c["t"]
+
+## El auto dejó de mandar posiciones en vivo: vuelve a mandar la consulta periódica
+func live_gone(id: String) -> void:
+	if cars.has(id):
+		(cars[id] as Dictionary).erase("live_t")
+
 func _poll() -> void:
 	_busy = true
 	var list: Array = await social.players()
@@ -149,14 +169,16 @@ func _update_car(id: String, p: Dictionary, pos: Vector2) -> void:
 		n.position = Vector3(pos.x, 0.0, pos.y)
 		cars[id] = {"node": n, "label": lab, "pos": pos, "target": pos, "yaw": 0.0, "speed": 0.0, "t": now, "has": true}
 	var c: Dictionary = cars[id]
+	var live: bool = c.has("live_t") and now - float(c["live_t"]) < 3.0 # llegan posiciones en vivo: la consulta sólo trae nombre y modelo
 	var old: Vector2 = c["target"]
-	if pos.distance_to(old) > 0.6:
-		c["yaw"] = atan2(pos.x - old.x, pos.y - old.y)
-	if pos.distance_to(c["pos"]) > 60.0:
-		c["pos"] = pos # salto grande: se corta en seco en vez de deslizarse por todo el mapa
-	c["target"] = pos
-	c["speed"] = float(p.get("speed", 0.0)) / 3.6
-	c["t"] = now
+	if not live:
+		if pos.distance_to(old) > 0.6:
+			c["yaw"] = atan2(pos.x - old.x, pos.y - old.y)
+		if pos.distance_to(c["pos"]) > 60.0:
+			c["pos"] = pos # salto grande: se corta en seco en vez de deslizarse por todo el mapa
+		c["target"] = pos
+		c["speed"] = float(p.get("speed", 0.0)) / 3.6
+		c["t"] = now
 	(c["label"] as Label3D).text = str(p.get("name", "?"))
 	var veh: Variant = p.get("vehicle")
 	c["veh"] = veh if veh is Dictionary else {}

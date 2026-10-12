@@ -17,6 +17,7 @@ const NetDriver := preload("res://game/net/net_driver.gd")
 const OnlineSocial := preload("res://game/online/online_social.gd")
 const CityDriver := preload("res://game/ai/city_driver.gd")
 const RemoteCars := preload("res://game/online/remote_cars.gd")
+const WorldSync := preload("res://game/online/world_sync.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityClock := preload("res://game/city/city_clock.gd")
 const DriftSession := preload("res://game/drift_session.gd")
@@ -82,6 +83,7 @@ var cfg: Dictionary = {}
 var profile: RefCounted
 var online: Node # app.gd: la conexión online (sólo se usa en el mundo online)
 var social: Node # online_social.gd: chat, presencia, amigos, reportes y mercado
+var rtsync: Node # world_sync.gd: posiciones en tiempo real (Supabase Realtime); sólo con Release.REALTIME
 var menu_mode := false
 var session # Session (carreras) o DriftSession
 var race_hud: Control
@@ -1356,6 +1358,12 @@ func _start_session() -> void:
 					var rc := RemoteCars.new() # los autos de los otros jugadores
 					rc.setup(self, social, track.city)
 					add_child(rc)
+					if Release.REALTIME and online != null and online.is_account():
+						rtsync = WorldSync.new() # posiciones en vivo por Realtime; el servidor sigue dando nombres y modelos (presence_list_v)
+						add_child(rtsync)
+						rtsync.setup(online)
+						rtsync.car_state.connect(rc.apply_live)
+						rtsync.car_left.connect(rc.live_gone)
 			life = CityLife.new() # la vida del mundo (estacionados, tránsito, peatones, audio ambiente): ver city/city_life.gd
 			life.setup(self)
 			if social != null and social.active:
@@ -1968,6 +1976,8 @@ func _exit_tree() -> void:
 		rec.stop() # el video queda cerrado y reproducible aunque se salga grabando
 	if social != null and is_instance_valid(social):
 		social.leave()
+	if rtsync != null and is_instance_valid(rtsync):
+		rtsync.stop()
 	if track is CityTrack and profile != null and not cars.is_empty() and str(cfg.get("type", "")) == "city":
 		var lp = cars[0].phys # la última ubicación: se puede volver a aparecer ahí desde el menú
 		profile.d["lastPos"] = [snappedf(lp.px, 0.1), snappedf(lp.pz, 0.1), snappedf(lp.yaw, 0.01), CityLayout.WORLD_VERSION]
@@ -1982,6 +1992,8 @@ func _tick_session(dt: float) -> void:
 		if social != null and not cars.is_empty():
 			var sp0 = cars[0].phys
 			social.set_state(sp0.px, sp0.pz, sqrt(sp0.vx * sp0.vx + sp0.vz * sp0.vz) * 3.6)
+			if rtsync != null:
+				rtsync.update_me(dt, sp0.px, sp0.pz, sp0.yaw, sqrt(sp0.vx * sp0.vx + sp0.vz * sp0.vz) * 3.6)
 		if life != null:
 			life.update(dt)
 		if clock != null:
