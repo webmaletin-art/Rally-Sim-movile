@@ -242,7 +242,7 @@
  "wheel": {
   "spring_col": "#e11d2a",
   "caliper_col": "#e11d2a",
-  "style": "centerlock",
+  "style": "mesh",
   "rim": 0.245,
   "tw": 0.28,
   "tw_r": 0.33,

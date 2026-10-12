@@ -1092,7 +1092,7 @@ func _car_setups() -> Array:
 		pst = lab_state # taller de prueba de la pausa: el mismo auto con todos los ajustes liberados
 	var pp: Dictionary = pst.get("paint", {"body": "#1a4fe0", "rim": "#ff6a08"})
 	out.append({"params": CarBuild.build_params(vehicles[pid], pst, assists), "paint": Color(str(pp["body"])), "rim": Color(str(pp.get("rim", "#2a2d33"))), "name": str(profile.d["name"]), "finish": str(pp.get("finish", "gloss")), "visual_type": str(vehicles[pid].get("visualType", pid)), "ai": {},
-		"livery": int(pp.get("livery", 0)), "accent": Color(str(pp.get("accent", "#ff6a08"))), "tire": Color(str(pp.get("tire", "#141516"))), "parts": pp})
+		"livery": int(pp.get("livery", 0)), "accent": Color(str(pp.get("accent", "#ff6a08"))), "text": Color(str(pp.get("text", "#f2f2ee"))), "tire": Color(str(pp.get("tire", "#141516"))), "parts": pp})
 	if _is_convoy():
 		out.append_array(_convoy_setups())
 		return out
@@ -1183,7 +1183,7 @@ func _rebuild_cars() -> void:
 				su["livery"] = int(a.substr(9)) # prueba: rotulado del auto del jugador
 				su["accent"] = Color(1.0, 0.5, 0.1)
 		if int(su.get("livery", 0)) > 0:
-			car.visual.set_livery(int(su["livery"]), paint, su.get("accent", Color(1.0, 0.5, 0.1)), str(su.get("finish", "gloss")))
+			car.visual.set_livery(int(su["livery"]), paint, su.get("accent", Color(1.0, 0.5, 0.1)), str(su.get("finish", "gloss")), su.get("text", Color(0.95, 0.95, 0.93)))
 		if su.has("tire"):
 			car.visual.set_tire_color(su["tire"])
 		if su.has("parts"):

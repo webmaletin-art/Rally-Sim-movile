@@ -226,11 +226,11 @@
  "wheel": {
   "spring_col": "#ff6a08",
   "caliper_col": "#d9141c",
-  "style": "dish6",
+  "style": "windows",
   "rim": 0.23,
   "tw": 0.275,
   "tw_r": 0.275,
-  "tread": "offroad",
+  "tread": "truck",
   "spring": "coil",
   "susp": "truck"
  },

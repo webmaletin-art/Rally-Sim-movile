@@ -11,6 +11,7 @@ import build_car as bc            # funciones de medición (piel, vidrio, perfil
 from fit import arch_fit
 import final_cars as FC
 import final_wheels as FW
+import torito_clip
 
 OUT = os.path.join(HERE, '..', '..', 'godot', 'game', 'models', 'cars')
 LO_FACES = 6000
@@ -127,6 +128,13 @@ def build(cid):
     for a in arches:
         sel = (np.abs(V[:, 2] - a['z']) < a['r'] * 0.9) & (V[:, 1] > R * 0.4) & (V[:, 1] < 2 * R)
         a['x_out'] = float(np.abs(V[sel, 0]).max()) if sel.any() else hw
+    if cid == 'torito':        # el modelo crudo trae el frente sin carrocería: se le arma la trompa (capó, guardabarros, frente, faros y paragolpes)
+        Vc, Fc, Nc, UVc = torito_clip.clip(V, F, UV, img, arches)
+        F = np.concatenate([F, Fc + len(V)])
+        V = np.concatenate([V, Vc])
+        N = np.concatenate([N, Nc])
+        UV = np.concatenate([UV, UVc])
+        H = float(V[:, 1].max())
     print('  %-10s L=%.2f R=%.3f suelo=%.3f entre ejes=%.3f ancho=%.2f alto=%.2f  [%.0fs]' % (cid, L, R, ground, wheelbase, 2 * hw, H, time.time() - t0), flush=True)
     # piel cerrada y lisa (solo para MEDIR el perfil del techo y para la versión liviana)
     skinV, skinF = bc.remesh_skin(V, F, cfg.get('voxel', 0.02), close=cfg.get('close', 4))

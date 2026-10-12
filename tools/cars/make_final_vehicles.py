@@ -8,6 +8,7 @@ sys.path.insert(0, HERE)
 import make_vehicles as MV
 import final_specs as FS
 import final_cars as FC
+import final_wheels as FW
 
 DATA = MV.DATA
 MODELS = MV.MODELS
@@ -41,6 +42,8 @@ def main():
     # pintura de fábrica: la textura original (rotulado 11)
     for cid in final:
         cat['cars'][cid].setdefault('paint', {})['livery'] = 11
+    for cid, col in FW.RIM.items():
+        cat['cars'][cid]['paint']['rim'] = col
     # fuera los que no están en la lista
     for cid in list(cat['cars']):
         if cid not in final:

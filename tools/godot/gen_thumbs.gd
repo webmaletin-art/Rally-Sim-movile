@@ -41,8 +41,8 @@ func _run() -> void:
 		if room != null:
 			room.visible = false
 		for ch in sh.get_children():
-			if ch is MeshInstance3D and (ch as MeshInstance3D).mesh is CylinderMesh:
-				ch.visible = false # la plataforma brillante hace un reflejo blanco: en la miniatura queda el piso oscuro de fondo
+			if ch is MeshInstance3D and ((ch as MeshInstance3D).mesh is CylinderMesh or (ch as MeshInstance3D).mesh is BoxMesh):
+				ch.visible = false # (el cilindro es la plataforma; la caja es el celular/la tablilla que lleva el piloto en la mano) # la plataforma brillante hace un reflejo blanco: en la miniatura queda el piso oscuro de fondo
 		var d: float = sh.car_len * 1.34 + 0.7
 		var a := 0.62
 		var target := Vector3(0.0, 0.55, 0.0)

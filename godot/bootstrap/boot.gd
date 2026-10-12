@@ -1,16 +1,16 @@
 extends Control
 ## Cliente liviano de GSkorp Rally.
-## El APK solo trae el motor y esta pantalla. El juego (res://game) viaja aparte en "content.pck":
-##  1. pregunta la versión en GitHub (manifest.json de la release "godot-content"),
-##  2. si hay una nueva la descarga (con barra de progreso) y la guarda en el teléfono,
-##  3. sin internet usa la última guardada,
-##  4. monta el paquete y arranca el juego.
+## El APK solo trae el motor y esta pantalla. El juego (res://game) viaja aparte en dos paquetes:
+##  · "content.pck": todo menos las carrocerías de los autos;
+##  · "cars.pck": las carrocerías con su textura, sin reducir (pesa varios cientos de MB, cambia poco: se baja una sola vez).
+##  1. pregunta la versión en GitHub (manifest.json de la release "godot-content"; lista los paquetes),
+##  2. por cada paquete con versión nueva lo descarga (con barra de progreso) y lo guarda en el teléfono,
+##  3. sin internet usa los últimos guardados,
+##  4. monta los paquetes y arranca el juego.
 ## Si el juego ya está dentro del programa (build completo o el editor) arranca directo.
 
 const REPO := "webmaletin-art/Rally-Sim-movile"
 const MANIFEST_URL := "https://github.com/" + REPO + "/releases/download/godot-content/manifest.json"
-const PCK_PATH := "user://content.pck"
-const VER_PATH := "user://content_version.txt"
 const GAME_SCENE := "res://game/main.tscn"
 
 var _manifest_url := MANIFEST_URL
@@ -20,6 +20,8 @@ var _bar: ProgressBar
 var _retry: Button
 var _http: HTTPRequest
 var _manifest: Dictionary = {}
+var _packs: Array = [] # [{name, version, url, size, sha256}] en el orden en que se montan
+var _pi := 0 # paquete que se está bajando
 var _downloading := false
 
 func _ready() -> void:
@@ -72,10 +74,23 @@ func _build_ui() -> void:
 	_http.timeout = 30.0
 	add_child(_http)
 
-func _local_version() -> String:
-	if FileAccess.file_exists(VER_PATH) and FileAccess.file_exists(PCK_PATH):
-		return FileAccess.get_file_as_string(VER_PATH).strip_edges()
+func _pck_path(name: String) -> String:
+	return "user://%s.pck" % name
+
+func _ver_path(name: String) -> String:
+	return "user://%s_version.txt" % name
+
+func _local_version(name: String) -> String:
+	if FileAccess.file_exists(_ver_path(name)) and FileAccess.file_exists(_pck_path(name)):
+		return FileAccess.get_file_as_string(_ver_path(name)).strip_edges()
 	return ""
+
+## ¿están todos los paquetes guardados (para jugar sin internet)?
+func _have_all_local() -> bool:
+	for n in ["content", "cars"]:
+		if _local_version(n) == "":
+			return false
+	return true
 
 func _check_updates() -> void:
 	_retry.visible = false
@@ -100,20 +115,32 @@ func _on_manifest(result: int, code: int, _headers: PackedStringArray, body: Pac
 		_offline("Respuesta inválida del servidor")
 		return
 	_manifest = parsed
-	if str(_manifest["version"]) == _local_version():
+	_packs = [{"name": "content", "version": str(_manifest["version"]), "url": str(_manifest["url"]), "size": float(_manifest.get("size", 0)), "sha256": str(_manifest.get("sha256", ""))}]
+	for p in _manifest.get("packs", []):
+		_packs.append({"name": str(p["name"]), "version": str(p["version"]), "url": str(p["url"]), "size": float(p.get("size", 0)), "sha256": str(p.get("sha256", ""))})
+	_pi = 0
+	_next_pack()
+
+## baja el primer paquete que esté desactualizado; si ya están todos, monta y arranca
+func _next_pack() -> void:
+	while _pi < _packs.size() and str(_packs[_pi]["version"]) == _local_version(str(_packs[_pi]["name"])):
+		_pi += 1
+	if _pi >= _packs.size():
 		_status.text = "Juego al día"
 		_mount_and_start()
 		return
 	_download()
 
 func _download() -> void:
-	_status.text = "Descargando el juego (%.1f MB)…" % (float(_manifest.get("size", 0)) / 1048576.0)
+	var p: Dictionary = _packs[_pi]
+	var mb := float(p["size"]) / 1048576.0
+	_status.text = "Descargando %s (%.0f MB)…" % ["los autos" if str(p["name"]) == "cars" else "el juego", mb]
 	_bar.value = 0.0
 	_bar.visible = true
 	_downloading = true
-	_http.download_file = PCK_PATH + ".tmp"
+	_http.download_file = _pck_path(str(p["name"])) + ".tmp"
 	_http.request_completed.connect(_on_download_done)
-	var err := _http.request(str(_manifest["url"]))
+	var err := _http.request(str(p["url"]))
 	if err != OK:
 		_downloading = false
 		_http.request_completed.disconnect(_on_download_done)
@@ -121,37 +148,41 @@ func _download() -> void:
 
 func _process(_dt: float) -> void:
 	if _downloading:
-		var total := float(_manifest.get("size", 0))
+		var p: Dictionary = _packs[_pi]
+		var total := float(p["size"])
 		var got := float(_http.get_downloaded_bytes())
 		if total > 0.0:
 			_bar.value = clampf(got / total, 0.0, 1.0)
-			_status.text = "Descargando el juego… %d%%  (%.1f / %.1f MB)" % [int(100.0 * got / total), got / 1048576.0, total / 1048576.0]
+			_status.text = "Descargando %s (%d/%d)… %d%%  (%.0f / %.0f MB)" % ["los autos" if str(p["name"]) == "cars" else "el juego", _pi + 1, _packs.size(), int(100.0 * got / total), got / 1048576.0, total / 1048576.0]
 
 func _on_download_done(result: int, code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
 	_downloading = false
 	_http.request_completed.disconnect(_on_download_done)
-	var tmp := PCK_PATH + ".tmp"
+	var p: Dictionary = _packs[_pi]
+	var path := _pck_path(str(p["name"]))
+	var tmp := path + ".tmp"
 	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
 		DirAccess.remove_absolute(tmp)
 		_offline("Falló la descarga (%d/%d)" % [result, code])
 		return
-	var want := str(_manifest.get("sha256", ""))
+	var want := str(p["sha256"])
 	if want != "" and FileAccess.get_sha256(tmp) != want:
 		DirAccess.remove_absolute(tmp)
 		_offline("El archivo descargado está dañado")
 		return
-	if FileAccess.file_exists(PCK_PATH):
-		DirAccess.remove_absolute(PCK_PATH)
-	DirAccess.rename_absolute(tmp, PCK_PATH)
-	var f := FileAccess.open(VER_PATH, FileAccess.WRITE)
-	f.store_string(str(_manifest["version"]))
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(path)
+	DirAccess.rename_absolute(tmp, path)
+	var f := FileAccess.open(_ver_path(str(p["name"])), FileAccess.WRITE)
+	f.store_string(str(p["version"]))
 	f.close()
-	_mount_and_start()
+	_pi += 1
+	_next_pack()
 
 ## Sin internet: si ya hay una versión guardada se juega con esa; si no, se puede reintentar
 func _offline(msg: String) -> void:
 	_bar.visible = false
-	if _local_version() != "":
+	if _have_all_local():
 		_status.text = msg + "\nUsando la versión guardada."
 		await get_tree().create_timer(1.2).timeout
 		_mount_and_start()
@@ -160,13 +191,14 @@ func _offline(msg: String) -> void:
 		_retry.visible = true
 
 func _mount_and_start() -> void:
-	if not ProjectSettings.load_resource_pack(PCK_PATH):
-		DirAccess.remove_absolute(PCK_PATH)
-		if FileAccess.file_exists(VER_PATH):
-			DirAccess.remove_absolute(VER_PATH)
-		_status.text = "El juego guardado está dañado. Hay que volver a bajarlo."
-		_retry.visible = true
-		return
+	for n in ["content", "cars"]:
+		if not ProjectSettings.load_resource_pack(_pck_path(n)):
+			for q in ["content", "cars"]:
+				DirAccess.remove_absolute(_pck_path(q))
+				DirAccess.remove_absolute(_ver_path(q))
+			_status.text = "El juego guardado está dañado. Hay que volver a bajarlo."
+			_retry.visible = true
+			return
 	_start_game()
 
 func _start_game() -> void:

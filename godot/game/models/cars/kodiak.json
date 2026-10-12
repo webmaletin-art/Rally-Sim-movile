@@ -206,11 +206,11 @@
  "wheel": {
   "spring_col": "#ff6a08",
   "caliper_col": "#1b1d22",
-  "style": "beadlock",
+  "style": "trophy",
   "rim": 0.24,
   "tw": 0.33,
   "tw_r": 0.33,
-  "tread": "offroad",
+  "tread": "mud",
   "spring": "coil",
   "susp": "truck"
  },

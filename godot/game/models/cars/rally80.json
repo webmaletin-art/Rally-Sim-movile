@@ -206,11 +206,11 @@
  "wheel": {
   "spring_col": "#e11d2a",
   "caliper_col": "#e6c619",
-  "style": "dish8",
+  "style": "rally7",
   "rim": 0.2,
   "tw": 0.23,
   "tw_r": 0.23,
-  "tread": "offroad",
+  "tread": "rally",
   "spring": "coil",
   "susp": "car"
  },

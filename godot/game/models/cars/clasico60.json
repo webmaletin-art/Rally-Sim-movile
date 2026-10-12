@@ -246,11 +246,11 @@
  "wheel": {
   "spring_col": "#b31f24",
   "caliper_col": "#c0c5cc",
-  "style": "multi5",
+  "style": "classic",
   "rim": 0.215,
   "tw": 0.22,
   "tw_r": 0.24,
-  "tread": "road",
+  "tread": "classic",
   "spring": "coil",
   "susp": "car"
  },

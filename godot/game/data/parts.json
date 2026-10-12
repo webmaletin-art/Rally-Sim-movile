@@ -175,7 +175,6 @@
      "truck",
      "hatch",
      "kodiak",
-     "safari",
      "titan"
     ]
    }
@@ -228,11 +227,9 @@
      "veltor",
      "veltor_s",
      "veltor_gtr",
-     "volcan",
      "kl5",
      "rally80",
-     "clasico60",
-     "veltor_gtr_hd"
+     "clasico60"
     ]
    }
   },
@@ -256,7 +253,6 @@
      "buggy",
      "torito",
      "clasico60",
-     "safari",
      "kodiak"
     ]
    }
@@ -292,9 +288,7 @@
      "trilux_gt",
      "veltor",
      "veltor_s",
-     "veltor_gtr",
-     "volcan",
-     "veltor_gtr_hd"
+     "veltor_gtr"
     ]
    }
   },
@@ -890,6 +884,231 @@
     "ratio": 0.48,
     "min": 0.8,
     "max": 3.5
+   }
+  },
+  "rim_bead10": {
+   "category": "wheel",
+   "name": "Beadlock Negra",
+   "source": {
+    "type": "rim",
+    "style": "bead10"
+   },
+   "price": 3600,
+   "tier": 2,
+   "workshop": "rally",
+   "compat": {
+    "vehicles": [
+     "genesis",
+     "pickup",
+     "suv",
+     "kodiak",
+     "camo",
+     "buggy",
+     "truck",
+     "rally80",
+     "hatch2"
+    ]
+   }
+  },
+  "rim_split8": {
+   "category": "wheel",
+   "name": "Radios Dobles",
+   "source": {
+    "type": "rim",
+    "style": "split8"
+   },
+   "price": 3000,
+   "tier": 1,
+   "workshop": "sport"
+  },
+  "rim_rally7": {
+   "category": "wheel",
+   "name": "Rally 7",
+   "source": {
+    "type": "rim",
+    "style": "rally7"
+   },
+   "price": 2400,
+   "tier": 1,
+   "workshop": "rally"
+  },
+  "rim_dish5": {
+   "category": "wheel",
+   "name": "Chapa 5",
+   "source": {
+    "type": "rim",
+    "style": "dish5"
+   },
+   "price": 1000,
+   "tier": 0,
+   "workshop": "rally",
+   "compat": {
+    "vehicles": [
+     "pickup",
+     "suv",
+     "buggy",
+     "truck",
+     "kodiak",
+     "camo",
+     "titan",
+     "genesis",
+     "rally80",
+     "hatch2",
+     "hatch"
+    ]
+   }
+  },
+  "rim_mag5": {
+   "category": "wheel",
+   "name": "Mag Retro",
+   "source": {
+    "type": "rim",
+    "style": "mag5"
+   },
+   "price": 2000,
+   "tier": 0,
+   "workshop": "sport",
+   "compat": {
+    "vehicles": [
+     "torito",
+     "clasico60",
+     "muscle",
+     "hatch",
+     "gt",
+     "rally80"
+    ]
+   }
+  },
+  "rim_steelcap": {
+   "category": "wheel",
+   "name": "Chapa con Tapa",
+   "source": {
+    "type": "rim",
+    "style": "steelcap"
+   },
+   "price": 500,
+   "tier": 0,
+   "workshop": "rally",
+   "compat": {
+    "vehicles": [
+     "torito",
+     "clasico60",
+     "pickup",
+     "suv",
+     "kodiak",
+     "camo",
+     "hatch",
+     "titan",
+     "truck"
+    ]
+   }
+  },
+  "rim_mono12": {
+   "category": "wheel",
+   "name": "Doce Radios",
+   "source": {
+    "type": "rim",
+    "style": "mono12"
+   },
+   "price": 3300,
+   "tier": 1,
+   "workshop": "sport"
+  },
+  "rim_trophy": {
+   "category": "wheel",
+   "name": "Trophy",
+   "source": {
+    "type": "rim",
+    "style": "trophy"
+   },
+   "price": 2800,
+   "tier": 1,
+   "workshop": "rally",
+   "compat": {
+    "vehicles": [
+     "pickup",
+     "suv",
+     "buggy",
+     "truck",
+     "kodiak",
+     "camo",
+     "titan",
+     "genesis",
+     "rally80",
+     "hatch2",
+     "kodiak"
+    ]
+   }
+  },
+  "rim_fan": {
+   "category": "wheel",
+   "name": "Ventilador",
+   "source": {
+    "type": "rim",
+    "style": "fan"
+   },
+   "price": 4000,
+   "tier": 2,
+   "workshop": "premium",
+   "compat": {
+    "vehicles": [
+     "hatch",
+     "hatch2",
+     "torito",
+     "clasico60",
+     "muscle",
+     "gt",
+     "gt3",
+     "hyper",
+     "trilux",
+     "trilux_s",
+     "trilux_gt",
+     "pro_gt",
+     "kl5",
+     "moust",
+     "veltor",
+     "veltor_s",
+     "veltor_gtr",
+     "rally80",
+     "genesis"
+    ]
+   }
+  },
+  "rim_twin5": {
+   "category": "wheel",
+   "name": "Doble 5",
+   "source": {
+    "type": "rim",
+    "style": "twin5"
+   },
+   "price": 2600,
+   "tier": 1,
+   "workshop": "sport"
+  },
+  "rim_windows": {
+   "category": "wheel",
+   "name": "Ventanas",
+   "source": {
+    "type": "rim",
+    "style": "windows"
+   },
+   "price": 1500,
+   "tier": 0,
+   "workshop": "rally",
+   "compat": {
+    "vehicles": [
+     "pickup",
+     "suv",
+     "buggy",
+     "truck",
+     "kodiak",
+     "camo",
+     "titan",
+     "genesis",
+     "rally80",
+     "hatch2",
+     "hatch"
+    ]
    }
   }
  }

@@ -45,7 +45,7 @@ func build(body: Node3D, V: RefCounted, p_meta: Dictionary, p_lo: bool, rim_col:
 		asm.scale = Vector3(side, 1.0, 1.0)
 		spin.add_child(asm)
 		if not OS.has_environment("CAR_NOWHEEL"):
-			_mi(asm, WheelGen.tire_mesh(R, rr, tw, tread, lo), {"tire": mats["tire"]})
+			_mi(asm, WheelGen.tire_mesh(R, rr, tw, tread, lo), {"tire": mats["tire"], "wall": mats["wall"]})
 			_mi(asm, WheelGen.rim_mesh(str(W["style"]), rr, wr, lo), {"rim": mats["rim"], "dark": mats["dark"], "steel": mats["steel"]})
 		if bool(W.get("dual", false)) and not front: # ruedas gemelas atrás (camiones): una segunda goma con su llanta pegada por dentro, con la cara hacia adentro
 			var asm2 := Node3D.new()
@@ -53,7 +53,7 @@ func build(body: Node3D, V: RefCounted, p_meta: Dictionary, p_lo: bool, rim_col:
 			asm2.position.x = -side * (tw + 0.03)
 			spin.add_child(asm2)
 			if not OS.has_environment("CAR_NOWHEEL"):
-				_mi(asm2, WheelGen.tire_mesh(R, rr, tw, tread, lo), {"tire": mats["tire"]})
+				_mi(asm2, WheelGen.tire_mesh(R, rr, tw, tread, lo), {"tire": mats["tire"], "wall": mats["wall"]})
 				_mi(asm2, WheelGen.rim_mesh(str(W["style"]), rr, wr, lo), {"rim": mats["rim"], "dark": mats["dark"], "steel": mats["steel"]})
 		# freno de disco (atrás de la llanta) y pinza (no gira)
 		if not lo: # de lejos (rivales) el disco y la pinza no se ven: se ahorran 3 llamadas de dibujo por rueda
@@ -79,6 +79,10 @@ func _make_mats(rim_col: Color) -> void:
 	t.albedo_color = Color(0.08, 0.085, 0.09)
 	t.roughness = 0.93
 	mats["tire"] = t
+	var wl := StandardMaterial3D.new()
+	wl.albedo_color = Color(0.5, 0.5, 0.52) if str(meta["wheel"]["tread"]) != "classic" else Color(0.92, 0.92, 0.9)
+	wl.roughness = 0.9
+	mats["wall"] = wl
 	var r := StandardMaterial3D.new()
 	r.albedo_color = rim_col
 	r.metallic = 0.85

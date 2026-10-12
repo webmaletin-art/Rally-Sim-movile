@@ -31,11 +31,11 @@
  "wheel": {
   "spring_col": "#ffc300",
   "caliper_col": "#ff6a08",
-  "style": "beadlock",
+  "style": "trophy",
   "rim": 0.2,
   "tw": 0.31,
   "tw_r": 0.34,
-  "tread": "offroad",
+  "tread": "dune",
   "spring": "coil",
   "susp": "buggy"
  },

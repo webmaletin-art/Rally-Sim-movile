@@ -2,9 +2,10 @@ name: Build Godot APK
 
 # Versión Godot de GSkorp Rally. Genera:
 #  · APK LIVIANO  (gskorp-light.apk): solo el motor + la pantalla de arranque. Al abrirlo baja el juego (content.pck).
-#  · APK COMPLETO (gskorp-full.apk):  todo adentro, por si no hay internet o para probar sin descarga.
-#  · content.pck + manifest.json: se publican en la release "godot-content"; el APK liviano los descarga solo.
-# Cada vez que se actualiza content.pck, el APK liviano NO hay que reinstalarlo: al abrir baja lo nuevo.
+#  · content.pck (todo menos las carrocerías) + cars.pck (las carrocerías de los autos con textura, sin reducir, ~500 MB) + manifest.json:
+#    se publican en la release "godot-content"; el APK liviano los descarga solo. cars.pck solo se vuelve a bajar si cambia (su versión es su hash).
+#  · (el APK «completo» con todo adentro ya no se arma: pesaría más de 600 MB)
+# Cada vez que se actualiza el contenido, el APK liviano NO hay que reinstalarlo: al abrir baja lo nuevo.
 on:
   push:
     branches: [main]
@@ -142,7 +143,7 @@ jobs:
           grep -n "^version/" export_presets.cfg
           echo "r${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}" > game/build_id.txt
 
-      - name: Exportar APK liviano, APK completo y contenido
+      - name: Exportar APK liviano y contenido (content.pck + cars.pck)
         working-directory: godot
         env:
           # versión "release" del motor (más rápida que la de depuración); misma clave de firma fija
@@ -151,23 +152,32 @@ jobs:
           GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: android
         run: |
           mkdir -p ../build
+          python3 ../tools/export/split_presets.py
           godot --headless --export-release "Android Light" ../build/gskorp-light.apk
-          godot --headless --export-release "Android Full" ../build/gskorp-full.apk
           godot --headless --export-pack "Content" ../build/content.pck
+          godot --headless --export-pack "Cars" ../build/cars.pck
           ls -la ../build
 
       - name: Manifiesto del contenido
         run: |
           python3 - <<'PY'
           import hashlib, json, os
-          b = open('build/content.pck', 'rb').read()
+          def sha(path):
+              h = hashlib.sha256()
+              with open(path, 'rb') as f:
+                  for chunk in iter(lambda: f.read(1 << 20), b''):
+                      h.update(chunk)
+              return h.hexdigest()
           ver = "r%s-%s" % (os.environ['GITHUB_RUN_NUMBER'], os.environ['GITHUB_SHA'][:7])
           repo = os.environ['GITHUB_REPOSITORY']
+          base = "https://github.com/%s/releases/download/godot-content/" % repo
+          cars_sha = sha('build/cars.pck')
           json.dump({
               "version": ver,
-              "url": "https://github.com/%s/releases/download/godot-content/content.pck" % repo,
-              "size": len(b),
-              "sha256": hashlib.sha256(b).hexdigest(),
+              "url": base + "content.pck",
+              "size": os.path.getsize('build/content.pck'),
+              "sha256": sha('build/content.pck'),
+              "packs": [{"name": "cars", "version": cars_sha[:16], "url": base + "cars.pck", "size": os.path.getsize('build/cars.pck'), "sha256": cars_sha}],
           }, open('build/manifest.json', 'w'), indent=1)
           print(open('build/manifest.json').read())
           PY
@@ -180,7 +190,7 @@ jobs:
             --title "Contenido del juego (Godot)" \
             --notes "Paquete que descarga solo la app liviana al abrirse. No hace falta bajarlo a mano." \
             --prerelease
-          gh release upload godot-content build/content.pck build/manifest.json --clobber
+          gh release upload godot-content build/content.pck build/cars.pck build/manifest.json --clobber
 
       - name: Publicar los APK (link directo para instalar, sin iniciar sesión)
         env:
@@ -188,20 +198,13 @@ jobs:
         run: |
           gh release view godot-apk >/dev/null 2>&1 || gh release create godot-apk \
             --title "APK de Dream Racing (para instalar)" \
-            --notes "Instalá DreamRacing-liviano.apk (baja el juego solo al abrirse). DreamRacing-completo.apk trae todo adentro." \
+            --notes "Instalá DreamRacing-liviano.apk (baja el juego solo al abrirse; la primera vez baja también los autos, unos 500 MB)." \
             --prerelease
           cp build/gskorp-light.apk build/DreamRacing-liviano.apk
-          cp build/gskorp-full.apk build/DreamRacing-completo.apk
-          gh release upload godot-apk build/DreamRacing-liviano.apk build/DreamRacing-completo.apk --clobber
+          gh release upload godot-apk build/DreamRacing-liviano.apk --clobber
 
       - name: Subir APK liviano
         uses: actions/upload-artifact@v4
         with:
           name: gskorp-godot-LIVIANO-apk
           path: build/gskorp-light.apk
-
-      - name: Subir APK completo
-        uses: actions/upload-artifact@v4
-        with:
-          name: gskorp-godot-COMPLETO-apk
-          path: build/gskorp-full.apk

@@ -80,7 +80,7 @@ func _init() -> void:
 	var loaded := VehicleCustomization.sanitize(VehicleCustomization.installed(saved as Dictionary), "gt", V, meta)
 	check(loaded.size() == 2 and str(loaded["wheel"]["id"]) == "rim_dish8", "se guarda y se vuelve a cargar igual")
 	check(VehicleCustomization.sanitize({"wheel": {"id": "no_existe"}, "spoiler": {"id": "rim_dish8"}}, "gt", V, meta).is_empty(), "una configuración inválida o de otra categoría se descarta")
-	check(not bool(VehicleCustomization.install(state, "genesis", "rim_dish8", _V("genesis"), {})["ok"]), "los autos sin carrocería propia todavía no admiten piezas")
+	check(not bool(VehicleCustomization.install(state, "t1plus", "rim_dish8", _V("t1plus"), {})["ok"]), "los autos sin carrocería propia todavía no admiten piezas")
 	VehicleCustomization.remove(state, "spoiler")
 	check(VehicleCustomization.installed(state).size() == 1, "quitar una pieza")
 	# llantas: cada estilo registrado genera su malla y el override sale bien

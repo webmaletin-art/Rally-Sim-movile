@@ -242,11 +242,11 @@
  "wheel": {
   "spring_col": "#00b4d8",
   "caliper_col": "#00b4d8",
-  "style": "centerlock",
+  "style": "forked",
   "rim": 0.24,
   "tw": 0.27,
   "tw_r": 0.31,
-  "tread": "road",
+  "tread": "sport",
   "spring": "coil",
   "susp": "car"
  },

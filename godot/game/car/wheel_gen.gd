@@ -159,20 +159,54 @@ static func _pt(x: float, r: float, ang: float) -> Vector3:
 	return Vector3(x, r * sin(ang), r * cos(ang))
 
 # ───────────────────────── goma ─────────────────────────
-## tread: road | slick | offroad
+## tread: road | slick | offroad (taco medio) | mud (barro: tacos grandes) | rally (espina de pez) | sport (ranuras largas) | truck (costillas) | dune (paletas lisas con aros) | classic (cinta blanca)
+## Superficies: "tire" (goma) y "wall" (letras del flanco y cinta blanca).
+const LUG_TREADS := ["offroad", "mud", "rally"]
+
+## puntos del medio de la banda de rodadura (entre −0,38 y +0,38 del ancho medio), con ranuras: lista de [centro, ancho, profundidad] (como fracción de h, h, m)
+static func _crown(grooves: Array, rt: float, h: float) -> Array:
+	var pts: Array = []
+	for g: Array in grooves:
+		var xc: float = float(g[0]) * h
+		var gw: float = float(g[1]) * h
+		var d: float = float(g[2])
+		pts.append_array([Vector3(rt, xc - gw * 0.5, 0), Vector3(rt - d, xc - gw * 0.36, 0), Vector3(rt - d, xc + gw * 0.36, 0), Vector3(rt, xc + gw * 0.5, 0)])
+	return pts
+
+static func _tread_grooves(tread: String) -> Array:
+	match tread:
+		"road":
+			return [[-0.17, 0.10, 0.004], [0.17, 0.10, 0.004]]
+		"sport":
+			return [[-0.27, 0.07, 0.005], [-0.09, 0.07, 0.005], [0.09, 0.07, 0.005], [0.27, 0.07, 0.005]]
+		"truck":
+			return [[-0.24, 0.12, 0.009], [0.0, 0.12, 0.009], [0.24, 0.12, 0.009]]
+		"dune":
+			return [[-0.28, 0.10, 0.012], [-0.09, 0.08, 0.012], [0.09, 0.08, 0.012], [0.28, 0.10, 0.012]]
+		"classic":
+			return [[0.0, 0.10, 0.004]]
+	return []
+
 static func tire_mesh(R: float, rr: float, w: float, tread: String, lo: bool) -> ArrayMesh:
 	var key := "tire|%.3f|%.3f|%.3f|%s|%d" % [R, rr, w, tread, int(lo)]
 	if _cache.has(key):
 		return _cache[key]
 	var h := w * 0.5
 	var sh := R - rr
-	var lug := 0.0 if (tread != "offroad" or lo) else clampf(sh * 0.22, 0.02, 0.045)
+	var lug := 0.0
+	if tread in LUG_TREADS and not lo:
+		match tread:
+			"mud":
+				lug = clampf(sh * 0.30, 0.03, 0.062)
+			"rally":
+				lug = clampf(sh * 0.15, 0.014, 0.03)
+			_:
+				lug = clampf(sh * 0.22, 0.02, 0.045)
 	var rt := R - lug
 	var prof: Array = [Vector3(rr, -h * 0.58, 0), Vector3(rr + sh * 0.10, -h * 0.80, 1), Vector3(rr + sh * 0.35, -h * 0.97, 1), Vector3(rr + sh * 0.62, -h * 0.99, 1),
 		Vector3(rr + sh * 0.84, -h * 0.90, 1), Vector3(rt - sh * 0.06, -h * 0.74, 1), Vector3(rt - sh * 0.015, -h * 0.55, 1), Vector3(rt, -h * 0.38, 1)]
-	if tread == "road" and not lo:
-		prof.append_array([Vector3(rt, -h * 0.26, 0), Vector3(rt - 0.004, -h * 0.22, 0), Vector3(rt - 0.004, -h * 0.12, 0), Vector3(rt, -h * 0.08, 0),
-			Vector3(rt, h * 0.08, 0), Vector3(rt - 0.004, h * 0.12, 0), Vector3(rt - 0.004, h * 0.22, 0), Vector3(rt, h * 0.26, 0)])
+	if not lo:
+		prof.append_array(_crown(_tread_grooves(tread), rt, h))
 	prof.append_array([Vector3(rt, h * 0.38, 0), Vector3(rt - sh * 0.015, h * 0.55, 1), Vector3(rt - sh * 0.06, h * 0.74, 1), Vector3(rr + sh * 0.84, h * 0.90, 1),
 		Vector3(rr + sh * 0.62, h * 0.99, 1), Vector3(rr + sh * 0.35, h * 0.97, 1), Vector3(rr + sh * 0.10, h * 0.80, 1), Vector3(rr, h * 0.58, 1)])
 	var mb := MB.new()
@@ -180,21 +214,84 @@ static func tire_mesh(R: float, rr: float, w: float, tread: String, lo: bool) ->
 	var parts := [["tire", mb]]
 	if lug > 0.0:
 		var lb := MB.new()
-		var n := 30
-		for i in n:
-			for side: float in [-1.0, 1.0]:
-				var a := TAU * (float(i) + (0.5 if side > 0.0 else 0.0)) / float(n)
-				var bx := Basis(Vector3.RIGHT, -a)  # y,z del bloque → radial y tangente
-				var c := Vector3(side * h * 0.34, 0.0, 0.0)
-				var p := bx * Vector3(0.0, rt + lug * 0.5 - 0.002, 0.0)
-				lb.box(p + c, bx, Vector3(w * 0.30, lug + 0.004, TAU * R / float(n) * 0.52), true)
-			# bloque del hombro, inclinado
-			var a2 := TAU * (float(i) + 0.25) / float(n)
-			var bx2 := Basis(Vector3.RIGHT, -a2)
-			for side2: float in [-1.0, 1.0]:
-				var p2 := bx2 * Vector3(0.0, rt - sh * 0.05, 0.0) + Vector3(side2 * h * 0.76, 0.0, 0.0)
-				lb.box(p2, bx2 * Basis(Vector3.UP, side2 * 0.5), Vector3(w * 0.16, lug * 0.9, TAU * R / float(n) * 0.40), true)
+		match tread:
+			"mud": # tacos grandes y separados; el taco del hombro se estira por el flanco
+				var n := 22
+				for i in n:
+					for side: float in [-1.0, 1.0]:
+						var a := TAU * (float(i) + (0.5 if side > 0.0 else 0.0)) / float(n)
+						var bx := Basis(Vector3.RIGHT, -a)
+						var c := Vector3(side * h * 0.30, 0.0, 0.0)
+						var p := bx * Vector3(0.0, rt + lug * 0.5 - 0.002, 0.0)
+						lb.box(p + c, bx * Basis(Vector3.UP, side * 0.18), Vector3(w * 0.30, lug + 0.004, TAU * R / float(n) * 0.58), true)
+					var a2 := TAU * (float(i) + 0.25) / float(n)
+					var bx2 := Basis(Vector3.RIGHT, -a2)
+					for side2: float in [-1.0, 1.0]:
+						var p2 := bx2 * Vector3(0.0, rt - sh * 0.04, 0.0) + Vector3(side2 * h * 0.80, 0.0, 0.0)
+						lb.box(p2, bx2 * Basis(Vector3.UP, side2 * 0.45), Vector3(w * 0.22, lug * 1.05, TAU * R / float(n) * 0.46), true)
+					# taco del medio, pegado al eje central
+					var a3 := TAU * (float(i) + 0.75) / float(n)
+					var bx3 := Basis(Vector3.RIGHT, -a3)
+					lb.box(bx3 * Vector3(0.0, rt + lug * 0.45 - 0.002, 0.0), bx3, Vector3(w * 0.14, lug * 0.9, TAU * R / float(n) * 0.40), true)
+			"rally": # espina de pez: dos hileras de tacos inclinados
+				var n := 38
+				for i in n:
+					for side: float in [-1.0, 1.0]:
+						var a := TAU * (float(i) + (0.5 if side > 0.0 else 0.0)) / float(n)
+						var bx := Basis(Vector3.RIGHT, -a)
+						var p := bx * Vector3(0.0, rt + lug * 0.5 - 0.002, 0.0) + Vector3(side * h * 0.30, 0.0, 0.0)
+						lb.box(p, bx * Basis(Vector3.UP, -side * 0.65), Vector3(w * 0.40, lug + 0.003, TAU * R / float(n) * 0.30), true)
+					var a2 := TAU * (float(i) + 0.25) / float(n)
+					var bx2 := Basis(Vector3.RIGHT, -a2)
+					for side2: float in [-1.0, 1.0]:
+						lb.box(bx2 * Vector3(0.0, rt - sh * 0.04, 0.0) + Vector3(side2 * h * 0.76, 0.0, 0.0), bx2 * Basis(Vector3.UP, side2 * 0.5), Vector3(w * 0.15, lug * 0.9, TAU * R / float(n) * 0.36), true)
+			_:
+				var n := 30
+				for i in n:
+					for side: float in [-1.0, 1.0]:
+						var a := TAU * (float(i) + (0.5 if side > 0.0 else 0.0)) / float(n)
+						var bx := Basis(Vector3.RIGHT, -a) # y,z del bloque → radial y tangente
+						var c := Vector3(side * h * 0.34, 0.0, 0.0)
+						var p := bx * Vector3(0.0, rt + lug * 0.5 - 0.002, 0.0)
+						lb.box(p + c, bx, Vector3(w * 0.30, lug + 0.004, TAU * R / float(n) * 0.52), true)
+					# bloque del hombro, inclinado
+					var a2 := TAU * (float(i) + 0.25) / float(n)
+					var bx2 := Basis(Vector3.RIGHT, -a2)
+					for side2: float in [-1.0, 1.0]:
+						var p2 := bx2 * Vector3(0.0, rt - sh * 0.05, 0.0) + Vector3(side2 * h * 0.76, 0.0, 0.0)
+						lb.box(p2, bx2 * Basis(Vector3.UP, side2 * 0.5), Vector3(w * 0.16, lug * 0.9, TAU * R / float(n) * 0.40), true)
 		parts.append(["tire", lb])
+	elif tread == "truck" and not lo: # costillas: tacos de hombro cuadrados entre las ranuras
+		var tb := MB.new()
+		var n2 := 40
+		for i in n2:
+			var a := TAU * (float(i) + 0.5) / float(n2)
+			var bx := Basis(Vector3.RIGHT, -a)
+			for side: float in [-1.0, 1.0]:
+				tb.box(bx * Vector3(0.0, rt - sh * 0.03, 0.0) + Vector3(side * h * 0.66, 0.0, 0.0), bx, Vector3(w * 0.16, 0.018, TAU * R / float(n2) * 0.45), true)
+		parts.append(["tire", tb])
+	if not lo:
+		# flanco: letras (rayitas) y, en la clásica, cinta blanca
+		var wb := MB.new()
+		if tread == "classic":
+			for side: float in [-1.0, 1.0]:
+				var ps: Array = [[0.26, 0.909], [0.35, 0.972], [0.48, 0.980]] # [radio (fracción del flanco), x (fracción de h)] pegado a la goma
+				var pw: Array = []
+				for q: Array in ps:
+					pw.append(Vector3(rr + sh * float(q[0]), side * (h * float(q[1]) + 0.002), 0))
+				if side > 0.0:
+					pw.reverse()
+				lathe(wb, pw, 56)
+		else:
+			var nt := 20
+			for i in nt:
+				var a := TAU * (float(i) + 0.5) / float(nt)
+				if i % 5 == 4: # un hueco cada tanto, como el texto de una cubierta
+					continue
+				var bx := Basis(Vector3.RIGHT, -a)
+				for side: float in [-1.0, 1.0]:
+					wb.box(bx * Vector3(0.0, rr + sh * (0.50 if side > 0.0 else 0.42), 0.0) + Vector3(side * h * 0.985, 0.0, 0.0), bx, Vector3(0.004, sh * 0.045, TAU * R / float(nt) * (0.34 if i % 3 == 0 else 0.20)), true)
+		parts.append(["wall", wb])
 	var mesh := _finish(parts)
 	_cache[key] = mesh
 	return mesh
@@ -285,6 +382,60 @@ static func rim_mesh(style: String, rr: float, wr: float, lo: bool) -> ArrayMesh
 			for i in (10 if lo else 20):
 				_slot(dark, TAU * float(i) / (10.0 if lo else 20.0), rb * 0.80, rb * 0.95, rr * 0.028, xl - 0.0105)
 			_hub(rim, steel, r0 * 1.25, xa, 5, rr * 0.20, rr * 0.05, lo)
+		"bead10": # negra tipo beadlock de competición: disco con 10 ventanas, aro de tornillos y cubo de 6 tuercas (Bisonte)
+			_plate(rim, rb * 0.99, r0, xl - 0.014, xf, seg)
+			for i in 10:
+				_slot(dark, TAU * float(i) / 10.0 + 0.157, rb * 0.36, rb * 0.80, rr * 0.075, xl - 0.0125)
+			_hub(rim, steel, r0 * 1.25, xf, 6, rr * 0.2, rr * 0.06, lo)
+			if not lo:
+				lathe(steel, [Vector3(rr + 0.004, xl + 0.0035, 0), Vector3(rr + 0.004, xl + 0.0075, 1), Vector3(rr - 0.026, xl + 0.0075, 1), Vector3(rr - 0.026, xl + 0.0035, 0)], seg)
+				for i in 24:
+					_bolt(steel, TAU * float(i) / 24.0, rr - 0.011, xl + 0.0075, 0.0072)
+		"split8": # ocho radios dobles
+			_spokes(rim, 8, rr * 0.075, rr * 0.075, r0, rb, xl - 0.012, xf, 0.014, 0.075)
+			_spokes(rim, 8, rr * 0.075, rr * 0.075, r0, rb, xl - 0.012, xf, 0.014, -0.075)
+			_plate(rim, r0 * 2.0, r0, xf + 0.012, xf, seg)
+			_hub(rim, steel, r0 * 1.15, xf, 5, rr * 0.13, rr * 0.05, lo)
+		"rally7": # siete radios planos, plato hondo
+			_spokes(rim, 7, rr * 0.21, rr * 0.12, r0, rb, xl - 0.012, xf - 0.012, 0.016, 0.0)
+			_hub(rim, steel, r0 * 1.1, xf - 0.012, 5, rr * 0.15, rr * 0.06, lo)
+		"dish5": # chapa con cinco agujeros grandes
+			_plate(rim, rb * 0.99, r0, xl - 0.014, xf, seg)
+			_holes(dark, 5, rb * 0.60, rr * 0.25, xl - 0.0125, xf, rb, 12)
+			_hub(rim, steel, r0 * 1.3, xf, 5, rr * 0.17, rr * 0.06, lo)
+		"mag5": # magnesio retro: disco con cinco ranuras anchas y tapa pulida grande
+			_plate(rim, rb * 0.99, r0, xl - 0.014, xf, seg)
+			for i in 5:
+				_slot(dark, TAU * float(i) / 5.0, rb * 0.34, rb * 0.84, rr * 0.15, xl - 0.0125)
+			_hub(rim, steel, r0 * 1.5, xf, 0, 0.0, 0.0, lo)
+			steel_nut(steel, xf, r0 * 1.15, 0.02)
+		"steelcap": # chapa pintada de camioneta clásica con tapa cromada
+			_plate(rim, rb * 0.99, r0, xl - 0.014, xf, seg)
+			_holes(dark, 8, rb * 0.70, rr * 0.07, xl - 0.0125, xf, rb, 8)
+			_hub(rim, steel, r0 * 2.0, xf, 0, 0.0, 0.0, lo)
+			steel_nut(steel, xf, r0 * 1.6, 0.03)
+		"mono12": # doce radios finos
+			_spokes(rim, 12, rr * 0.10, rr * 0.065, r0, rb, xl - 0.012, xf, 0.012, 0.0)
+			_hub(rim, steel, r0 * 1.05, xf, 5, rr * 0.13, rr * 0.05, lo)
+		"trophy": # ocho radios macizos con tornillos grandes en el borde
+			_spokes(rim, 8, rr * 0.30, rr * 0.20, r0, rb, xl - 0.012, xf, 0.020, 0.0)
+			_hub(rim, steel, r0 * 1.25, xf, 8, rr * 0.2, rr * 0.055, lo)
+			for i in (0 if lo else 16):
+				_bolt(steel, TAU * float(i) / 16.0 + 0.1963, rr * 0.965, xl + 0.003, 0.0095)
+		"fan": # ventilador: muchas paletas curvas
+			_plate(rim, rb * 0.99, r0, xl - 0.018, xf, seg)
+			_vanes(rim, 24, r0 * 1.2, rb * 0.97, xl - 0.012, xf, 0.012, 1.0)
+			_hub(rim, steel, r0 * 1.0, xf, 0, 0.0, 0.0, lo)
+			steel_nut(steel, xf, r0 * 0.7, 0.012)
+		"twin5": # cinco pares de radios
+			_spokes(rim, 5, rr * 0.11, rr * 0.10, r0, rb, xl - 0.012, xf, 0.016, 0.14)
+			_spokes(rim, 5, rr * 0.11, rr * 0.10, r0, rb, xl - 0.012, xf, 0.016, -0.14)
+			_hub(rim, steel, r0 * 1.15, xf, 5, rr * 0.14, rr * 0.055, lo)
+		"windows": # disco con seis ventanas ovaladas cerca del borde
+			_plate(rim, rb * 0.99, r0, xl - 0.014, xf, seg)
+			for i in 6:
+				_slot(dark, TAU * float(i) / 6.0, rb * 0.50, rb * 0.90, rr * 0.20, xl - 0.0125)
+			_hub(rim, steel, r0 * 1.3, xf, 6, rr * 0.2, rr * 0.06, lo)
 		_:
 			_spokes(rim, 5, rr * 0.4, rr * 0.22, r0, rb, xl - 0.012, xf, 0.016, 0.0)
 	if lo: # de lejos no se distinguen las tuercas: una superficie menos

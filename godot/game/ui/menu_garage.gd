@@ -4,6 +4,7 @@ extends RefCounted
 
 const Kit := preload("res://game/ui/ui_kit.gd")
 const CarVisualS := preload("res://game/car/car_visual.gd")
+const PaintPresets := preload("res://game/car/paint_presets.gd")
 const CarParts := preload("res://game/car/car_parts.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
@@ -15,7 +16,7 @@ const VehicleCustomization := preload("res://game/car/vehicle_customization.gd")
 
 const DARK := Color(0.05, 0.06, 0.08)
 const GROUP_SHORT := {"Neumáticos": "Gomas", "Alineación": "Alineac.", "Suspensión": "Susp.", "Frenos": "Frenos", "Transmisión": "Transm.", "Aerodinámica": "Aero", "Diversión (gustos raros)": "Extras"}
-const PAINT_TARGETS := [["body", "Carrocería"], ["accent", "Detalles"], ["rim", "Llantas"], ["tire", "Gomas"], ["spring", "Resortes"], ["caliper", "Pinzas"], ["disc", "Discos"]]
+const PAINT_TARGETS := [["body", "Carrocería"], ["accent", "Detalles"], ["text", "Letras"], ["rim", "Llantas"], ["tire", "Gomas"], ["spring", "Resortes"], ["caliper", "Pinzas"], ["disc", "Discos"]]
 const DISC_NAMES := {"steel": "Acero", "dark": "Oscuro", "gold": "Dorado", "carbon": "Carbono"}
 
 var m # menu.gd
@@ -887,6 +888,36 @@ func _ws_paint(id: String, st: Dictionary) -> void:
 			dg.add_child(db)
 		m.body.add_child(Kit.wrap("El disco de freno se ve por entre los rayos de la llanta. Las pinzas llevan el color de «Pinzas».", 13, Kit.MUTED, 300))
 	else:
+		if paint_target == "body": # estilos listos: sólidos con letras, texturas con dos colores y la de fábrica
+			m.body.add_child(Kit.label("Estilos", 16, Kit.MUTED))
+			var pg := Kit.grid(3, 6, 6)
+			m.body.add_child(pg)
+			for pr in PaintPresets.LIST:
+				var preset: Dictionary = pr
+				var bcol := Color(str(preset["body"]))
+				var on := int(paint.get("livery", 0)) == int(preset["livery"]) and str(paint.get("body", "")).to_lower() == str(preset["body"]).to_lower() and str(paint.get("accent", "")).to_lower() == str(preset["accent"]).to_lower()
+				if str(preset["kind"]) == "original":
+					on = int(paint.get("livery", 0)) == 11
+				var pb := Button.new()
+				pb.text = Tr.t(str(preset["n"]))
+				pb.custom_minimum_size = Vector2(0, 44)
+				pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				pb.clip_text = true
+				pb.add_theme_font_size_override("font_size", 14)
+				var fg := Color(0.08, 0.08, 0.1) if bcol.get_luminance() > 0.45 else Color(0.97, 0.97, 0.97)
+				if str(preset["kind"]) == "original":
+					bcol = Color(0.2, 0.22, 0.26)
+					fg = Color(0.97, 0.97, 0.97)
+				var edge := Color(str(preset["accent"])) if str(preset["kind"]) == "texture" else Color(str(preset["text"]))
+				for sn in ["normal", "hover", "pressed"]:
+					pb.add_theme_stylebox_override(sn, Kit.box(bcol.lightened(0.08) if sn == "hover" else bcol, 10, Color.WHITE if on else edge, 4 if on else 2))
+					pb.add_theme_color_override("font_color" if sn == "normal" else "font_" + sn + "_color", fg)
+				pb.pressed.connect(func() -> void:
+					PaintPresets.apply(paint, preset)
+					m.sfx.play("click")
+					_draft_refresh(id, st)
+					m.go("workshop", null, false))
+				pg.add_child(pb)
 		var swatches: Array = _cat()["paints"]
 		if paint_target == "tire":
 			swatches = ["#141516", "#2b2d31", "#55585e", "#5a3f2a", "#e8e6e1", "#c1121f", "#ffc300", "#1a4fe0", "#12a454", "#ff6a08"]
@@ -919,7 +950,7 @@ func _ws_paint(id: String, st: Dictionary) -> void:
 	var lids: Array = []
 	for li in CarVisualS.LIVERIES.size():
 		lids.append(li)
-	sg.add_child(Kit.selector("Rotulado (usa el color de Detalles)", lids, int(paint.get("livery", 0)), func(v) -> String: return str(CarVisualS.LIVERIES[int(v)]), func(v) -> void:
+	sg.add_child(Kit.selector("Rotulado (letras: color «Letras»)", lids, int(paint.get("livery", 0)), func(v) -> String: return str(CarVisualS.LIVERIES[int(v)]), func(v) -> void:
 		paint["livery"] = int(v)
 		_draft_refresh(id, st), m.sfx, 62.0))
 	var fids: Array = []

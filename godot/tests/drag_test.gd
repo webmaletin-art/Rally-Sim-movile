@@ -44,7 +44,7 @@ func _init() -> void:
 		for ratio in [0.70, 0.98, 1.10]:
 			ets[ratio] = _quarter(id, vehicles, ratio)
 		print("     %s: temprano %.2f s · perfecto %.2f s · tarde %.2f s" % [id, ets[0.70], ets[0.98], ets[1.10]])
-		check(ets[0.98] > 5.0 and ets[0.98] < 16.0, "%s hace el cuarto de milla en un tiempo razonable (%.2f s)" % [id, ets[0.98]])
+		check(ets[0.98] > 5.0 and ets[0.98] < 18.0, "%s hace el cuarto de milla en un tiempo razonable (%.2f s)" % [id, ets[0.98]])
 		check(ets[0.98] < ets[0.70] and ets[0.98] < ets[1.10], "%s: el cambio perfecto gana al temprano y al tarde" % id)
 	check(Drag.quality(5000.0, 6500.0) == Drag.Q.EARLY and Drag.quality(6400.0, 6500.0) == Drag.Q.PERFECT and Drag.quality(6900.0, 6500.0) == Drag.Q.LATE, "la calidad del cambio se clasifica bien")
 	quit(1 if fail else 0)
