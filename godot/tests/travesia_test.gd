@@ -24,12 +24,15 @@ const IDS := ["pickup", "suv", "truck", "camo", "buggy", "pickup"] # el 0 es el 
 const RANKS := [2, 0, 1, 3, 4, 5]
 
 var goal_m := 0.0
+var from_m := 0.0
 
 func _init() -> void:
 	var fail := false
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--km="):
 			goal_m = float(a.substr(5)) * 1000.0
+		elif a.begins_with("--from="):
+			from_m = float(a.substr(7)) * 1000.0
 	var track = RouteTrack.new("travesia", "dirt", false, 0.0)
 	var okl: bool = track.length > 38000.0 and track.length < 52000.0
 	var muds := 0
@@ -49,13 +52,27 @@ func _init() -> void:
 	print("%s pendiente máxima %.0f %% (el muro: a propósito)" % ["OK  " if maxg < 0.26 else "FALLA", maxg * 100.0])
 	if maxg >= 0.26:
 		fail = true
-	var scenarios: Array = [["jugador a buen ritmo (tope 24 m/s)", 24.0, false], ["jugador muy lento (tope 3 m/s)", 3.0, true]]
+	var scenarios: Array = [["jugador a buen ritmo (tope 28 m/s)", 28.0, false], ["jugador tranquilo (tope 18 m/s)", 18.0, true], ["jugador muy lento (tope 3 m/s)", 3.0, true]]
 	for sc in scenarios:
+		if OS.has_environment("TRAV_ONLY") and str(scenarios.find(sc)) != OS.get_environment("TRAV_ONLY"):
+			continue
 		var r := _run(track, float(sc[1]))
 		var good: bool = (r["lost"] == bool(sc[2])) and (bool(sc[2]) or r["finished"])
 		if not good:
 			fail = true
 		print("%s %s → %s · %.0f s (%.1f min) · unión %.0f %% · máx. alejado %.0f m · el primero del convoy va a %.0f km/h de media" % ["OK  " if good else "FALLA", sc[0], "PERDIÓ EL CONVOY" if r["lost"] else ("llegó" if r["finished"] else "no llegó"), r["t"], r["t"] / 60.0, r["coh"] * 100.0, r["maxout"], r["lead_kmh"]])
+		# TODOS los del convoy van rápido (no sólo el primero): ninguno anda a menos del 80 % de lo que anda el más rápido (sólo cuando el jugador aguanta el ritmo, si no el convoy se corta antes)
+		if not bool(sc[2]) and r.has("kmh"):
+			var kmh: Array = r["kmh"]
+			var mx := 0.0
+			var mn := 1e9
+			for v in kmh:
+				mx = maxf(mx, float(v))
+				mn = minf(mn, float(v))
+			var even: bool = mn >= mx * 0.8
+			if not even:
+				fail = true
+			print("%s velocidad media de cada auto del convoy: %s km/h (el más lento al %.0f %% del más rápido)" % ["OK  " if even else "FALLA", ", ".join(kmh.map(func(v): return "%.0f" % float(v))), mn / maxf(mx, 1.0) * 100.0])
 	quit(1 if fail else 0)
 
 func _run(track, player_cap: float) -> Dictionary:
@@ -76,6 +93,10 @@ func _run(track, player_cap: float) -> Dictionary:
 		var back := 6.0 + float(RANKS[i]) * 11.0
 		var k := 0
 		var acc := 0.0
+		var cum0 := 0.0
+		while cum0 < from_m and k < int(track.n) - 2: # arranca en el punto de la ruta pedido
+			cum0 += track.samples[k].distance_to(track.samples[k + 1])
+			k += 1
 		while acc < back:
 			var j := posmod(k - 1, track.n)
 			acc += track.samples[k].distance_to(track.samples[j])
@@ -99,7 +120,7 @@ func _run(track, player_cap: float) -> Dictionary:
 	for i in cars.size():
 		var v = ses.views[i]
 		v.nearest(cars[i].phys.px, cars[i].phys.pz)
-		var a: float = v.cum[v.r_idx] + v.r_t * (v.cum[v.r_idx + 1] - v.cum[v.r_idx])
+		var a: float = v.cum[v.r_idx] + v.r_t * (v.cum[v.r_idx + 1] - v.cum[v.r_idx]) - from_m
 		if a > track.length * 0.5:
 			a -= track.length
 		ses.prog[i] = a
@@ -111,6 +132,9 @@ func _run(track, player_cap: float) -> Dictionary:
 	var maxout := 0.0
 	var finished := false
 	var lead_sum := 0.0
+	var dist := PackedFloat64Array()
+	for i in cars.size():
+		dist.append(0.0)
 	while t < 3600.0 and not cv.lost:
 		for i in cars.size():
 			var c: Vector3 = cars[i].driver.update(cars[i].phys, h)
@@ -119,7 +143,7 @@ func _run(track, player_cap: float) -> Dictionary:
 			cars[i].phys.step(h, c.x, c.y, c.z, false, false)
 			var v = ses.views[i]
 			v.nearest(cars[i].phys.px, cars[i].phys.pz)
-			var a: float = v.cum[v.r_idx] + v.r_t * (v.cum[v.r_idx + 1] - v.cum[v.r_idx])
+			var a: float = v.cum[v.r_idx] + v.r_t * (v.cum[v.r_idx + 1] - v.cum[v.r_idx]) - from_m
 			var da: float = a - ses.last[i]
 			if da < -track.length * 0.5:
 				da += track.length
@@ -129,8 +153,24 @@ func _run(track, player_cap: float) -> Dictionary:
 			ses.last[i] = a
 		t += h
 		ses.time = t
+		for i in cars.size():
+			var pv = cars[i].phys
+			dist[i] += sqrt(pv.vx * pv.vx + pv.vz * pv.vz) * h
 		cv.update(h)
 		maxout = maxf(maxout, cv.out_gap)
+		if OS.has_environment("TRAV_DBG") and int(t * 90.0) % 450 == 0:
+			var pp = cars[0].phys
+			var best_d := 1
+			for k in range(2, cars.size()):
+				if ses.prog[k] > ses.prog[best_d]:
+					best_d = k
+			var lp = cars[best_d].phys
+			var line := ""
+			for k in range(1, cars.size()):
+				var pk = cars[k].phys
+				line += " | c%d prog %5.0f v %4.1f max %5.1f" % [k, ses.prog[k], sqrt(pk.vx * pk.vx + pk.vz * pk.vz), cars[k].driver.max_v]
+			print("   ", line)
+			print("   t=%4.0f s sección=%-10s jugador %5.1f m/s  primero %5.1f m/s  tope(primero)=%5.1f  hueco=%4.0f m  prog=%5.0f" % [t, cv.section, sqrt(pp.vx * pp.vx + pp.vz * pp.vz), sqrt(lp.vx * lp.vx + lp.vz * lp.vz), cars[best_d].driver.max_v, cv.out_gap, ses.prog[0]])
 		var best := 1
 		for i in range(2, cars.size()):
 			if ses.prog[i] > ses.prog[best]:
@@ -140,4 +180,7 @@ func _run(track, player_cap: float) -> Dictionary:
 		if ses.prog[0] >= (goal_m if goal_m > 0.0 else track.length):
 			finished = true
 			break
-	return {"lost": cv.lost, "finished": finished, "t": t, "coh": cv.cohesion(), "maxout": maxout, "lead_kmh": lead_sum / maxf(t, 1.0) * 3.6}
+	var kmh: Array = []
+	for i in range(1, cars.size()):
+		kmh.append(dist[i] / maxf(t, 1.0) * 3.6)
+	return {"lost": cv.lost, "finished": finished, "t": t, "coh": cv.cohesion(), "maxout": maxout, "lead_kmh": lead_sum / maxf(t, 1.0) * 3.6, "kmh": kmh}

@@ -29,16 +29,18 @@ El generador no se ejecuta en el juego (el resultado va en `routes.json`). `pyth
 **Paisaje:** bosque de imágenes (los mismos árboles de 8 vistas / cruz del mundo abierto, `docs/OPTIMIZACION_MUNDO_ABIERTO.md`) según el tramo (denso en el bosque, ralo en el valle y la cresta; pinos arriba, hojas anchas en valles y arroyos) y dos anillos de bosque lejano en el horizonte (`travesia_props.gd`).
 
 ## El convoy (`ai/convoy.gd`)
-* Cada auto de la fila **sigue al de adelante** (el jugador cuenta como uno más): copia su velocidad y corrige con la distancia (34 m de separación).
-* **Corre como los rivales de la aventura**: el primero va a todo lo que da el tramo (`cap` en routes.json: ~115–120 km/h en camino bueno, 35–55 km/h en barro, escalones y vado: frena un poco en lo peligroso y sale acelerando a fondo). Sólo **espera un poquito al jugador** si se le queda atrás: desde 110 m empieza a aflojar y a 280 m va al 60 % del tope del tramo (nunca menos de 32 km/h). Los de la fila no lo frenan: lo persiguen solos. Si el jugador acelera, el tope no lo frena.
+* **Todos van a fondo.** Cada auto del convoy corre como un rival de la aventura: a lo fuerte que le deja el tramo donde está (`cap` de routes.json × un ritmo por lugar de la fila, 100 % el primero y 95 % el último). Ya no copian la velocidad del de adelante (antes sólo el primero iba rápido y el resto lo seguía): sólo se acomodan para que la fila no se amontone (30 m) ni se choquen (15 m). Si uno se queda atrás de su lugar aprieta hasta un 8 % por encima del tope.
+* **Más rápido y más difícil:** los topes de los tramos duros (barro, pedregal, vado, zigzag, escalones, cornisa, pico…) subieron un 40 % (barro ~60 km/h, pedregal ~56, escalones ~49); donde el camino es bueno siguen en ~100–125 km/h. Las pruebas comprueban que ningún auto del convoy anda a menos del 80 % del más rápido.
+* El primero **espera un poco al jugador** si se le queda atrás: desde 120 m afloja y a 300 m va al 70 % del tope del tramo (nunca menos de 32 km/h). Los demás no esperan a nadie.
 * **Se pierde el convoy** si el jugador queda a más de 330 m del primero del convoy (atrás, o adelante de todos) por más de 10 s. Aviso en pantalla desde los 170 m: «¡ALCANZALOS!» / «¡ESPERÁ AL CONVOY!» con cuenta regresiva.
 * Llegar a la meta sin haberlos perdido = victoria; la **unión** (tiempo a menos de 100 m del grupo) define medalla y premio. Perderlos corta la carrera con «¡LOS PERDISTE!».
 * Premios: 600–1200 de crédito y 250–450 XP si llegás (más cuanto más unido), 40 XP si los perdés. La práctica con auto de prueba no paga.
 * Los 5 del convoy: pickup, camión, SUV, Cóndor T6 Multicam y buggy, de serie con gomas todo terreno (`CONVOY_CARS` en `race.gd`).
+* Para ajustar la dificultad: `PACE`, `CATCHUP_K`, `WAIT_*` y `LOSE_*` en `convoy.gd`, y la columna `cap` de `SECTIONS` en `tools/travesia/gen_route.py` (después hay que copiarla a `routes.json`).
 
 ## Probarlo
 * `tools/godot/run_shot.sh /tmp/x.png --convoy=0.44 --cam=chase --auto` arranca la Travesía en esa fracción del recorrido (el vado).
-* `godot --headless --path godot --script res://tests/travesia_test.gd` (vuelta entera, más de 20 min; `-- --km=12` para lo que corre la CI): comprueba largo, tramos, pendiente máxima y que un jugador a ritmo normal llega con el grupo y uno muy lento los pierde.
+* `godot --headless --path godot --script res://tests/travesia_test.gd` (vuelta entera, más de 20 min; la CI corre `-- --km=10.5` y `-- --from=18.5 --km=4`, los escalones): comprueba largo, tramos, pendiente máxima, que un jugador a buen ritmo (tope 100 km/h) llega con el grupo, que uno tranquilo (65 km/h) y uno muy lento los pierden, y que todos los autos del convoy van rápido. `--from=km` arranca el convoy en ese punto de la ruta.
 
 ## Pendiente / ideas
 * Salpicaduras de agua y barro (hoy sólo frena y se ve el agua).

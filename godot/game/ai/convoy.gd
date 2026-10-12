@@ -1,20 +1,23 @@
 extends RefCounted
-## El convoy de la Travesía X: los autos y camiones van en fila a su ritmo y el jugador tiene que ir con ellos.
-##  · Cada auto de la fila sigue al de adelante (el jugador cuenta como un auto más): mantiene una distancia y copia su velocidad.
-##  · El primero corre como un rival de la aventura: todo lo fuerte que le deja el camino (frena un poco sólo en lo peligroso —barro, vado, escalones— y sale acelerando a fondo)
-##    y te espera un poquito si te quedás atrás (nunca baja de ~60 % del ritmo del tramo ni de LEAD_MIN): si andás muy lento los perdés.
+## El convoy de la Travesía X: los autos y camiones van en fila a fondo y el jugador tiene que ir con ellos.
+##  · TODOS los del convoy corren como rivales de la aventura: cada uno a lo fuerte que le deja el tramo donde está (`cap` de routes.json × PACE de su lugar; frenan sólo en lo peligroso —barro, vado,
+##    escalones— y salen acelerando a fondo). Ya no copian la velocidad del de adelante: sólo se separan o se juntan para mantener la fila (FOLLOW_GAP) y no chocarse (GAP_MIN).
+##  · El primero te espera un poco si te quedás atrás (nunca baja de ~60 % del ritmo del tramo ni de LEAD_MIN): si andás lento los perdés.
 ##  · Se pierde el convoy si el jugador queda a más de LOSE_GAP del primero del grupo (adelante o atrás) durante LOSE_TIME. Al llegar a la meta hay que haber llegado con ellos.
 ## No dibuja nada: race.gd le pasa la sesión y los autos; el HUD lee `text`, `warn` y `lost`.
 
-const FOLLOW_GAP := 34.0 # metros entre autos de la fila
-const FOLLOW_K := 0.30 # 1/s: cuánto acelera por cada metro de más que lo separa del de adelante
-const LEAD_MIN := 9.0 # m/s: lo mínimo cuando espera a un rezagado (32 km/h): no se arrastra, pero más lento que eso y el jugador los pierde
-const WAIT_START := 110.0 # m: desde esta distancia al jugador (si va atrás) el primero empieza a aflojar…
-const WAIT_FULL := 280.0 # m: …y a esta afloja al máximo (WAIT_MIN_K del tope del tramo)
-const WAIT_MIN_K := 0.6
-## Velocidad máxima del primero en cada tramo (m/s): viene de routes.json (`cap` de cada tramo): ~120 km/h en camino bueno y 35–55 km/h en barro, pedregal, vado, escalones y zigzag
+const FOLLOW_GAP := 30.0 # metros entre autos de la fila que se buscan (si se separan más, el de atrás aprieta)
+const GAP_MIN := 15.0 # m: más pegado que esto el de atrás afloja para no chocar al de adelante
+## Ritmo de cada lugar de la fila (fracción del tope del tramo): TODOS van a fondo; el de atrás un poquito menos para que la fila no se amontone
+const PACE := [1.0, 0.99, 0.98, 0.97, 0.96, 0.95]
+const CATCHUP_K := 1.08 # el que se quedó atrás de su lugar puede ir hasta un 8 % por encima del tope del tramo para volver a la fila
+const LEAD_MIN := 9.0 # m/s: lo mínimo cuando el primero espera a un rezagado (32 km/h): más lento que eso y el jugador los pierde
+const WAIT_START := 120.0 # m: desde esta distancia al jugador (si va atrás) el primero empieza a aflojar…
+const WAIT_FULL := 300.0 # m: …y a esta afloja al máximo (WAIT_MIN_K del tope del tramo)
+const WAIT_MIN_K := 0.7
+## Velocidad máxima del primero en cada tramo (m/s): viene de routes.json (`cap` de cada tramo): ~120 km/h en camino bueno y 40–60 km/h en barro, pedregal, vado, escalones y zigzag
 const WARN_GAP := 170.0
-const LOSE_GAP := 330.0 # a 100 km/h son ~12 s: el convoy va rápido pero no tanto como para desaparecer
+const LOSE_GAP := 330.0 # a 100 km/h son ~12 s
 const LOSE_TIME := 10.0
 
 var cars: Array = []
@@ -76,13 +79,16 @@ func update(dt: float) -> void:
 			d.max_v = lerpf(d.max_v if d.max_v > 0.0 else lead_cap, lead_cap, clampf(h * 1.5, 0.0, 1.0))
 			lead_speed = _speed(cars[i])
 		else:
+			# un seguidor corre a fondo en SU tramo; sólo se acomoda a la fila: aprieta si se separó, afloja si se pegó demasiado al de adelante
 			var a: int = int(order[r - 1])
 			var gap: float = session.prog[a] - session.prog[i]
-			var want := FOLLOW_GAP + 4.0 * float(i % 3)
-			var v_target := _speed(cars[a]) + FOLLOW_K * (gap - want)
-			if gap < want * 0.6:
-				v_target = minf(v_target, _speed(cars[a]) * 0.85) # muy pegado: afloja
-			d.max_v = lerpf(d.max_v if d.max_v > 0.0 else v_target, clampf(v_target, 2.0, 38.0), clampf(h * 3.0, 0.0, 1.0))
+			var own_cap := _section_cap(int(session.views[i].r_idx))
+			var v_target := own_cap * float(PACE[mini(r, PACE.size() - 1)])
+			if gap > FOLLOW_GAP * 1.6:
+				v_target *= lerpf(1.0, CATCHUP_K, clampf((gap - FOLLOW_GAP * 1.6) / 70.0, 0.0, 1.0))
+			if gap < GAP_MIN:
+				v_target = minf(v_target, _speed(cars[a]) * 0.95)
+			d.max_v = lerpf(d.max_v if d.max_v > 0.0 else v_target, maxf(v_target, 2.0), clampf(h * 3.0, 0.0, 1.0))
 	# tramo del jugador (cartel al entrar)
 	var pi: int = session.views[0].r_idx
 	for sc in session.track.sections:
