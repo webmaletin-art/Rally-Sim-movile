@@ -2568,5 +2568,18 @@
 "🚗 MIS AUTOS": "🚗 MEUS CARROS",
 "🚧 Completaste la primera parte. Las próximas etapas llegan con una actualización.": "🚧 Você completou a primeira parte. As próximas etapas chegam com uma atualização.",
 "🚧 Hasta acá llega la primera parte de la aventura. Las próximas etapas llegan con una actualización; tu avance queda guardado.": "🚧 Aqui termina a primeira parte da aventura. As próximas etapas chegam com uma atualização; seu progresso fica salvo.",
-"🧱 Texturas": ""
+"🧱 Texturas": "",
+"Tocá un lugar en el mapa o usá las flechas. Todos tienen estación de servicio o estacionamiento: se sale manejando.": "Toque em um lugar no mapa ou use as setas. Todos têm posto de serviço ou estacionamento: você sai dirigindo.",
+"toca un lugar · arrastrá para mover · dos dedos para el zoom": "toque num lugar · arraste para mover · dois dedos para o zoom",
+"LUGAR": "LUGAR",
+"APARECER AQUÍ": "APARECER AQUI",
+"Central · Nivel calle": "Central · Nível da rua",
+"Central · Planta alta": "Central · Andar de cima",
+"Central · Subsuelo": "Central · Subsolo",
+"Estacionamiento Central, a nivel de la calle: salís directo a la ruta": "Estacionamento Central, no nível da rua: você sai direto para a estrada.",
+"Estacionamiento Central, un piso arriba: bajás por la rampa": "Estacionamento Central, um andar acima: você desce pela rampa.",
+"Estacionamiento Central, un piso abajo: subís por la rampa": "Estacionamento Central, um andar abaixo: você sobe pela rampa.",
+"estación de servicio": "posto de serviço",
+"de Dream City": "de Dream City",
+"Última ubicación": "Última localização"
 }

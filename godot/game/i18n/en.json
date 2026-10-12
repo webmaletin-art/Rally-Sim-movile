@@ -2577,5 +2577,18 @@
 "🚗 MIS AUTOS": "🚗 MY CARS",
 "🚧 Completaste la primera parte. Las próximas etapas llegan con una actualización.": "🚧 You completed the first part. The next stages arrive with an update.",
 "🚧 Hasta acá llega la primera parte de la aventura. Las próximas etapas llegan con una actualización; tu avance queda guardado.": "🚧 This is where the first part of the adventure ends. The next stages arrive with an update; your progress is saved.",
-"🧱 Texturas": ""
+"🧱 Texturas": "",
+"Tocá un lugar en el mapa o usá las flechas. Todos tienen estación de servicio o estacionamiento: se sale manejando.": "Tap a place on the map or use the arrows. Every place has a service station or a car park: you drive straight out.",
+"toca un lugar · arrastrá para mover · dos dedos para el zoom": "tap a place · drag to move · two fingers to zoom",
+"LUGAR": "PLACE",
+"APARECER AQUÍ": "SPAWN HERE",
+"Central · Nivel calle": "Central · Street level",
+"Central · Planta alta": "Central · Upper level",
+"Central · Subsuelo": "Central · Underground",
+"Estacionamiento Central, a nivel de la calle: salís directo a la ruta": "Central Car Park, at street level: you drive straight onto the road.",
+"Estacionamiento Central, un piso arriba: bajás por la rampa": "Central Car Park, one level up: you go down the ramp.",
+"Estacionamiento Central, un piso abajo: subís por la rampa": "Central Car Park, one level down: you go up the ramp.",
+"estación de servicio": "service station",
+"de Dream City": "from Dream City",
+"Última ubicación": "Last location"
 }
