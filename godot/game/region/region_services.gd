@@ -9,6 +9,10 @@ const STATION_COL := [Color(0.95, 0.72, 0.10), Color(0.88, 0.20, 0.15), Color(0.
 const SPAWNS_FILE := "res://game/data/region/spawns.json"
 const MAP_RECT := Rect2(-60000.0, -90000.0, 120000.0, 93000.0) # lo que cubre region_map.png (mismo recorte que la grilla del generador)
 
+## ¿Está la región completa en esta compilación? (los datos de las rutas y la lista de lugares para aparecer; si falta algo no se ofrece)
+static func available() -> bool:
+	return FileAccess.file_exists(RegionData.FILE) and FileAccess.file_exists(SPAWNS_FILE)
+
 static func spawn_list() -> Array:
 	if not FileAccess.file_exists(SPAWNS_FILE):
 		return []

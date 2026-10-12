@@ -184,6 +184,7 @@ jobs:
           godot --headless --export-release "Android Light" ../build/gskorp-light.apk
           godot --headless --export-pack "Content" ../build/content.pck
           godot --headless --export-pack "Cars" ../build/cars.pck
+          python3 ../tools/export/check_pck.py ../build/content.pck
           ls -la ../build
 
       - name: Manifiesto del contenido

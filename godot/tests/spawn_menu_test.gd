@@ -3,6 +3,7 @@
 extends SceneTree
 
 const RegionServices := preload("res://game/region/region_services.gd")
+const SpawnMap := preload("res://game/ui/spawn_map.gd")
 
 var fail := false
 
@@ -15,14 +16,34 @@ func _frames(n := 4) -> void:
 	for i in n:
 		await process_frame
 
-func _find_by_text(n: Node, needle: String) -> Label:
+func _find_by_text(n: Node, needle: String) -> Control:
 	if n is Label and (n as Label).text.contains(needle):
 		return n as Label
+	if n is Button and (n as Button).text.contains(needle):
+		return n as Button
 	for c in n.get_children():
 		var r := _find_by_text(c, needle)
 		if r != null:
 			return r
 	return null
+
+func _find_map(n: Node) -> Control:
+	if n.get_script() == SpawnMap:
+		return n as Control
+	for c in n.get_children():
+		var r := _find_map(c)
+		if r != null:
+			return r
+	return null
+
+## un toque en el mapa (botón izquierdo apretado y soltado en el mismo lugar)
+func _tap(map: Control, p: Vector2) -> void:
+	for pressed in [true, false]:
+		var ev := InputEventMouseButton.new()
+		ev.button_index = MOUSE_BUTTON_LEFT
+		ev.pressed = pressed
+		ev.position = p
+		map._gui_input(ev)
 
 func _init() -> void:
 	_run()
@@ -38,11 +59,43 @@ func _run() -> void:
 	menu.call("go", "spawn")
 	await _frames()
 	var body: Node = menu.get("body")
-	check(_find_by_text(body, "🅿") != null, "sigue el estacionamiento de Dream City")
-	var btn := _find_by_text(body, "APARECER AHÍ")
-	check(btn != null, "el botón de aparecer en un pueblo de la región")
-	check(RegionServices.MAP_RECT.has_point(Vector2(float(spawns[0]["x"]), float(spawns[0]["z"]))), "el primer lugar cae dentro del mapa de la región")
+	check(_find_by_text(body, "APARECER") != null, "el botón de aparecer")
+	var inside := true
 	for sp in spawns:
-		check(RegionServices.MAP_RECT.has_point(Vector2(float(sp["x"]), float(sp["z"]))), "«%s» entra en el mapa" % str(sp["name"]))
+		inside = inside and RegionServices.MAP_RECT.has_point(Vector2(float(sp["x"]), float(sp["z"])))
+	check(inside, "los %d lugares de la región caen dentro del mapa" % spawns.size())
+	var names := {}
+	for sp in spawns:
+		names[str(sp["name"])] = true
+	check(names.size() == spawns.size(), "los nombres de los lugares no se repiten")
+	# el mapa se toca: un toque sobre un pueblo lo elige; tocar Dream City pasa de un estacionamiento al siguiente
+	var map := _find_map(body)
+	check(map != null, "hay un mapa en la pantalla")
+	if map != null:
+		await _frames(3)
+		var prof: RefCounted = menu.get("profile")
+		var town := {}
+		for mk in map.marks:
+			if str(mk["kind"]) == "pueblo":
+				town = mk
+				break
+		check(not town.is_empty(), "el mapa tiene pueblos")
+		if not town.is_empty():
+			_tap(map, map.to_screen(town["pos"]))
+			await _frames(2)
+			check(str(prof.setting("spawnPick")) == str(town["key"]), "tocar un pueblo en el mapa lo elige (%s)" % str(town["key"]))
+			check(map.selected == str(town["key"]), "el mapa marca el pueblo tocado")
+		var seen := {}
+		for k in 3:
+			_tap(map, map.to_screen(Vector2.ZERO))
+			await _frames(2)
+			seen[str(prof.setting("spawnPick"))] = true
+		check(seen.size() == 3 and seen.has("park0") and seen.has("park1") and seen.has("park2"), "tocar Dream City recorre los 3 estacionamientos %s" % str(seen.keys()))
+		# un toque lejos de todo no cambia nada
+		var before := str(prof.setting("spawnPick"))
+		_tap(map, Vector2(2.0, 2.0))
+		await _frames(2)
+		check(str(prof.setting("spawnPick")) == before, "un toque en el vacío no cambia el lugar")
+	check(RegionServices.available(), "la región está completa (datos + lista de lugares)")
 	print("RESULTADO: ", "FALLA" if fail else "TODO OK")
 	quit(1 if fail else 0)

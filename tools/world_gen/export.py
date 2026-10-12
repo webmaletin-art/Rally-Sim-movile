@@ -67,17 +67,17 @@ def write(W_, path, stats=None):
     for poi in W_.pois:
         d, k = tree.query([poi["x"], poi["z"]])
         poi["h"] = round(float(Hh[k]), 2)
-    # lugares para aparecer (menú «¿Dónde aparecer?»): la estación principal de cada ciudad, más unos puntos especiales
+    # lugares para aparecer (menú «¿Dónde aparecer?»): la estación principal de cada ciudad y de cada pueblo
     spawns = []
     node_by_id = {n["id"]: n for n in nodes}
     for n in nodes:
-        if n["kind"] != "ciudad":
+        if n["kind"] not in ("ciudad", "pueblo"):
             continue
         for poi in W_.pois:
             if poi["kind"] == "fuel" and poi.get("near") == n["id"]:
                 tn = (math.sin(poi["yaw"]), math.cos(poi["yaw"]))
                 nr = (-tn[1] * poi["side"], tn[0] * poi["side"])
-                spawns.append({"name": n["name"], "sub": "estación de servicio", "x": round(poi["x"] - nr[0] * 3.0, 1), "z": round(poi["z"] - nr[1] * 3.0, 1), "yaw": round(poi["yaw"], 4), "kind": "ciudad"})
+                spawns.append({"name": n["name"], "sub": "estación de servicio", "x": round(poi["x"] - nr[0] * 3.0, 1), "z": round(poi["z"] - nr[1] * 3.0, 1), "yaw": round(poi["yaw"], 4), "kind": n["kind"]})
                 break
     spawns.sort(key=lambda s_: (-s_["x"] ** 0 * 0, s_["name"]))
     W_.spawns = spawns

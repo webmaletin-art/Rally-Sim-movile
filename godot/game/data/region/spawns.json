@@ -1,11 +1,107 @@
 [
  {
+  "name": "Arroyo Claro",
+  "sub": "estación de servicio",
+  "x": -50762.4,
+  "z": -2035.5,
+  "yaw": -1.8523,
+  "kind": "pueblo"
+ },
+ {
   "name": "Bahía Ámbar",
   "sub": "estación de servicio",
   "x": -36501.4,
   "z": -1968.0,
   "yaw": 2.2249,
   "kind": "ciudad"
+ },
+ {
+  "name": "Cerro Verde",
+  "sub": "estación de servicio",
+  "x": 39577.3,
+  "z": -22134.7,
+  "yaw": 1.9553,
+  "kind": "pueblo"
+ },
+ {
+  "name": "Colonia Libertad",
+  "sub": "estación de servicio",
+  "x": 3574.2,
+  "z": -20429.8,
+  "yaw": 0.7268,
+  "kind": "pueblo"
+ },
+ {
+  "name": "Cuesta Alta",
+  "sub": "estación de servicio",
+  "x": -8231.6,
+  "z": -45196.1,
+  "yaw": 1.1908,
+  "kind": "pueblo"
+ },
+ {
+  "name": "El Algarrobal",
+  "sub": "estación de servicio",
+  "x": -18795.1,
+  "z": -926.0,
+  "yaw": 1.6213,
+  "kind": "pueblo"
+ },
+ {
+  "name": "El Chañar",
+  "sub": "estación de servicio",
+  "x": -30647.2,
+  "z": -72362.6,
+  "yaw": -0.8029,
+  "kind": "pueblo"
+ },
+ {
+  "name": "La Candelaria",
+  "sub": "estación de servicio",
+  "x": -18843.3,
+  "z": -36014.3,
+  "yaw": 0.69,
+  "kind": "pueblo"
+ },
+ {
+  "name": "La Esperanza",
+  "sub": "estación de servicio",
+  "x": 40374.5,
+  "z": -9076.3,
+  "yaw": 0.972,
+  "kind": "pueblo"
+ },
+ {
+  "name": "Laguna Blanca",
+  "sub": "estación de servicio",
+  "x": -43821.8,
+  "z": -15506.3,
+  "yaw": 0.3681,
+  "kind": "pueblo"
+ },
+ {
+  "name": "Las Tres Cruces",
+  "sub": "estación de servicio",
+  "x": 22575.6,
+  "z": -36864.0,
+  "yaw": 1.4515,
+  "kind": "pueblo"
+ },
+ {
+  "name": "Los Molles",
+  "sub": "estación de servicio",
+  "x": -38782.4,
+  "z": -34057.0,
+  "yaw": -2.7334,
+  "kind": "pueblo"
+ },
+ {
+  "name": "Mar Chiquita",
+  "sub": "estación de servicio",
+  "x": -49072.6,
+  "z": -61998.9,
+  "yaw": -0.3539,
+  "kind": "pueblo"
  },
  {
   "name": "Monte Sol",
@@ -16,6 +112,30 @@
   "kind": "ciudad"
  },
  {
+  "name": "Monte Viejo",
+  "sub": "estación de servicio",
+  "x": -14141.6,
+  "z": -62132.7,
+  "yaw": 2.0279,
+  "kind": "pueblo"
+ },
+ {
+  "name": "Pampa Seca",
+  "sub": "estación de servicio",
+  "x": 14558.0,
+  "z": -71575.7,
+  "yaw": -1.8538,
+  "kind": "pueblo"
+ },
+ {
+  "name": "Paso Real",
+  "sub": "estación de servicio",
+  "x": 51349.5,
+  "z": -85461.6,
+  "yaw": 0.8209,
+  "kind": "pueblo"
+ },
+ {
   "name": "Paso del Cóndor",
   "sub": "estación de servicio",
   "x": -49578.6,
@@ -24,12 +144,36 @@
   "kind": "ciudad"
  },
  {
+  "name": "Piedra Blanca",
+  "sub": "estación de servicio",
+  "x": 34270.0,
+  "z": -73128.7,
+  "yaw": 0.356,
+  "kind": "pueblo"
+ },
+ {
   "name": "Puerto Alba",
   "sub": "estación de servicio",
   "x": 42893.3,
   "z": -90.2,
   "yaw": 2.8296,
   "kind": "ciudad"
+ },
+ {
+  "name": "Puerto Chico",
+  "sub": "estación de servicio",
+  "x": 23131.6,
+  "z": -15696.0,
+  "yaw": -1.9962,
+  "kind": "pueblo"
+ },
+ {
+  "name": "Punta Aguada",
+  "sub": "estación de servicio",
+  "x": 44036.3,
+  "z": -60435.6,
+  "yaw": -2.8669,
+  "kind": "pueblo"
  },
  {
   "name": "Quebrada Roja",
@@ -48,6 +192,30 @@
   "kind": "ciudad"
  },
  {
+  "name": "San Isidro Sur",
+  "sub": "estación de servicio",
+  "x": 25324.7,
+  "z": -724.8,
+  "yaw": 0.5419,
+  "kind": "pueblo"
+ },
+ {
+  "name": "San Ramiro",
+  "sub": "estación de servicio",
+  "x": -30112.2,
+  "z": -20824.2,
+  "yaw": 2.9833,
+  "kind": "pueblo"
+ },
+ {
+  "name": "San Telmo del Valle",
+  "sub": "estación de servicio",
+  "x": -7431.1,
+  "z": -30856.2,
+  "yaw": -3.071,
+  "kind": "pueblo"
+ },
+ {
   "name": "Santa Aurora",
   "sub": "estación de servicio",
   "x": 2470.4,
@@ -56,11 +224,43 @@
   "kind": "ciudad"
  },
  {
+  "name": "Santa Lucía",
+  "sub": "estación de servicio",
+  "x": -8343.9,
+  "z": -11743.5,
+  "yaw": -3.0672,
+  "kind": "pueblo"
+ },
+ {
+  "name": "Tres Lomas",
+  "sub": "estación de servicio",
+  "x": 52978.8,
+  "z": -2361.2,
+  "yaw": 0.3642,
+  "kind": "pueblo"
+ },
+ {
+  "name": "Valle Hondo",
+  "sub": "estación de servicio",
+  "x": 34998.8,
+  "z": -38582.6,
+  "yaw": -2.336,
+  "kind": "pueblo"
+ },
+ {
   "name": "Villa Cóndor",
   "sub": "estación de servicio",
   "x": -34079.4,
   "z": -51958.8,
   "yaw": 0.8483,
   "kind": "ciudad"
+ },
+ {
+  "name": "Villa Ámbar",
+  "sub": "estación de servicio",
+  "x": 6627.0,
+  "z": -59059.9,
+  "yaw": 0.2145,
+  "kind": "pueblo"
  }
 ]

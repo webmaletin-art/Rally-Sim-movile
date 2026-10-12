@@ -8,6 +8,7 @@ const CarBuild := preload("res://game/data/car_build.gd")
 const OnlineSocial := preload("res://game/online/online_social.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const RegionServices := preload("res://game/region/region_services.gd")
+const SpawnMap := preload("res://game/ui/spawn_map.gd")
 
 var m # menu.gd
 
@@ -30,79 +31,123 @@ func _start_city(spawn := 0) -> void:
 		cfg["resume"] = [float(lp[0]), float(lp[1]), float(lp[2])]
 	m.launch(cfg)
 
+## La última ubicación guardada (x, z, rumbo) si sirve en esta versión del mapa; si no, null
+func _last_pos_value() -> Variant:
+	var lp: Variant = (((m.profile.d.get("online", {}) as Dictionary).get("lastPos", null)) if m.world_online else m.profile.d.get("lastPos", null))
+	if lp is Array and (lp as Array).size() >= 4 and int((lp as Array)[3]) == CityLayout.WORLD_VERSION:
+		return lp
+	return null
+
 ## ¿Hay una última ubicación guardada y sirve en esta versión del mapa?
 func _has_last_pos() -> bool:
-	var lp: Variant = (((m.profile.d.get("online", {}) as Dictionary).get("lastPos", null)) if m.world_online else m.profile.d.get("lastPos", null))
-	return lp is Array and (lp as Array).size() >= 4 and int((lp as Array)[3]) == CityLayout.WORLD_VERSION
+	return _last_pos_value() != null
 
-const SPAWN_PLACES := [["Estacionamiento Central", "a nivel de la calle: salís directo a la ruta"], ["Estacionamiento Central · Planta alta", "un piso arriba: bajás por la rampa"], ["Estacionamiento Central · Subsuelo", "un piso abajo: subís por la rampa"]]
+const SPAWN_PLACES := [["Central · Nivel calle", "Estacionamiento Central, a nivel de la calle: salís directo a la ruta"], ["Central · Planta alta", "Estacionamiento Central, un piso arriba: bajás por la rampa"], ["Central · Subsuelo", "Estacionamiento Central, un piso abajo: subís por la rampa"]]
 
-## Antes de entrar al mundo abierto se elige en qué estacionamiento aparecer (todos están unidos a la calle: se sale manejando)
+## Lugares para aparecer, en un solo selector: la última ubicación, los 3 estacionamientos de Dream City y las estaciones de servicio de las ciudades y pueblos de la región (los más cercanos primero).
+## Cada uno: {key, name, sub, pos (mapa), kind, spawn (índice en city.spawns; -1 = última ubicación)}
+func _spawn_options() -> Array:
+	var out: Array = []
+	var lp: Variant = _last_pos_value()
+	if lp != null:
+		out.append({"key": "last", "name": "📍 " + tr("ÚLTIMA UBICACIÓN"), "sub": tr("seguís desde donde dejaste el auto"), "pos": Vector2(float(lp[0]), float(lp[1])), "kind": "last", "spawn": -1})
+	for i in SPAWN_PLACES.size():
+		out.append({"key": "park%d" % i, "name": "🅿 " + tr(str(SPAWN_PLACES[i][0])), "sub": tr(str(SPAWN_PLACES[i][1])), "pos": Vector2.ZERO, "kind": "dream", "spawn": i})
+	if RegionServices.available():
+		var towns: Array = []
+		var list := RegionServices.spawn_list()
+		for j in list.size():
+			var sp: Dictionary = list[j]
+			var pos := Vector2(float(sp["x"]), float(sp["z"]))
+			var city_like := str(sp.get("kind", "")) == "ciudad"
+			towns.append({"key": "town:%d" % j, "name": ("🏙 " if city_like else "🏘 ") + str(sp["name"]), "sub": tr("estación de servicio") + " · %d km " % roundi(pos.length() / 1000.0) + tr("de Dream City"),
+				"pos": pos, "kind": "ciudad" if city_like else "pueblo", "label": str(sp["name"]), "spawn": SPAWN_PLACES.size() + j})
+		towns.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return (a["pos"] as Vector2).length() < (b["pos"] as Vector2).length())
+		out.append_array(towns)
+	return out
+
+## Antes de entrar al mundo abierto se elige dónde aparecer. Un solo selector con las flechas ◀ ▶ y el mapa de la región, que también se toca: un toque elige el lugar más cercano
+## (tocar Dream City pasa de un estacionamiento al siguiente). Todos los lugares tienen estación o estacionamiento: se arranca y se sale manejando.
 func spawn_screen() -> void:
 	m.set_title(tr("¿DÓNDE APARECER?"))
-	m.body.add_child(Kit.wrap(tr("Elegí el estacionamiento donde empezás. Todos se conectan con la calle: se entra y se sale manejando."), 15, Kit.MUTED, 300))
-	if _has_last_pos():
-		m.body.add_child(m.menu_button("📍 " + tr("ÚLTIMA UBICACIÓN"), tr("seguís desde donde dejaste el auto"), func() -> void:
+	var opts := _spawn_options()
+	var saved := str(m.profile.setting("spawnPick")) if m.profile.setting("spawnPick") != null else ""
+	var sel := 0
+	var found := false
+	for i in opts.size():
+		if str(opts[i]["key"]) == saved:
+			sel = i
+			found = true
+			break
+	if not found:
+		sel = 0 # la última ubicación si hay; si no, el Estacionamiento Central
+	# pantalla completa: el mapa a la izquierda (lo más grande posible) y los controles a la derecha
+	m.panel.anchor_right = 1.0
+	m.view_frac = 1.0
+	m._apply_view_shift()
+	m.body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var row := Kit.hbox(12)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	m.body.add_child(row)
+	# el mapa: una marca por lugar (los 3 estacionamientos son una sola, Dream City)
+	var map := SpawnMap.new()
+	map.marks.append({"key": "dream", "pos": Vector2.ZERO, "label": "Dream City", "kind": "dream"})
+	for o in opts:
+		if str(o["kind"]) in ["ciudad", "pueblo", "last"]:
+			map.marks.append({"key": str(o["key"]), "pos": o["pos"], "label": str(o.get("label", tr("Última ubicación"))), "kind": str(o["kind"])})
+	row.add_child(map)
+	var side := Kit.vbox(10)
+	side.custom_minimum_size.x = 350
+	side.size_flags_horizontal = Control.SIZE_FILL
+	side.size_flags_stretch_ratio = 0.0
+	row.add_child(side)
+	side.add_child(Kit.wrap(tr("Tocá un lugar en el mapa o usá las flechas. Todos tienen estación de servicio o estacionamiento: se sale manejando."), 15, Kit.MUTED, 300))
+	var info := Kit.wrap("", 16, Kit.TEXT, 300)
+	var holder := {"sel": sel}
+	var selector: PanelContainer = null
+	var show_pick := func(i: int, from_selector: bool) -> void:
+		holder["sel"] = i
+		var o: Dictionary = opts[i]
+		map.select("dream" if str(o["kind"]) == "dream" else str(o["key"]))
+		info.text = str(o["sub"])
+		m.profile.set_setting("spawnPick", str(o["key"]))
+		if not from_selector and selector != null:
+			selector.call("set_value", i)
+	selector = Kit.selector(tr("LUGAR"), range(opts.size()), sel, func(v) -> String: return str(opts[int(v)]["name"]), func(v) -> void: show_pick.call(int(v), true), m.sfx, 76.0)
+	side.add_child(selector)
+	side.add_child(info)
+	var grow := Control.new()
+	grow.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	grow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	side.add_child(grow)
+	map.tapped.connect(func(key: String) -> void:
+		var target := -1
+		if key == "dream":
+			# Dream City: si ya se estaba en un estacionamiento se pasa al siguiente; si no, al primero
+			var parks: Array = []
+			for i in opts.size():
+				if str(opts[i]["kind"]) == "dream":
+					parks.append(i)
+			if not parks.is_empty():
+				var at := parks.find(int(holder["sel"]))
+				target = int(parks[(at + 1) % parks.size()]) if at >= 0 else int(parks[0])
+		else:
+			for i in opts.size():
+				if str(opts[i]["key"]) == key:
+					target = i
+		if target >= 0:
 			m.sfx.play("click")
-			_start_city(-1), false))
-	for i in SPAWN_PLACES.size():
-		var idx: int = i
-		m.body.add_child(m.menu_button("🅿 " + tr(str(SPAWN_PLACES[i][0])), tr(str(SPAWN_PLACES[i][1])), func() -> void:
-			m.sfx.play("click")
-			_start_city(idx), i == 0))
-	_region_spawns()
+			show_pick.call(target, false))
+	show_pick.call(sel, false)
+	side.add_child(Kit.button("▶ " + tr("APARECER AQUÍ"), func() -> void:
+		m.sfx.play("click")
+		var o: Dictionary = opts[int(holder["sel"])]
+		_start_city(int(o["spawn"])), true, 26, Vector2(0, 66)))
 	if Release.tools():
-		m.body.add_child(m.menu_button("📊 " + tr("DIAGNÓSTICO / RENDIMIENTO"), tr("registro manual de FPS: probá qué sistema los baja"), func() -> void:
+		side.add_child(m.menu_button("📊 " + tr("DIAGNÓSTICO"), "", func() -> void:
 			m.sfx.play("click")
 			m.go("diag"), false))
-
-## Pueblos y ciudades de la región: se elige uno, el mapa muestra dónde queda y se aparece en su estación de servicio
-func _region_spawns() -> void:
-	var list := RegionServices.spawn_list()
-	if list.is_empty():
-		return
-	var sel := clampi(int(m.profile.setting("regionSpawn") if m.profile.setting("regionSpawn") != null else 0), 0, list.size() - 1)
-	var map := Control.new()
-	map.custom_minimum_size = Vector2(0, 230)
-	map.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	map.clip_contents = true
-	var tex := load("res://game/data/region/region_map.png") as Texture2D
-	var rect := RegionServices.MAP_RECT
-	var to_px := func(p: Vector2, sz: Vector2) -> Vector2:
-		var f := (p - rect.position) / rect.size
-		return Vector2(f.x * sz.x, f.y * sz.y)
-	map.draw.connect(func() -> void:
-		var sz := map.size
-		if tex != null:
-			map.draw_texture_rect(tex, Rect2(Vector2.ZERO, sz), false)
-		else:
-			map.draw_rect(Rect2(Vector2.ZERO, sz), Color(0.12, 0.14, 0.12))
-		var f: Font = ThemeDB.fallback_font
-		var dc: Vector2 = to_px.call(Vector2.ZERO, sz)
-		map.draw_circle(dc, 5.0, Color(1, 1, 1))
-		map.draw_string(f, dc + Vector2(7, 4), "Dream City", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1))
-		for i in list.size():
-			var q: Vector2 = to_px.call(Vector2(float(list[i]["x"]), float(list[i]["z"])), sz)
-			map.draw_circle(q, 3.5, Color(0.95, 0.75, 0.2))
-		var c: Vector2 = to_px.call(Vector2(float(list[sel]["x"]), float(list[sel]["z"])), sz)
-		map.draw_circle(c, 11.0, Color(1, 0.15, 0.1, 0.35))
-		map.draw_circle(c, 6.0, Color(1, 0.2, 0.1))
-		map.draw_arc(c, 11.0, 0.0, TAU, 24, Color(1, 1, 1), 2.0)
-		var nm := str(list[sel]["name"])
-		var off := Vector2(-60.0 if c.x > sz.x * 0.6 else 14.0, -14.0 if c.y > 24.0 else 24.0)
-		map.draw_string(f, c + off, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 0.9, 0.5)))
-	m.body.add_child(Kit.label("🗺 " + tr("PUEBLOS Y RUTAS"), 17, Kit.GOLD))
-	m.body.add_child(map)
-	var names: Array = []
-	for i in list.size():
-		names.append(i)
-	m.body.add_child(Kit.selector(tr("LUGAR"), names, sel, func(v) -> String: return str(list[int(v)]["name"]), func(v) -> void:
-		sel = int(v)
-		m.profile.set_setting("regionSpawn", sel)
-		map.queue_redraw(), m.sfx))
-	m.body.add_child(m.menu_button("🚗 " + tr("APARECER AHÍ"), tr("en la estación de servicio del lugar elegido"), func() -> void:
-		m.sfx.play("click")
-		_start_city(SPAWN_PLACES.size() + sel), false))
 
 ## Modo online: sin cuenta se pide una (ver _online_options); con cuenta pide el apodo la primera vez y muestra el hub del mundo online
 func online_home() -> void:
