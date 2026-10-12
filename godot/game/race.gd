@@ -1265,7 +1265,9 @@ func _rebuild_cars() -> void:
 		# los vidrios son oscuros: la tripulación y el habitáculo solo se dibujan con las cámaras interiores del jugador
 		if i == 0:
 			var Vp: VehicleParams = car.phys.V
-			cockpit = Cockpit.new(str(su["visual_type"]), paint, su["rim"], _pilots_enabled())
+			cockpit = Cockpit.new(str(su["visual_type"]), paint, su["rim"])
+			cockpit.crew_out = _crew_out_enabled()
+			car.visual.set_clear_glass(cockpit.crew_out)
 			cockpit.position = Vector3(0, -Vp.comHeight + Vp.rideOffset, 0)
 			car.visual.add_child(cockpit)
 			cockpit.set_engine(Vp.maxRpm, Vp.shiftUpRpm, Vp.nitroCap)
@@ -2091,18 +2093,9 @@ func _make_result() -> Dictionary:
 		r["standings"].append({"name": session.names[id], "time": session.finish_time[id] if session.finished[id] else -1.0, "player": id == 0, "color": rival_info[id]["color"].to_html(false)})
 	return r
 
-## ¿Se arman los pilotos (piloto y copiloto animados) de las cámaras de adentro? Opción «Pilotos»: automática (se sacan en los teléfonos flojos), solo el mío o ninguno
-func _pilots_enabled() -> bool:
-	if profile == null:
-		return true
-	var m := str(profile.setting("pilots"))
-	if m == "none":
-		return false
-	if m == "auto":
-		var q := str(profile.setting("quality"))
-		if q == "low" or (q == "auto" and int(profile.setting("autoTier")) <= 0):
-			return false
-	return true
+## Opción «Ver pilotos desde afuera»: los pilotos del auto del jugador se ven con las cámaras de afuera (vidrios translúcidos). Apagada por defecto.
+func _crew_out_enabled() -> bool:
+	return (profile != null and profile.setting("crewOut") == true) or OS.get_cmdline_user_args().has("--crewout")
 
 ## Calidad (baja/media/alta/automática), texturas y volúmenes elegidos en Opciones
 func _apply_quality_settings() -> void:
@@ -2139,6 +2132,12 @@ func _apply_quality_settings() -> void:
 ## Un cambio de Opciones hecho durante la carrera: se aplica en el momento
 func _apply_live_settings(key: String) -> void:
 	match key:
+		"crewOut":
+			if cockpit != null and not cars.is_empty():
+				cockpit.crew_out = _crew_out_enabled()
+				cars[0].visual.set_clear_glass(cockpit.crew_out)
+				cars[0].visual.set_inside(cam_rig != null and cam_rig.is_inside()) # (reasigna los materiales de afuera / de adentro)
+				cockpit.set_inside(cam_rig != null and cam_rig.is_inside(), cam_rig == null or cam_rig.mode() != "onboard")
 		"fx":
 			lens.apply_settings(profile)
 			lens_auto = false
@@ -2970,8 +2969,9 @@ func _frame(dt: float) -> void:
 		cars[0].visual.set_inside(inside)
 		controls.show_speed = not inside
 		cockpit.set_inside(inside, not onboard)
-	if inside:
+	if inside or (cockpit != null and cockpit.crew_out):
 		cockpit.update_crew(dt, p, controls.handbrake, cam_rig.time, 0.0)
+	if inside:
 		cockpit.update_cabin(dt, p, controls.handbrake, cam_rig.time)
 	if cam_mode == "side":
 		var right := Vector3(cos(p.yaw), 0, -sin(p.yaw))

@@ -16,6 +16,7 @@ var lo := false
 var shell: Node3D
 var shell_in: Node3D # carrocería liviana (~6 mil triángulos) que se dibuja con la cámara adentro del auto: sin retazos del interior del modelo y mucho más rápida
 var _paint_args: Array = []
+var clear_glass := false # opción «Ver pilotos desde afuera»: vidrios translúcidos (el auto del jugador)
 var tire_mat: StandardMaterial3D
 var parts: CarParts # ruedas, frenos y suspensión por código (autos con carrocería propia); null = Volt
 var meta: Dictionary = {} # medidas del GLB propio (models/cars/<id>.json)
@@ -150,7 +151,7 @@ func _apply_own_mats(pattern: int, paint: Color, accent: Color, finish: String, 
 					var orig := pattern == ORIGINAL_TEXTURE
 					var pair: Array = []
 					for inside in [false, true]:
-						var sm := _own_paint(0 if orig else pattern, paint, accent, finish, accent2, inside)
+						var sm := _own_paint(0 if orig else pattern, paint, accent, finish, accent2, inside, clear_glass and not inside)
 						_set_tex(sm, (mat as BaseMaterial3D).albedo_texture, 2.0 if orig else 1.0)
 						pair.append(sm)
 					mi.set_surface_override_material(s, pair[0])
@@ -159,10 +160,19 @@ func _apply_own_mats(pattern: int, paint: Color, accent: Color, finish: String, 
 			if nm == "glass":
 				mi.set_surface_override_material(s, _glass_material())
 				continue
-			var mo := _own_paint(pattern, paint, accent, finish, accent2, false)
+			var mo := _own_paint(pattern, paint, accent, finish, accent2, false, clear_glass)
 			var mi2 := _own_paint(pattern, paint, accent, finish, accent2, true)
 			mi.set_surface_override_material(s, mo)
 			_own_mats.append({"mi": mi, "s": s, "out": mo, "in": mi2})
+
+## Vidrios translúcidos (para ver a los pilotos desde las cámaras de afuera): rearma la pintura con el sombreador transparente
+func set_clear_glass(on: bool) -> void:
+	if clear_glass == on or _paint_args.is_empty():
+		clear_glass = on
+		return
+	clear_glass = on
+	var a := _paint_args
+	_apply_own_mats(int(a[0]), a[1], a[2], str(a[3]), a[4])
 
 ## Con la cámara adentro del auto: se esconden las ruedas y la suspensión y la carrocería se dibuja solo por fuera
 func set_inside(v: bool) -> void:
@@ -217,8 +227,8 @@ func cowl_z() -> float:
 	return float(meta.get("cowl_z", 0.45)) # buggy (sin vidrios)
 
 ## Material de pintura de una carrocería propia: oscurecido de vértice tal cual y vidrios dibujados por el sombreador
-func _own_paint(pattern: int, paint: Color, accent: Color, finish: String, accent2: Color, inside := false) -> ShaderMaterial:
-	var sm := _paint_material(pattern, paint, accent, finish, accent2, inside)
+func _own_paint(pattern: int, paint: Color, accent: Color, finish: String, accent2: Color, inside := false, clear := false) -> ShaderMaterial:
+	var sm := _paint_material(pattern, paint, accent, finish, accent2, inside, clear)
 	sm.set_shader_parameter("vk", 1.0)
 	if pattern >= 7 and pattern <= 10:
 		_set_decal(sm, pattern)
@@ -515,16 +525,20 @@ func set_tire_color(c: Color) -> void:
 		tire_mat.albedo_color = c
 
 static var _livery_shader_in: Shader
+static var _livery_shader_clear: Shader
 
-static func _paint_material(pattern: int, paint: Color, accent: Color, finish: String, accent2 := Color(0.95, 0.95, 0.93), inside := false) -> ShaderMaterial:
+static func _paint_material(pattern: int, paint: Color, accent: Color, finish: String, accent2 := Color(0.95, 0.95, 0.93), inside := false, clear := false) -> ShaderMaterial:
 	if _livery_shader == null:
 		_livery_shader = Shader.new()
 		_livery_shader.code = LIVERY_SHADER
 		_livery_shader_in = Shader.new()
 		_livery_shader_in.code = LIVERY_SHADER.replace("render_mode cull_disabled;", "render_mode cull_back;")
+		# vidrios translúcidos (la tripulación se ve desde afuera): sólo el vidrio lleva transparencia, el resto de la carrocería queda opaca
+		_livery_shader_clear = Shader.new()
+		_livery_shader_clear.code = LIVERY_SHADER.replace("render_mode cull_disabled;", "render_mode cull_disabled, blend_mix, depth_draw_always;").replace("ALBEDO = mix(base, vec3(0.02, 0.03, 0.045), gm);", "ALBEDO = mix(base, vec3(0.02, 0.03, 0.045), gm);\n\tALPHA = 1.0 - gm * 0.8;")
 	var fin: Array = FINISH.get(finish, FINISH["gloss"])
 	var sm := ShaderMaterial.new()
-	sm.shader = _livery_shader_in if inside else _livery_shader
+	sm.shader = _livery_shader_in if inside else (_livery_shader_clear if clear else _livery_shader)
 	sm.set_shader_parameter("paint", paint)
 	sm.set_shader_parameter("accent", accent)
 	sm.set_shader_parameter("accent2", accent2)

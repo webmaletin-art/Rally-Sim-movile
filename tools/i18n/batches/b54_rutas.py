@@ -33,3 +33,6 @@ T = {
 "Estación 9": e("Station 9", "Posto 9", "Station 9", "Stazione 9", "Station 9"),
 "↺ ESTACIÓN": e("↺ STATION", "↺ POSTO", "↺ STATION", "↺ STAZIONE", "↺ TANKSTELLE"),
 }
+T.update({
+"Ver los pilotos desde las cámaras de afuera (vidrios transparentes)": e("See the drivers from the outside cameras (clear glass)", "Ver os pilotos pelas câmeras de fora (vidros transparentes)", "Voir les pilotes depuis les caméras extérieures (vitres transparentes)", "Vedere i piloti dalle camere esterne (vetri trasparenti)", "Fahrer in den Außenkameras sehen (klare Scheiben)"),
+})

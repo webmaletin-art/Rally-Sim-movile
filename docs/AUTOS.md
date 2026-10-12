@@ -61,3 +61,5 @@ Los autos pesan ~500 MB: el contenido se parte en `content.pck` (todo menos `gam
 ## Pendiente para abrir el modo online
 - Sumar los 26 autos a `tools/online/online_catalog.json` + migración de Supabase (la pintura de fábrica de todos es `livery: 11`).
 - El color de las letras (`paint.text`) todavía no viaja al servidor (`SERVER_PAINT_KEYS` en `online_profile.gd`): hay que agregarlo junto con la migración.
+
+- **Pilotos vistos desde afuera:** los pilotos siempre están en las cámaras de adentro. Opción Opciones → Gráficos → «Ver los pilotos desde las cámaras de afuera (vidrios transparentes)» (`crewOut`, apagada por defecto): el auto del jugador usa una variante del sombreador de pintura con el vidrio translúcido (`LIVERY_SHADER` con `blend_mix`, `CarVisual.set_clear_glass`) y `Cockpit.crew_out` deja a los dos pilotos visibles con las cámaras exteriores. Los rivales no llevan pilotos (pendiente si se quiere).
