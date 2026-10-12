@@ -10,6 +10,9 @@ static func event_by_id(id: String) -> Dictionary:
 			return e
 	return {}
 
+static func all_events() -> Array:
+	return CarBuild.catalog()["events"]
+
 static func tier_by_id(id: String) -> Dictionary:
 	for t in CarBuild.catalog()["tiers"]:
 		if t["id"] == id:
@@ -77,25 +80,10 @@ static func reward_for(ev: Dictionary, medal: int, tier: Dictionary) -> Dictiona
 	var mult: float = ([0.2, 0.4, 0.6, 1.0] if str(ev.get("type", "")) == "race" else [0.1, 0.4, 0.6, 1.0])[medal]
 	return {"cr": int(round(base * mult / 10.0)) * 10, "xp": int(round((250.0 + float(tier["base"]) * 0.12) * (0.4 + float(medal) * 0.3) * (1.5 if ev.get("final", false) else 1.0)))}
 
-## ¿Está abierto el evento? Devuelve "" si sí, o el motivo. Los eventos que todavía no se pueden jugar no traban a los siguientes.
-static func event_locked(profile: RefCounted, ev: Dictionary) -> String:
-	if preload("res://game/data/release.gd").dev(profile):
-		return ""
-	var lst: Array = []
-	for e in events_of(str(ev["tier"])):
-		if playable(e):
-			lst.append(e)
-	var i := lst.find(ev)
-	if i <= 0:
-		return ""
-	var m := func(id: String) -> int: return int(profile.event_result(id).get("medal", 0))
-	if ev.get("final", false):
-		var miss := 0
-		for k in i:
-			if m.call(lst[k]["id"]) < 1:
-				miss += 1
-		return "Conseguí medalla en todas las anteriores (faltan %d)" % miss if miss > 0 else ""
-	return "" if m.call(lst[i - 1]["id"]) >= 1 else "Conseguí medalla en «%s»" % lst[i - 1]["name"]
+## ¿Está abierto el evento? Devuelve "" si sí, o el motivo. Todas las carreras de una copa abierta se pueden correr en cualquier orden (antes había que ganar una medalla en la anterior:
+## las copas libres parecían bloqueadas). Lo que sigue pidiendo estrellas es abrir la copa siguiente (tier_open).
+static func event_locked(_profile: RefCounted, _ev: Dictionary) -> String:
+	return ""
 
 static func tier_open(profile: RefCounted, tier: Dictionary) -> bool:
 	if not preload("res://game/data/release.gd").tier_allowed(profile, str(tier["id"])):
@@ -234,6 +222,7 @@ static func ach_done(profile: RefCounted, id: String) -> bool:
 			return false
 		"cars2": return (d["owned"] as Dictionary).size() >= 2
 		"cars4": return (d["owned"] as Dictionary).size() >= 4
+		"cars10": return (d["owned"] as Dictionary).size() >= 10
 		"gold10":
 			var n := 0
 			for k in d["events"]:

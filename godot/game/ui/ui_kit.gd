@@ -155,7 +155,7 @@ static func pager(page: int, pages: int, cb: Callable) -> HBoxContainer:
 	return row
 
 ## Tarjeta de dos líneas dentro de un botón: título, subtítulo y texto a la derecha. Devuelve el botón.
-static func card_button(title: String, sub: String, right: String, cb: Callable, accent := false, enabled := true, h := 64.0, tsize := 20, left := "") -> Button:
+static func card_button(title: String, sub: String, right: String, cb: Callable, accent := false, enabled := true, h := 64.0, tsize := 20, left := "", wrap_title := false) -> Button:
 	var b := button("", Callable(), accent, 20, Vector2(0, h))
 	b.disabled = not enabled
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -177,8 +177,12 @@ static func card_button(title: String, sub: String, right: String, cb: Callable,
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(v)
 	var tl := label(title, tsize, DARK if dark else (TEXT if enabled else MUTED))
-	tl.clip_text = true
 	tl.custom_minimum_size.x = 40
+	if wrap_title: # títulos largos: pasan a una segunda línea en vez de cortarse
+		tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	else:
+		tl.clip_text = true
 	v.add_child(tl)
 	if sub != "":
 		var sl := label(sub, 13, DARK.lightened(0.15) if dark else MUTED)

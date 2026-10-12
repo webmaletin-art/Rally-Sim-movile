@@ -165,7 +165,7 @@ func _events(tier_id: String) -> void:
 		elif lk != "":
 			right = "🔒"
 		var ev: Dictionary = e
-		var b := Kit.card_button("%s %s%s" % [ti["icon"], e["name"], " · FINAL" if e.get("final", false) else ""], sub, right, func(): _open_event(ev, lk), false, true, 66, 18, "%d" % (i + 1))
+		var b := Kit.card_button("%s %s%s" % [ti["icon"], e["name"], " · FINAL" if e.get("final", false) else ""], sub, right, func(): _open_event(ev, lk), false, true, 66, 16, "%d" % (i + 1), true)
 		g.add_child(b)
 	if pages > 1:
 		m.body.add_child(Kit.pager(ev_page, pages, func(pg: int) -> void:

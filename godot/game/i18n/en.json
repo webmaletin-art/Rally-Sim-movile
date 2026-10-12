@@ -269,7 +269,7 @@
 "BOSQUE": "",
 "BRAVA": "",
 "Baja": "Low",
-"Bajada de los Badenes": "Dip Descent",
+"Bajada de los Badenes": "Dip Hill Descent",
 "Bajada: frenos más atrás para que no se bloqueen adelante.": "Descent: brake bias further back so the front doesn't lock.",
 "Bajadas y frenos": "Descents and brakes",
 "Bajalo para que la cola se suelte fácil y derrapar. 100% = normal.": "Lower it so the tail breaks loose easily and you can drift. 100% = normal.",
@@ -2590,5 +2590,17 @@
 "Estacionamiento Central, un piso abajo: subís por la rampa": "Central Car Park, one level down: you go up the ramp.",
 "estación de servicio": "service station",
 "de Dream City": "from Dream City",
-"Última ubicación": "Last location"
+"Última ubicación": "Last location",
+"Asfalto en bajada con badenes: frená antes de cada lomo y no pierdas la trazada. Tres rivales pegados atrás.": "Downhill tarmac with dips: brake before every crest and hold your line. Three rivals right behind you.",
+"Montaña: Primer Intento": "Mountain: First Attempt",
+"Tu primera subida y bajada de la montaña de asfalto, con el cielo cubierto. Curvas largas y tres rivales.": "Your first climb and descent of the tarmac mountain under an overcast sky. Long corners and three rivals.",
+"Montaña Inversa: Niebla": "Reverse Mountain: Fog",
+"La montaña al revés, con poca visibilidad y cinco rivales. Frená a tiempo en las horquillas.": "The mountain in reverse, with low visibility and five rivals. Brake in time for the hairpins.",
+"Duelo en los Badenes": "Duel on the Dips",
+"La bajada más traicionera con cinco rivales de nivel continental. Un error en un baden y perdés el puesto.": "The most treacherous descent with five continental-level rivals. One mistake on a dip and you lose your place.",
+"Raid en la Bajada": "Downhill Raid",
+"El gigante baja por los badenes: mucho peso, poco margen. Hay que frenar antes que todos.": "The giant rolls down the dips: lots of weight, little margin. You have to brake before everyone else.",
+"Cuatro en el garaje": "Four in the garage",
+"Tené 4 autos en el garaje.": "Own 4 cars in your garage.",
+"Tené 10 autos en el garaje.": "Own 10 cars in your garage."
 }

@@ -27,7 +27,18 @@ func _init() -> void:
 	check("premio d2 plata", Rewards.reward_for(d2, 2, debut), {"cr": 1200, "xp": 490})
 	check("premio final oro", Rewards.reward_for(d7, 3, debut), {"cr": 3200, "xp": 955})
 	check("d1 jugable", Rewards.playable(d1), true)
-	check("d3 (estacionar) no jugable", Rewards.playable(Rewards.event_by_id("d3")), false)
+	check("d3 (bajada de los badenes) jugable", Rewards.playable(Rewards.event_by_id("d3")), true)
+	check("d6 (duelo en la trinchera) jugable", Rewards.playable(Rewards.event_by_id("d6")), true)
+	# todas las carreras de todas las copas se pueden jugar y ninguna está bloqueada
+	var sin_jugar := 0
+	var bloqueadas := 0
+	for ev in Rewards.all_events():
+		if not Rewards.playable(ev):
+			sin_jugar += 1
+		if Rewards.event_locked(null, ev) != "":
+			bloqueadas += 1
+	check("eventos que dicen «pronto»", sin_jugar, 0)
+	check("eventos bloqueados por una medalla anterior", bloqueadas, 0)
 	check("d5 (drift en la plaza) jugable", Rewards.playable(Rewards.event_by_id("d5")), true)
 	check("d8 (picada) jugable", Rewards.playable(Rewards.event_by_id("d8")), true)
 	check("estrellas copa nacional (6 eventos jugables en la copa debut)", Rewards.stars_needed(Rewards.tier_by_id("nacional")), 12)

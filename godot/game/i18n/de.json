@@ -269,7 +269,7 @@
 "BOSQUE": "",
 "BRAVA": "",
 "Baja": "Niedrig",
-"Bajada de los Badenes": "Wellenabfahrt",
+"Bajada de los Badenes": "Abfahrt der Bodenwellen",
 "Bajada: frenos más atrás para que no se bloqueen adelante.": "Bergab: Bremsverteilung weiter nach hinten, damit die Vorderräder nicht blockieren.",
 "Bajadas y frenos": "Gefälle und Bremsen",
 "Bajalo para que la cola se suelte fácil y derrapar. 100% = normal.": "Senke ihn, damit das Heck leicht ausbricht und du driften kannst. 100 % = normal.",
@@ -2581,5 +2581,17 @@
 "Estacionamiento Central, un piso abajo: subís por la rampa": "Zentrales Parkhaus, eine Ebene tiefer: Du fährst die Rampe hinauf.",
 "estación de servicio": "Tankstelle",
 "de Dream City": "von Dream City",
-"Última ubicación": "Letzte Position"
+"Última ubicación": "Letzte Position",
+"Asfalto en bajada con badenes: frená antes de cada lomo y no pierdas la trazada. Tres rivales pegados atrás.": "Asphalt bergab mit Bodenwellen: Brems vor jeder Kuppe und halte die Spur. Drei Rivalen dicht hinter dir.",
+"Montaña: Primer Intento": "Berg: Erster Versuch",
+"Tu primera subida y bajada de la montaña de asfalto, con el cielo cubierto. Curvas largas y tres rivales.": "Dein erster Anstieg und deine erste Abfahrt am Asphaltberg unter bedecktem Himmel. Lange Kurven und drei Rivalen.",
+"Montaña Inversa: Niebla": "Berg rückwärts: Nebel",
+"La montaña al revés, con poca visibilidad y cinco rivales. Frená a tiempo en las horquillas.": "Der Berg rückwärts, mit schlechter Sicht und fünf Rivalen. Brems rechtzeitig vor den Haarnadeln.",
+"Duelo en los Badenes": "Duell auf den Bodenwellen",
+"La bajada más traicionera con cinco rivales de nivel continental. Un error en un baden y perdés el puesto.": "Die tückischste Abfahrt mit fünf Rivalen auf kontinentalem Niveau. Ein Fehler auf einer Bodenwelle und du verlierst deinen Platz.",
+"Raid en la Bajada": "Raid bergab",
+"El gigante baja por los badenes: mucho peso, poco margen. Hay que frenar antes que todos.": "Der Riese rollt über die Bodenwellen: viel Gewicht, wenig Spielraum. Du musst vor allen anderen bremsen.",
+"Cuatro en el garaje": "Vier in der Garage",
+"Tené 4 autos en el garaje.": "Besitze 4 Autos in deiner Garage.",
+"Tené 10 autos en el garaje.": "Besitze 10 Autos in deiner Garage."
 }
