@@ -43,7 +43,8 @@ Los 14 se compran con créditos del juego (ninguno es premium de Play). Pruebas:
 ### Versión «original» (textura propia, sin bajar polígonos)
 `veltor_gtr_hd` = el Veltor Max Pro GTR tal como vino del modelador: 345 mil triángulos y su textura de 1024². `python3 tools/cars/build_hd.py veltor_gtr_hd veltor_gtr <crudo.glb>`
 lo pone en el mismo lugar que el GTR normal (misma escala, piso y centro; mismo json con `"textured": true`), así ruedas, suspensión y física calzan. `car_visual.gd` no lo
-repinta (ni colores ni rotulados) y con la cámara interior dibuja solo las caras de frente. La versión lejana (`_lo`) es la liviana del GTR pintada por el juego.
+repinta (ni colores ni rotulados) y con la cámara interior dibuja solo las caras de frente.
+**Colores sobre la textura:** `LIVERY_SHADER` (`use_tex`) recolorea la textura en el juego: los píxeles con el tono de la pintura de fábrica (`tex.paint_hue`, en el json; el GTR: azul 0,615) pasan al color de pintura del taller, los del tono de los detalles (`tex.accent_hue`, rojo 0,0) al color «Detalles», conservando su brillo/sombreado; el carbono, el negro, el gris y los vidrios no se tocan. Sirve cualquier color (blanco/negro/plata salen un poco menos fieles). Los rotulados y el acabado funcionan encima. Para otro auto con textura: medir el tono dominante saturado de su textura y ponerlo en `meta['tex']` de `build_hd.py`. Solo se exporta la textura de color (sin metal/rugosidad ni relieve). La versión lejana (`_lo`) es la liviana del GTR pintada por el juego.
 Pesa unos 13 MB y más en el teléfono: es para probar la calidad máxima. Para hacer lo mismo con otro auto: agregarlo a `batch2.py` (SPEC y ORDER), correr `build_hd.py`, `make_vehicles.py`, `gen_decals.py`, `gen_thumbs.gd`.
 
 ### Sonido por auto

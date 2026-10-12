@@ -258,5 +258,11 @@
   345516,
   0
  ],
- "textured": true
+ "textured": true,
+ "tex": {
+  "paint_hue": 0.615,
+  "accent_hue": 0.0,
+  "vref": 0.7,
+  "hue_w": 0.09
+ }
 }

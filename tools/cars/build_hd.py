@@ -40,7 +40,7 @@ def main():
     dz = float(meta['arches'][1]['z']) - front['z']
     # 2) el crudo, con UV y material: mismas operaciones
     sc = trimesh.load(raw)
-    m = sc.dump(concatenate=True) if isinstance(sc, trimesh.Scene) else sc
+    m = sc.to_geometry() if isinstance(sc, trimesh.Scene) else sc
     W = np.asarray(m.vertices, dtype=np.float64).copy()
     W[:, 0] -= (W[:, 0].min() + W[:, 0].max()) / 2
     W[:, 2] -= (W[:, 2].min() + W[:, 2].max()) / 2
@@ -50,7 +50,9 @@ def main():
     W[:, 1] *= ysc
     W[:, 1] += ground
     W[:, 2] += dz
-    out = trimesh.Trimesh(W, np.asarray(m.faces), visual=m.visual.copy(), process=False)
+    # solo la textura de color: el juego recolorea con su sombreador (pintura y detalles) y no usa las de metal/rugosidad ni relieve (pesan y no se usan)
+    mat = trimesh.visual.material.PBRMaterial(baseColorTexture=m.visual.material.baseColorTexture, metallicFactor=0.3, roughnessFactor=0.5)
+    out = trimesh.Trimesh(W, np.asarray(m.faces), visual=trimesh.visual.TextureVisuals(uv=m.visual.uv, material=mat), process=False)
     out.vertices = W
     os.makedirs(MODELS, exist_ok=True)
     glb = out.export(file_type='glb', include_normals=True)
@@ -58,6 +60,7 @@ def main():
     shutil.copy(os.path.join(MODELS, base + '_lo.glb'), os.path.join(MODELS, new_id + '_lo.glb'))
     meta['id'] = new_id
     meta['textured'] = True
+    meta['tex'] = {'paint_hue': 0.615, 'accent_hue': 0.0, 'vref': 0.7, 'hue_w': 0.09}   # tono (0–1) de la pintura y de los detalles de la textura, brillo de referencia y ancho del tono
     meta['tris'] = [int(len(out.faces)), 0]
     json.dump(meta, open(os.path.join(MODELS, new_id + '.json'), 'w'), indent=1)
     print(new_id, 'triángulos', len(out.faces), 'tamaño KB', len(glb) // 1024, 'dz %.3f' % dz, 'altura %.3f' % out.bounds[1][1], 'frente z %.3f' % out.bounds[1][2])

@@ -134,20 +134,25 @@ func _setup_own(paint: Color, rim: Color, finish: String) -> void:
 ## Pone la pintura (afuera: doble cara · adentro: solo caras de frente, así con la cámara interior se ve el capó real y no el techo)
 func _apply_own_mats(pattern: int, paint: Color, accent: Color, finish: String, accent2: Color) -> void:
 	_own_mats.clear()
-	var textured: bool = bool(meta.get("textured", false)) and not lo # versión «original»: lleva su propia textura, no se repinta
+	var textured: bool = bool(meta.get("textured", false)) and not lo # versión «original»: lleva su propia textura; el color y los detalles reemplazan los tonos de fábrica de la textura
 	for mi in _mesh_instances(shell):
 		var mesh: Mesh = mi.mesh
 		for s in mesh.get_surface_count():
 			var mat := mesh.surface_get_material(s)
 			var nm := mat.resource_name if mat else ""
 			if textured:
-				if mat is BaseMaterial3D:
-					var m_out := (mat as BaseMaterial3D).duplicate() as BaseMaterial3D
-					m_out.cull_mode = BaseMaterial3D.CULL_DISABLED
-					var m_in := m_out.duplicate() as BaseMaterial3D
-					m_in.cull_mode = BaseMaterial3D.CULL_BACK # con la cámara adentro: solo las caras de frente (se ve el capó real y no el techo)
-					mi.set_surface_override_material(s, m_out)
-					_own_mats.append({"mi": mi, "s": s, "out": m_out, "in": m_in})
+				if mat is BaseMaterial3D and (mat as BaseMaterial3D).albedo_texture != null:
+					var tcfg: Dictionary = meta.get("tex", {})
+					var pair: Array = []
+					for inside in [false, true]:
+						var sm := _own_paint(pattern, paint, accent, finish, accent2, inside)
+						sm.set_shader_parameter("use_tex", 1.0)
+						sm.set_shader_parameter("albedo_tex", (mat as BaseMaterial3D).albedo_texture)
+						sm.set_shader_parameter("glass_on", 0.0) # los vidrios ya vienen en la textura
+						sm.set_shader_parameter("tex_cfg", Vector4(float(tcfg.get("paint_hue", 0.615)), float(tcfg.get("accent_hue", 0.0)), float(tcfg.get("vref", 0.7)), float(tcfg.get("hue_w", 0.09))))
+						pair.append(sm)
+					mi.set_surface_override_material(s, pair[0])
+					_own_mats.append({"mi": mi, "s": s, "out": pair[0], "in": pair[1]})
 				continue
 			if nm == "glass":
 				mi.set_surface_override_material(s, _glass_material())
@@ -270,11 +275,27 @@ uniform sampler2D camo_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D decal_tex : source_color, filter_linear_mipmap;
 uniform vec4 decal_rect = vec4(0.0, 0.6, 1.0, 0.125); // letras en las puertas: centro (z, y) y semiancho / semialto
 uniform vec2 decal_v = vec2(0.0, 0.03); // franja del atlas (v) de la fila elegida
+uniform float use_tex = 0.0; // autos con textura propia: el color de pintura reemplaza el tono de la pintura de fábrica de la textura (y el de detalles el de sus detalles); el resto (carbono, negro, gris, vidrio) queda como está
+uniform sampler2D albedo_tex : filter_linear_mipmap;
+uniform vec4 tex_cfg = vec4(0.615, 0.0, 0.7, 0.09); // tono de la pintura de fábrica (0–1), tono de los detalles, brillo (V) de referencia de la pintura, ancho del tono
 varying vec3 lp;
 varying vec3 ln;
+varying vec2 tuv;
 void vertex() {
 	lp = VERTEX;
 	ln = NORMAL;
+	tuv = UV;
+}
+vec3 rgb2hsv(vec3 c) {
+	vec4 K = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+	vec4 p = mix(vec4(c.bg, K.wz), vec4(c.gb, K.xy), step(c.b, c.g));
+	vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+	float d = q.x - min(q.w, q.y);
+	return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + 1.0e-10)), d / (q.x + 1.0e-10), q.x);
+}
+float hue_d(float a, float b) {
+	float d = abs(a - b);
+	return min(d, 1.0 - d);
 }
 float rbox(vec2 p, vec2 b, float r) {
 	vec2 q = abs(p) - b + r;
@@ -323,6 +344,19 @@ void fragment() {
 		discard;
 	}
 	vec3 c = paint;
+	float tmall = 1.0;
+	if (use_tex > 0.5) {
+		vec3 raw = texture(albedo_tex, tuv).rgb; // valores de la imagen tal cual (sin pasar a lineal): el tono y la saturación se miden como se pintaron
+		vec3 hsv = rgb2hsv(raw);
+		float satm = smoothstep(0.12, 0.45, hsv.y) * smoothstep(0.04, 0.16, hsv.z);
+		float mp = satm * (1.0 - smoothstep(tex_cfg.w * 0.6, tex_cfg.w, hue_d(hsv.x, tex_cfg.x)));
+		float ma = satm * (1.0 - smoothstep(tex_cfg.w * 0.6, tex_cfg.w, hue_d(hsv.x, tex_cfg.y)));
+		float vl = pow(hsv.z, 2.2) / pow(tex_cfg.z, 2.2);
+		c = pow(raw, vec3(2.2));
+		c = mix(c, paint * clamp(vl, 0.0, 1.6), mp);
+		c = mix(c, accent * clamp(vl, 0.0, 1.6), ma);
+		tmall = max(mp, ma);
+	}
 	float side = smoothstep(0.35, 0.55, abs(ln.x));
 	float top = smoothstep(0.25, 0.5, ln.y);
 	float ax = abs(lp.x);
@@ -389,8 +423,9 @@ void fragment() {
 		gm = max(max(glass_strip(lp, ln, ws, ws_w), glass_strip(lp, ln, rg, rg_w)), glass_side(lp, ln));
 	}
 	ALBEDO = mix(base, vec3(0.02, 0.03, 0.045), gm);
-	METALLIC = mix(metal, 0.85, gm);
-	ROUGHNESS = mix(rough, 0.06, gm);
+	float pm = use_tex > 0.5 ? tmall : 1.0; // con textura: solo la pintura brilla según el acabado; el carbono y los detalles oscuros son más mates
+	METALLIC = mix(mix(0.25, metal, pm), 0.85, gm);
+	ROUGHNESS = mix(mix(0.55, rough, pm), 0.06, gm);
 	if (gm > 0.01) { // vidrio polarizado con un reflejo de cielo falso (sin esto se veía como un agujero negro): más claro de costado (fresnel) y hacia arriba
 		vec3 V = normalize(VIEW);
 		vec3 N = normalize(NORMAL);
