@@ -21,21 +21,12 @@ env:
   GODOT_VERSION: 4.4.1
 
 jobs:
-  build:
+  # Las pruebas corren en paralelo y NO frenan la compilación del APK (si fallan, el job queda en rojo y se mira el log).
+  tests:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: 'platform-tools build-tools;35.0.1 platforms;android-35'
 
       - name: Instalar Godot y plantillas de exportación
         run: |
@@ -44,28 +35,8 @@ jobs:
           curl -sSL -o godot.zip $base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
           unzip -q godot.zip
           sudo mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
-          curl -sSL -o tpz.zip $base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
-          dir=$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable
-          mkdir -p $dir
-          unzip -q -j tpz.zip 'templates/android_*' 'templates/version.txt' -d $dir
-          rm -f tpz.zip godot.zip
-          ls -la $dir
+          rm -f godot.zip
           godot --headless --version
-
-      - name: Configurar Godot (SDK de Android y firma)
-        run: |
-          mkdir -p $HOME/.config/godot
-          cat > $HOME/.config/godot/editor_settings-4.4.tres <<EOF
-          [gd_resource type="EditorSettings" format=3]
-
-          [resource]
-          export/android/android_sdk_path = "$ANDROID_HOME"
-          export/android/java_sdk_path = "$JAVA_HOME"
-          export/android/debug_keystore = "$GITHUB_WORKSPACE/godot/keystore/debug.keystore"
-          export/android/debug_keystore_user = "androiddebugkey"
-          export/android/debug_keystore_pass = "android"
-          EOF
-          cat $HOME/.config/godot/editor_settings-4.4.tres
 
       - name: Importar recursos
         working-directory: godot
@@ -120,6 +91,58 @@ jobs:
           timeout -k 5 600 godot --headless --script res://tests/world_budget_test.gd
           timeout -k 5 900 godot --headless --script res://tests/travesia_test.gd -- --km=12
           timeout -k 5 600 godot --headless --script res://tests/vegbench_test.gd
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools build-tools;35.0.1 platforms;android-35'
+
+      - name: Instalar Godot y plantillas de exportación
+        run: |
+          set -e
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          curl -sSL -o godot.zip $base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          sudo mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+          curl -sSL -o tpz.zip $base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          dir=$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p $dir
+          unzip -q -j tpz.zip 'templates/android_*' 'templates/version.txt' -d $dir
+          rm -f tpz.zip godot.zip
+          ls -la $dir
+          godot --headless --version
+
+      - name: Configurar Godot (SDK de Android y firma)
+        run: |
+          mkdir -p $HOME/.config/godot
+          cat > $HOME/.config/godot/editor_settings-4.4.tres <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$GITHUB_WORKSPACE/godot/keystore/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+          cat $HOME/.config/godot/editor_settings-4.4.tres
+
+      - name: Importar recursos
+        working-directory: godot
+        run: |
+          godot --headless --import || true
+          godot --headless --import || true
 
       - name: Configurar el modo online (Supabase)
         working-directory: godot
