@@ -254,7 +254,7 @@ func _ready() -> void:
 		elif a.begins_with("--world") and cfg.is_empty():
 			# prueba: arranca directo el mundo abierto (con DR_POS=x,z,grados para elegir el punto)
 			cfg = {"type": "city", "track": "aurelia", "ai": 0, "sky": "day", "car": "hatch", "state": Profile.new_car_state("hatch"), "seed": 7, "back": "home", "quick": true, "spawn": 0, "online": false, "sim": "mid", "maxPI": 999, "tod": 13.0, "tod_frozen": true}
-			if OS.has_environment("DR_SPAWN"): # prueba: DR_SPAWN=n → aparece en el lugar n de «¿dónde aparecer?» (0–2 estacionamientos, 3… pueblos de la región)
+			if OS.has_environment("DR_SPAWN") and not Release.store(): # prueba: DR_SPAWN=n → aparece en el lugar n de «¿dónde aparecer?» (0–2 estacionamientos, 3… pueblos de la región)
 				cfg["spawn"] = int(OS.get_environment("DR_SPAWN"))
 			if a.begins_with("--world=bigmap"):
 				cfg["bigmap"] = true
@@ -1268,7 +1268,7 @@ func _rebuild_cars() -> void:
 		if adv_mode:
 			sp = Adventure.start_pose(track, i, cfg)
 		car.place(sp[0], sp[1], sp[2])
-		if OS.has_environment("DR_POS") and i == 0: # prueba: DR_POS=x,z,yaw (grados)
+		if OS.has_environment("DR_POS") and i == 0 and not Release.store(): # prueba: DR_POS=x,z,yaw (grados)
 			var dp := OS.get_environment("DR_POS").split_floats(",")
 			car.place(dp[0], dp[1], deg_to_rad(dp[2]))
 		car.restart_history(sim_t)

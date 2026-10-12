@@ -14,6 +14,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -21,7 +22,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -32,6 +48,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -39,7 +56,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -50,6 +82,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -57,7 +90,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -68,6 +116,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -75,7 +124,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -86,6 +150,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -93,7 +158,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -104,6 +184,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -111,7 +192,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -122,6 +218,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -129,7 +226,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -140,6 +252,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -147,7 +260,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -160,7 +288,9 @@
 				"truck",
 				"hatch",
 				"suv",
-				"buggy"
+				"buggy",
+				"kodiak",
+				"titan"
 			]
 		},
 		{
@@ -171,6 +301,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -178,7 +309,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -189,6 +335,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -196,7 +343,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -212,7 +374,16 @@
 				"muscle",
 				"gt",
 				"gt3",
-				"hyper"
+				"hyper",
+				"clasico60",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr"
 			]
 		},
 		{
@@ -226,7 +397,10 @@
 				"suv",
 				"buggy",
 				"muscle",
-				"gt"
+				"gt",
+				"torito",
+				"clasico60",
+				"kodiak"
 			]
 		},
 		{
@@ -237,6 +411,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -244,7 +419,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -257,7 +447,11 @@
 				"muscle",
 				"gt",
 				"gt3",
-				"hyper"
+				"hyper",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr"
 			]
 		},
 		{
@@ -268,6 +462,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -275,7 +470,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -286,6 +496,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -293,7 +504,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -304,6 +530,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -311,7 +538,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -322,6 +564,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -329,7 +572,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -340,6 +598,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -347,7 +606,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -358,6 +632,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -365,7 +640,22 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
 			]
 		},
 		{
@@ -376,6 +666,7 @@
 			"vehicles": [
 				"pickup",
 				"truck",
+				"genesis",
 				"hatch",
 				"suv",
 				"buggy",
@@ -383,7 +674,289 @@
 				"gt",
 				"gt3",
 				"hyper",
-				"camo"
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
+			]
+		},
+		{
+			"category": "wheel",
+			"id": "rim_bead10",
+			"price": 3600,
+			"shop": "wheels",
+			"vehicles": [
+				"pickup",
+				"truck",
+				"genesis",
+				"suv",
+				"buggy",
+				"camo",
+				"kodiak",
+				"rally80",
+				"hatch2"
+			]
+		},
+		{
+			"category": "wheel",
+			"id": "rim_split8",
+			"price": 3000,
+			"shop": "wheels",
+			"vehicles": [
+				"pickup",
+				"truck",
+				"genesis",
+				"hatch",
+				"suv",
+				"buggy",
+				"muscle",
+				"gt",
+				"gt3",
+				"hyper",
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
+			]
+		},
+		{
+			"category": "wheel",
+			"id": "rim_rally7",
+			"price": 2400,
+			"shop": "wheels",
+			"vehicles": [
+				"pickup",
+				"truck",
+				"genesis",
+				"hatch",
+				"suv",
+				"buggy",
+				"muscle",
+				"gt",
+				"gt3",
+				"hyper",
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
+			]
+		},
+		{
+			"category": "wheel",
+			"id": "rim_dish5",
+			"price": 1000,
+			"shop": "wheels",
+			"vehicles": [
+				"pickup",
+				"truck",
+				"genesis",
+				"hatch",
+				"suv",
+				"buggy",
+				"camo",
+				"kodiak",
+				"titan",
+				"rally80",
+				"hatch2"
+			]
+		},
+		{
+			"category": "wheel",
+			"id": "rim_mag5",
+			"price": 2000,
+			"shop": "wheels",
+			"vehicles": [
+				"hatch",
+				"muscle",
+				"gt",
+				"torito",
+				"clasico60",
+				"rally80"
+			]
+		},
+		{
+			"category": "wheel",
+			"id": "rim_steelcap",
+			"price": 500,
+			"shop": "wheels",
+			"vehicles": [
+				"pickup",
+				"truck",
+				"hatch",
+				"suv",
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan"
+			]
+		},
+		{
+			"category": "wheel",
+			"id": "rim_mono12",
+			"price": 3300,
+			"shop": "wheels",
+			"vehicles": [
+				"pickup",
+				"truck",
+				"genesis",
+				"hatch",
+				"suv",
+				"buggy",
+				"muscle",
+				"gt",
+				"gt3",
+				"hyper",
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
+			]
+		},
+		{
+			"category": "wheel",
+			"id": "rim_trophy",
+			"price": 2800,
+			"shop": "wheels",
+			"vehicles": [
+				"pickup",
+				"truck",
+				"genesis",
+				"suv",
+				"buggy",
+				"camo",
+				"kodiak",
+				"titan",
+				"rally80",
+				"hatch2"
+			]
+		},
+		{
+			"category": "wheel",
+			"id": "rim_fan",
+			"price": 4000,
+			"shop": "wheels",
+			"vehicles": [
+				"genesis",
+				"hatch",
+				"muscle",
+				"gt",
+				"gt3",
+				"hyper",
+				"torito",
+				"clasico60",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
+			]
+		},
+		{
+			"category": "wheel",
+			"id": "rim_twin5",
+			"price": 2600,
+			"shop": "wheels",
+			"vehicles": [
+				"pickup",
+				"truck",
+				"genesis",
+				"hatch",
+				"suv",
+				"buggy",
+				"muscle",
+				"gt",
+				"gt3",
+				"hyper",
+				"camo",
+				"torito",
+				"clasico60",
+				"kodiak",
+				"titan",
+				"rally80",
+				"kl5",
+				"trilux",
+				"trilux_s",
+				"trilux_gt",
+				"veltor",
+				"veltor_s",
+				"veltor_gtr",
+				"hatch2",
+				"pro_gt",
+				"moust"
+			]
+		},
+		{
+			"category": "wheel",
+			"id": "rim_windows",
+			"price": 1500,
+			"shop": "wheels",
+			"vehicles": [
+				"pickup",
+				"truck",
+				"genesis",
+				"hatch",
+				"suv",
+				"buggy",
+				"camo",
+				"kodiak",
+				"titan",
+				"rally80",
+				"hatch2"
 			]
 		}
 	],
@@ -623,45 +1196,36 @@
 			"paint": {
 				"accent": "#1b1d22",
 				"body": "#b31f24",
+				"livery": 11.0,
 				"rim": "#23262b"
 			},
-			"price": 18000,
-			"starter": true
+			"price": 34000,
+			"starter": false
 		},
 		{
 			"buyable": true,
-			"id": "t1plus",
-			"modular": false,
-			"paint": {
-				"accent": "#ff6a08",
-				"body": "#1a4fe0",
-				"rim": "#ff6a08"
-			},
-			"price": 62000,
-			"starter": true
-		},
-		{
-			"buyable": false,
 			"id": "truck",
 			"modular": true,
 			"paint": {
 				"accent": "#c1121f",
 				"body": "#e8e6df",
+				"livery": 11.0,
 				"rim": "#1b1d22"
 			},
-			"price": 45000,
+			"price": 60000,
 			"starter": false
 		},
 		{
-			"buyable": false,
+			"buyable": true,
 			"id": "genesis",
-			"modular": false,
+			"modular": true,
 			"paint": {
 				"accent": "#c9a24b",
 				"body": "#15181d",
-				"rim": "#2a2d33"
+				"livery": 11.0,
+				"rim": "#15161a"
 			},
-			"price": 250000,
+			"price": 190000,
 			"starter": false
 		},
 		{
@@ -669,12 +1233,13 @@
 			"id": "hatch",
 			"modular": true,
 			"paint": {
-				"accent": "#e11d2a",
-				"body": "#f2f2ee",
+				"accent": "#f5f5f2",
+				"body": "#e11d2a",
+				"livery": 11.0,
 				"rim": "#1b1d22"
 			},
-			"price": 24000,
-			"starter": false
+			"price": 9000,
+			"starter": true
 		},
 		{
 			"buyable": true,
@@ -683,9 +1248,10 @@
 			"paint": {
 				"accent": "#d4d4cf",
 				"body": "#2f6f5e",
+				"livery": 11.0,
 				"rim": "#1b1d22"
 			},
-			"price": 30000,
+			"price": 38000,
 			"starter": false
 		},
 		{
@@ -695,9 +1261,10 @@
 			"paint": {
 				"accent": "#0b0c0e",
 				"body": "#ffc300",
-				"rim": "#0b0c0e"
+				"livery": 11.0,
+				"rim": "#f2f2f2"
 			},
-			"price": 38000,
+			"price": 50000,
 			"starter": false
 		},
 		{
@@ -707,9 +1274,10 @@
 			"paint": {
 				"accent": "#f5f5f2",
 				"body": "#e11d2a",
-				"rim": "#c0c5cc"
+				"livery": 11.0,
+				"rim": "#2a2d33"
 			},
-			"price": 52000,
+			"price": 56000,
 			"starter": false
 		},
 		{
@@ -719,33 +1287,36 @@
 			"paint": {
 				"accent": "#f5f5f2",
 				"body": "#1a4fe0",
-				"rim": "#16181c"
+				"livery": 11.0,
+				"rim": "#c0c5cc"
 			},
-			"price": 70000,
+			"price": 72000,
 			"starter": false
 		},
 		{
-			"buyable": false,
+			"buyable": true,
 			"id": "gt3",
 			"modular": true,
 			"paint": {
 				"accent": "#ff6a08",
 				"body": "#f5f5f2",
+				"livery": 11.0,
 				"rim": "#c9a24b"
 			},
-			"price": 120000,
+			"price": 130000,
 			"starter": false
 		},
 		{
-			"buyable": false,
+			"buyable": true,
 			"id": "hyper",
 			"modular": true,
 			"paint": {
 				"accent": "#00b4d8",
 				"body": "#0b0c0e",
+				"livery": 11.0,
 				"rim": "#c0c5cc"
 			},
-			"price": 150000,
+			"price": 260000,
 			"starter": false
 		},
 		{
@@ -755,10 +1326,205 @@
 			"paint": {
 				"accent": "#2c3a1e",
 				"body": "#ffffff",
-				"livery": 6.0,
-				"rim": "#d9a21c"
+				"livery": 11.0,
+				"rim": "#2a2d33"
 			},
-			"price": 42000,
+			"price": 46000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "torito",
+			"modular": true,
+			"paint": {
+				"accent": "#f5f5f2",
+				"body": "#1e5aa8",
+				"livery": 11.0,
+				"rim": "#c9ccd2"
+			},
+			"price": 18000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "clasico60",
+			"modular": true,
+			"paint": {
+				"accent": "#b31f24",
+				"body": "#e8e2d0",
+				"livery": 11.0,
+				"rim": "#c9ccd2"
+			},
+			"price": 30000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "kodiak",
+			"modular": true,
+			"paint": {
+				"accent": "#ff6a08",
+				"body": "#f5f5f2",
+				"livery": 11.0,
+				"rim": "#1b1d22"
+			},
+			"price": 44000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "titan",
+			"modular": true,
+			"paint": {
+				"accent": "#f5f5f2",
+				"body": "#1a4fe0",
+				"livery": 11.0,
+				"rim": "#1b1d22"
+			},
+			"price": 32000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "rally80",
+			"modular": true,
+			"paint": {
+				"accent": "#1a4fe0",
+				"body": "#f5f5f2",
+				"livery": 11.0,
+				"rim": "#d4a017"
+			},
+			"price": 64000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "kl5",
+			"modular": true,
+			"paint": {
+				"accent": "#ff6a08",
+				"body": "#0f3d5e",
+				"livery": 11.0,
+				"rim": "#c0c5cc"
+			},
+			"price": 98000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "trilux",
+			"modular": true,
+			"paint": {
+				"accent": "#e11d2a",
+				"body": "#c0c5cc",
+				"livery": 11.0,
+				"rim": "#2a2d33"
+			},
+			"price": 78000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "trilux_s",
+			"modular": true,
+			"paint": {
+				"accent": "#0b0c0e",
+				"body": "#e11d2a",
+				"livery": 11.0,
+				"rim": "#c0c5cc"
+			},
+			"price": 104000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "trilux_gt",
+			"modular": true,
+			"paint": {
+				"accent": "#ffc300",
+				"body": "#2b2f36",
+				"livery": 11.0,
+				"rim": "#ffc300"
+			},
+			"price": 118000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "veltor",
+			"modular": true,
+			"paint": {
+				"accent": "#e11d2a",
+				"body": "#f5f5f2",
+				"livery": 11.0,
+				"rim": "#c0c5cc"
+			},
+			"price": 150000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "veltor_s",
+			"modular": true,
+			"paint": {
+				"accent": "#0b0c0e",
+				"body": "#e11d2a",
+				"livery": 11.0,
+				"rim": "#2a2d33"
+			},
+			"price": 185000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "veltor_gtr",
+			"modular": true,
+			"paint": {
+				"accent": "#0b0c0e",
+				"body": "#1a4fe0",
+				"livery": 11.0,
+				"rim": "#00b4d8"
+			},
+			"price": 225000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "hatch2",
+			"modular": true,
+			"paint": {
+				"accent": "#e11d2a",
+				"body": "#f2f2ee",
+				"livery": 11.0,
+				"rim": "#e6e7ea"
+			},
+			"price": 24000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "pro_gt",
+			"modular": true,
+			"paint": {
+				"accent": "#e11d2a",
+				"body": "#f5f5f2",
+				"livery": 11.0,
+				"rim": "#1b1d22"
+			},
+			"price": 92000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "moust",
+			"modular": true,
+			"paint": {
+				"accent": "#e11d2a",
+				"body": "#3a3d44",
+				"livery": 11.0,
+				"rim": "#1b1d22"
+			},
+			"price": 205000,
 			"starter": false
 		}
 	]

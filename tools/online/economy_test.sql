@@ -61,7 +61,7 @@ declare s jsonb;
 begin
   s := public.online_state('Alfa');
   perform tt.ok((s ->> 'credits')::bigint = 25000 and jsonb_array_length(s -> 'vehicles') = 1, 'jugador nuevo: $25000 y un auto de partida');
-  perform tt.ok(s -> 'vehicles' -> 0 ->> 'vehicle' = 'pickup', 'el auto de partida es la pick-up');
+  perform tt.ok(s -> 'vehicles' -> 0 ->> 'vehicle' = 'hatch', 'el auto de partida es el R2 Turbo (hatch)');
   perform tt.ok((public.online_state() ->> 'credits')::bigint = 25000 and jsonb_array_length(public.online_state() -> 'vehicles') = 1, 'pedir el estado de nuevo no regala otro auto ni dinero');
 end $$;
 
@@ -90,7 +90,8 @@ update public.online_wallets set credits = 5 where player_id = '00000000-0000-00
 set role authenticated;
 select tt.set_user(1);
 select tt.expect_err($$select public.online_buy_vehicle('gt', 'dealer')$$, 'no te alcanza', 'comprar sin saldo suficiente');
-select tt.expect_err($$select public.online_buy_vehicle('hyper', 'dealer')$$, 'no se compra con cr', 'los autos premium y de premio no se compran con créditos online');
+select tt.expect_err($$select public.online_buy_vehicle('hyper', 'dealer')$$, 'no te alcanza', 'el hypercar de 260000 tampoco se compra sin saldo (todos los autos están en el online, pero se pagan)');
+select tt.expect_err($$select public.online_buy_vehicle('t1plus', 'dealer')$$, 'no se compra con cr', 'un auto viejo que ya no existe en el juego (t1plus) no se compra');
 reset role;
 update public.online_wallets set credits = 600000 where player_id = '00000000-0000-0000-0000-0000000000b1';
 set role authenticated;
@@ -238,6 +239,45 @@ begin
   r := public.market_buy_instance(lid);
   perform tt.ok(not (r ->> 'ok')::boolean, 'no se puede comprar dos veces la misma venta');
 end $$;
+
+
+-- ───────── los 26 autos de la lista definitiva están en el catálogo y se compran ─────────
+reset role;
+select tt.ok((select count(*) from public.online_cat_vehicles where buyable) = 26, 'el catálogo online tiene los 26 autos del juego (compra con créditos)');
+select tt.ok((select count(*) from public.online_cat_vehicles where starter) = 1 and (select id from public.online_cat_vehicles where starter) = 'hatch', 'un solo auto de partida: el R2 Turbo');
+select tt.ok(not (select buyable from public.online_cat_vehicles where id = 't1plus'), 't1plus (sólo física oculta) no se vende');
+
+-- ───────── los usuarios ANÓNIMOS (los de los rankings) no tocan la economía, el mercado, el chat ni la presencia ─────────
+create or replace function tt.set_anon() returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c1', false);
+  perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000c1","is_anonymous":true}', false);
+end;
+$$;
+create or replace function tt.set_account() returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', '{"is_anonymous":false}', false);
+end;
+$$;
+grant execute on function tt.set_anon(), tt.set_account() to authenticated;
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000c1', null) on conflict do nothing;
+set role authenticated;
+select tt.set_anon();
+select tt.expect_err($$select public.online_state('Anon')$$, 'cuenta con correo', 'un anónimo no abre la economía online');
+select tt.expect_err($$select public.online_daily()$$, 'cuenta con correo', 'un anónimo no cobra el regalo diario (ya no se puede juntar plata con miles de cuentas anónimas)');
+select tt.expect_err($$select public.online_buy_vehicle('hatch', 'dealer')$$, 'cuenta con correo', 'un anónimo no compra autos');
+select tt.expect_err($$select public.chat_send('world', 'hola', 'Anon')$$, 'cuenta con correo', 'un anónimo no escribe en el chat');
+select tt.expect_err($$select public.presence_beat(0::real, 0::real, 0::real, ''::text, 'Anon', null::uuid)$$, 'cuenta con correo', 'un anónimo no aparece en el mapa online');
+select tt.expect_err($$select public.market_buy_instance(1)$$, 'cuenta con correo', 'un anónimo no compra en el mercado');
+-- …pero sí manda marcas a los rankings
+do $$
+declare r jsonb;
+begin
+  r := public.submit_score('lake', 'race', 200, 'hatch', 1, '', 'AnonRank');
+  perform tt.ok((r ->> 'saved')::boolean, 'un anónimo sí manda su marca a los rankings');
+end $$;
+select tt.set_account();
+select tt.set_user(1);
 
 -- ───────── regalo diario ─────────
 do $$

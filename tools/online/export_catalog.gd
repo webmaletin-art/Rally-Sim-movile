@@ -9,6 +9,11 @@ const VehicleCustomization := preload("res://game/car/vehicle_customization.gd")
 const Shops := preload("res://game/data/shops.gd")
 const Release := preload("res://game/data/release.gd")
 
+## El online tiene TODOS los autos de la lista definitiva (pedido del dueño): se compran con créditos online en el concesionario, también los premium del juego sin conexión
+## (camión, GT3, hypercar) y el de premio (Bisonte XR). Los créditos online no se compran con dinero real (sólo regalo diario y ventas), así que no compiten con las compras del juego.
+## Ponerlo en false para volver a dejar afuera los de compra y de premio.
+const ONLINE_ALL_CARS := true
+
 func _init() -> void:
 	var cat: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/catalog.json"))
 	var vehicles: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
@@ -19,7 +24,7 @@ func _init() -> void:
 		var m := VehicleCustomization.supports(str(id))
 		if m:
 			modular.append(str(id))
-		out["vehicles"].append({"id": str(id), "price": int(c["price"]), "starter": bool(c.get("starter", false)), "modular": m, "paint": (c["paint"] as Dictionary).duplicate(), "buyable": not Release.REWARD_CARS.has(str(id)) and not Release.PREMIUM_CARS.has(str(id))})
+		out["vehicles"].append({"id": str(id), "price": int(c["price"]), "starter": bool(c.get("starter", false)), "modular": m, "paint": (c["paint"] as Dictionary).duplicate(), "buyable": ONLINE_ALL_CARS or (not Release.REWARD_CARS.has(str(id)) and not Release.PREMIUM_CARS.has(str(id)))})
 	# categoría → local que la ofrece
 	var shop_of := {}
 	for sid in Shops.SHOPS:

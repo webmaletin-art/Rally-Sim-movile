@@ -8,13 +8,14 @@
    **Compras.** Podés comprar con dinero real el juego completo y bolsas de créditos a través de Google Play. Las cobra y administra Google: los reembolsos y reclamos se piden en Google Play, según sus políticas. Lo comprado es para usar en el juego y no se transfiere ni se canjea por dinero.
 3. **Seguridad.** Es un juego: no imites en la vida real lo que ves en él. No uses el teléfono mientras manejás un vehículo real.
 4. **Contenido.** La versión de Google Play trae el juego completo dentro de la app y funciona sin conexión. La versión de prueba descargable (APK) descarga contenido adicional desde internet; se necesita conexión la primera vez. El contenido puede actualizarse o cambiar con el tiempo.
-5. **Propiedad intelectual.** El juego, sus autos, pistas, música propia y diseños pertenecen a sus autores. Los modelos de personajes y animaciones de Mixamo y los modelos de Sweet Home 3D se usan según sus licencias; ver «Créditos».
+5. **Propiedad intelectual.** El juego, sus autos, pistas y diseños pertenecen a sus autores; la música del menú fue generada con inteligencia artificial (MusicGPT) para Dream Racing. Los modelos de personajes y animaciones de Mixamo y los modelos de Sweet Home 3D se usan según sus licencias; ver «Créditos».
 6. **Grabaciones y capturas.** Podés compartir capturas del juego libremente, incluso en redes y videos, citando «Dream Racing».
 7. **Cambios.** Podemos actualizar estos términos y el juego. Seguir usando la app después de un cambio implica aceptarlo.
 8. **Datos.** El tratamiento de datos se describe en la Política de privacidad.
 9. **Cuenta y rankings online (opcional).** Si usás el modo online, tu nombre de piloto y tus mejores marcas se muestran a otros jugadores. Elegí un nombre que no sea ofensivo ni se haga pasar por otra persona: podemos cambiarlo, o quitar marcas conseguidas con trampas o programas externos. La cuenta con correo es personal y solo para mayores de 13 años: cuidá tu contraseña. Podés borrar tu cuenta cuando quieras desde el juego. El servicio online puede cambiar o detenerse, y no afecta lo que jugás sin conexión.
-10. **Contacto.** Dudas o pedidos sobre tus datos o tu cuenta: **roldanhr98@gmail.com** (SRGamestudios).
-11. **Ley aplicable.** Estas condiciones se rigen por las leyes de la República Argentina. Si sos consumidor, esto no limita los derechos que te reconozca la ley de tu país.
+10. **Mundo online: chat, mercado y conducta.** Para el mundo online (chat, garaje y mercado online) hace falta una cuenta con correo; los rankings se pueden usar sin cuenta. El chat tiene filtro de insultos y botón de reportar: quien acumula faltas queda sin chat por un tiempo cada vez más largo. Los créditos y autos online son virtuales: no valen dinero, no se compran ni se venden por dinero fuera del juego y sólo pasan de una cuenta a otra por el mercado del juego. Podemos suspender o borrar cuentas que usen trampas, programas externos o fallas del servicio para sacar ventaja, o que acosen a otros jugadores.
+11. **Contacto.** Dudas o pedidos sobre tus datos o tu cuenta: **roldanhr98@gmail.com** (SRGamestudios).
+12. **Ley aplicable.** Estas condiciones se rigen por las leyes de la República Argentina. Si sos consumidor, esto no limita los derechos que te reconozca la ley de tu país.
 
 ## English
 1. **Personal use.** Dream Racing is a simulation racing game for entertainment, provided "as is" with no warranty.
