@@ -147,6 +147,7 @@ func _fame_tick(pos: Vector2, dt: float) -> void:
 		return
 	_disc_t = 0.0
 	var vis: Dictionary = _rep()["visited"]
+	_secret_tick(pos, vis)
 	for p in city.pois:
 		var id := str(p["id"])
 		if vis.has(id) or p.get("region", false):
@@ -156,6 +157,34 @@ func _fame_tick(pos: Vector2, dt: float) -> void:
 			_toast(Tr.t("📍 Descubriste %s · +%d de fama") % [CityNames.t(str(p["name"])), int(WP.PTS["discover"])], "up")
 			add_fame(float(WP.PTS["discover"]))
 			return
+
+const SECRET_LORE := [
+	"En 1974 un piloto de picadas dejó el auto aquí y nunca volvió a buscarlo.",
+	"Cuentan que esta placa marca el lugar donde empezó la primera carrera por las rutas.",
+	"Los vecinos guardan este monumento desde la época en que la ruta todavía era de tierra.",
+	"Una tormenta dejó el pueblo aislado tres días: el mecánico del lugar abrió el taller para todos.",
+	"Acá se juntaban los pilotos de rally antes de cada largada. Todavía hay marcas de goma en la calle.",
+]
+
+## Lugares secretos de algunas villas de la región: pasar cerca los descubre (una sola vez)
+func _secret_tick(pos: Vector2, vis: Dictionary) -> void:
+	var rg = city.region if "region" in city else null
+	if rg == null:
+		return
+	for sc in rg.secret_sites:
+		var id := str(sc["id"])
+		if vis.has(id) or (sc["pos"] as Vector2).distance_to(pos) > 22.0:
+			continue
+		vis[id] = true
+		var lore: String = SECRET_LORE[int(sc["idx"]) % SECRET_LORE.size()]
+		if str(sc["kind"]) == "auto":
+			_pay(2500)
+			_toast(Tr.t("🔎 ¡Secreto en %s! Un coleccionista te paga $2500 por avisarle del auto abandonado.") % str(sc["name"]), "up")
+			add_fame(float(WP.PTS["discover"]) * 4.0)
+		else:
+			_toast(Tr.t("📜 ¡Secreto en %s! %s") % [str(sc["name"]), Tr.t(lore)], "up")
+			add_fame(float(WP.PTS["discover"]) * 3.0)
+		return
 
 var _prev_fame := Vector2.ZERO
 var _fame_ok := false

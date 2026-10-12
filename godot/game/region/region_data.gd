@@ -38,6 +38,7 @@ var e_hw := PackedFloat32Array()
 var pads: Array = [] # playones planos junto a la ruta (gasolineras, gomerías): {x, z, r, h}
 var pad_cells: Dictionary = {} # Vector2i (128 m) -> PackedInt32Array de playones
 var _cum: Dictionary = {}
+var secret_sites: Array = [] # lugares secretos de algunas villas: {id, name, kind, pos, h}
 var _zones: Array = [] # recintos de pueblos: {c, ax, hu, hv}
 var _zone_cells: Dictionary = {} # Vector2i (256 m) -> índices de recintos
 
@@ -106,6 +107,7 @@ func load_file(p_city, path := FILE) -> bool:
 			b.append(ei)
 			node_edges[int(e[1])] = b
 	_build_zones()
+	_build_secrets()
 	ok = true
 	return true
 
@@ -132,6 +134,22 @@ func _build_zones() -> void:
 				var a: PackedInt32Array = _zone_cells.get(k, PackedInt32Array())
 				a.append(idx)
 				_zone_cells[k] = a
+
+## Cada secreto de los datos queda al final de una calle lateral de su villa (se llega manejando por esa calle)
+func _build_secrets() -> void:
+	secret_sites.clear()
+	var by_id := {}
+	for nd in nodes:
+		by_id[str(nd[0])] = nd
+	var i := 0
+	for sc in meta.get("secrets", []):
+		var nd: Variant = by_id.get(str(sc["near"]))
+		if nd != null and (nd as Array).size() > 6 and ((nd as Array)[6] as Array).size() >= 2:
+			var ax := Vector2(float((nd[6] as Array)[0]), float((nd[6] as Array)[1]))
+			var nrm := Vector2(-ax.y, ax.x)
+			var pos := Vector2(float(nd[1]), float(nd[2])) + ax * -45.0 + nrm * 92.0
+			secret_sites.append({"id": "secret_%d" % i, "name": str(sc["name"]), "kind": str(sc["kind"]), "pos": pos, "ax": ax, "idx": i})
+		i += 1
 
 func in_town(x: float, z: float) -> bool:
 	var lst: Variant = _zone_cells.get(Vector2i(int(floor(x / 256.0)), int(floor(z / 256.0))))

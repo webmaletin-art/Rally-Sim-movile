@@ -554,6 +554,10 @@ func _towns_in(s, k: Vector2i) -> void:
 		return
 	var x0 := float(k.x) * CHUNK
 	var z0 := float(k.y) * CHUNK
+	for sc in rg.secret_sites:
+		var sp: Vector2 = sc["pos"]
+		if sp.x >= x0 and sp.x < x0 + CHUNK and sp.y >= z0 and sp.y < z0 + CHUNK:
+			_monument(s, sp, sc["ax"], rg.height(sp.x, sp.y), str(sc["kind"]) == "auto")
 	for t in (lst as Array):
 		var kind: int = t["kind"]
 		var ax: Vector2 = t["ax"]
@@ -610,6 +614,16 @@ func _towns_in(s, k: Vector2i) -> void:
 					cw._box_building(s, {"x": pos.x, "z": pos.y, "y": y, "yaw": yaw, "w": w, "d": dep, "h": hgt, "wall": wall, "roof": roof, "seed": _rnd(hh + 11), "hip": hip})
 			_fence_line(s, k, c, ax, nrm, a, b, shw)
 			li += 1
+
+## Un monumento de piedra con una placa dorada en la manzana del secreto (los de «auto» tienen además un cubo bajo una lona)
+func _monument(s, c: Vector2, ax: Vector2, y: float, car: bool) -> void:
+	var stone := Color(0.62, 0.60, 0.56)
+	var gold := Color(0.95, 0.78, 0.25)
+	_fence_box(s, c, ax, 2.2, y - 0.2, 0.7, 2.2, stone.darkened(0.1))
+	_fence_box(s, c, ax, 1.0, y, 3.6, 1.0, stone)
+	_fence_box(s, c + Vector2(-ax.y, ax.x) * 1.05, ax, 0.6, y + 1.2, 0.9, 0.05, gold)
+	if car:
+		_fence_box(s, c + ax * 5.5, ax, 2.4, y - 0.2, 1.5, 1.1, Color(0.30, 0.42, 0.55))
 
 ## Medio ancho real de la calle en el punto del eje p (la ruta que atraviesa el pueblo es más ancha que una calle común)
 func _hw_at(p: Vector2, shw: float) -> float:

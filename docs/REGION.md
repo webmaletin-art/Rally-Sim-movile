@@ -8,6 +8,7 @@ Es el **mismo mundo**: se maneja sin cortes desde la plaza hasta la costa, la si
 - **8 ciudades, 25 pueblos y ~60 villas** (de 4–5 cuadras con casas bajas tipo Villa Aurora). Cada pueblo tiene **cerco bajo a los costados**: ahí está la pared invisible, pegada a las casas (`RegionData.TOWN_WALL`).
 - **Autopistas (AU), rutas nacionales (RN), provinciales y caminos (RP), tierra, montaña (abismos, curvas cerradas, subidas y bajadas) y calles**; asfalto, ripio y tierra, anchas y angostas. Todas conectadas: sin callejones sin salida, con cruces limpios.
 - **Curvas con carácter**: cada ruta se genera «recta», «suave», «curva» o «sinuosa» (`network.meander`); las autopistas son las más largas y rectas, los caminos y la montaña, los más sinuosos.
+- **5 secretos** en villas (`secret_sites`): un monumento al final de una calle lateral; pasar a menos de 22 m lo descubre una sola vez (historia local o un coleccionista que paga $2500 por un auto abandonado, más fama). Los peajes de montaña, de cobro más caro, también son secretos.
 - Estaciones de servicio, gomerías, **peajes** (más caros donde hay algo secreto), carteles «a tantos km», paraje de la Aventura (la salida 20 de la ciudad lleva al comienzo del modo Aventura).
 - **GPS compuesto** (`world_gps.gd`): sigue al auto en tiempo real, da distancia y tiempo estimado con la velocidad real (piso 14 m/s), y arma la ruta pasando por las salidas de la ciudad.
 - **Mapa grande** con la vista general de la región (`region_map.png`) y botón «REFERENCIAS» que oculta lugares y marcas (se guarda en `mapRefs`).
@@ -23,5 +24,5 @@ Es el **mismo mundo**: se maneja sin cortes desde la plaza hasta la costa, la si
 - Pruebas: `region_test` (datos, rutas, alturas), `region_drive_test` (un auto automático recorre circunvalación, autopista y montaña con la física real), `region_perf_test` (tiempos por cuadrado), `spawn_menu_test`.
 
 ## Pendiente
-- Misiones (paquetes, buscar personas), secretos/lore de los pueblos (los datos están en `secrets`; falta el juego), tránsito en las rutas, nafta/taller en cada estación (el flujo anda, falta probarlo con calma), textos nuevos sólo en español.
+- Misiones (paquetes, buscar personas), regalar un auto de verdad en los secretos (hoy pagan créditos), tránsito en las rutas, nafta/taller en cada estación (el flujo anda, falta probarlo con calma), textos nuevos sólo en español.
 - Autos de otros jugadores (online) en la región: cerrado hasta el tiempo real.

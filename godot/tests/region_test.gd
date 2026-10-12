@@ -74,5 +74,11 @@ func _init() -> void:
 				unreachable += 1
 				print("  sin camino a ", nm)
 	_check(unreachable == 0, "todas las ciudades, pueblos y villas son alcanzables desde Dream City")
+	# secretos de villas: 5 lugares, cada uno al alcance de una calle lateral
+	_check(rg.secret_sites.size() == 5, "hay 5 lugares secretos (%d)" % rg.secret_sites.size())
+	for sc in rg.secret_sites:
+		var sp: Vector2 = sc["pos"]
+		var pr: PackedFloat64Array = rg.probe(sp.x, sp.y, 40.0)
+		_check(pr[0] > -1e8 and pr[4] < 30.0, "«%s» (%s) queda a %.0f m de una calle" % [str(sc["name"]), str(sc["kind"]), pr[4]])
 	print("RESULTADO: ", "FALLA" if fail else "TODO OK")
 	quit(1 if fail else 0)
