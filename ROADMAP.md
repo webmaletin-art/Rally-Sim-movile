@@ -74,6 +74,17 @@ Ideas del dueño del proyecto, ordenadas. Lo marcado ✅ ya está en el juego.
 - 🔧 Cajas de cambios reales: 1ª → 2ª → 3ª… según velocidad; reducción al frenar.
 - 🔧 **Trinchera**: red de caminos hundidos (tipo cañón/mina vieja) dentro del mundo abierto, anchos para dos autos, asfalto y tierra, desvíos que se vuelven a unir, tramos subterráneos (túneles), entrada y salida al mundo abierto. Carrera de trinchera.
 
+## Tanda del tráiler (pedido del dueño, octubre)
+Anotado ANTES de empezar. Orden pedido: arreglos → tráiler → dejar Supabase Realtime listo → el dueño sube a Play y empieza la publicidad.
+- [ ] **Online con los 26 autos** (catálogo `tools/online/online_catalog.json` + migración de Supabase). El online sigue cerrado hasta que el dueño diga.
+- [ ] **Supabase Realtime listo** para conectar en unos días con ~50 jugadores (plan de carga, canales, límites, checklist en `docs/ONLINE_SUPABASE.md`).
+- [ ] Música de menús (11 temas, volumen bajo tipo radio, al azar) y opción «Música mientras juego» (por defecto sólo menús).
+- [ ] Región: que aparezca en el GPS y al aparecer (exportar los `.bin`), un solo selector de «¿dónde aparecer?» con el mapa tocable.
+- [ ] Copas: las libres sin carreras bloqueadas; cada campeonato con sus carreras (sin «pronto»).
+- [ ] Travesía X más difícil: todo el convoy rápido.
+- [ ] Revisión de Play Store (todo para vender, precios) y de seguridad (login con correo/Supabase si hace falta), créditos y políticas.
+- [ ] **Tráiler épico** (fotogramas Full HD, música, gestos de los pilotos, adelanto del online).
+
 ## Versión final / Google Play (preparada)
 - Herramientas técnicas (📊 diagnóstico, RENDIMIENTO, panel de FPS por capturas) ocultas: sólo existen en compilaciones de desarrollo (`Release.tools()`), nunca en el APK/AAB final.
 - Reparto gratis / pago: aventura = 3 etapas gratis (el resto y las copas Continental/Leyenda con `dr_adventure`; copas Debut y Nacional libres); carrera rápida, Travesía X, mapas fantasía y mundo abierto (Dream City) libres; **modo online CERRADO** (`Release.ONLINE_OPEN := false`); Genesis (DR Bisonte XR) = premio de la aventura.
