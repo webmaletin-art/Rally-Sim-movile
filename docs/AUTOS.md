@@ -4,12 +4,12 @@ Todos los autos tienen **modelo con textura propia, sin reducir** (de 300 mil a 
 Los modelos crudos (`Autos_texturas.part*.rar` + `MoustExtreme.glb`) NO están en el repo: `tools/cars/build_final.py` los lee de una carpeta (`CARS_SRC`, por defecto `/tmp/claude-0/autos`).
 
 ## Pipeline
-- `tools/cars/final_cars.py`: qué modelo crudo es cada auto, giro, largo, ancho, alto real (`HEIGHT`), pasos de rueda, vidrio y deformación vertical (`ymap`, solo el Bisonte).
+- `tools/cars/final_cars.py`: qué modelo crudo es cada auto, giro, largo, ancho, alto real (`HEIGHT`), pasos de rueda, vidrio.
 - `tools/cars/final_wheels.py`: llantas (`style`), tamaños, goma (`tread`), suspensión, color de llanta de fábrica (`RIM`) y canales de color de la textura (`TEX`, ver más abajo).
 - `tools/cars/final_specs.py` + `make_final_vehicles.py`: física, precio y orden → `vehicles.json` y `catalog.json`. El inicial es el **R2 Turbo** (el más lento y barato: 9 000).
 - `python3 tools/cars/build_final.py [ids]` arma `<id>.glb`, `<id>_lo.glb` y `<id>.json`; `--meta` refresca solo ruedas y canales de color. Después `godot --headless --import`.
-- `torito_clip.py`: el Torito '67 viene sin trompa (se le veía el motor); se le arma capó, guardabarros, frente, faros y paragolpes con geometría propia.
-- **Bisonte XR**: conserva la física, la altura (1,36 m), el ancho (2,2 m), el entre ejes (2,95 m) y la rueda (R 0,508) de siempre; solo cambió su textura y sus ruedas (negras, beadlock, goma de taco grande, como el Genesis X Skorpio).
+- **Torito '67**: el modelo trae el motor a la vista (sin capó) y así se deja, es su diseño.
+- **Bisonte XR**: el modelo va sin deformar (altura natural ~1,67 m, techo más alto que el viejo) y con las medidas físicas de siempre: entre ejes 2,95 m, rueda R 0,508, trocha 1,86 m, ancho ~2,2 m. Ruedas nuevas: negras, beadlock, goma de taco grande (como el Genesis X Skorpio). La física no cambió.
 - `t1plus` quedó solo como ficha de física **oculta** (`"hidden": true`): la usan la IA y las pruebas contra la versión HTML; no está en el garaje ni en la tienda.
 - Borrados: Safari, Volcán y Veltor Max Pro GTR Original (HD).
 

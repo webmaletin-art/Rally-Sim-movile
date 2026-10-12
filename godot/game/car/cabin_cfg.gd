@@ -38,7 +38,7 @@ const OVR := {
 	"veltor_gtr": {"wmul": 1.55, "eye_h": 0.20, "back": -0.95, "cage": true},
 	"moust": {"wmul": 1.50, "eye_h": 0.21, "back": -1.0, "halfW": 0.74, "cage": true},
 	"hyper": {"wmul": 1.30, "back": -0.7, "eye_h": 0.2, "cage": false},
-	"genesis": {"cowlZ": 0.98, "cowlY": 1.12, "wsTopZ": 0.30, "wsTopY": 1.31, "eyeY": 1.08, "eyeZ": -0.12, "roofY": 1.36, "halfW": 0.74, "back": -1.1, "wsHwB": 0.72, "wsHwT": 0.62, "cage": false},
+	"genesis": {"wmul": 1.40, "eye_h": 0.30, "back": -1.1, "halfW": 0.74, "cage": false},
 }
 
 static func has(id: String) -> bool:

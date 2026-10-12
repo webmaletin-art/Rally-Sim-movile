@@ -48,8 +48,7 @@ MODEL = {
     'moust':     dict(src='MoustExtreme.glb', rot=90, L=4.45, wscale=0.84, gap=0.04, wf=0.44, glass='auto'),
     'hyper':     dict(src='Aerion.glb', rot=90, L=4.80, wscale=0.88, gap=0.04, wf=0.44, glass='auto'),
     # Bisonte: mantiene la física y las medidas del modelo de siempre (4,56 × 2,2 × 1,36 m, entre ejes 2,95, rueda R 0,508); solo cambia la textura y las ruedas
-    'genesis':   dict(src='Bisonte+XR.glb', rot=0, L=4.56, wscale=0.80, gap=0.04, wf=0.48, phys=dict(wb=2.95, R=0.508, trackF=1.86), glass=[(0.80, 1.14), (0.30, 1.32), (-1.50, 1.31), (-2.0, 1.17)],
-                      ymap=[(0.0, 0.0), (0.306, 0.06), (0.508, 0.508), (1.056, 1.056), (1.25, 1.20), (1.616, 1.357)]),
+    'genesis':   dict(src='Bisonte+XR.glb', rot=0, L=4.56, wscale=0.80, gap=0.04, wf=0.48, phys=dict(wb=2.95, R=0.508, trackF=1.86), glass=[(0.62, 1.12), (0.2, 1.65), (-0.9, 1.66), (-1.75, 1.30)]),
 }
 
 # orden de aparición (se redefine en make_final_vehicles.py por precio)
@@ -61,7 +60,7 @@ HEIGHT = {
     'hatch': (1.42, 0.12), 'hatch2': (1.45, 0.14), 'rally80': (1.36, 0.16), 'buggy': (1.75, 0.22),
     'torito': (1.38, 0.14), 'clasico60': (1.30, 0.12), 'muscle': (1.32, 0.12),
     'gt': (1.30, 0.11), 'kl5': (1.20, 0.10), 'trilux': (1.30, 0.11), 'trilux_s': (1.36, 0.11), 'trilux_gt': (1.36, 0.10), 'pro_gt': (1.34, 0.10), 'gt3': (1.28, 0.10),
-    'veltor': (1.16, 0.09), 'veltor_s': (1.18, 0.09), 'veltor_gtr': (1.16, 0.09), 'moust': (1.30, 0.12), 'hyper': (1.15, 0.09), 'genesis': (1.36, 0.05),
+    'veltor': (1.16, 0.09), 'veltor_s': (1.18, 0.09), 'veltor_gtr': (1.16, 0.09), 'moust': (1.30, 0.12), 'hyper': (1.15, 0.09),
 }
 for _k, (_h, _g) in HEIGHT.items():
     MODEL[_k]['H'] = _h
