@@ -24,8 +24,8 @@ func _init() -> void:
 	d = load_data()
 
 static func new_car_state(id: String) -> Dictionary:
-	var m: Dictionary = CarBuild.catalog()["cars"][id]
-	return {"upg": {}, "tires": "street", "tiresOwned": ["street"], "tune": {}, "paint": (m["paint"] as Dictionary).duplicate(), "km": 0.0, "bought": Time.get_unix_time_from_system()}
+	var m: Dictionary = CarBuild.catalog()["cars"].get(id, {}) # los autos ocultos (solo física: IA y pruebas) no están en el catálogo
+	return {"upg": {}, "tires": "street", "tiresOwned": ["street"], "tune": {}, "paint": (m.get("paint", {"body": "#1a4fe0", "accent": "#f5f5f2", "rim": "#16181c"}) as Dictionary).duplicate(), "km": 0.0, "bought": Time.get_unix_time_from_system()}
 
 static func default_profile() -> Dictionary:
 	return {"v": 1, "name": "Piloto", "credits": 5000, "fuel": 1.0, "toll_pass": 0, "migr": 1, "xp": 0, "level": 1, "owned": {}, "current": "", "events": {}, "cups": {},

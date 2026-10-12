@@ -134,7 +134,7 @@ func _setup_own(paint: Color, rim: Color, finish: String) -> void:
 ## Pone la pintura (afuera: doble cara · adentro: solo caras de frente, así con la cámara interior se ve el capó real y no el techo)
 func _apply_own_mats(pattern: int, paint: Color, accent: Color, finish: String, accent2: Color) -> void:
 	_own_mats.clear()
-	var textured: bool = bool(meta.get("textured", false)) and not lo # versión «original»: lleva su propia textura; el color y los detalles reemplazan los tonos de fábrica de la textura
+	var textured: bool = bool(meta.get("textured", false)) # todos los autos llevan su textura: el color y los detalles reemplazan los canales de color de la textura (pattern 11 = textura original)
 	for mi in _mesh_instances(shell):
 		var mesh: Mesh = mi.mesh
 		for s in mesh.get_surface_count():
@@ -142,14 +142,11 @@ func _apply_own_mats(pattern: int, paint: Color, accent: Color, finish: String, 
 			var nm := mat.resource_name if mat else ""
 			if textured:
 				if mat is BaseMaterial3D and (mat as BaseMaterial3D).albedo_texture != null:
-					var tcfg: Dictionary = meta.get("tex", {})
+					var orig := pattern == ORIGINAL_TEXTURE
 					var pair: Array = []
 					for inside in [false, true]:
-						var sm := _own_paint(pattern, paint, accent, finish, accent2, inside)
-						sm.set_shader_parameter("use_tex", 1.0)
-						sm.set_shader_parameter("albedo_tex", (mat as BaseMaterial3D).albedo_texture)
-						sm.set_shader_parameter("glass_on", 0.0) # los vidrios ya vienen en la textura
-						sm.set_shader_parameter("tex_cfg", Vector4(float(tcfg.get("paint_hue", 0.615)), float(tcfg.get("accent_hue", 0.0)), float(tcfg.get("vref", 0.7)), float(tcfg.get("hue_w", 0.09))))
+						var sm := _own_paint(0 if orig else pattern, paint, accent, finish, accent2, inside)
+						_set_tex(sm, (mat as BaseMaterial3D).albedo_texture, 2.0 if orig else 1.0)
 						pair.append(sm)
 					mi.set_surface_override_material(s, pair[0])
 					_own_mats.append({"mi": mi, "s": s, "out": pair[0], "in": pair[1]})
@@ -177,7 +174,7 @@ func set_inside(v: bool) -> void:
 func _own_paint(pattern: int, paint: Color, accent: Color, finish: String, accent2: Color, inside := false) -> ShaderMaterial:
 	var sm := _paint_material(pattern, paint, accent, finish, accent2, inside)
 	sm.set_shader_parameter("vk", 1.0)
-	if pattern >= 7:
+	if pattern >= 7 and pattern <= 10:
 		_set_decal(sm, pattern)
 	var g: Variant = meta.get("glass")
 	if g is Dictionary:
@@ -213,6 +210,17 @@ static func _glass_material() -> StandardMaterial3D:
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	return m
 
+## Textura propia del auto: canales de color (meta.tex: a / b = [tipo, …], va / vb = brillo de referencia) y modo 1 = recolorear · 2 = original
+func _set_tex(sm: ShaderMaterial, tex: Texture2D, mode: float) -> void:
+	var t: Dictionary = meta.get("tex", {})
+	var ca: Array = t.get("a", [0.0, 0.615, 0.09, 0.35])
+	var cb: Array = t.get("b", [-1.0, 0.0, 0.09, 0.35])
+	sm.set_shader_parameter("use_tex", mode)
+	sm.set_shader_parameter("albedo_tex", tex)
+	sm.set_shader_parameter("ch_a", Vector4(float(ca[0]), float(ca[1]), float(ca[2]), float(ca[3])))
+	sm.set_shader_parameter("ch_b", Vector4(float(cb[0]), float(cb[1]), float(cb[2]), float(cb[3])))
+	sm.set_shader_parameter("ch_v", Vector2(float(t.get("va", 0.7)), float(t.get("vb", 0.7))))
+
 ## Letras del rotulado en las puertas: la fila del atlas (según el patrón) y el rectángulo sobre la puerta, medido con los pasos de rueda y la línea de cintura del GLB
 func _set_decal(sm: ShaderMaterial, pattern: int) -> void:
 	var rows: Dictionary = _decal_rows.get("rows", {})
@@ -244,7 +252,8 @@ func set_parts(pp: Dictionary) -> void:
 
 ## Rotulados: dibujos de pintura calculados sobre la carrocería (no hace falta textura): franjas, banda lateral, la «onda»
 ## de Dream Racing, bicolor y el rally con el círculo del número en las puertas. 0 = liso.
-const LIVERIES := ["Liso", "Franjas", "Banda lateral", "Onda Dream", "Bicolor", "Rally", "Camuflaje Multicam", "Dream Racing", "SRGamestudios", "Sport", "Nombre del auto"]
+const LIVERIES := ["Liso", "Franjas", "Banda lateral", "Onda Dream", "Bicolor", "Rally", "Camuflaje Multicam", "Dream Racing", "SRGamestudios", "Sport", "Nombre del auto", "Textura original"]
+const ORIGINAL_TEXTURE := 11 # rotulado «textura original»: el auto con su textura de fábrica sin tocar
 const CAMO_TEX := "res://game/models/cars/camo_multicam.png"
 ## rotulados con letras (patrones 7 a 10): una fila del atlas decals.png (tools/cars/gen_decals.py) proyectada sobre las puertas; 7 = DREAM RACING, 8 = SRGamestudios, 9 = SPORT, 10 = el nombre del auto
 const DECAL_TEX := "res://game/models/cars/decals.png"
@@ -275,9 +284,12 @@ uniform sampler2D camo_tex : source_color, filter_linear_mipmap, repeat_enable;
 uniform sampler2D decal_tex : source_color, filter_linear_mipmap;
 uniform vec4 decal_rect = vec4(0.0, 0.6, 1.0, 0.125); // letras en las puertas: centro (z, y) y semiancho / semialto
 uniform vec2 decal_v = vec2(0.0, 0.03); // franja del atlas (v) de la fila elegida
-uniform float use_tex = 0.0; // autos con textura propia: el color de pintura reemplaza el tono de la pintura de fábrica de la textura (y el de detalles el de sus detalles); el resto (carbono, negro, gris, vidrio) queda como está
+uniform float use_tex = 0.0; // autos con textura propia: 1 = los canales de color de la textura (pintura y detalles) pasan al color del taller; 2 = la textura original sin tocar
 uniform sampler2D albedo_tex : filter_linear_mipmap;
-uniform vec4 tex_cfg = vec4(0.615, 0.0, 0.7, 0.09); // tono de la pintura de fábrica (0–1), tono de los detalles, brillo (V) de referencia de la pintura, ancho del tono
+// canal de color de la textura: x = tipo (-1 apagado · 0 tono: y = tono 0–1, z = ancho, w = saturación mínima · 1 neutro (blancos, plateados y grises): y = brillo desde, z = brillo hasta, w = saturación máxima)
+uniform vec4 ch_a = vec4(0.0, 0.615, 0.09, 0.35);
+uniform vec4 ch_b = vec4(0.0, 0.0, 0.09, 0.35);
+uniform vec2 ch_v = vec2(0.7, 0.7); // brillo (V) de referencia de cada canal: el sombreado de la textura se conserva respecto de ese valor
 varying vec3 lp;
 varying vec3 ln;
 varying vec2 tuv;
@@ -296,6 +308,16 @@ vec3 rgb2hsv(vec3 c) {
 float hue_d(float a, float b) {
 	float d = abs(a - b);
 	return min(d, 1.0 - d);
+}
+float chmask(vec3 hsv, vec4 ch) {
+	if (ch.x < -0.5) {
+		return 0.0;
+	}
+	if (ch.x < 0.5) {
+		float sm = smoothstep(ch.w, ch.w + 0.25, hsv.y) * smoothstep(0.05, 0.18, hsv.z);
+		return sm * (1.0 - smoothstep(ch.z * 0.6, ch.z, hue_d(hsv.x, ch.y)));
+	}
+	return smoothstep(ch.y, ch.z, hsv.z) * (1.0 - smoothstep(ch.w, ch.w + 0.12, hsv.y));
 }
 float rbox(vec2 p, vec2 b, float r) {
 	vec2 q = abs(p) - b + r;
@@ -347,15 +369,18 @@ void fragment() {
 	float tmall = 1.0;
 	if (use_tex > 0.5) {
 		vec3 raw = texture(albedo_tex, tuv).rgb; // valores de la imagen tal cual (sin pasar a lineal): el tono y la saturación se miden como se pintaron
-		vec3 hsv = rgb2hsv(raw);
-		float satm = smoothstep(0.12, 0.45, hsv.y) * smoothstep(0.04, 0.16, hsv.z);
-		float mp = satm * (1.0 - smoothstep(tex_cfg.w * 0.6, tex_cfg.w, hue_d(hsv.x, tex_cfg.x)));
-		float ma = satm * (1.0 - smoothstep(tex_cfg.w * 0.6, tex_cfg.w, hue_d(hsv.x, tex_cfg.y)));
-		float vl = pow(hsv.z, 2.2) / pow(tex_cfg.z, 2.2);
 		c = pow(raw, vec3(2.2));
-		c = mix(c, paint * clamp(vl, 0.0, 1.6), mp);
-		c = mix(c, accent * clamp(vl, 0.0, 1.6), ma);
-		tmall = max(mp, ma);
+		if (use_tex < 1.5) {
+			vec3 hsv = rgb2hsv(raw);
+			float ma = chmask(hsv, ch_a);
+			float mb = chmask(hsv, ch_b);
+			float vl = pow(hsv.z, 2.2);
+			c = mix(c, paint * clamp(vl / pow(ch_v.x, 2.2), 0.0, 1.6), ma);
+			c = mix(c, accent * clamp(vl / pow(ch_v.y, 2.2), 0.0, 1.6), mb * (1.0 - ma));
+			tmall = max(ma, mb);
+		} else {
+			tmall = 0.6;
+		}
 	}
 	float side = smoothstep(0.35, 0.55, abs(ln.x));
 	float top = smoothstep(0.25, 0.5, ln.y);
@@ -385,7 +410,7 @@ void fragment() {
 		c = mix(c, accent2, disc);
 		c = mix(c, accent, ring);
 		c = mix(c, accent, band(ax, 0.0, 0.22) * top * step(0.0, lp.z));
-	} else if (pattern >= 7) { // letras en las puertas (se leen de adelante hacia atrás desde afuera, de los dos lados) + un detalle de franjas según el rotulado
+	} else if (pattern >= 7 && pattern <= 10) { // letras en las puertas (se leen de adelante hacia atrás desde afuera, de los dos lados) + un detalle de franjas según el rotulado
 		float sx = lp.x >= 0.0 ? 1.0 : -1.0;
 		float du = 0.5 - sx * (lp.z - decal_rect.x) / (2.0 * decal_rect.z);
 		float dv = 0.5 - (lp.y - decal_rect.y) / (2.0 * decal_rect.w);
@@ -462,7 +487,7 @@ static func _paint_material(pattern: int, paint: Color, accent: Color, finish: S
 		if _camo == null:
 			_camo = load(CAMO_TEX)
 		sm.set_shader_parameter("camo_tex", _camo)
-	elif pattern >= 7:
+	elif pattern >= 7 and pattern <= 10:
 		if _decal == null:
 			_decal = load(DECAL_TEX)
 			_decal_rows = JSON.parse_string(FileAccess.get_file_as_string(DECAL_JSON))

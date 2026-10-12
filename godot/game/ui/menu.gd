@@ -249,7 +249,7 @@ func _first_time() -> void:
 		var c: Dictionary = CarBuild.catalog()["cars"][id]
 		if c.get("starter", false):
 			profile.give(id)
-	profile.select("t1plus" if profile.owns("t1plus") else str(profile.d["owned"].keys()[0]))
+	profile.select(str(profile.d["owned"].keys()[0]))
 
 # ───────────────────────── mundo 3D ─────────────────────────
 func _build_world() -> void:

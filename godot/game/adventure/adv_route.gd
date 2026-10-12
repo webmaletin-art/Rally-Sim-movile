@@ -57,7 +57,7 @@ const STAGES := [
 			["station", "Parador Los Girasoles"],
 		]},
 	{"name": "Campos de Girasol", "sub": "Llanura, chacras y molinos", "sky": "dia",
-		"rival": {"name": "Romina «La Colorada» Paz", "car": "t1plus", "paint": "#d81f2a", "skill": 0.82, "power": 1.06, "grip": 1.02, "bio": "Corre desde los 15 años en la tierra de las chacras. No regala nada."},
+		"rival": {"name": "Romina «La Colorada» Paz", "car": "hatch2", "paint": "#d81f2a", "skill": 0.82, "power": 1.06, "grip": 1.02, "bio": "Corre desde los 15 años en la tierra de las chacras. No regala nada."},
 		"tip": "Rectas largas entre girasoles y trigo: buscá la velocidad final. Ojo con las curvas rápidas: entrar pasado de velocidad te lleva al alambrado.",
 		"setup": "Asfalto rápido: más presión de gomas y la suspensión baja.",
 		"pieces": [
@@ -68,7 +68,7 @@ const STAGES := [
 			["station", "Estación La Esperanza"],
 		]},
 	{"name": "El Puente del Río Manso", "sub": "Del campo al bosque, cruzando el río", "sky": "nublado",
-		"rival": {"name": "Facundo Herrera", "car": "t1plus", "paint": "#2a9d4b", "skill": 0.84, "power": 1.12, "grip": 1.03, "bio": "Guardaparque y piloto los fines de semana. Conoce cada curva del bosque."},
+		"rival": {"name": "Facundo Herrera", "car": "suv", "paint": "#2a9d4b", "skill": 0.84, "power": 1.12, "grip": 1.03, "bio": "Guardaparque y piloto los fines de semana. Conoce cada curva del bosque."},
 		"tip": "Después del puente entrás al bosque: curvas más cerradas y sombra. Los guardarraíles perdonan poco: trazá limpio.",
 		"setup": "Mixto: suspensión media y frenos un poco hacia adelante.",
 		"pieces": [
@@ -91,7 +91,7 @@ const STAGES := [
 			["station", "Refugio de la Sierra"],
 		]},
 	{"name": "El Túnel del Cóndor", "sub": "Túnel bajo la montaña y bajada larga", "sky": "atardecer",
-		"rival": {"name": "Valentina Ríos", "car": "t1plus", "paint": "#7b2cbf", "skill": 0.87, "power": 1.14, "grip": 1.04, "bio": "Ingeniera de motores. Baja la montaña como si fuera llano."},
+		"rival": {"name": "Valentina Ríos", "car": "rally80", "paint": "#7b2cbf", "skill": 0.87, "power": 1.14, "grip": 1.04, "bio": "Ingeniera de motores. Baja la montaña como si fuera llano."},
 		"tip": "Hay un túnel largo: adentro está oscuro y los ojos tardan en acostumbrarse. Después viene una bajada larga: frená antes, el auto pesa hacia adelante.",
 		"setup": "Bajada: frenos más atrás para que no se bloqueen adelante.",
 		"pieces": [
@@ -107,7 +107,7 @@ const STAGES := [
 			["station", "Estación El Cóndor"],
 		]},
 	{"name": "Ciudad del Valle", "sub": "Avenidas, esquinas y un paso bajo nivel", "sky": "ocaso",
-		"rival": {"name": "Nico «Turbo» Sosa", "car": "t1plus", "paint": "#00b4d8", "skill": 0.9, "power": 1.16, "grip": 1.05, "bio": "Corredor de picadas de la ciudad. Muy rápido en las rectas, se apura en las esquinas."},
+		"rival": {"name": "Nico «Turbo» Sosa", "car": "buggy", "paint": "#00b4d8", "skill": 0.9, "power": 1.16, "grip": 1.05, "bio": "Corredor de picadas de la ciudad. Muy rápido en las rectas, se apura en las esquinas."},
 		"tip": "La ciudad: esquinas a 90°, avenidas anchas y un paso bajo nivel. Las veredas están altas: no te subas al cordón.",
 		"setup": "Ciudad: más agarre adelante y frenos fuertes.",
 		"pieces": [
@@ -123,7 +123,7 @@ const STAGES := [
 			["station", "Estación Ruta 7"],
 		]},
 	{"name": "Fin del Asfalto", "sub": "La ruta se vuelve tierra", "sky": "dia",
-		"rival": {"name": "Gringo Müller", "car": "t1plus", "paint": "#f5f5f2", "skill": 0.89, "power": 1.12, "grip": 1.05, "bio": "Chacarero y piloto de rally. En la tierra se siente en casa."},
+		"rival": {"name": "Gringo Müller", "car": "kodiak", "paint": "#f5f5f2", "skill": 0.89, "power": 1.12, "grip": 1.05, "bio": "Chacarero y piloto de rally. En la tierra se siente en casa."},
 		"tip": "Se termina el asfalto: en la tierra el auto se desliza. Frená en línea recta, doblá suave y acelerá cuando el auto ya apunta a la salida.",
 		"setup": "Tierra: tracción más atrás, gomas con menos presión y suspensión alta y blanda.",
 		"pieces": [
@@ -144,7 +144,7 @@ const STAGES := [
 			["station", "Estación La Mina"],
 		]},
 	{"name": "Bosque de los Coihues", "sub": "Bosque cerrado bajo la lluvia", "sky": "lluvia",
-		"rival": {"name": "Lucía Ferreyra", "car": "t1plus", "paint": "#ff6a08", "skill": 0.89, "power": 1.13, "grip": 1.05, "bio": "Campeona de rally de bosque. Con lluvia es todavía más rápida."},
+		"rival": {"name": "Lucía Ferreyra", "car": "gt", "paint": "#ff6a08", "skill": 0.89, "power": 1.13, "grip": 1.05, "bio": "Campeona de rally de bosque. Con lluvia es todavía más rápida."},
 		"tip": "Llueve: la tierra se pone resbaladiza y el agarre baja. Frená antes y no muevas el volante de golpe. A mitad de etapa hay un taller.",
 		"setup": "Lluvia: gomas de grava o barro, menos presión y suspensión blanda.",
 		"pieces": [
@@ -157,7 +157,7 @@ const STAGES := [
 			["station", "Estación Los Coihues"],
 		]},
 	{"name": "Primeras Nieves", "sub": "La subida a la cordillera", "sky": "nublado",
-		"rival": {"name": "Mati Ortega", "car": "t1plus", "paint": "#3a0ca3", "skill": 0.91, "power": 1.14, "grip": 1.06, "bio": "Instructor de manejo en nieve. Sereno, preciso, imposible de apurar."},
+		"rival": {"name": "Mati Ortega", "car": "rally80", "paint": "#3a0ca3", "skill": 0.91, "power": 1.14, "grip": 1.06, "bio": "Instructor de manejo en nieve. Sereno, preciso, imposible de apurar."},
 		"tip": "Empieza a nevar: la nieve pisada agarra mucho menos que la tierra. Acelerá con suavidad y frená mucho antes de las curvas.",
 		"setup": "Nieve: tracción repartida, gomas blandas y suspensión blanda.",
 		"pieces": [

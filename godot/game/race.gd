@@ -1113,7 +1113,7 @@ func _car_setups() -> Array:
 func _is_convoy() -> bool:
 	return menu_mode and (cfg.get("convoy", false) == true or (track_maps.has(track_id) and (track_maps[track_id] as Dictionary).get("convoy", false) == true)) and track is RouteTrack
 
-const CONVOY_CARS := [["pickup", "Don Ramón", 0], ["truck", "La Tana", 0], ["suv", "El Gallego", 0], ["camo", "Pochi", 6], ["buggy", "Mono", 0]]
+const CONVOY_CARS := [["pickup", "Don Ramón", 0], ["truck", "La Tana", 0], ["suv", "El Gallego", 0], ["camo", "Pochi", 11], ["buggy", "Mono", 0]]
 const CONVOY_PAINTS := ["#c8402a", "#e7d8b0", "#3f6b3a", "#ffffff", "#e0a526"]
 
 ## Los 5 del convoy: autos y camiones de trabajo, de serie, con gomas todo terreno
