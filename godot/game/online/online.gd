@@ -60,8 +60,8 @@ static func score_payload(track: String, board: String, value: float, car: Strin
 
 ## Qué tabla corresponde al resultado de una carrera (o "" si no entra a ningún ranking)
 static func board_for(result_type: String, cfg: Dictionary) -> String:
-	if cfg.get("testCar", false) == true or cfg.get("practice", false) == true or cfg.get("labbed", false) == true:
-		return ""
+	if cfg.get("testCar", false) == true or cfg.get("practice", false) == true or cfg.get("labbed", false) == true or str(cfg.get("type", "")) == "net":
+		return "" # (la Red de rutas no tiene ranking)
 	if result_type == "drift":
 		return "drift" if cfg.get("duel", false) != true else ""
 	if cfg.get("drag", false) == true:

@@ -66,6 +66,8 @@ jobs:
           timeout -k 5 600 godot --headless --script res://tests/map_data_test.gd
           timeout -k 5 600 godot --headless --script res://tests/custom_route_test.gd
           timeout -k 5 900 godot --headless --script res://tests/map_v3_test.gd
+          timeout -k 5 600 godot --headless --script res://tests/net_test.gd
+          timeout -k 5 900 godot --headless --script res://tests/net_chase_test.gd
           python3 ../tools/route_gen/validate_all.py
           timeout -k 5 600 godot --headless --script res://tests/drag_test.gd
           timeout -k 5 600 godot --headless --script res://tests/dream_test.gd

@@ -18,6 +18,7 @@ const MenuAdventure := preload("res://game/ui/menu_adventure.gd")
 const MenuAbout := preload("res://game/ui/menu_about.gd")
 const MenuAccount := preload("res://game/ui/menu_account.gd")
 const MenuWorld := preload("res://game/ui/menu_world.gd")
+const MenuNet := preload("res://game/ui/menu_net.gd")
 const MenuPerf := preload("res://game/ui/menu_perf.gd")
 const MenuStore := preload("res://game/ui/menu_store.gd")
 const MenuChrome := preload("res://game/ui/menu_chrome.gd")
@@ -54,6 +55,7 @@ var adventure: RefCounted
 var about: RefCounted
 var account: RefCounted
 var world_ui: RefCounted # menu_world.gd: mundo abierto y modo online
+var net_ui: RefCounted # menu_net.gd: la Red de rutas (circular libre o persecución)
 var diag_ui: RefCounted # menu_diag.gd: diagnóstico de rendimiento (registro manual)
 var chrome: RefCounted # menu_chrome.gd: marco del garaje premium (barra superior, riel, carrusel y especificaciones)
 var chrome_on := false # la pantalla actual usa el marco (garaje, tienda, taller)
@@ -136,6 +138,8 @@ func _ready() -> void:
 	account.m = self
 	world_ui = MenuWorld.new()
 	world_ui.m = self
+	net_ui = MenuNet.new()
+	net_ui.m = self
 	diag_ui = MenuDiag.new()
 	diag_ui.m = self
 	perf = MenuPerf.new()
@@ -502,6 +506,7 @@ func go(name: String, arg = null, push := true) -> void:
 		"soon": world_ui.soon_screen(str(arg))
 		"online": world_ui.online_home()
 		"spawn": world_ui.spawn_screen()
+		"rutas": net_ui.screen()
 		"diag":
 			if Release.tools():
 				diag_ui.build(arg)
@@ -743,6 +748,7 @@ func _home() -> void:
 		career.quick["fantasy"] = false
 		career.quick["travesia"] = true
 		go("quick"), false])
+	tiles.append(["road", "RUTAS", "circular · persecución", func(): go("rutas"), false])
 	tiles.append(["world", "MUNDO ABIERTO", "Dream City", func() -> void:
 		world_online = false
 		go("spawn"), false])

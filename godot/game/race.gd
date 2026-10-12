@@ -10,6 +10,9 @@ const RouteTrack := preload("res://game/track/route_track.gd")
 const DriftTrack := preload("res://game/track/drift_track.gd")
 const CityTrack := preload("res://game/track/city_track.gd")
 const CitySession := preload("res://game/city_session.gd")
+const NetTrack := preload("res://game/net/net_track.gd")
+const NetSession := preload("res://game/net/net_session.gd")
+const NetDriver := preload("res://game/net/net_driver.gd")
 const OnlineSocial := preload("res://game/online/online_social.gd")
 const CityDriver := preload("res://game/ai/city_driver.gd")
 const RemoteCars := preload("res://game/online/remote_cars.gd")
@@ -247,6 +250,11 @@ func _ready() -> void:
 				"state": Profile.new_car_state("pickup"), "back": "home", "testCar": true, "sim": "mid", "maxPI": 999}
 			if a.begins_with("--convoy="):
 				view_at = float(a.substr(9))
+		elif a.begins_with("--net") and cfg.is_empty():
+			# prueba: arranca directo la Red de rutas (--net, --net=chase o --net=flee:3 → modo y estación)
+			var np := a.substr(6).split(":") if a.length() > 6 else PackedStringArray()
+			cfg = {"type": "net", "track": "rutas", "netMode": np[0] if np.size() > 0 and np[0] != "" else "free", "station": int(np[1]) if np.size() > 1 else 0, "chaseGap": 150.0,
+				"ai": 0 if (np.size() == 0 or np[0] in ["", "free"]) else 1, "skill": 0.9, "sky": "day", "quick": true, "seed": 7, "car": "hatch", "state": Profile.new_car_state("hatch"), "back": "home", "sim": "mid", "maxPI": 999}
 		elif a.begins_with("--adv=") and cfg.is_empty():
 			# prueba: arranca directo una etapa de la aventura (--adv=3 o --adv=3:0.4 para empezar en esa fracción)
 			var parts := a.substr(6).split(":")
@@ -340,6 +348,8 @@ func _ready() -> void:
 		_dream_atmosphere()
 	if track is CityTrack:
 		_city_atmosphere()
+	if track is NetTrack:
+		_net_atmosphere()
 	audio = CarAudio.new()
 	audio.set_vehicle(str(cfg.get("car", "")))
 	add_child(audio)
@@ -560,6 +570,27 @@ func _city_atmosphere() -> void:
 		clock = CityClock.new()
 		clock.setup(self, psm)
 
+## Red de rutas: cielo de día y niebla larga (los tramos se arman a unos 1000 m; más cerca en teléfonos flojos)
+func _net_atmosphere() -> void:
+	var vk := _view_k()
+	var sky := Sky.new()
+	var psm := ProceduralSkyMaterial.new()
+	psm.sky_top_color = Color(0.36, 0.58, 0.88)
+	psm.sky_horizon_color = Color(0.84, 0.89, 0.94)
+	psm.ground_horizon_color = Color(0.74, 0.80, 0.78)
+	psm.ground_bottom_color = Color(0.60, 0.68, 0.62)
+	sky.sky_material = psm
+	env.sky = sky
+	env.background_mode = Environment.BG_SKY
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	env.ambient_light_energy = 1.0
+	env.fog_enabled = true
+	env.fog_mode = Environment.FOG_MODE_DEPTH
+	env.fog_light_color = Color(0.80, 0.86, 0.92)
+	env.fog_depth_begin = 220.0 * vk
+	env.fog_depth_end = 900.0 * vk
+	cam.far = 1400.0
+
 ## Paper Race: cielo y niebla de papel (la selva se cierra a lo lejos), luz suave y pareja
 func _paper_atmosphere() -> void:
 	env.background_color = Color(0.88, 0.91, 0.84)
@@ -582,6 +613,10 @@ func _make_track() -> void:
 			adv_alt = AdvTrack.new(int(cfg.get("stage", 0)), int(track.forks[0]["fork"]))
 			track.cross_clear(adv_alt)
 			adv_alt.cross_clear(track)
+		return
+	if track_id == "rutas":
+		track = NetTrack.new("red_1") # la Red de rutas: caminos largos con estaciones, carga por tramos
+		track.spawn_i = int(cfg.get("station", 0))
 		return
 	if track_id == "aurelia":
 		track = CityTrack.new() # el mundo abierto: Dream City (no figura en routes.json: no es una pista de carrera)
@@ -645,6 +680,15 @@ func _build_track_nodes() -> void:
 		if cfg.has("resume"):
 			wp = Vector3(float(cfg["resume"][0]), 0.0, float(cfg["resume"][1])) # se vuelve de un taller: las cuadras de ese lugar
 		cw.warm(wp) # las cuadras de alrededor ya armadas antes de largar
+		road_mat = track.road_mat
+		ground_mat = track.ground_mat
+		return
+	if track is NetTrack:
+		var nw: Node3D = track.build_world()
+		nw.view_k = _view_k()
+		track_root.add_child(nw)
+		var nsp: Array = track.start_pose(0)
+		nw.warm(Vector3(float(nsp[0]), 0.0, float(nsp[1]))) # los tramos de alrededor ya armados antes de largar
 		road_mat = track.road_mat
 		ground_mat = track.ground_mat
 		return
@@ -880,7 +924,7 @@ func _rebuild_trees() -> void:
 		trees_node.queue_free()
 	trees_node = Node3D.new()
 	world.add_child(trees_node)
-	if trees_n <= 0 or adv_mode or track is DriftTrack or track is PaperTrack or track is DreamTrack:
+	if trees_n <= 0 or adv_mode or track is DriftTrack or track is PaperTrack or track is DreamTrack or track is NetTrack:
 		return
 	# mapas personalizados (generador HTML): la densidad y el tipo de árbol salen del mapa; el tope sigue siendo el presupuesto de árboles del teléfono
 	var n_trees := trees_n
@@ -1193,12 +1237,16 @@ func _rebuild_cars() -> void:
 				car.driver = AIDriver.new(track.make_view(), car.phys, su["ai"])
 			elif track is DriftTrack:
 				car.driver = DriftBot.new(22.0 + float((i * 5) % 18), float(i) * 1.7)
+			elif track is NetTrack:
+				car.driver = NetDriver.new(track.net, "wander" if str(cfg.get("netMode", "chase")) == "chase" else "pursue", float(cfg.get("skill", 0.9)), int(cfg.get("seed", 7)) + i)
 			else:
 				car.driver = RingDriver.new(track, 20.0 + float((i * 7) % 9), (float((i * 5) % 7) - 3.0) * 0.9)
 		# parrilla: en las carreras el jugador sale último; en contrarreloj, adelante
 		var slot := i
 		if menu_mode and cars_n > 1 and str(cfg.get("type")) == "race":
 			slot = cars_n - 1 if i == 0 else i - 1
+		if track is NetTrack and cars_n > 1:
+			slot = (1 if i == 0 else 0) if str(cfg.get("netMode", "")) == "chase" else i # persecución: el rival sale adelante; si te persiguen sale atrás
 		var sp: Array = track.start_pose(slot, s0) if route else track.start_pose(slot)
 		if _is_convoy():
 			sp = _convoy_pose(_convoy_rank(i), s0)
@@ -1244,6 +1292,8 @@ func _rebuild_cars() -> void:
 		cars.append(car)
 		if auto_player and i == 0 and route:
 			car.driver = AIDriver.new(track.make_view(), car.phys, {"skill": 0.95})
+		if auto_player and i == 0 and track is NetTrack:
+			car.driver = NetDriver.new(track.net, "wander", 0.95, 3) # prueba: el jugador recorre la red solo
 		if i <= 3 and fx != null:
 			fx.prepare(i)
 	var all_phys: Array = []
@@ -1299,6 +1349,16 @@ func _start_session() -> void:
 				race_hud.city_hud.set_dest(race_hud.city_hud.city.pois[0]["front"], str(race_hud.city_hud.city.pois[0]["name"]))
 				race_hud.city_hud.call_deferred("_set_big", true)
 		return
+	if menu_mode and track is NetTrack:
+		session = NetSession.new(track, cfg, cars.size())
+		session.names[0] = rival_info[0]["name"]
+		if cars.size() > 1:
+			session.names[1] = rival_info[1]["name"]
+		if race_hud != null:
+			race_hud.setup(session, cfg, rival_info)
+			if race_hud.net_hud != null:
+				race_hud.net_hud.respawn_pressed.connect(_net_respawn)
+		return
 	if menu_mode and track is DriftTrack:
 		session = DriftSession.new(track, cfg, cars.size())
 		session.names[0] = rival_info[0]["name"]
@@ -1338,6 +1398,25 @@ func _start_session() -> void:
 			c.driver.enabled = false
 	if race_hud != null:
 		race_hud.setup(session, cfg, rival_info)
+
+## Red de rutas: el auto vuelve a aparecer en la estación más cercana (y el rival al lado, con la persecución en cero)
+func _net_respawn() -> void:
+	if not (track is NetTrack) or cars.is_empty():
+		return
+	var ph = cars[0].phys
+	var si: int = track.net.nearest_station(Vector2(ph.px, ph.pz))
+	if si < 0:
+		return
+	for i in cars.size():
+		var slot := (1 if i == 0 else 0) if (str(cfg.get("netMode", "")) == "chase" and cars.size() > 1) else i
+		var sp: Array = track.station_pose(si, slot)
+		cars[i].place(sp[0], sp[1], sp[2])
+		cars[i].restart_history(sim_t)
+		if cars[i].driver is NetDriver:
+			cars[i].driver.route = PackedVector2Array()
+	session.reset_chase()
+	cam_ready = false
+	sfx.play("go")
 
 func _on_beep(k: int) -> void:
 	race_hud.big(str(k))
@@ -1923,6 +2002,12 @@ func _tick_session(dt: float) -> void:
 			print("CITYDRIVE NO LLEGÓ en 240 s: pos=(%d,%d)" % [int(ph.px), int(ph.pz)])
 			get_tree().quit()
 	session.update(dt, cars)
+	if session is NetSession:
+		if session.respawn_req:
+			session.respawn_req = false
+			_net_respawn()
+		if race_hud.net_hud != null:
+			race_hud.net_hud.set_rival(Vector2(cars[1].phys.px, cars[1].phys.pz) if cars.size() > 1 else Vector2(INF, INF))
 	if rules != null:
 		rules.update(dt)
 	if convoy != null:
@@ -1978,6 +2063,13 @@ func _make_result() -> Dictionary:
 				r["win"] = session.duel_won
 		_:
 			r["value"] = session.finish_time[0]
+	if session is NetSession and session.mode != "free":
+		r["type"] = "race"
+		r["rule"] = "chase"
+		r["win"] = session.win
+		r["note"] = session.note
+		r["pos"] = 1 if session.win else 2
+		r["value"] = float(r["pos"])
 	if rules != null:
 		r["rule"] = rules.kind
 		r["win"] = rules.win

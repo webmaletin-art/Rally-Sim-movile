@@ -7,6 +7,7 @@ const OptionsUi := preload("res://game/ui/options_ui.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const LabPanel := preload("res://game/ui/lab_panel.gd")
 const CityHud := preload("res://game/ui/city_hud.gd")
+const NetHud := preload("res://game/ui/net_hud.gd")
 const OnlinePanel := preload("res://game/ui/online_panel.gd")
 
 signal resume_pressed
@@ -42,6 +43,7 @@ var bar: ColorRect
 var bar_fill: ColorRect
 var minimap: Control
 var city_hud: Control # mundo abierto: minimapa que gira, mapa grande y GPS
+var net_hud: Control # Red de rutas: minimapa que gira, estación más cercana y volver a la estación
 var opts: RefCounted
 var opts_box: Control
 var opts_body: VBoxContainer
@@ -218,7 +220,16 @@ func setup(s: RefCounted, c: Dictionary, r: Array) -> void:
 	if city_hud != null:
 		city_hud.queue_free()
 		city_hud = null
-	if t == "city":
+	if net_hud != null:
+		net_hud.queue_free()
+		net_hud = null
+	if t == "net":
+		minimap.visible = false
+		pos_l.visible = false
+		net_hud = NetHud.new()
+		add_child(net_hud)
+		net_hud.setup(s.track, s)
+	elif t == "city":
 		minimap.visible = false
 		city_hud = CityHud.new()
 		add_child(city_hud)
@@ -246,6 +257,8 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 	tick += dt
 	if city_hud != null and not car_list.is_empty():
 		city_hud.update_hud(dt, car_list[0])
+	if net_hud != null and not car_list.is_empty():
+		net_hud.update_hud(dt, car_list[0])
 	if tick > 0.05:
 		tick = 0.0
 		var L: Array = []
@@ -284,6 +297,9 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 		drift_l.add_theme_color_override("font_color", [Color(0.55, 0.85, 1.0), Color(0.55, 0.85, 1.0), Color(1.0, 0.9, 0.4), Color(1.0, 0.7, 0.25), Color(1.0, 0.5, 0.2), Color(1.0, 0.35, 0.3)][clampi(s.mult, 0, 5)])
 	elif t == "city":
 		lap_l.text = "%s · %.1f km" % [Tr.t("DREAM CITY"), s.odo / 1000.0]
+	elif t == "net":
+		lap_l.text = s.rule_text
+		drift_l.text = s.rule_sub
 	elif t == "free":
 		lap_l.text = "PRUEBA LIBRE · salí desde la pausa"
 	elif t == "drift":
@@ -431,6 +447,8 @@ func set_paused(on: bool) -> void:
 	pause_box.mouse_filter = Control.MOUSE_FILTER_STOP
 	if city_hud != null:
 		city_hud.set_paused(on)
+	if net_hud != null:
+		net_hud.set_paused(on)
 
 # ───────────────────────── opciones dentro de la carrera ─────────────────────────
 ## Las mismas pantallas de opciones del menú; cada cambio se aplica en el momento (options_changed) y se ve detrás
