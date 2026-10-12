@@ -13,6 +13,10 @@ Los modelos crudos (`Autos_texturas.part*.rar` + `MoustExtreme.glb`) NO están e
 - `t1plus` quedó solo como ficha de física **oculta** (`"hidden": true`): la usan la IA y las pruebas contra la versión HTML; no está en el garaje ni en la tienda.
 - Borrados: Safari, Volcán y Veltor Max Pro GTR Original (HD).
 
+- **Nivelado:** si el modelo viene «cabeceado» (paso de rueda de adelante más bajo o alto que el de atrás), `build_final.py` lo gira sobre x hasta nivelarlos (Trilux −4,8°, Veltor −3,4°, Trilux Sport −2,2°, SUV, Buggy…): así ningún auto se ve inclinado hacia el frente sobre sus ruedas.
+- **Cámaras de adentro:** con la cámara adentro se dibuja la carrocería liviana (`_lo`, ~6 mil triángulos: más rápida) y se recorta todo lo que está detrás de la base del parabrisas (techo, puertas, columnas, volante del modelo); el habitáculo (tablero, butacas, jaula, pilotos) lo arma `cockpit.gd` con las medidas de `cabin_cfg.gd`. Los pilotos y el tablero no quedan a más de 1,12 m del parabrisas.
+- **Suspensión visible:** los brazos terminan sobre el piso de la carrocería (no asoman por abajo), el resorte lleva más vueltas en carrocerías altas (Bisonte) y los camiones sacan las ruedas un poco más afuera (`x_off` en `final_wheels.py`) para tapar los bulones del eje del modelo.
+
 ## Colores
 - «De fábrica» (rotulado 11) muestra la textura original.
 - La textura se recolorea con dos colores (carrocería y detalles); canales por auto en `TEX`. Un color sólido = detalles iguales a la carrocería.

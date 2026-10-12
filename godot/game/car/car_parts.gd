@@ -28,7 +28,9 @@ func build(body: Node3D, V: RefCounted, p_meta: Dictionary, p_lo: bool, rim_col:
 	var rr: float = V.rimRadius
 	var a: float = V.wheelBase * (1.0 - V.weightFront)
 	var b: float = V.wheelBase * V.weightFront
-	var defs := [[V.trackF / 2.0, a, true], [-V.trackF / 2.0, a, true], [V.trackR / 2.0, -b, false], [-V.trackR / 2.0, -b, false]]
+	var xo_f := float(W.get("x_off", 0.0)) # las ruedas salen un poco más afuera (camiones: tapan los bulones del eje del modelo)
+	var xo_r := float(W.get("x_off_r", xo_f))
+	var defs := [[V.trackF / 2.0 + xo_f, a, true], [-V.trackF / 2.0 - xo_f, a, true], [V.trackR / 2.0 + xo_r, -b, false], [-V.trackR / 2.0 - xo_r, -b, false]]
 	var arch_top: float = float(meta.get("arch_top", 2.0 * R))
 	var tread := str(W["tread"])
 	for d in defs:
@@ -172,6 +174,8 @@ func _make_susp(body: Node3D, w: Dictionary, R: float, tw: float, arch_top: floa
 			up_y = arch_top - 0.10 # bajo el capó: no deben asomar por arriba
 			inb = tw * 0.5 + 0.14
 			fwd = 0.1 * R * (1.0 if front else -1.0)
+	var rest_len := up_y - R * 0.8
+	coils *= clampf(rest_len / 0.42, 1.0, 2.2) # carrocerías altas: más vueltas, no un resorte estirado
 	var low_off := Vector3(-side * inb, -0.20 * R, fwd)
 	var up := Vector3(x - side * (inb + (0.04 if st != "buggy" else 0.18)), up_y, z + fwd * 0.8)
 	var strut := Node3D.new()
@@ -196,7 +200,7 @@ func _make_susp(body: Node3D, w: Dictionary, R: float, tw: float, arch_top: floa
 	w["low_off"] = low_off
 	w["up"] = up
 	w["arms"] = arms
-	w["arm_in"] = Vector3(x - side * (tw * 0.5 + 0.34 + (0.2 if st == "buggy" else 0.0)), R * 0.45, z)
+	w["arm_in"] = Vector3(x - side * (tw * 0.5 + 0.26 + (0.2 if st == "buggy" else 0.0)), maxf(R * 0.45, float(meta.get("lift", 0.1)) + 0.10), z) # el extremo de adentro queda sobre el piso de la carrocería (antes asomaba por debajo)
 
 ## eje rígido (camión, pickup, SUV): un tubo entre las dos ruedas con el diferencial
 var axles: Array = [] # {node, a: wheel idx izquierdo, b: derecho}
@@ -246,7 +250,7 @@ func sync(p: CarSnapshot, base: float, dt: float) -> void:
 			var arms: Array = w["arms"]
 			var hub: Vector3 = steer.position + Vector3(-float(w["side"]) * (float(w["tw"]) * 0.5 + 0.02), -0.15 * float(steer.position.y), 0.0)
 			var inn: Vector3 = w["arm_in"]
-			inn.y = minf(inn.y, steer.position.y)
+			inn.y = minf(inn.y, steer.position.y - 0.02)
 			_span(arms[0], hub, inn + Vector3(0, 0, 0.26))
 			_span(arms[1], hub, inn - Vector3(0, 0, 0.26))
 	for ax in axles:

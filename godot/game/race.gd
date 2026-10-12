@@ -1217,7 +1217,7 @@ func _rebuild_cars() -> void:
 		# los vidrios son oscuros: la tripulación y el habitáculo solo se dibujan con las cámaras interiores del jugador
 		if i == 0:
 			var Vp: VehicleParams = car.phys.V
-			cockpit = Cockpit.new(str(su["visual_type"]), paint, su["rim"])
+			cockpit = Cockpit.new(str(su["visual_type"]), paint, su["rim"], _pilots_enabled())
 			cockpit.position = Vector3(0, -Vp.comHeight + Vp.rideOffset, 0)
 			car.visual.add_child(cockpit)
 			cockpit.set_engine(Vp.maxRpm, Vp.shiftUpRpm, Vp.nitroCap)
@@ -1998,6 +1998,19 @@ func _make_result() -> Dictionary:
 	for id in session.standings(n):
 		r["standings"].append({"name": session.names[id], "time": session.finish_time[id] if session.finished[id] else -1.0, "player": id == 0, "color": rival_info[id]["color"].to_html(false)})
 	return r
+
+## ¿Se arman los pilotos (piloto y copiloto animados) de las cámaras de adentro? Opción «Pilotos»: automática (se sacan en los teléfonos flojos), solo el mío o ninguno
+func _pilots_enabled() -> bool:
+	if profile == null:
+		return true
+	var m := str(profile.setting("pilots"))
+	if m == "none":
+		return false
+	if m == "auto":
+		var q := str(profile.setting("quality"))
+		if q == "low" or (q == "auto" and int(profile.setting("autoTier")) <= 0):
+			return false
+	return true
 
 ## Calidad (baja/media/alta/automática), texturas y volúmenes elegidos en Opciones
 func _apply_quality_settings() -> void:

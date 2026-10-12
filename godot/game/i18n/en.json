@@ -2078,5 +2078,8 @@
 "Oro y Negro": "Gold and black",
 "Sangre": "Blood",
 "Cielo": "Sky",
-"Lava": "Lava"
+"Lava": "Lava",
+"Pilotos en las cámaras de adentro (sacarlos ahorra memoria y cuadros)": "Drivers in the inside cameras (removing them saves memory and frames)",
+"Automática (según el teléfono)": "Automatic (depends on the phone)",
+"Solo el mío": "Only mine"
 }

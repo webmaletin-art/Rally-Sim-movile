@@ -100,6 +100,7 @@ var inGearT := 0.0
 var brake := 0.0
 var hbIn := false
 var throttle := 0.0
+var tc_free_spin := true # true: el control de tracción se suelta en un trompo / marcha atrás (la prueba contra la versión HTML lo apaga para comparar igual)
 var damage := 0.0
 var powerMul := 1.0
 var _good := Vector3.ZERO
@@ -581,7 +582,8 @@ func _engine(h: float, thr: float, brk: float, v_long: float, handbrake: bool) -
 	for w in W:
 		if w.contact and ((w.front and fr > 0.0) or (not w.front and rr > 0.0)):
 			mk = maxf(mk, w.kappa * sgn_ratio)
-	if V.tractionControl and thr > 0.05:
+	# el control de tracción no actúa en un trompo (muy de costado) ni yendo marcha atrás: en un trompo, yendo marcha atrás o en el aire el gas SIEMPRE empuja (antes lo cortaba al 20 % y el auto no reaccionaba hasta frenarse)
+	if V.tractionControl and thr > 0.05 and (not tc_free_spin or (v_long > -1.0 and absf(vLat) < maxf(3.0, 0.7 * absf(v_long)))):
 		if mk > V.tcSlip:
 			tc = maxf(0.2, tc - h * 6.0)
 		else:

@@ -14,6 +14,8 @@ var body: Node3D
 var wheels: Array = [] # {steer, spin, front, angle}
 var lo := false
 var shell: Node3D
+var shell_in: Node3D # carrocería liviana (~6 mil triángulos) que se dibuja con la cámara adentro del auto: sin retazos del interior del modelo y mucho más rápida
+var _paint_args: Array = []
 var tire_mat: StandardMaterial3D
 var parts: CarParts # ruedas, frenos y suspensión por código (autos con carrocería propia); null = Volt
 var meta: Dictionary = {} # medidas del GLB propio (models/cars/<id>.json)
@@ -134,6 +136,9 @@ func _setup_own(paint: Color, rim: Color, finish: String) -> void:
 ## Pone la pintura (afuera: doble cara · adentro: solo caras de frente, así con la cámara interior se ve el capó real y no el techo)
 func _apply_own_mats(pattern: int, paint: Color, accent: Color, finish: String, accent2: Color) -> void:
 	_own_mats.clear()
+	_paint_args = [pattern, paint, accent, finish, accent2]
+	if shell_in != null:
+		_paint_inside_shell()
 	var textured: bool = bool(meta.get("textured", false)) # todos los autos llevan su textura: el color y los detalles reemplazan los canales de color de la textura (pattern 11 = textura original)
 	for mi in _mesh_instances(shell):
 		var mesh: Mesh = mi.mesh
@@ -165,10 +170,51 @@ func set_inside(v: bool) -> void:
 		body.visible = not v
 		return
 	body.visible = true
+	if v and shell_in == null and not lo and not _paint_args.is_empty():
+		_make_inside_shell()
+	var use_in := v and shell_in != null
 	for c in body.get_children():
-		c.visible = (c == shell) or not v
+		if c == shell:
+			c.visible = not use_in
+		elif c == shell_in:
+			c.visible = use_in
+		else:
+			c.visible = not v
 	for e in _own_mats:
 		(e["mi"] as MeshInstance3D).set_surface_override_material(int(e["s"]), e["in"] if v else e["out"])
+
+## Carrocería liviana para la vista interior (se arma la primera vez que se entra al auto)
+func _make_inside_shell() -> void:
+	var f := "res://game/models/cars/%s_lo.glb" % vt
+	if not ResourceLoader.exists(f):
+		return
+	shell_in = (load(f) as PackedScene).instantiate()
+	shell_in.visible = false
+	body.add_child(shell_in)
+	_paint_inside_shell()
+
+func _paint_inside_shell() -> void:
+	var a := _paint_args
+	for mi in _mesh_instances(shell_in):
+		var mesh: Mesh = mi.mesh
+		for s in mesh.get_surface_count():
+			var mat := mesh.surface_get_material(s)
+			if mat is BaseMaterial3D and (mat as BaseMaterial3D).albedo_texture != null:
+				var orig: bool = int(a[0]) == ORIGINAL_TEXTURE
+				var sm := _own_paint(0 if orig else int(a[0]), a[1], a[2], str(a[3]), a[4], true)
+				_set_tex(sm, (mat as BaseMaterial3D).albedo_texture, 2.0 if orig else 1.0)
+				mi.set_surface_override_material(s, sm)
+
+## z de la base del parabrisas (donde empieza el capó): si el parabrisas medido sobre el perfil sale casi vertical se usa el polígono del vidrio
+func cowl_z() -> float:
+	var g: Variant = meta.get("glass")
+	if g is Dictionary:
+		var gd: Dictionary = g
+		var ws: Array = gd["ws"]
+		if absf(float(ws[0][0]) - float(ws[1][0])) < 0.35:
+			return float((gd["poly"] as Array)[0][0])
+		return float(ws[0][0])
+	return float(meta.get("cowl_z", 0.45)) # buggy (sin vidrios)
 
 ## Material de pintura de una carrocería propia: oscurecido de vértice tal cual y vidrios dibujados por el sombreador
 func _own_paint(pattern: int, paint: Color, accent: Color, finish: String, accent2: Color, inside := false) -> ShaderMaterial:
@@ -191,8 +237,8 @@ func _own_paint(pattern: int, paint: Color, accent: Color, finish: String, accen
 		sm.set_shader_parameter("sp0", Vector4(pl[0][0], pl[0][1], pl[1][0], pl[1][1]))
 		sm.set_shader_parameter("sp1", Vector4(pl[2][0], pl[2][1], pl[3][0], pl[3][1]))
 		sm.set_shader_parameter("cab_hw", cab)
-		if inside:
-			sm.set_shader_parameter("clip", Vector2(float(ws[0][0]) + 0.03, cab * 1.05))
+	if inside:
+		sm.set_shader_parameter("clip", Vector2(cowl_z() + 0.03, 1000.0)) # vista interior: no se dibuja NADA de la carrocería detrás del capó (techo, puertas, columnas, volante del modelo); eso lo arma el habitáculo propio
 	return sm
 
 static func _glass_material() -> StandardMaterial3D:

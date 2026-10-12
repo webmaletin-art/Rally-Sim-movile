@@ -28,9 +28,9 @@ const OVR := {
 	"titan": {"wmul": 1.12, "eye_h": 0.36, "eye_back": 0.30, "back": 0.45, "cage": false},
 	"gt": {"wmul": 1.45, "back": -1.0, "eye_h": 0.20, "cage": false},
 	"kl5": {"wmul": 1.40, "eye_h": 0.20, "back": -1.05, "cage": false},
-	"trilux": {"wmul": 1.45, "eye_h": 0.22, "back": -1.45, "cage": false},
-	"trilux_s": {"wmul": 1.45, "eye_h": 0.22, "back": -1.45, "cage": false},
-	"trilux_gt": {"wmul": 1.45, "eye_h": 0.22, "back": -1.45, "cage": true},
+	"trilux": {"wmul": 1.45, "eye_h": 0.22, "back": -1.05, "cage": false},
+	"trilux_s": {"wmul": 1.45, "eye_h": 0.22, "back": -1.05, "cage": false},
+	"trilux_gt": {"wmul": 1.45, "eye_h": 0.22, "back": -1.05, "cage": true},
 	"pro_gt": {"wmul": 1.45, "eye_h": 0.22, "back": -1.0, "halfW": 0.74, "cage": true},
 	"gt3": {"wmul": 1.30, "eye_h": 0.20, "back": -0.9, "halfW": 0.66, "cage": true},
 	"veltor": {"wmul": 1.60, "eye_h": 0.20, "back": -0.95, "cage": false},
@@ -90,6 +90,8 @@ static func build(id: String) -> Dictionary:
 	for k in o:
 		if c.has(k) and k != "cage":
 			c[k] = o[k]
+	if not o.has("eyeZ"): # los pilotos y el tablero no pueden quedar muy atrás de la base del parabrisas (autos con la cabina corrida hacia atrás, camiones): como mucho 1,12 m
+		c["eyeZ"] = maxf(float(c["eyeZ"]), float(c["cowlZ"]) - float(o.get("max_gap", 1.12)))
 	var eyeY := float(c["eyeY"])
 	var floor_y := maxf(eyeY - 1.05, lift + 0.08)
 	c["floorY"] = floor_y

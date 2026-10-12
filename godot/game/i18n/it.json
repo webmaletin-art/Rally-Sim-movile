@@ -914,7 +914,7 @@
 "Nieve de montaña: tracción repartida y frenos hacia adelante.": "Neve di montagna: ripartizione uniforme e freni anteriori.",
 "Nieve: tracción repartida, gomas blandas y suspensión blanda.": "Neve: ripartizione uniforme, gomme morbide e sospensione morbida.",
 "Ninguna": "Nessuno",
-"Ninguno": "Nessuna",
+"Ninguno": "Nessuno",
 "Nitro (N₂O)": "Nitro (N₂O)",
 "Nivel 1 habilita ajustar resortes, amortiguadores y barras. Nivel 3 habilita altura, caída (camber) y convergencia.": "Il livello 1 sblocca molle, ammortizzatori e barre stabilizzatrici. Il livello 3 sblocca altezza da terra, campanatura e convergenza.",
 "Nivel 10": "Livello 10",
@@ -2037,5 +2037,8 @@
 "Oro y Negro": "Oro e nero",
 "Sangre": "Sangue",
 "Cielo": "Cielo",
-"Lava": "Lava"
+"Lava": "Lava",
+"Pilotos en las cámaras de adentro (sacarlos ahorra memoria y cuadros)": "Piloti nelle camere interne (toglierli risparmia memoria e fotogrammi)",
+"Automática (según el teléfono)": "Automatica (secondo il telefono)",
+"Solo el mío": "Solo il mio"
 }

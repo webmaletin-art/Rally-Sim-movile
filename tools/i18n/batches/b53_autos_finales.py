@@ -89,4 +89,8 @@ T = {
 "Sangre": e("Blood", "Sangue", "Sang", "Sangue", "Blut"),
 "Cielo": e("Sky", "Céu", "Ciel", "Cielo", "Himmel"),
 "Lava": e("Lava", "Lava", "Lave", "Lava", "Lava"),
+"Pilotos en las cámaras de adentro (sacarlos ahorra memoria y cuadros)": e("Drivers in the inside cameras (removing them saves memory and frames)", "Pilotos nas câmeras internas (tirá-los economiza memória e quadros)", "Pilotes dans les caméras intérieures (les enlever économise mémoire et images)", "Piloti nelle camere interne (toglierli risparmia memoria e fotogrammi)", "Fahrer in den Innenkameras (ohne sie spart man Speicher und Bilder)"),
+"Automática (según el teléfono)": e("Automatic (depends on the phone)", "Automática (conforme o celular)", "Automatique (selon le téléphone)", "Automatica (secondo il telefono)", "Automatisch (je nach Handy)"),
+"Solo el mío": e("Only mine", "Só o meu", "Seulement le mien", "Solo il mio", "Nur meiner"),
+"Ninguno": e("None", "Nenhum", "Aucun", "Nessuno", "Keiner"),
 }

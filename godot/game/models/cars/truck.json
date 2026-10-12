@@ -356,7 +356,8 @@
   "tw_r": 0.4,
   "tread": "offroad",
   "spring": "coil",
-  "susp": "truck"
+  "susp": "truck",
+  "x_off": 0.05
  },
  "textured": true,
  "tex": {

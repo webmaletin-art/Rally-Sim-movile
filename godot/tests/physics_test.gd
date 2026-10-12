@@ -27,6 +27,7 @@ func _init() -> void:
 		d["pressF"] = 30.0
 		d["pressR"] = 30.0
 		var ph := VehiclePhysics.new(FlatTrack.new(), VehicleParams.from_dict(d))
+		ph.tc_free_spin = false
 		ph.yawRate = float(scen.get("init_yaw_rate", 0.0))
 		var exp: Array = expected[id]
 		var n := 0

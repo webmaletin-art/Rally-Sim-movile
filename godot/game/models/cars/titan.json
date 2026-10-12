@@ -217,7 +217,9 @@
   "tread": "road",
   "spring": "coil",
   "susp": "truck",
-  "dual": true
+  "dual": true,
+  "x_off": 0.07,
+  "x_off_r": 0.1
  },
  "textured": true,
  "tex": {

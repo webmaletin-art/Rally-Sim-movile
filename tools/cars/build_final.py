@@ -68,6 +68,26 @@ def build(cid):
         arch_u = [a for a in arch_fit(Vu, hxu / Lunit) if a['r'] < 0.14]
     assert len(arch_u) == 2, (cid, arch_u)
     rear_u, front_u = sorted(arch_u, key=lambda a: a['z'])
+    # el modelo puede venir «cabeceado» (el paso de rueda de adelante más bajo o más alto que el de atrás): se gira sobre x hasta que los dos queden a la misma altura,
+    # así el auto no se ve inclinado hacia el frente (o hacia atrás) sobre sus ruedas
+    th = float(np.arctan2(front_u['y'] - rear_u['y'], front_u['z'] - rear_u['z']))
+    if abs(np.degrees(th)) > 0.6:
+        c0, s0 = np.cos(th), np.sin(th)
+        zm, ym = (front_u['z'] + rear_u['z']) / 2, (front_u['y'] + rear_u['y']) / 2
+        def rot_pts(zz, yy):
+            return zm + (zz - zm) * c0 + (yy - ym) * s0, ym - (zz - zm) * s0 + (yy - ym) * c0
+        Vz, Vy = rot_pts(V[:, 2] / Lunit, V[:, 1] / Lunit)
+        shift = Vy.min()
+        V[:, 2], V[:, 1] = Vz * Lunit, (Vy - shift) * Lunit
+        Nz = N[:, 2] * c0 + N[:, 1] * s0
+        Ny = -N[:, 2] * s0 + N[:, 1] * c0
+        N[:, 2], N[:, 1] = Nz, Ny
+        for a_ in arch_u:
+            a_['z'], a_['y'] = rot_pts(a_['z'], a_['y'])
+            a_['y'] -= shift
+            a_['top'] = a_['y'] + a_['r']
+        rear_u, front_u = sorted(arch_u, key=lambda a: a['z'])
+        print('  %s: girado %.1f° para nivelar los pasos de rueda' % (cid, np.degrees(th)))
     span_u = front_u['z'] - rear_u['z']
     phys = cfg.get('phys')
     L = phys['wb'] / span_u if phys else cfg['L']

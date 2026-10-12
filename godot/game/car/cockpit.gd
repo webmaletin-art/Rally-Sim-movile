@@ -90,7 +90,7 @@ var dz0 := 0.2
 var fw := 0.83
 var cowl_y := 0.9
 
-func _init(p_type: String, p_paint := Color(0.10, 0.31, 0.88), p_accent := Color(1.0, 0.42, 0.03)) -> void:
+func _init(p_type: String, p_paint := Color(0.10, 0.31, 0.88), p_accent := Color(1.0, 0.42, 0.03), p_pilots := true) -> void:
 	own = CabinCfg.has(p_type)
 	C = CabinCfg.build(p_type) if own else (CABIN.get(p_type, CABIN["t1plus"]) as Dictionary).duplicate()
 	if own:
@@ -104,9 +104,10 @@ func _init(p_type: String, p_paint := Color(0.10, 0.31, 0.88), p_accent := Color
 	crew = Node3D.new()
 	crew.name = "Crew"
 	add_child(crew)
-	for i in 2:
-		rig.append(RigPilot.new(crew, 1.76, true))
-	rig_ok = rig[0].ok and rig[1].ok
+	if p_pilots: # sin pilotos (opción «Pilotos» o teléfono flojo): no se arman los dos muñecos animados, ahorran memoria y cuadros
+		for i in 2:
+			rig.append(RigPilot.new(crew, 1.76, true))
+		rig_ok = rig[0].ok and rig[1].ok
 	# piloto: arnés firme pero con la cabeza suelta · copiloto: más suelto, se mueve bastante (como en los videos de rally)
 	mo = [CrewMotion.new(32.0, 7.0, 82.0, 4.4, 1.85), CrewMotion.new(26.0, 6.2, 70.0, 3.9, 2.35)]
 	mo[0].lim_t = 0.20
@@ -1415,6 +1416,6 @@ func set_disp_off(v: float) -> void:
 
 func set_inside(v: bool, driver_head_visible: bool) -> void:
 	interior.visible = v
-	crew.visible = v and not OS.has_environment("CAB_NOCREW")
+	crew.visible = v and rig.size() == 2 and not OS.has_environment("CAB_NOCREW")
 	if rig_ok:
 		rig[0].hide_head(v and not driver_head_visible)
