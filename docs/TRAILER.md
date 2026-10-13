@@ -32,7 +32,7 @@ Todo lo que dicen los letreros sale del juego tal como está (26 autos, 12 etapa
 2. **Fotos**: `director.gd` arma una escena real del juego (sala de exhibición, ruta, mundo abierto o aventura), pone la cámara donde pide un trabajo `.json` y guarda cada foto en Full HD.
    `run_jobs.py` los corre con pantalla virtual (`xvfb`, OpenGL por software; tarda varios minutos por trabajo). Los generadores de trabajos:
    `make_studio_jobs.py` (retratos, vueltas de 360° y los 24 estilos de pintura de los 26 autos) · `make_survey.py` (recorrido de cada mapa; `--only dream,anillo --fr 0.03,0.13,…` para sacar sólo algunos mapas y lugares) · `make_action.py` (el auto maneja solo por cada mapa,
-   con polvo y barro) · `make_extra.py` (la Aventura, los pilotos con gestos, el derrape) · `make_scout_world.py` / `make_scout_aerial.py` (ciudad, región y vistas aéreas) · `ui_shots.sh` (pantallas del menú con
+   con polvo y barro) · `make_extra.py` (la Aventura, los pilotos con gestos, el derrape) · `make_scout_world.py` / `make_scout_aerial.py` (ciudad y vistas aéreas) · `make_region_spots.py` (la región: curvas de montaña con subida, ramales nuevos, autopistas, circunvalación junto al mar, un cruce con plazoleta, un pueblo, un peaje; elige los lugares sobre las rutas de `region_1.bin` y pone el auto sobre el eje con `DR_POS`) · `ui_shots.sh` (pantallas del menú con
    un perfil de vitrina de `make_profile.py`).
 3. **Montaje**: `make_trailer.py` (`build()` es la lista de tomas, compás por compás, en español e inglés) + `compositor.py` (el motor de imagen). `sheet_dir.py` arma hojas de contactos para elegir las fotos.
 4. **Sonido**: `sfx.py` sintetiza los golpes, barridos y subidas que van debajo de la canción; `make_trailer.py audio` los mezcla con la canción (con fundidos y −14 LUFS) y `mux` los une al video.
@@ -45,9 +45,13 @@ python3 tools/trailer/make_trailer.py mux trailer_sin_audio.mp4 trailer.wav trai
 python3 tools/trailer/make_trailer.py render --lang en …                        # versión en inglés
 ```
 
+`make_play_shots.py` arma las capturas de la ficha de Google Play (1920×1080, `store_listing/capturas/`) con las mejores fotos.
+
 Las fotos y el video quedan **fuera del repositorio** (pesan cientos de MB): las fotos en `/tmp/trailer/stills` (`TRAILER_STILLS`), el video final en la carpeta `trailer_out/` (ignorada por git).
 
 ## Consejos para sacar las fotos del mundo abierto
+- **El auto se dibuja «por adentro» si el perfil tiene una cámara interior** (la cámara por defecto del juego es la 6, «Interior»): sale sólo el capó, la jaula y los pilotos. El director fuerza `camera: 1` (seguimiento) en los ajustes de cada trabajo. Si algún día las fotos salen con el auto «a medias», mirar eso primero.
+- **Con el auto andando (`auto`/`sim`) la cámara lo acompaña cuadro a cuadro** (`follow` en `director.gd`, respecto del auto que se DIBUJA, no del último estado de la física): antes la cámara se calculaba una sola vez y a 40 m/s el auto salía corrido varios metros y cortado en la foto.
 - `wait` de cada toma son **cuadros**, no segundos: el mundo abierto (la ciudad y sobre todo la región) arma los cuadrados de a poco, así que en el **primer** tiro de un trabajo hacen falta 60–90 cuadros (los demás 10–15); con menos salen el terreno sin cargar, un plano amarillo de fondo o el auto «enterrado» (pasó con `scoutw/ruta_este` y `circunv_ring`).
 - `DR_POS=x,z,grados` pone el auto: para una ruta usar un punto del eje y su rumbo (`tools/world_gen` lee `region_1.bin` con `binio.py`; la calle más cercana y su rumbo salen de ahí). Un punto a 24 m de la ruta deja al auto en el pasto.
 - Con el procesador ocupado los trabajos tardan mucho: `LP_NUM_THREADS=2` en el entorno limita los hilos del dibujado por software y evita que dos trabajos en paralelo se pisen.

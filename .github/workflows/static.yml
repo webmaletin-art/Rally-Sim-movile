@@ -33,11 +33,17 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Preparar el sitio
+        # Se publica el repositorio SIN el juego de Godot (godot/, ~650 MB de autos y mapas), las herramientas (tools/), el servidor (supabase/) ni los flujos: no hacen falta en la web
+        # y subirlos tardaba mucho y se acercaba al límite de tamaño de GitHub Pages. Las políticas (docs/privacidad.html, terminos.html, eliminar-cuenta.html) y el juego web quedan en la misma dirección de siempre.
+        run: |
+          mkdir _site
+          rsync -a --exclude='.git' --exclude='.github' --exclude='godot' --exclude='tools' --exclude='supabase' --exclude='store_listing' --exclude='_site' ./ _site/
+          du -sh _site
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload entire repository
-          path: '.'
+          path: '_site'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5

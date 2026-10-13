@@ -41,6 +41,7 @@ var room: Node3D
 var track
 var cam: Camera3D
 var goal: Dictionary = {} # {pos, look, fov, roll}
+var follow: Dictionary = {} # la toma que la cámara acompaña cuadro a cuadro (el jugador maneja solo: auto y sim)
 var crew: Array = [] # [{node, rig, pl, spec}]
 var loaded := false
 var hook: Node
@@ -69,9 +70,9 @@ func _initialize() -> void:
 func _run() -> void:
 	profile = Profile.new()
 	var st: Dictionary = profile.d["settings"]
-	# calidad de «foto»: todo al máximo (la computadora de pruebas no corre a 60 cuadros, no importa)
-	for k in {"gfxMode": "manual", "quality": "high", "res": 1.0, "frameRes": 0, "trees": 6000, "shadowsQ": true, "textures": "high", "particles": 10, "capBtn": false, "showFps": false, "diagBtn": false, "worldLife": true, "worldWeather": true, "lang": "es", "hud": "full"}:
-		st[k] = {"gfxMode": "manual", "quality": "high", "res": 1.0, "frameRes": 0, "trees": 6000, "shadowsQ": true, "textures": "high", "particles": 10, "capBtn": false, "showFps": false, "diagBtn": false, "worldLife": true, "worldWeather": true, "lang": "es", "hud": "full"}[k]
+	# calidad de «foto»: todo al máximo (la computadora de pruebas no corre a 60 cuadros, no importa). camera 1 = seguimiento: con la cámara interior del perfil (6) el auto se dibujaría «por adentro» (carrocería liviana, habitáculo y pilotos)
+	for k in {"gfxMode": "manual", "quality": "high", "res": 1.0, "frameRes": 0, "trees": 6000, "shadowsQ": true, "textures": "high", "particles": 10, "capBtn": false, "showFps": false, "diagBtn": false, "worldLife": true, "worldWeather": true, "lang": "es", "hud": "full", "camera": 1}:
+		st[k] = {"gfxMode": "manual", "quality": "high", "res": 1.0, "frameRes": 0, "trees": 6000, "shadowsQ": true, "textures": "high", "particles": 10, "capBtn": false, "showFps": false, "diagBtn": false, "worldLife": true, "worldWeather": true, "lang": "es", "hud": "full", "camera": 1}[k]
 	for k in (job.get("settings", {}) as Dictionary):
 		st[k] = job["settings"][k]
 	vehicles = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
@@ -187,6 +188,11 @@ func _studio_lights(preset: String) -> void:
 func player_xf() -> Dictionary:
 	if mode == "studio":
 		return {"pos": Vector3.ZERO, "yaw": 0.0}
+	# con el auto andando, la cámara se arma respecto de lo que se DIBUJA (el auto interpolado), no del último estado de la física: si no, a 40 m/s el auto sale corrido unos metros y queda cortado en la foto
+	var vis: Variant = race.cars[0].visual
+	if vis != null and is_instance_valid(vis) and (vis as Node3D).is_inside_tree():
+		var xf := (vis as Node3D).global_transform
+		return {"pos": xf.origin, "yaw": xf.basis.get_euler(EULER_ORDER_YXZ).y}
 	var sn = race.cars[0].snap
 	return {"pos": Vector3(sn.px, sn.py, sn.pz), "yaw": float(sn.yaw)}
 
@@ -221,6 +227,8 @@ func _cam_goal(s: Dictionary, a_override = null) -> Dictionary:
 	return g
 
 func apply_goal() -> void:
+	if not follow.is_empty() and mode == "world":
+		goal = _cam_goal(follow) # el auto sigue andando: la cámara lo acompaña cuadro a cuadro
 	if goal.is_empty() or cam == null or not is_instance_valid(cam):
 		return
 	var pos: Vector3 = goal["pos"]
@@ -399,5 +407,7 @@ func _shot(s: Dictionary) -> void:
 			await _save("%s_%03d" % [name, i])
 		return
 	goal = _cam_goal(s)
+	follow = s if (mode == "world" and (bool(job.get("auto", false)) or sim > 0.0)) else {}
 	await _frames(int(s.get("wait", 4)))
 	await _save(name)
+	follow = {}

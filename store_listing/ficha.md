@@ -1,7 +1,7 @@
 # Ficha de Play Store — Dream Racing
 
 Textos para pegar en Play Console → Presencia en Play Store → Ficha principal (y «Agregar traducciones»). Límites de Google: título 30, descripción corta 80, completa 4000.
-Revisada el 12/10/2026 con el juego actual (26 autos, Dream City y su región, Travesía X, copas). El modo online está CERRADO («próximamente»): no se promete nada que no esté.
+Revisada el 13/10/2026 con el juego actual (26 autos, Dream City y su región, Travesía X, copas, cuenta obligatoria con correo). El modo online está CERRADO («próximamente»): no se promete nada que no esté. Como hace falta una cuenta para jugar, Play pide además las credenciales de una cuenta de prueba en «Acceso a la app» (ver docs/PLAY_STORE.md).
 
 ## Español (idioma predeterminado)
 
@@ -45,7 +45,7 @@ Volante en pantalla, pedales o manejo inclinando el teléfono; caja automática 
 🎬 PARA LUCIRSE
 Cámaras interiores con pilotos, cámara libre y de cine, efectos de lente y modo foto para tus mejores capturas. Música de radio en los menús.
 
-Sin publicidad. Tu progreso se guarda en tu teléfono y el juego anda sin conexión. Incluye compras opcionales dentro del juego. Próximamente: modo online.
+Sin publicidad. Para jugar creás una cuenta gratis con tu correo: tus créditos, tus autos y tus compras se guardan en tu cuenta (no se pierden si cambiás de teléfono) y, una vez adentro, el juego anda también sin conexión. Incluye compras opcionales dentro del juego. Próximamente: modo online.
 
 **Categoría:** Juegos → Carreras · **Etiquetas sugeridas:** carreras, rally, drift, mundo abierto, simulación, autos
 **Contacto:** roldanhr98@gmail.com · **Estudio:** SRGamestudios
@@ -96,7 +96,7 @@ On-screen wheel, pedals or tilt steering; automatic or manual gearbox; resize an
 🎬 SHOW IT OFF
 Cockpit cameras with drivers, free and cinematic cameras, lens effects and a photo mode for your best shots. Radio music in the menus.
 
-No ads. Your progress is saved on your phone and the game works offline. Includes optional in-app purchases. Online mode coming soon.
+No ads. To play you create a free account with your email: your credits, cars and purchases are saved in your account (you keep them if you change phones) and, once you're in, the game also works offline. Includes optional in-app purchases. Online mode coming soon.
 
 **Category:** Games → Racing · **Tags:** racing, rally, drift, open world, simulation, cars
 
@@ -145,7 +145,7 @@ Volante na tela, pedais ou direção inclinando o celular; câmbio automático o
 🎬 PARA SE EXIBIR
 Câmeras internas com pilotos, câmera livre e de cinema, efeitos de lente e modo foto. Música de rádio nos menus.
 
-Sem anúncios. Seu progresso fica salvo no celular e o jogo funciona sem conexão. Tem compras opcionais dentro do jogo. Em breve: modo online.
+Sem anúncios. Para jogar você cria uma conta grátis com seu e-mail: seus créditos, carros e compras ficam salvos na conta (não se perdem se você trocar de celular) e, depois de entrar, o jogo também funciona sem conexão. Tem compras opcionais dentro do jogo. Em breve: modo online.
 
 ## Français
 
@@ -189,7 +189,7 @@ Volant à l'écran, pédales ou conduite en inclinant le téléphone ; boîte au
 🎬 POUR LA VITRINE
 Caméras intérieures avec pilotes, caméra libre et cinéma, effets d'objectif et mode photo. Musique de radio dans les menus.
 
-Sans publicité. Ta progression est enregistrée sur ton téléphone et le jeu fonctionne hors ligne. Achats intégrés facultatifs. Bientôt : mode en ligne.
+Sans publicité. Pour jouer, tu crées un compte gratuit avec ton e-mail : tes crédits, tes voitures et tes achats sont enregistrés dans ton compte (ils ne se perdent pas si tu changes de téléphone) et, une fois connecté, le jeu fonctionne aussi hors ligne. Achats intégrés facultatifs. Bientôt : mode en ligne.
 
 ## Italiano
 
@@ -233,7 +233,7 @@ Volante a schermo, pedali o guida inclinando il telefono; cambio automatico o ma
 🎬 PER FAR SCENA
 Telecamere interne con i piloti, telecamera libera e cinema, effetti obiettivo e modalità foto. Musica da radio nei menu.
 
-Senza pubblicità. I progressi restano sul telefono e il gioco funziona offline. Acquisti in-app facoltativi. In arrivo: modalità online.
+Senza pubblicità. Per giocare crei un account gratuito con la tua e-mail: crediti, auto e acquisti restano salvati nel tuo account (non si perdono se cambi telefono) e, una volta dentro, il gioco funziona anche offline. Acquisti in-app facoltativi. In arrivo: modalità online.
 
 ## Deutsch
 
@@ -277,4 +277,4 @@ Lenkrad auf dem Bildschirm, Pedale oder Neigungssteuerung; Automatik oder manuel
 🎬 ZUM ANGEBEN
 Innenkameras mit Fahrern, freie und Kino-Kamera, Linseneffekte und Fotomodus. Radiomusik in den Menüs.
 
-Keine Werbung. Dein Fortschritt wird auf dem Handy gespeichert und das Spiel läuft offline. Enthält optionale In-App-Käufe. Bald: Online-Modus.
+Keine Werbung. Zum Spielen legst du ein kostenloses Konto mit deiner E-Mail an: Credits, Autos und Käufe werden in deinem Konto gespeichert (sie gehen beim Handywechsel nicht verloren) und nach der Anmeldung läuft das Spiel auch offline. Enthält optionale In-App-Käufe. Bald: Online-Modus.

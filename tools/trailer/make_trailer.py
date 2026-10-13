@@ -236,14 +236,27 @@ def build(lang='es'):
     city = files_of('world/scoutw/plaza_sunset/*.jpg', 'world/scoutw/avenida3_golden/*.jpg', 'world/scoutw/casco_viejo/*.jpg', 'world/scoutw/costanera/*.jpg', 'world/scoutw/parque/*.jpg')
     night = files_of('world/scoutw/night_plaza/*.jpg')
     aer = files_of('world/aerial/city_plaza/*.jpg', 'world/aerial/city_costanera/*.jpg')
-    reg = files_of('world/scoutw/ruta_este/*.jpg', 'world/scoutw/circunv_ring/*.jpg', 'world/scoutw/puerto_alba/*.jpg', 'world/scoutw/bahia_ambar/*.jpg', 'world/scoutw/quebrada_roja/*.jpg', 'world/scoutw/cerro_verde/*.jpg', 'world/scoutw/cuesta_alta/*.jpg')
-    aer_r = files_of('world/aerial/puerto_alba/*.jpg', 'world/aerial/cuesta_alta/*.jpg', 'world/aerial/laguna_blanca/*.jpg', 'world/aerial/quebrada_roja/*.jpg', 'world/aerial/monte_sol/*.jpg', 'world/aerial/paso_condor/*.jpg')
+    # la región: lugares sobre las rutas (tools/trailer/make_region_spots.py) y las estaciones de servicio nuevas; si no están esas fotos, las de reconocimiento de antes
+    spots = sorted(glob.glob(S('world/spots/*')))
+    angles = ['a_front', 'c_rear', 'e_side', 'f_wide']  # (la cámara baja b_low mete el paragolpes en el cuadro y deja ver la parte de abajo del auto)
+    spot_ground = []
+    for k in range(len(angles)):
+        for i, d_ in enumerate(spots):
+            f = os.path.join(d_, angles[(i + k) % len(angles)] + '.jpg')
+            if os.path.exists(f) and f not in spot_ground:
+                spot_ground.append(f)
+    stations = [f for f in [S('world/scoutw/puerto_alba/a_front.jpg'), S('world/scoutw/quebrada_roja/c_rear.jpg'), S('world/scoutw/cuesta_alta/a_front.jpg'), S('world/scoutw/bahia_ambar/c_rear.jpg')] if os.path.exists(f)]
+    reg = interleave(spot_ground, stations) if spot_ground else files_of('world/scoutw/ruta_este/*.jpg', 'world/scoutw/circunv_ring/*.jpg', 'world/scoutw/puerto_alba/*.jpg', 'world/scoutw/bahia_ambar/*.jpg', 'world/scoutw/quebrada_roja/*.jpg', 'world/scoutw/cerro_verde/*.jpg', 'world/scoutw/cuesta_alta/*.jpg')
+    # vistas de dron: sólo de lugares llanos (en la montaña, vistos desde arriba, los cortes de la ladera se ven como dientes oscuros)
+    flat = [d_ for d_ in spots if not os.path.basename(d_).startswith(('montana', 'ramal'))]
+    aer_r = [os.path.join(d_, n_ + '.jpg') for n_ in ('d1_alto_atras', 'd3_lateral') for d_ in flat if os.path.exists(os.path.join(d_, n_ + '.jpg'))] or files_of('world/aerial/puerto_alba/*.jpg', 'world/aerial/cuesta_alta/*.jpg', 'world/aerial/laguna_blanca/*.jpg', 'world/aerial/quebrada_roja/*.jpg', 'world/aerial/monte_sol/*.jpg', 'world/aerial/paso_condor/*.jpg')
     add(Clip(bar(36), bar(38), 'still', aer[0], z=(1.0, 1.22), pan=((0.5, 0.5), (0.5, 0.42)), ease='io', flash=0.7, shake=14, chroma=8, punch=0.06, punch_len=0.3,
              texts=title_card('DREAM CITY', L('UN MUNDO ABIERTO ENORME', 'A HUGE OPEN WORLD'), 0.0, 2 * BAR - 0.05, size=230, y=0.46)), 'impact', 0.8)
     montage(add, bar(38), bar(44), interleave(city, night, aer), 2 * P, caps=[L('ATARDECER', 'SUNSET'), L('TRÁNSITO Y PEATONES', 'TRAFFIC AND PEDESTRIANS'), L('CLIMA Y TORMENTAS', 'WEATHER AND STORMS'), L('DE NOCHE', 'AT NIGHT')], speed=0.1, blur=0.3, sound='whoosh')
     montage(add, bar(44), bar(48), interleave(aer_r, reg), 2 * P, caps=[L('~2.700 KM DE RUTAS', '~2,700 KM OF ROADS'), None, L('8 CIUDADES · 25 PUEBLOS', '8 CITIES · 25 TOWNS'), None, L('AUTOPISTAS Y MONTAÑA', 'HIGHWAYS AND MOUNTAINS'), None], speed=0.2, blur=0.4)
     ui_map = files_of('ui/spawn.png')
-    add(Clip(bar(48), bar(50), 'still', ui_map[0], z=(1.0, 1.16), pan=((0.5, 0.5), (0.5, 0.5)), ease='io', flash=0.3, chroma=5,
+    # (la pantalla tiene un botón «DIAGNÓSTICO» de las compilaciones de desarrollo: se encuadra sólo el mapa, que es lo que importa, y queda afuera)
+    add(Clip(bar(48), bar(50), 'still', ui_map[0], z=(1.34, 1.48), pan=((0.35, 0.50), (0.37, 0.52)), ease='io', flash=0.3, chroma=5,
              texts=[cap(L('ELEGÍ DÓNDE APARECER', 'CHOOSE WHERE TO SPAWN'), 0.2, 2 * BAR, x=0.5, y=0.12, anchor='mm', size=88, anim='fade', fin=0.3)]), 'whoosh', 0.7)
     tv = files_of('world/action/travesia/*.jpg', 'world/survey/travesia/p*_a.jpg', 'world/scout/travesia/*.jpg')
     montage(add, bar(50), bar(54), interleave(tv, reg), P, caps=[L('TRAVESÍA X', 'TRAVESÍA X'), L('44 KM EN CONVOY', '44 KM CONVOY'), L('BARRO · VADOS · CUEVA', 'MUD · FORDS · CAVE'), None], speed=0.25, blur=0.5, sound='tick')
@@ -289,7 +302,7 @@ def build(lang='es'):
     montage(add, t, tend, interleave(ui_c, detail2, ph[::3]), P, caps=[L('GARAJE', 'GARAGE'), None, L('TALLER', 'WORKSHOP'), None, L('REGLAJES', 'TUNING'), None, L('LLANTAS', 'TIRES'), None], flash=0.18)
 
     # ── K · ONLINE, adelanto (compases 82 a 94) ──
-    ui_o = files_of('ui/online.png', 'ui/iap.png')
+    ui_o = files_of('ui/online.png')  # (sólo la pantalla del online «próximamente»; la de compras no tiene nada que ver con el mercado entre jugadores)
     add(Clip(bar(82), bar(84), 'still', night[min(1, len(night) - 1)], z=(1.0, 1.20), pan=((0.5, 0.5), (0.5, 0.45)), ease='io', flash=0.5, shake=10, chroma=6, punch=0.05, punch_len=0.3,
              texts=title_card('ONLINE', L('PRÓXIMAMENTE', 'COMING SOON'), 0.0, 2 * BAR - 0.05, size=300, color=GOLD)), 'impact', 0.8)
     montage(add, bar(84), bar(88), interleave(night, ui_o, city[::2]), 2 * P, caps=[L('MERCADO ENTRE JUGADORES', 'PLAYER MARKET'), L('TALLER Y REGALO DIARIO', 'WORKSHOP AND DAILY GIFT'), L('UN MUNDO COMPARTIDO', 'A SHARED WORLD'), L('SUMÁ TUS AMIGOS', 'JOIN YOUR FRIENDS')], speed=0.1, blur=0.3, sound='whoosh')
