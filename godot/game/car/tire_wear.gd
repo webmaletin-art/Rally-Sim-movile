@@ -5,7 +5,11 @@ extends RefCounted
 ## Online: el desgaste de un auto online lo guarda el SERVIDOR (instancia del auto); acá sólo está la regla. Offline: local, en el perfil, separado del online.
 
 const FAMILY := {"street": "STREET", "sport": "SPORT", "slick": "SPORT", "gravel": "RALLY", "mud": "RALLY", "drift": "DRIFT"}
-const LIFE_KM := {"STREET": 90.0, "SPORT": 60.0, "RALLY": 75.0, "DRIFT": 35.0} # km de manejo tranquilo hasta dejarla lisa
+## km de manejo tranquilo hasta dejarla lisa. Una goma tiene que durar MUCHÍSIMO más que un tanque de nafta (el tanque dura unos 80 km: city_fuel.gd PER_M):
+## manejando normal las de calle rinden ~9 tanques, las deportivas ~7, las de rally ~6 (en asfalto; en tierra más) y las de drift ~3; a lo bruto, de 2 a 3 tanques (las de drift, 1).
+const LIFE_KM := {"STREET": 1200.0, "SPORT": 900.0, "RALLY": 1200.0, "DRIFT": 600.0}
+## Kilómetros de un tanque de nafta manejando normal (para comparar: las gomas deben durar varios tanques; ver tests/tire_wear_test.gd)
+const TANK_KM := 80.0
 const GRIP_MIN := {"STREET": 0.66, "SPORT": 0.60, "RALLY": 0.66, "DRIFT": 0.72}
 const NAMES := {"STREET": "Calle", "SPORT": "Deportiva", "RALLY": "Rally", "DRIFT": "Drift"}
 

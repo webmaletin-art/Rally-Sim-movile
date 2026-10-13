@@ -14,6 +14,11 @@ func check(ok: bool, msg: String) -> void:
 	if not ok:
 		fails += 1
 
+## Kilómetros de manejo (a esa velocidad y con ese estilo) hasta dejar las gomas lisas
+func _km_to_smooth(tire: String, st: Dictionary) -> float:
+	var w := TW.wear_step(tire, float(st["speed"]), float(st["a_lat"]), float(st["a_long"]), float(st["slip"]), true, 1.0) # por segundo
+	return float(st["speed"]) / maxf(w, 1e-9) / 1000.0
+
 func _init() -> void:
 	# familias
 	check(TW.family("street") == "STREET" and TW.family("sport") == "SPORT" and TW.family("slick") == "SPORT" and TW.family("gravel") == "RALLY" and TW.family("drift") == "DRIFT", "cada neumático del catálogo pertenece a una familia (calle, deportiva, rally, drift)")
@@ -29,6 +34,22 @@ func _init() -> void:
 		hard += TW.wear_step("street", 15.0, 9.0, 6.0, 0.5, true, 0.1)
 	check(hard > calm * 3.0, "manejo brusco gasta más de 3 veces más (%.1f vs %.1f)" % [hard * 100.0, calm * 100.0])
 	check(TW.wear_step("street", 0.0, 9.0, 6.0, 1.0, true, 1.0) == 0.0, "parado no se gasta")
+	# las gomas duran varios tanques de nafta (pedido del dueño: se gastaban más rápido que la nafta, y no es así)
+	var normal := {"speed": 20.0, "a_lat": 2.0, "a_long": 1.5, "slip": 0.02}
+	var spirited := {"speed": 25.0, "a_lat": 6.0, "a_long": 4.0, "slip": 0.1}
+	var brutal := {"speed": 22.0, "a_lat": 9.0, "a_long": 6.0, "slip": 0.4}
+	for t in ["street", "sport", "gravel", "drift"]:
+		var kmn := _km_to_smooth(t, normal)
+		var kms := _km_to_smooth(t, spirited)
+		var kmb := _km_to_smooth(t, brutal)
+		var fam := TW.family(t)
+		var drift := fam == "DRIFT" # (el compuesto del drift está hecho para quemarse: dura menos, pero igual más que un tanque manejando normal)
+		check(kmn >= (3.0 if drift else 6.0) * TW.TANK_KM and kms >= (1.2 if drift else 2.5) * TW.TANK_KM and kmb >= (0.9 if drift else 1.5) * TW.TANK_KM,
+			"%s: normal %.0f km (%.1f tanques) · movido %.0f km (%.1f) · a lo bruto %.0f km (%.1f): duran más que la nafta" % [t, kmn, kmn / TW.TANK_KM, kms, kms / TW.TANK_KM, kmb, kmb / TW.TANK_KM])
+	var one_tank := 0.0
+	for i in int(TW.TANK_KM * 1000.0 / 20.0 / 0.1): # un tanque entero manejando normal a 20 m/s
+		one_tank += TW.wear_step("street", 20.0, 2.0, 1.5, 0.02, true, 0.1)
+	check(one_tank > 0.04 and one_tank < 0.20, "un tanque de nafta de calle gasta entre 4 %% y 20 %% de las gomas (%.1f %%): se nota pero no se acaban" % (one_tank * 100.0))
 	# superficies y tipos
 	var rally_asph := TW.wear_step("gravel", 15.0, 3.0, 1.0, 0.0, true, 1.0)
 	var rally_dirt := TW.wear_step("gravel", 15.0, 3.0, 1.0, 0.0, false, 1.0)

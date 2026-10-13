@@ -3,7 +3,7 @@
 **Qué es:** las gomas puestas se gastan con el uso y pierden agarre de verdad: el desgaste multiplica el agarre por superficie (`surfGrip`) que ya usa la física. Hoy corre en **Dream City, offline**.
 
 **Reglas** (`car/tire_wear.gd`, funciones puras y baratas; `city/city_tires.gd` las aplica 10 veces por segundo):
-- Familias: **STREET** (calle) · **SPORT** (deportivo y semi-slick) · **RALLY** (grava y barro) · **DRIFT**. Duración en manejo tranquilo: 90 / 60 / 75 / 35 km.
+- Familias: **STREET** (calle) · **SPORT** (deportivo y semi-slick) · **RALLY** (grava y barro) · **DRIFT**. Duración en manejo tranquilo: 1200 / 900 / 1200 / 600 km (antes 90 / 60 / 75 / 35 km: **se gastaban más rápido que la nafta**, y el tanque dura ~80 km; pedido del dueño: «las cubiertas duran varios km en la vida real»). Ahora, manejando normal, un juego de gomas de calle rinde ~9 tanques, las deportivas ~7, las de rally ~6 y las de drift ~3; a lo bruto, de 2 a 3 tanques (drift, 1). Un tanque de nafta de calle gasta ~11 % de las gomas. `tests/tire_wear_test.gd` lo comprueba contra `TANK_KM`.
 - Se gasta según la **distancia**, las **curvas** (aceleración lateral), las **frenadas y aceleraciones** (longitudinal), el **derrape** (deslizamiento) y la **superficie** (rally se come en asfalto, deportivas sufren en tierra, drift quema el compuesto).
 - Agarre = 1 − (1 − mínimo)·desgaste^1,35 (mínimo: calle 66 %, deportiva 60 %, rally 66 %, drift 72 %).
 - Avisos a 70 % («gastadas») y 90 % («casi lisas»); el HUD muestra `🛞 N %` (vida restante) junto a la nafta; nada de esto corre bajo tierra.
