@@ -24,7 +24,12 @@ static func setup(profile: RefCounted) -> void:
 
 static func set_language(setting: String) -> void:
 	current = resolve(setting)
-	if current != "es" and not _loaded.has(current):
+	if current == "es":
+		# el texto original ya está en español: si quedara cargado un idioma anterior, el de respaldo («en») lo seguiría usando y al volver a Español
+		# la pantalla seguiría en inglés hasta reiniciar
+		TranslationServer.clear()
+		_loaded.clear()
+	elif not _loaded.has(current):
 		var path := "res://game/i18n/%s.json" % current
 		if FileAccess.file_exists(path):
 			var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))

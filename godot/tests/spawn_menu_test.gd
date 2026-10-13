@@ -4,6 +4,7 @@ extends SceneTree
 
 const RegionServices := preload("res://game/region/region_services.gd")
 const SpawnMap := preload("res://game/ui/spawn_map.gd")
+const Tr := preload("res://game/i18n/tr.gd")
 
 var fail := false
 
@@ -56,6 +57,7 @@ func _run() -> void:
 	var menu: Node = app.get("menu")
 	var spawns := RegionServices.spawn_list()
 	check(spawns.size() >= 5, "hay lugares de la región para aparecer (%d)" % spawns.size())
+	Tr.set_language("es") # los textos se buscan en español: sin esto, en una máquina con el teléfono/idioma en inglés (la compilación de GitHub) el botón sale traducido
 	menu.call("go", "spawn")
 	await _frames()
 	var body: Node = menu.get("body")
