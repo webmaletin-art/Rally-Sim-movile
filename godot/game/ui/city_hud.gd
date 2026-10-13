@@ -391,8 +391,8 @@ var _big_t := 0.0
 
 ## Nombre de la ruta de la región donde está el auto y hacia dónde va: «AU-3 → Santa Aurora · 23 km»
 func _region_street() -> String:
-	var rp: PackedFloat64Array = region.probe(car_pos.x, car_pos.y, 40.0)
-	if rp[0] < -22.0:
+	var rp: PackedFloat64Array = region.probe(car_pos.x, car_pos.y, 40.0, false) # sólo calles: dentro de una estación o gomería la sonda con playones devuelve el playón (índice negativo)
+	if rp[0] < -22.0 or int(rp[1]) < 0:
 		return ""
 	var ei := int(rp[1])
 	var k := int(rp[2])

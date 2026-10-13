@@ -315,6 +315,7 @@ func _ready() -> void:
 		layer.add_child(race_hud)
 		race_hud.resume_pressed.connect(_toggle_pause)
 		race_hud.restart_pressed.connect(_restart)
+		race_hud.back_to_road_pressed.connect(_back_to_road)
 		race_hud.quit_pressed.connect(_quit)
 		race_hud.camera_pressed.connect(_next_camera)
 		race_hud.cine_pressed.connect(_toggle_cine)
@@ -2445,6 +2446,22 @@ func _restart() -> void:
 	var a := get_parent()
 	a.call_deferred("start_race", c)
 	queue_free()
+
+## «Volver a la calle» (pausa del mundo abierto): el auto se pone sobre el eje de la calle más cercana (de la ciudad o de la región) mirando hacia donde miraba, parado, y sigue el juego
+func _back_to_road() -> void:
+	if not (track is CityTrack) or cars.is_empty():
+		return
+	var me = cars[0]
+	var pose: Array = (track as CityTrack).nearest_road_pose(Vector2(me.phys.px, me.phys.pz), me.phys.yaw)
+	if pose.is_empty():
+		race_hud.toast(Tr.t("No hay ninguna calle cerca"))
+		return
+	me.place(float(pose[0]), float(pose[1]), float(pose[2]))
+	me.restart_history(sim_t)
+	cam_ready = false
+	if paused:
+		_toggle_pause()
+	race_hud.toast(Tr.t("Volviste a la calle ✔"))
 
 ## Arranca otra carrera/etapa (la aventura pasa a la etapa siguiente o reintenta)
 func restart_with(c: Dictionary) -> void:

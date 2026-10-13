@@ -47,6 +47,7 @@ jobs:
       - name: Pruebas (física contra la versión HTML, IA, suavidad, controles)
         working-directory: godot
         run: |
+          timeout -k 5 600 godot --headless --script res://tests/scripts_parse_test.gd
           timeout -k 5 600 godot --headless --script res://tests/physics_test.gd
           timeout -k 5 600 godot --headless --script res://tests/ai_test.gd
           timeout -k 5 600 godot --headless --script res://tests/interp_test.gd

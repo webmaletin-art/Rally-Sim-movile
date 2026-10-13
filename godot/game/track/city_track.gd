@@ -92,6 +92,35 @@ func start_pose(slot: int) -> Array:
 	var q := Vector2(float(sp[0]), float(sp[1])) + lat * side * 3.0 * float(1 + slot / 2) - Vector2(sin(yaw), cos(yaw)) * float(slot / 2) * 4.0
 	return [q.x, q.y, yaw]
 
+## La calle (de la ciudad o de la región) más cercana a p, para «volver a la calle»: [x, z, rumbo en radianes] sobre el eje, mirando hacia donde mira `heading` (el sentido de la calle más parecido); [] si no hay ninguna a menos de 600 m.
+func nearest_road_pose(p: Vector2, heading: float) -> Array:
+	var fwd := Vector2(sin(heading), cos(heading))
+	var best := 600.0
+	var pt := Vector2.ZERO
+	var dir := Vector2.ZERO
+	var found := false
+	var cs: Array = city.nearest_street(p, best)
+	if not cs.is_empty():
+		best = float(cs[2])
+		pt = cs[0]
+		dir = cs[1]
+		found = true
+	if region != null and p.length_squared() > REGION_R2 * 0.8 and p.x < CityLayout.POCKET_X0:
+		var rp: PackedFloat64Array = region.probe(p.x, p.y, 128.0, false)
+		if rp[0] > -1e8 and rp[1] >= 0.0 and float(rp[4]) < best:
+			best = float(rp[4])
+			pt = p + Vector2(rp[7], rp[8]) * float(rp[4])
+			var k := int(rp[2])
+			var a := Vector2(float(region.pts[k * 2]) * 0.1, float(region.pts[k * 2 + 1]) * 0.1)
+			var b := Vector2(float(region.pts[k * 2 + 2]) * 0.1, float(region.pts[k * 2 + 3]) * 0.1)
+			dir = (b - a).normalized()
+			found = true
+	if not found:
+		return []
+	if dir.dot(fwd) < 0.0:
+		dir = -dir
+	return [pt.x, pt.y, atan2(dir.x, dir.y)]
+
 ## Empuja un círculo (x, z, r) hacia adentro del corredor de la calle y lo saca de los postes: (nx, nz, profundidad)
 func push(x: float, z: float, r: float) -> Vector3:
 	_mx.lock()

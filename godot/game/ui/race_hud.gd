@@ -12,6 +12,7 @@ const OnlinePanel := preload("res://game/ui/online_panel.gd")
 
 signal resume_pressed
 signal restart_pressed
+signal back_to_road_pressed
 signal quit_pressed
 signal tests_pressed
 signal camera_pressed
@@ -416,6 +417,10 @@ func _fill_pause() -> void:
 				city_hud.call_deferred("_set_big", true), false, 19, sz)
 			map_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			pause_col.add_child(map_b)
+	if city_hud != null: # mundo abierto: si el auto quedó trabado, vuelve a la calle más cercana sin reiniciar
+		var road_b := Kit.button("📍  VOLVER A LA CALLE", func(): back_to_road_pressed.emit(), false, 19, sz)
+		road_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pause_col.add_child(road_b)
 	var ed_b := Kit.button("🕹  MODIFICAR CONTROLES", func(): edit_controls_pressed.emit(), false, 19, sz)
 	ed_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	pause_col.add_child(ed_b)

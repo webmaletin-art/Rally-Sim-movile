@@ -62,6 +62,7 @@ func _init() -> void:
 	for num in [40, 80, 20]:
 		_drive_exit(tr, city, rg, num)
 	_city_roads_clear(tr, city)
+	_back_to_road(tr, city, rg)
 	_trees(tr, city, rg)
 	print("RESULTADO: ", "FALLA" if fail else "TODO OK")
 	quit(1 if fail else 0)
@@ -363,6 +364,66 @@ func _city_roads_clear(tr, city: CityLayout) -> void:
 					if first.length() < 220:
 						first += "%s (%.0f, %.0f) %.2f m · " % [rd["name"], q.x, q.y, pw.z]
 	_check(n > 1000 and bad == 0, "la calzada de las rutas rurales, atajos y panorámica está limpia (%d puntos, %d con algo que frena; %s)" % [n, bad, first])
+
+# ───────────────────────── volver a la calle ─────────────────────────
+## «Volver a la calle» (pausa del mundo abierto): desde un punto alejado de la calle (hasta 60 m) el auto vuelve al eje de la calle más cercana, mirando hacia donde miraba, sin quedar contra una pared
+func _back_to_road(tr, city: CityLayout, rg: RegionData) -> void:
+	var n := 0
+	var bad: Array = []
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	# la región: puntos de rutas de verdad corridos hasta 60 m hacia un costado
+	for t in 24:
+		var ei := rng.randi_range(0, rg.edges.size() - 1)
+		var cnt: int = rg.edge_n(ei)
+		if cnt < 4 or str(rg.CLS_NAMES[int((rg.edges[ei] as Array)[2])]) == "calle":
+			continue
+		var i := rng.randi_range(1, cnt - 3)
+		var a: Vector2 = rg.edge_point(ei, i)
+		var b: Vector2 = rg.edge_point(ei, i + 1)
+		if a.distance_to(b) < 1.0 or a.length() < 3000.0:
+			continue
+		var tn := (b - a).normalized()
+		var p := a + Vector2(-tn.y, tn.x) * rng.randf_range(15.0, 60.0) * (1.0 if t % 2 == 0 else -1.0)
+		var heading := atan2(tn.x, tn.y) + (PI if t % 3 == 0 else 0.0)
+		var pose: Array = tr.nearest_road_pose(p, heading)
+		n += 1
+		if pose.is_empty():
+			bad.append("región %d: sin calle" % ei)
+			continue
+		var q := Vector2(float(pose[0]), float(pose[1]))
+		var pr: PackedFloat64Array = rg.probe(q.x, q.y, 30.0, false)
+		var fwd := Vector2(sin(float(pose[2])), cos(float(pose[2])))
+		var want := Vector2(sin(heading), cos(heading))
+		if not (pr[0] > -1e8 and pr[4] <= pr[5] + 0.5) or fwd.dot(want) < -0.05 or (tr.push(q.x, q.y, 1.0) as Vector3).z > 0.1:
+			bad.append("región %d en (%.0f, %.0f)" % [ei, p.x, p.y])
+	# la ciudad
+	for t in 16:
+		var rd: Dictionary = city.roads[rng.randi_range(0, city.roads.size() - 1)]
+		var kind := str(rd["kind"])
+		if kind == "bay" or kind == "tunnel":
+			continue
+		var pts: PackedVector3Array = rd["pts"]
+		if pts.size() < 4:
+			continue
+		var i2 := rng.randi_range(1, pts.size() - 3)
+		var a2 := Vector2(pts[i2].x, pts[i2].z)
+		var b2 := Vector2(pts[i2 + 1].x, pts[i2 + 1].z)
+		if a2.distance_to(b2) < 0.5:
+			continue
+		var tn2 := (b2 - a2).normalized()
+		var p2 := a2 + Vector2(-tn2.y, tn2.x) * 20.0
+		var h2 := atan2(tn2.x, tn2.y)
+		var pose2: Array = tr.nearest_road_pose(p2, h2)
+		n += 1
+		if pose2.is_empty():
+			bad.append("ciudad %s: sin calle" % str(rd["name"]))
+			continue
+		var q2 := Vector2(float(pose2[0]), float(pose2[1]))
+		var fw2 := Vector2(sin(float(pose2[2])), cos(float(pose2[2])))
+		if q2.distance_to(p2) > 40.0 or fw2.dot(tn2) < -0.05 or (tr.push(q2.x, q2.y, 1.0) as Vector3).z > 0.1:
+			bad.append("ciudad %s en (%.0f, %.0f)" % [str(rd["name"]), p2.x, p2.y])
+	_check(n >= 20 and bad.is_empty(), "«volver a la calle» deja el auto sobre el eje de la calle más cercana, mirando hacia donde miraba (%d pruebas; mal: %s)" % [n, str(bad.slice(0, 4))])
 
 # ───────────────────────── árboles ─────────────────────────
 ## Los árboles de la región no caen sobre las rutas de la ciudad (la Ruta 40 y 20 cruzan la región entre 2 y 2,3 km de la plaza)

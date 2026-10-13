@@ -672,6 +672,31 @@ func _mark_junction_samples() -> void:
 			roads[rid]["nj"] = nj
 
 # ───────────────────────── consultas (puras: se pueden llamar desde cualquier hilo) ─────────────────────────
+## La calle de la superficie más cercana a p (sin las bocas de túnel ni los estacionamientos): [punto del eje, rumbo unitario de la calle, distancia] o [] si no hay ninguna a menos de max_d.
+## Sirve para «volver a la calle» cuando el auto quedó trabado (se recorren todos los tramos: no se usa en cada cuadro).
+func nearest_street(p: Vector2, max_d: float) -> Array:
+	var best := max_d
+	var out: Array = []
+	for rd in roads:
+		var kind := str(rd["kind"])
+		if kind == "bay" or kind == "tunnel":
+			continue
+		var pts: PackedVector3Array = rd["pts"]
+		for i in range(pts.size() - 1):
+			var a := Vector2(pts[i].x, pts[i].z)
+			var b := Vector2(pts[i + 1].x, pts[i + 1].z)
+			var ab := b - a
+			var l2 := ab.length_squared()
+			if l2 < 1e-6:
+				continue
+			var t := clampf((p - a).dot(ab) / l2, 0.0, 1.0)
+			var q := a + ab * t
+			var d := q.distance_to(p)
+			if d < best:
+				best = d
+				out = [q, ab / sqrt(l2), d]
+	return out
+
 ## El punto más "adentro" de algún corredor de calle: [holgura al borde de la vereda, distancia al eje, nx, nz hacia el eje, altura del eje, medio ancho de calzada, id de calle]
 ## holgura > 0: está dentro del corredor; ≤ 0: afuera (contra los edificios)
 func probe(x: float, z: float) -> PackedFloat64Array:
