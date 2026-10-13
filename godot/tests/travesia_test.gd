@@ -52,17 +52,21 @@ func _init() -> void:
 	print("%s pendiente máxima %.0f %% (el muro: a propósito)" % ["OK  " if maxg < 0.26 else "FALLA", maxg * 100.0])
 	if maxg >= 0.26:
 		fail = true
-	var scenarios: Array = [["jugador a buen ritmo (tope 28 m/s)", 28.0, false], ["jugador tranquilo (tope 18 m/s)", 18.0, true], ["jugador muy lento (tope 3 m/s)", 3.0, true]]
+	# tercer dato: 0 = tiene que llegar con el grupo · 1 = tiene que perderlo · 2 = cualquiera de las dos (lo decide el ritmo del tramo)
+	# Un jugador «tranquilo» (18 m/s = 65 km/h) pierde el convoy en la ruta entera, pero en un tramo lento (en 18,5–22,5 km el convoy va a 48 km/h de media) los alcanza igual.
+	var calm := 1 if from_m <= 0.0 else 2
+	var scenarios: Array = [["jugador a buen ritmo (tope 28 m/s)", 28.0, 0], ["jugador tranquilo (tope 18 m/s)", 18.0, calm], ["jugador muy lento (tope 3 m/s)", 3.0, 1]]
 	for sc in scenarios:
 		if OS.has_environment("TRAV_ONLY") and str(scenarios.find(sc)) != OS.get_environment("TRAV_ONLY"):
 			continue
 		var r := _run(track, float(sc[1]))
-		var good: bool = (r["lost"] == bool(sc[2])) and (bool(sc[2]) or r["finished"])
+		var want: int = int(sc[2])
+		var good: bool = (bool(r["lost"]) or bool(r["finished"])) if want == 2 else ((bool(r["lost"]) == (want == 1)) and (want == 1 or bool(r["finished"])))
 		if not good:
 			fail = true
 		print("%s %s → %s · %.0f s (%.1f min) · unión %.0f %% · máx. alejado %.0f m · el primero del convoy va a %.0f km/h de media" % ["OK  " if good else "FALLA", sc[0], "PERDIÓ EL CONVOY" if r["lost"] else ("llegó" if r["finished"] else "no llegó"), r["t"], r["t"] / 60.0, r["coh"] * 100.0, r["maxout"], r["lead_kmh"]])
 		# TODOS los del convoy van rápido (no sólo el primero): ninguno anda a menos del 80 % de lo que anda el más rápido (sólo cuando el jugador aguanta el ritmo, si no el convoy se corta antes)
-		if not bool(sc[2]) and r.has("kmh"):
+		if not bool(r["lost"]) and r.has("kmh"):
 			var kmh: Array = r["kmh"]
 			var mx := 0.0
 			var mn := 1e9
