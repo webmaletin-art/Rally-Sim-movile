@@ -84,6 +84,7 @@ Anotado ANTES de empezar. Orden pedido: arreglos → tráiler → dejar Supabase
 - [ ] Travesía X más difícil: todo el convoy rápido.
 - [ ] Revisión de Play Store (todo para vender, precios) y de seguridad (login con correo/Supabase si hace falta), créditos y políticas.
 - [x] **Sonidos: «viento fuerte» que se repite y «silbido que se queda»** (pedido del dueño): el rodado/tierra/lluvia eran bucles de 2 s exactos y tan fuertes como el motor, el silbido del turbo era un seno de 8 kHz; bucles largos, mucho más bajos, silbido sólo mientras carga, controles «Gomas y tierra» / «Viento y lluvia» que mandan de verdad. Detalle y mediciones en `docs/AUDIO.md`. Falta que el dueño lo oiga en el APK.
+- [x] **Mundo abierto: estaciones sin salida, rutas cortadas, árboles en la ruta y lluvia adentro del auto** (pedido del dueño tras probar el APK): cada estación y gomería tiene camino de acceso a la calle (y se corre si caía encima de una ruta), se aparece mirando hacia la salida, la pared invisible es la unión de los corredores (en la punta de las rutas 20/40/80 trababa el auto), las rutas 40 y 80 y la Panorámica siguen por la región sin portón ni cartel «PRÓXIMAMENTE», ningún árbol de la región cae sobre las rutas de la ciudad y la lluvia/nieve no se dibuja adentro del habitáculo. Detalle en `docs/REGION.md`; prueba `tests/open_world_access_test.gd`. Falta que el dueño lo pruebe en el APK.
 - [ ] **Tráiler épico** (fotogramas Full HD, música, gestos de los pilotos, adelanto del online).
 
 ## Versión final / Google Play (preparada)

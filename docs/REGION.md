@@ -23,6 +23,19 @@ Es el **mismo mundo**: se maneja sin cortes desde la plaza hasta la costa, la si
 - Más allá de 2,25 km de la plaza `CityLayout.height()` usa el relieve de la región. Los túneles y estacionamientos se mudaron a x = 75.000 (`POCKET_X0`). `WORLD_VERSION = 6`.
 - Pruebas: `region_test` (datos, rutas, alturas), `region_drive_test` (un auto automático recorre circunvalación, autopista y montaña con la física real), `region_perf_test` (tiempos por cuadrado), `spawn_menu_test`.
 
+## Estaciones, gomerías y lugares para aparecer: acceso a la calle (`region_services.gd`)
+Las estaciones (110 entre estaciones y gomerías) se anotaron en el generador sobre el **eje recto** de cada pueblo, no sobre el camino de verdad: unas quedaban encima de una ruta (9) y casi todas
+separadas de la banquina por pasto (de 0,1 a 45 m) y rodeadas de pared invisible, así que aparecer ahí te dejaba encerrado (sólo 4 de los 33 lugares para aparecer tenían salida). Ahora, al armar la pista (`RegionServices.install`):
+- Si el playón **pisa una calle** se lo corre hacia el lado contrario hasta dejar 3 m de la banquina (`_clear_of_roads`); se actualizan `poi.x/z/h`, el GPS y el lugar para aparecer.
+- Cada playón tiene un **camino de acceso** de 10 m de ancho hecho de discos de pavimento que se pisan (`_driveway`, `DRIVE_R` 5 m cada 3 m) desde adentro del playón hasta el borde del asfalto de la calle más cercana
+  (en los pueblos de ruta cortada es un camino de hasta ~70 m hasta el final de la calle del pueblo). El playón queda a la altura de la calle donde empalma.
+- Se **aparece mirando hacia la salida** (el rumbo del acceso), 3 m adelante del centro de la estación.
+- **La pared invisible es la unión de los corredores** (`RegionData.corridor()`): un auto cabe si cabe en el corredor de alguna calle (calzada + banquina + 9 m; 3,2 en pueblos; 2,6 en montaña) **o** de algún playón (radio + 0,3 m); sólo se lo empuja si se sale de todos
+  (antes sólo valía el de mayor holgura y un playón que no se cruzaba con la banquina por unos centímetros te encerraba). En `CityTrack._push_locked` pasa igual entre el corredor de la ciudad y los de la región: antes la pared de la región empujaba también
+  **adentro** de la calle de la ciudad entre los 2,25 km y el empalme (la punta de las rutas 20, 40 y 80): ahí se trababa el auto o no podía dar marcha atrás.
+- Los **árboles de la región** (`RegionWorld._trees`) no caen sobre las rutas de la ciudad que cruzan la región ni a menos de 14 m de su banquina (`CityLayout.verge_clearance`): había árboles en el medio de la Ruta 40.
+- Prueba: `tests/open_world_access_test.gd` (CI): desde el frente de cada estación y gomería, y desde cada uno de los 33 lugares para aparecer, se llega a una calle por donde pasa un auto; las estaciones de la ciudad también; un auto automático sale solo de tres lugares y de la ciudad por las rutas 20, 40 y 80; la calzada de las rutas rurales, atajos y panorámica no tiene nada que frene; ningún árbol cae sobre ellas.
+
 ## Pendiente
 - Misiones (paquetes, buscar personas), regalar un auto de verdad en los secretos (hoy pagan créditos), tránsito en las rutas, nafta/taller en cada estación (el flujo anda, falta probarlo con calma), textos nuevos sólo en español.
 - Autos de otros jugadores (online) en la región: cerrado hasta el tiempo real.

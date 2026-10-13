@@ -517,6 +517,9 @@ func _trees(x0: float, z0: float) -> PackedFloat32Array:
 				var pr: PackedFloat64Array = rg.probe(px, pz, 30.0)
 				if pr[0] > -1e8 and pr[4] < pr[5] + RegionData.WALL + 4.0:
 					continue
+				# las rutas de la ciudad que atraviesan la región (rurales, atajos, panorámica): tampoco hay árboles de la región encima ni pegados (el bosque de la ruta lo pone la ciudad)
+				if track.city.verge_clearance(px, pz) > -14.0:
+					continue
 				var y: float = rg.height(px, pz)
 				if y > 760.0 or y < 0.5:
 					continue

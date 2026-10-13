@@ -109,19 +109,27 @@ func push_world(x: float, z: float, r: float) -> Vector3:
 func _push_locked(x: float, z: float, r: float, use_dyn := true) -> Vector3:
 	var pr := city.probe(x, z)
 	var best := Vector3.ZERO
-	var rw := Vector3.ZERO
-	var rp_in := false
+	# la pared invisible es la UNIÓN de los corredores: la calle de la ciudad (calzada + vereda) y las calles y playones de la región (más allá de 2,25 km de la plaza).
+	# Sólo empuja si el círculo se sale de todos; entonces va hacia el más cercano. (Antes la pared de la región empujaba también adentro de la calle de la ciudad: en la punta de las rutas
+	# 20, 40 y 80, donde la región todavía no empezaba, el auto se quedaba clavado o no podía dar marcha atrás.)
+	var has_city: bool = pr[6] >= 0.0
+	var city_pen := r - float(pr[0]) if has_city else -1e9
+	var reg_pen := 1e9
+	var reg_n := Vector2.ZERO
 	if region != null and x * x + z * z > REGION_R2 and x < CityLayout.POCKET_X0:
-		# las rutas de la región: pared invisible a unos metros de la banquina; la unión con los corredores de la ciudad (donde una sigue a la otra) no empuja
-		var rpr := region.probe(x, z, 30.0)
-		rp_in = rpr[0] > -1e8 and rpr[4] < rpr[5] + region.wall_at(int(rpr[1]), x, z)
-		rw = region.wall_push(x, z, r)
-	if pr[6] >= 0.0 and not (rp_in and float(pr[0]) < 0.0):
-		var pen := r - float(pr[0])
-		if pen > 0.0:
-			best = Vector3(float(pr[2]), float(pr[3]), minf(pen, 6.0))
-	if rw.z > best.z:
-		best = rw
+		var cm: PackedFloat64Array = region.corridor(x, z, r) # [penetración mínima entre todos los corredores de la región (calles y playones), nx, nz]
+		reg_pen = cm[0]
+		reg_n = Vector2(cm[1], cm[2])
+	var has_reg := reg_pen < 1e8
+	if has_city and has_reg:
+		if city_pen > 0.0 and reg_pen > 0.0:
+			best = Vector3(float(pr[2]), float(pr[3]), minf(city_pen, 6.0)) if city_pen <= reg_pen else Vector3(reg_n.x, reg_n.y, minf(reg_pen, 6.0))
+	elif has_city:
+		if city_pen > 0.0:
+			best = Vector3(float(pr[2]), float(pr[3]), minf(city_pen, 6.0))
+	elif has_reg:
+		if reg_pen > 0.0:
+			best = Vector3(reg_n.x, reg_n.y, minf(reg_pen, 6.0))
 	if not city.drift.is_empty(): # la pared invisible de la plaza de drift (el cerco), con una abertura donde entra la ruta
 		var dc: Vector2 = city.drift["c"]
 		var dd := Vector2(x, z) - dc

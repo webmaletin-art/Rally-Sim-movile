@@ -29,9 +29,13 @@ var wet := 0.0 # mojado actual (se acerca al objetivo de a poco)
 var wet_target := 0.0
 var q := 1.0 # cantidad de gotas (0.5 baja · 1 media · 1.5 alta)
 
+const DROP_SHADER := preload("res://game/fx/weather_drop.gdshader")
+
 var _rain: GPUParticles3D
 var _splash: GPUParticles3D
 var _snow: GPUParticles3D
+var _drop_mats: Array[ShaderMaterial] = [] # gotas y copos: no se dibujan adentro del habitáculo del auto del jugador
+var _cabin: Node3D # el habitáculo (Cockpit) del auto del jugador
 var _road_col := Color(1, 1, 1)
 var _ground_col := Color(1, 1, 1)
 
@@ -82,13 +86,7 @@ func _build_rain() -> void:
 	_rain.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var quad := QuadMesh.new()
 	quad.size = Vector2(0.035, 0.75)
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.albedo_texture = _rain_tex("rain_streak.png")
-	m.vertex_color_use_as_albedo = true
-	m.disable_receive_shadows = true
-	quad.material = m
+	quad.material = _drop_material(_rain_tex("rain_streak.png"), false)
 	_rain.draw_pass_1 = quad
 	var pm := ParticleProcessMaterial.new()
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
@@ -157,14 +155,7 @@ func _build_rain() -> void:
 	_snow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var fq := QuadMesh.new()
 	fq.size = Vector2(0.07, 0.07)
-	var fm := StandardMaterial3D.new()
-	fm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	fm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	fm.albedo_texture = _rain_tex("splash.png")
-	fm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	fm.vertex_color_use_as_albedo = true
-	fm.disable_receive_shadows = true
-	fq.material = fm
+	fq.material = _drop_material(_rain_tex("splash.png"), true)
 	_snow.draw_pass_1 = fq
 	var npm := ParticleProcessMaterial.new()
 	npm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
@@ -182,6 +173,33 @@ func _build_rain() -> void:
 	npm.color = Color(1, 1, 1, 0.9)
 	_snow.process_material = npm
 	add_child(_snow)
+
+func _drop_material(tex: Texture2D, billboard: bool) -> ShaderMaterial:
+	var sm := ShaderMaterial.new()
+	sm.shader = DROP_SHADER
+	sm.set_shader_parameter("tex", tex)
+	sm.set_shader_parameter("billboard", billboard)
+	_drop_mats.append(sm)
+	return sm
+
+## El habitáculo del auto del jugador (Cockpit): lo que cae adentro no se dibuja (con las cámaras interiores se veía llover dentro del auto)
+func set_cabin(cabin: Node3D) -> void:
+	_cabin = cabin
+	_update_cabin()
+
+func _update_cabin() -> void:
+	var on := _cabin != null and is_instance_valid(_cabin) and _cabin.is_inside_tree() and not bool(_cabin.get("open_cab"))
+	for sm in _drop_mats:
+		sm.set_shader_parameter("cab_on", 1.0 if on else 0.0)
+	if not on:
+		return
+	var inv := Projection(_cabin.global_transform.affine_inverse())
+	var a := Vector4(float(_cabin.get("hw")), float(_cabin.get("floor_y")), float(_cabin.get("rY")), float(_cabin.get("back_z")))
+	var b := Vector4(float(_cabin.get("cz")), float(_cabin.get("cowl_y")), float(_cabin.get("ws_tz")), float(_cabin.get("ws_ty")))
+	for sm in _drop_mats:
+		sm.set_shader_parameter("cab_inv", inv)
+		sm.set_shader_parameter("cab_a", a)
+		sm.set_shader_parameter("cab_b", b)
 
 func _curve(pts: Array) -> CurveTexture:
 	var c := Curve.new()
@@ -255,6 +273,7 @@ func _process(dt: float) -> void:
 	if not is_equal_approx(wet, wet_target):
 		wet = move_toward(wet, wet_target, dt * 0.12) # se moja/seca de a poco
 		_apply_wet()
+	_update_cabin()
 	# la lluvia acompaña a la cámara
 	if cam != null:
 		_rain.global_position = cam.global_position + Vector3(0, 13.0, 0)

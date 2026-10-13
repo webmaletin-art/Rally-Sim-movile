@@ -1287,6 +1287,7 @@ func _rebuild_cars() -> void:
 			car.visual.add_child(cockpit)
 			cockpit.set_engine(Vp.maxRpm, Vp.shiftUpRpm, Vp.nitroCap)
 			cockpit.raining = weather_name == "lluvia"
+			weather.set_cabin(cockpit) # la lluvia y la nieve no caen adentro del habitáculo
 			cockpit.set_inside(false, false)
 			cam_rig = CameraRig.new(cam, player_view() if adv_mode else track)
 			cam_rig.visual = car.visual
@@ -1928,7 +1929,7 @@ func _check_gates() -> void:
 	var pos := Vector2(ph.px, ph.pz)
 	for ex in (track as CityTrack).city.exits:
 		var to := str(ex.get("to", ""))
-		if to != "" and to != "plaza" and pos.distance_to(ex["pos"]) < 12.0:
+		if to != "" and to != "plaza" and to != "region" and pos.distance_to(ex["pos"]) < 12.0:
 			_gate_go = true
 			_gate_t = 0.6
 			_gate_to = to

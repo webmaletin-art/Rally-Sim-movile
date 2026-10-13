@@ -35,6 +35,7 @@ var tolls: Array = []
 var signs: Dictionary = {}
 var node_edges: Array = [] # nodo -> PackedInt32Array de calles
 var e_hw := PackedFloat32Array()
+var e_wall := PackedFloat32Array() # metros de pared invisible de cada calle (WALL, o WALL_MONTANA en las de montaña)
 var pads: Array = [] # playones planos junto a la ruta (gasolineras, gomerías): {x, z, r, h}
 var pad_cells: Dictionary = {} # Vector2i (128 m) -> PackedInt32Array de playones
 var _cum: Dictionary = {}
@@ -92,8 +93,10 @@ func load_file(p_city, path := FILE) -> bool:
 	tolls = meta.get("tolls", [])
 	signs = meta.get("signs", {})
 	e_hw.resize(edges.size())
+	e_wall.resize(edges.size())
 	for i in edges.size():
 		e_hw[i] = float(edges[i][4]) * 0.5
+		e_wall[i] = WALL_MONTANA if str(CLS_NAMES[int((edges[i] as Array)[2])]) == "montana" else WALL
 	node_edges.resize(nodes.size())
 	for i in nodes.size():
 		node_edges[i] = PackedInt32Array()
@@ -240,8 +243,8 @@ func _carve(h: float, pr: PackedFloat64Array) -> float:
 
 # ───────────────────────── caminos ─────────────────────────
 ## El camino más cercano (por holgura al borde): [holgura (m, >0 adentro de la calzada+banquina), calle, índice del punto, t, distancia al eje, medio ancho, altura del camino, nx, nz (hacia el eje), superficie]
-## Todo −1e9 si no hay ningún camino a la vista (a menos de unos 128 m).
-func probe(x: float, z: float, reach := 30.0) -> PackedFloat64Array:
+## Todo −1e9 si no hay ningún camino a la vista (a menos de unos 128 m). `with_pads` en falso ignora los playones (sólo calles).
+func probe(x: float, z: float, reach := 30.0, with_pads := true) -> PackedFloat64Array:
 	var out := PackedFloat64Array([-1e9, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 	var kx := int(floor(x / 128.0))
 	var kz := int(floor(z / 128.0))
@@ -255,7 +258,7 @@ func probe(x: float, z: float, reach := 30.0) -> PackedFloat64Array:
 	var z_hi := 1 if fz > 128.0 - reach else 0
 	for dx in range(x_lo, x_hi + 1):
 		for dz in range(z_lo, z_hi + 1):
-			var pl: Variant = pad_cells.get(Vector2i(kx + dx, kz + dz)) if not pads.is_empty() else null
+			var pl: Variant = pad_cells.get(Vector2i(kx + dx, kz + dz)) if (with_pads and not pads.is_empty()) else null
 			if pl != null:
 				for pi in (pl as PackedInt32Array):
 					var pd: Dictionary = pads[pi]
@@ -337,7 +340,7 @@ func ground(x: float, z: float) -> Vector2:
 		return Vector2(hc, 2.0) # banquina
 	return Vector2(hc, float(surface_off_road(x, z)))
 
-## Pared invisible del camino: (nx, nz, profundidad) para empujar un círculo (x, z, r) hacia adentro del corredor; profundidad ≤ 0 = nada que empujar
+## Metros de pared invisible de la calle ei, medidos desde el borde de la calzada
 func wall_of(ei: int) -> float:
 	if ei < 0:
 		return 0.3 # un playón: la pared es su borde
@@ -349,15 +352,82 @@ func wall_at(ei: int, x: float, z: float) -> float:
 		return TOWN_WALL
 	return wall_of(ei)
 
+## Empuja un círculo (x, z, r) hacia adentro del corredor más cercano: (nx, nz, profundidad); profundidad ≤ 0 = nada que empujar
 func wall_push(x: float, z: float, r: float) -> Vector3:
-	var pr := probe(x, z)
-	if pr[0] <= -1e8:
+	var cm := corridor(x, z, r)
+	if cm[0] >= 1e8 or cm[0] <= 0.0:
 		return Vector3.ZERO
-	var corridor: float = pr[5] + wall_at(int(pr[1]), x, z)
-	var pen: float = pr[4] + r - corridor
-	if pen <= 0.0:
-		return Vector3.ZERO
-	return Vector3(pr[7], pr[8], minf(pen, 6.0))
+	return Vector3(cm[1], cm[2], minf(cm[0], 6.0))
+
+## ¿(x, z) está adentro de algún corredor (calle + pared invisible, o playón)?
+func in_corridor(x: float, z: float) -> bool:
+	return corridor(x, z, 0.0)[0] < 0.0
+
+## La pared es la UNIÓN de los corredores: un auto (círculo de radio r) cabe si cabe en el corredor de ALGUNA calle (calzada + banquina + pared) o de algún playón (radio + 0,3 m).
+## Devuelve [penetración mínima (m), nx, nz] hacia el corredor más cercano (penetración ≤ 0 = cabe en alguno); 1e9 si no hay ningún camino ni playón a la vista.
+## (Antes se miraba sólo el de mayor holgura: un playón que no se cruzaba con la banquina de la calle por unos centímetros dejaba al auto encerrado.)
+func corridor(x: float, z: float, r: float, reach := 30.0) -> PackedFloat64Array:
+	var out := PackedFloat64Array([1e9, 0.0, 0.0])
+	var kx := int(floor(x / 128.0))
+	var kz := int(floor(z / 128.0))
+	var fx := fposmod(x, 128.0)
+	var fz := fposmod(z, 128.0)
+	var x_lo := -1 if fx < reach else 0
+	var x_hi := 1 if fx > 128.0 - reach else 0
+	var z_lo := -1 if fz < reach else 0
+	var z_hi := 1 if fz > 128.0 - reach else 0
+	var in_t := -1 # ¿está en un pueblo? (se mira una sola vez y sólo si hace falta)
+	for dx in range(x_lo, x_hi + 1):
+		for dz in range(z_lo, z_hi + 1):
+			var k2 := Vector2i(kx + dx, kz + dz)
+			if not pads.is_empty():
+				var pl: Variant = pad_cells.get(k2)
+				if pl != null:
+					for pi in (pl as PackedInt32Array):
+						var pd: Dictionary = pads[pi]
+						var pdx: float = float(pd["x"]) - x
+						var pdz: float = float(pd["z"]) - z
+						var pdist := sqrt(pdx * pdx + pdz * pdz)
+						var pen := pdist + r - (float(pd["r"]) + 0.3)
+						if pen < out[0]:
+							var pinv := 1.0 / maxf(pdist, 0.0001)
+							out[0] = pen
+							out[1] = pdx * pinv
+							out[2] = pdz * pinv
+			var lst: Variant = cells.get(k2)
+			if lst == null:
+				continue
+			for k in (lst as PackedInt32Array):
+				var ax := float(pts[k * 2]) * 0.1
+				var az := float(pts[k * 2 + 1]) * 0.1
+				var ex := float(pts[k * 2 + 2]) * 0.1 - ax
+				var ez := float(pts[k * 2 + 3]) * 0.1 - az
+				var l2 := ex * ex + ez * ez
+				var t := 0.0
+				if l2 > 1e-6:
+					t = clampf(((x - ax) * ex + (z - az) * ez) / l2, 0.0, 1.0)
+				var ddx := ax + ex * t - x
+				var ddz := az + ez * t - z
+				var d2 := ddx * ddx + ddz * ddz
+				var ei := pe[k]
+				var hw := e_hw[ei]
+				var big := hw + WALL + r
+				if d2 >= big * big and out[0] < 1e8:
+					continue # tan lejos que ni la pared más ancha lo alcanza, y ya hay otro corredor a la vista
+				var d := sqrt(d2)
+				var wl := e_wall[ei]
+				if wl > TOWN_WALL:
+					if in_t < 0:
+						in_t = 1 if in_town(x, z) else 0
+					if in_t == 1:
+						wl = TOWN_WALL
+				var pen2 := d + r - (hw + wl)
+				if pen2 < out[0]:
+					var inv := 1.0 / maxf(d, 0.0001)
+					out[0] = pen2
+					out[1] = ddx * inv
+					out[2] = ddz * inv
+	return out
 
 # ───────────────────────── geometría de las calles ─────────────────────────
 func edge_point(ei: int, i: int) -> Vector2:

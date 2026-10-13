@@ -9,6 +9,10 @@ const STATION_COL := [Color(0.95, 0.72, 0.10), Color(0.88, 0.20, 0.15), Color(0.
 const SPAWNS_FILE := "res://game/data/region/spawns.json"
 const MAP_RECT := Rect2(-60000.0, -90000.0, 120000.0, 93000.0) # lo que cubre region_map.png (mismo recorte que la grilla del generador)
 
+const DRIVE_R := 5.0 # radio de los discos del camino de acceso (10 m de ancho de pavimento)
+const DRIVE_STEP := 3.0 # separación entre discos (se pisan: sin muescas)
+const LOT_GAP := 3.0 # un playón de servicio no puede quedar sobre una calle: si cae encima se lo corre hasta dejar este hueco entre su borde y la banquina
+
 ## ¿Está la región completa en esta compilación? (los datos de las rutas y la lista de lugares para aparecer; si falta algo no se ofrece)
 static func available() -> bool:
 	return FileAccess.file_exists(RegionData.FILE) and FileAccess.file_exists(SPAWNS_FILE)
@@ -19,9 +23,64 @@ static func spawn_list() -> Array:
 	var d: Variant = JSON.parse_string(FileAccess.get_file_as_string(SPAWNS_FILE))
 	return d if d is Array else []
 
+## Hueco (m) entre el borde de los círculos de un playón (radio r) y la banquina de la calle más cercana a cualquiera de ellos: [hueco, índice del círculo, resultado de RegionData.probe]
+## (hueco < 0: el playón pisa la calle; el índice es −1 si no hay ninguna calle a la vista)
+static func _lot_gap(rg: RegionData, circles: Array, r: float) -> Array:
+	var best_gap := 1e9
+	var best_i := -1
+	var best_pr := PackedFloat64Array()
+	for i in circles.size():
+		var c: Vector2 = circles[i]
+		var pr: PackedFloat64Array = rg.probe(c.x, c.y, 128.0, false)
+		if pr[0] < -1e8:
+			continue
+		var g: float = pr[4] - pr[5] - RegionData.SHOULDER - r
+		if g < best_gap:
+			best_gap = g
+			best_i = i
+			best_pr = pr
+	return [best_gap, best_i, best_pr]
+
+## Un playón que pisa una calle (las estaciones se anotaron sobre el eje recto del pueblo, no sobre el camino de verdad) se corre hacia el lado contrario hasta que quede a LOT_GAP de la banquina
+static func _clear_of_roads(rg: RegionData, pos: Vector2, offs: Array, r: float) -> Vector2:
+	var p := pos
+	for it in 10:
+		var cs: Array = []
+		for o in offs:
+			cs.append(p + (o as Vector2))
+		var gp := _lot_gap(rg, cs, r)
+		if int(gp[1]) < 0 or float(gp[0]) >= 0.0:
+			break
+		var pr: PackedFloat64Array = gp[2]
+		p += -Vector2(pr[7], pr[8]) * (LOT_GAP - float(gp[0]) + 0.5)
+	return p
+
+## Camino de acceso: discos de pavimento que se pisan, desde adentro del playón hasta la calle más cercana (el borde del último toca el asfalto). Sin esto el playón queda rodeado de pasto y de pared invisible.
+## Devuelve [dirección unitaria hacia la calle, altura de la calle en el empalme, metros de camino]; dirección cero si no hay calle a la vista.
+static func _driveway(rg: RegionData, circles: Array, r: float, h: float) -> Array:
+	var gp := _lot_gap(rg, circles, r)
+	if int(gp[1]) < 0:
+		return [Vector2.ZERO, h, 0.0]
+	var pr: PackedFloat64Array = gp[2]
+	var c0: Vector2 = circles[int(gp[1])]
+	var u := Vector2(pr[7], pr[8])
+	var hw: float = pr[5]
+	var hr: float = pr[6]
+	var t0 := r - 1.5 # el primer disco queda adentro del playón
+	var t1 := float(pr[4]) - (hw + DRIVE_R - 0.1) # el último toca el borde del asfalto
+	var L := t1 - t0
+	if L > 0.2:
+		var n := int(ceil(L / DRIVE_STEP))
+		for i in n + 1:
+			var f := float(i) / float(n)
+			var c := c0 + u * (t0 + L * f)
+			rg.add_pad(c.x, c.y, DRIVE_R, lerpf(h, hr, f))
+	return [u, hr, maxf(L, 0.0)]
+
 static func install(city, rg: RegionData) -> void:
 	var n_fuel := 0
 	var n_shop := 0
+	var sps: Array = spawn_list() # lugares para aparecer: cada estación de servicio de una ciudad o pueblo (si se corrió la estación, el lugar la sigue)
 	for poi in rg.pois:
 		var kind := str(poi["kind"])
 		var pos := Vector2(float(poi["x"]), float(poi["z"]))
@@ -35,12 +94,34 @@ static func install(city, rg: RegionData) -> void:
 			var size := str(poi["size"])
 			var kd: Dictionary = CityLayout.STATION_KINDS[size]
 			var R := float(kd["R"])
+			var old_spawn := pos - nrm * 3.0 # donde el generador puso el lugar para aparecer de esta estación
+			var offs: Array = []
+			for u in kd["cu"]:
+				offs.append(lx * float(u))
+			pos = _clear_of_roads(rg, pos, offs, R)
+			poi["x"] = pos.x
+			poi["z"] = pos.y
 			var wpos := func(u: float, v: float) -> Vector2: return pos + lx * u + nrm * v
 			var circles: Array = []
 			for u in kd["cu"]:
-				var c: Vector2 = wpos.call(float(u), 0.0)
-				circles.append(c)
-				rg.add_pad(c.x, c.y, R, h)
+				circles.append(wpos.call(float(u), 0.0))
+			var dw := _driveway(rg, circles, R, h)
+			h = float(dw[1]) # el playón queda a la altura de la calle donde empalma el acceso
+			poi["h"] = h
+			for c in circles:
+				rg.add_pad((c as Vector2).x, (c as Vector2).y, R, h)
+			for sp in sps:
+				if Vector2(float(sp["x"]), float(sp["z"])).distance_to(old_spawn) < 1.0 and not sp.has("_fixed"):
+					var du: Vector2 = dw[0]
+					var q := pos - nrm * 3.0
+					var yw := yaw
+					if du != Vector2.ZERO:
+						q = pos + du * 3.0 # se aparece mirando hacia la salida
+						yw = atan2(du.x, du.y)
+					sp["x"] = q.x
+					sp["z"] = q.y
+					sp["yaw"] = yw
+					sp["_fixed"] = true
 			var pumps: Array = []
 			for pp in kd["pumps"]:
 				pumps.append(wpos.call(float(pp[0]), float(pp[1])))
@@ -64,6 +145,12 @@ static func install(city, rg: RegionData) -> void:
 			poi["_id"] = id
 			n_fuel += 1
 		elif kind == "tires":
+			pos = _clear_of_roads(rg, pos, [Vector2.ZERO], 14.0)
+			poi["x"] = pos.x
+			poi["z"] = pos.y
+			var dw2 := _driveway(rg, [pos], 14.0, h)
+			h = float(dw2[1])
+			poi["h"] = h
 			rg.add_pad(pos.x, pos.y, 14.0, h)
 			var id2 := "rgomeria_%d" % n_shop
 			var front2 := pos - nrm * 3.0
@@ -95,6 +182,6 @@ static func install(city, rg: RegionData) -> void:
 					ex["yaw"] = atan2(dv.x, dv.y)
 			break
 	# lugares para aparecer: después de los tres estacionamientos
-	for sp in spawn_list():
+	for sp in sps:
 		city.spawns.append([float(sp["x"]), float(sp["z"]), float(sp["yaw"])])
 		city.spawn_names.append(str(sp["name"]))

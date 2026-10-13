@@ -162,7 +162,7 @@ func _route_signs() -> void:
 	var v := PackedVector3Array()
 	var c := PackedColorArray()
 	var labels: Array = []
-	var dests := {20: "AVENTURA · Ruta de los Sueños", 60: "PLAZA DE DRIFT", 40: "Estacionamiento Central", 80: "PRÓXIMAMENTE"}
+	var dests := {20: "AVENTURA · Ruta de los Sueños", 60: "PLAZA DE DRIFT", 40: "CIRCUNVALACIÓN AU-1", 80: "CIRCUNVALACIÓN AU-1"}
 	for rd in city.roads:
 		if str(rd["kind"]) != "rural":
 			continue
@@ -184,6 +184,8 @@ func _route_signs() -> void:
 		CityProps.box(v, c, xf, Vector3(2.0, 1.5, 0), Vector3(0.16, 3.0, 0.16), Color(0.55, 0.57, 0.62))
 		CityProps.box(v, c, xf, Vector3(0, 3.2, 0), Vector3(5.0, 1.9, 0.12), Color(0.10, 0.34, 0.20))
 		var km := float(cum[cum.size() - 1]) / 1000.0
+		if str(dests.get(num, "")).begins_with("CIRCUNVALACIÓN") and city.region != null:
+			km += _region_leg_km(num) # sigue por la región hasta la circunvalación: se suma lo que falta desde la salida de la ciudad
 		var dest := Tr.t(str(dests.get(num, "")))
 		var front := "%s\n%s\n%.1f km" % [Tr.t("RUTA %d") % num, dest, km]
 		var back := "DREAM CITY\n%s" % Tr.t("centro")
@@ -208,6 +210,18 @@ func _route_signs() -> void:
 		lab.rotation = Vector3(0, float(l[1]), 0)
 		lab.visibility_range_end = 220.0
 		add_child(lab)
+
+## Km del tramo de la región que sigue a la Salida `num` de la ciudad hasta el primer empalme (la circunvalación); 0 si la región no está
+func _region_leg_km(num: int) -> float:
+	var rg = city.region
+	if rg == null:
+		return 0.0
+	var ni: int = rg.node_by_id("exit%d" % num)
+	if ni < 0 or (rg.node_edges[ni] as PackedInt32Array).is_empty():
+		return 0.0
+	var ei: int = (rg.node_edges[ni] as PackedInt32Array)[0]
+	var cum: PackedFloat32Array = rg.edge_cum(ei)
+	return float(cum[cum.size() - 1]) / 1000.0 if cum.size() > 0 else 0.0
 
 ## Triángulo que mira hacia arriba sea cual sea el orden de los puntos
 func _up_tri(s: Soup, a: Vector3, b: Vector3, c: Vector3, col: Color) -> void:
@@ -710,6 +724,8 @@ func _build_chunk(key: Vector2i) -> Node3D:
 		if str(l["label"]) != "" and city.chunk_of((l["label_pos"] as Vector2).x, (l["label_pos"] as Vector2).y) == key:
 			root.add_child(_link_label(l))
 	for ex in city.exits:
+		if str(ex.get("to", "")) == "region":
+			continue # la ruta sigue por la región: sin portón, sin cartel y sin nada que choque
 		if city.chunk_of((ex["pos"] as Vector2).x, (ex["pos"] as Vector2).y) == key:
 			root.add_child(_gate(ex))
 			_gate_circles(ex, true)

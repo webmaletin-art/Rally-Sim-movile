@@ -30,7 +30,7 @@ const TUNNEL_HALF := 900.0 # cada brazo de la cruz mide 900 m desde el centro
 const RINGS := [130.0, 260.0, 390.0, 520.0, 650.0, 780.0, 910.0, 1040.0]
 const COAST_R := 1120.0
 const RURAL_END := 2300.0
-const EXIT_TO := {20: "adventure", 60: "plaza"} # las salidas abiertas: la Ruta 20 sigue por la Ruta de los Sueños (Aventura); la Ruta 60 termina en la Plaza de Drift (está ahí mismo: no hay otro mapa)
+const EXIT_TO := {20: "adventure", 40: "region", 60: "plaza", 80: "region"} # las salidas abiertas: la Ruta 20 sigue por la Ruta de los Sueños (Aventura); la Ruta 60 termina en la Plaza de Drift (está ahí mismo: no hay otro mapa); las rutas 40 y 80 siguen por la región hasta la circunvalación (sin portón ni cartel: la ruta sigue)
 const WORLD_VERSION := 6 # sube cuando cambia el mapa (la «última ubicación» guardada de una versión anterior ya no sirve)
 const DRIFT_GATE := 0.996 # la abertura de la plaza donde entra la ruta (coseno del ángulo: unos 8 m a cada lado)
 const DRIFT_R := 90.0 # radio de la Plaza de Drift, al final de la Ruta 60
@@ -1647,15 +1647,7 @@ func _place_guardrails() -> void:
 					placed = true
 			if placed:
 				acc = 0.0
-		if kind == "scenic":
-			# el final del camino (hoy sin salida): tres bloques de hormigón cruzados
-			var pe := pts[pts.size() - 1]
-			var pe0 := pts[pts.size() - 3]
-			var te := Vector2(pe.x - pe0.x, pe.z - pe0.z).normalized()
-			var ne := Vector2(-te.y, te.x)
-			for k in [-1.0, 0.0, 1.0]:
-				var q := Vector2(pe.x, pe.z) + te * 1.5 + ne * float(k) * 3.4
-				_add_prop(12, q.x, q.y, te, pe.y)
+		# (la Ruta Panorámica ya no termina en bloques de hormigón: sigue por la región hasta la circunvalación)
 
 ## Bordes de las rutas rurales y de los atajos: una tirada de árboles del pack (varias especies, dos filas), con pasto, flores y algún arbusto abajo. No chocan: el auto no sale del camino.
 func _place_roadside() -> void:
