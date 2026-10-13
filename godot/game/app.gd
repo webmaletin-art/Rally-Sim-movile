@@ -17,12 +17,14 @@ const Billing := preload("res://game/store/billing.gd")
 const Online := preload("res://game/online/online.gd")
 const OnlineEconomy := preload("res://game/online/online_economy.gd")
 const OnlineProfile := preload("res://game/data/online_profile.gd")
+const AccountEcon := preload("res://game/online/account_econ.gd")
 
 var autorace_used := false
 var profile: RefCounted
 var offer_shown := false # el cartel de ofertas sale una vez por sesión
 var billing: Node # compras de Google Play (sin plugin queda «no disponible»)
 var online: Node # modo online (Supabase): rankings; apagado si no hay configuración o el jugador no participa
+var account: Node # la cuenta del servidor: créditos, autos y compras (online/account_econ.gd); con el modo desarrollador o sin Supabase todo es local
 var eco: RefCounted # economía online (servidor): billetera y autos online
 var oprofile: RefCounted # perfil del modo online (espejo del servidor); el offline es `profile`
 var menu: Node
@@ -32,7 +34,6 @@ var music: Node # la música de fondo (radio de los menús; ver audio/music_play
 func _ready() -> void:
 	profile = Profile.new()
 	Tr.setup(profile)
-	Release.sync_cars(profile)
 	billing = Billing.new()
 	add_child(billing)
 	billing.setup(profile)
@@ -42,6 +43,14 @@ func _ready() -> void:
 	online = Online.new()
 	online.profile = profile
 	add_child(online)
+	account = AccountEcon.new()
+	add_child(account)
+	account.attach(profile, online)
+	billing.account = account
+	account.corrected.connect(func(t: String) -> void:
+		if menu != null and is_instance_valid(menu):
+			menu.toast(t))
+	Release.sync_cars(profile) # (después de conectar la cuenta: los autos premium comprados se anotan para el servidor)
 	var dbg := false
 	var menu_forced := false
 	for a in OS.get_cmdline_user_args():
@@ -56,6 +65,8 @@ func _ready() -> void:
 		_start_race({})
 		return
 	show_menu()
+	if account.is_active() and account.gate_state() == "":
+		account.sync() # al abrir: trae lo que dice el servidor (sin esperar: si no hay conexión se juega con lo último confirmado). Si hay que verificar la cuenta, lo hace la pantalla de entrada.
 
 ## Trae del servidor la billetera y los autos online y arma el perfil online. false si no hay cuenta o conexión (no se entra al mundo online sin eso: el progreso online es aparte del offline).
 func enter_online() -> bool:
@@ -80,6 +91,10 @@ func start_vegbench() -> void:
 	add_child(vb)
 
 func show_menu(screen := "home") -> void:
+	if account != null and account.gate_state() == "login":
+		screen = "home" # la sesión venció o se cerró: se vuelve a pedir la cuenta antes de seguir
+	if account != null:
+		account.flush_soon() # al volver al menú se manda lo que haya esperando
 	if music != null:
 		music.set_context("menu")
 	AdvData.practice = {} # la práctica de la Ruta de los Sueños no deja rastro

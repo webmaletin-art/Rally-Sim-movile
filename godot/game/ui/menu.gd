@@ -235,10 +235,13 @@ func _ready() -> void:
 	var arg0 = parts[1] if parts.size() > 1 else null
 	if parts[0] == "level":
 		arg0 = {"type": "race", "track": "lake", "ai": 3, "car": profile.current_id(), "state": profile.car()} # solo para probar la pantalla
+	var gate := MenuAccount.gate(app) if start_screen == "home" and not no_consent else ""
 	if start_screen == "home" and not no_consent and MenuAbout.needs_consent(profile):
 		go("consent")
-	elif start_screen == "home" and not no_consent and MenuAccount.should_offer(profile, app.online):
-		go("account", "welcome") # una sola vez: crear cuenta con correo (opcional)
+	elif gate == "login":
+		go("account", "welcome") # para jugar hace falta la cuenta con correo (Release.ACCOUNT_REQUIRED)
+	elif gate == "sync":
+		go("account", "gate") # hay que conectarse a confirmar la cuenta (cuenta nueva en este teléfono, archivo tocado o muchos días sin conexión)
 	else:
 		go(parts[0], arg0)
 		if start_screen == "home":
@@ -247,12 +250,22 @@ func _ready() -> void:
 		toast("🎁 Premio diario: +%s (racha %d)" % [Kit.fmt_cr(float(daily["amount"])), int(daily["streak"])])
 		sfx.play("coin")
 
+## Entrada a la pantalla de inicio: si hay que iniciar sesión o confirmar la cuenta con el servidor, primero eso
+func enter_home() -> void:
+	match MenuAccount.gate(app):
+		"login":
+			go("account", "welcome", false)
+		"sync":
+			go("account", "gate", false)
+		_:
+			go("home", null, false)
+
 ## Primera vez: se entregan los autos iniciales (como en la versión web)
 func _first_time() -> void:
 	for id in CarBuild.catalog()["order"]:
 		var c: Dictionary = CarBuild.catalog()["cars"][id]
 		if c.get("starter", false):
-			profile.give(id)
+			profile.give(id, "starter")
 	profile.select(str(profile.d["owned"].keys()[0]))
 
 # ───────────────────────── mundo 3D ─────────────────────────
@@ -457,7 +470,7 @@ func go(name: String, arg = null, push := true) -> void:
 		panel.add_child(col)
 		var head := Kit.hbox(8)
 		col.add_child(head)
-		if name != "home" and name != "consent" and not (name == "account" and arg == "welcome"):
+		if name != "home" and name != "consent" and not (name == "account" and (arg == "welcome" or arg == "gate")):
 			var leaving: bool = stack.is_empty() and not app.city_return.is_empty()
 			head.add_child(Kit.button("🚪 SALIR" if leaving else "← ATRÁS", back, false, 16, Vector2(104, 40)))
 		title_l = Kit.label("", 26, Kit.ACCENT)
@@ -851,7 +864,7 @@ func _goals() -> void:
 
 func _claim(a: Dictionary) -> void:
 	profile.d["claimed"][a["id"]] = 1
-	profile.earn(float(a["cr"]))
+	profile.earn(float(a["cr"]), "goal", str(a["id"]))
 	sfx.play("buy")
 	toast("%s %s · +%s" % [a["icon"], a["n"], Kit.fmt_cr(float(a["cr"]))])
 	go("goals", null, false)

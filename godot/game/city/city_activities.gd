@@ -81,7 +81,7 @@ func add_fame(p: float) -> void:
 	var after := WP.rank_for(float(r["pts"]))
 	if after > before:
 		var bonus := int(WP.RANK_BONUS[after])
-		race.profile.earn(float(bonus))
+		race.profile.earn(float(bonus), "rank", "rk%d" % after)
 		_toast(Tr.t("🏅 ¡Nuevo rango: %s! +$%d") % [Tr.t(WP.rank_name(after)), bonus], "up")
 	race.profile.save()
 
@@ -97,7 +97,7 @@ func _toast(s: String, kind := "") -> void:
 func _pay(n: int) -> void:
 	if n <= 0:
 		return
-	race.profile.earn(float(n))
+	race.profile.earn(float(n), "act")
 	race.profile.add_xp(float(n) * 0.2)
 	var a := _act()
 	a["earned"] = int(a.get("earned", 0)) + n

@@ -8,7 +8,7 @@ const MenuAccount := preload("res://game/ui/menu_account.gd")
 
 const POLICY_URL := "https://webmaletin-art.github.io/Rally-Sim-movile/docs/privacidad.html"
 const TERMS_URL := "https://github.com/webmaletin-art/Rally-Sim-movile/blob/main/docs/TERMINOS.md"
-const CONSENT_VERSION := 1
+const CONSENT_VERSION := 2 # (2: la cuenta obligatoria cambió qué datos se guardan; se vuelve a pedir la aceptación)
 
 var m # menu.gd
 var page := 0
@@ -73,11 +73,36 @@ const PRIVACY_ONLINE := [
 	["Cuenta con correo (opcional)", "Si creás una cuenta, guardamos tu correo electrónico y una contraseña (que nunca vemos: se guarda cifrada) en Supabase, solo para que puedas recuperar tus marcas del ranking en otro teléfono. Tu correo no se muestra a otros jugadores ni se usa para publicidad. Es solo para mayores de 13 años. Podés cerrar sesión cuando quieras y borrar tu cuenta y tus marcas desde el juego (Modo online → Cuenta) o escribiendo al contacto del juego."],
 ]
 
+## Con la CUENTA obligatoria (Release.ACCOUNT_REQUIRED): los créditos, los autos y las compras viven en el servidor
+const PRIVACY_ACCOUNT := [
+	["Resumen", "Dream Racing no tiene publicidad ni análisis. No vendemos ni compartimos datos personales. Para jugar hace falta una cuenta con tu correo: tus créditos, tus autos y tus compras viven en nuestro servidor (Supabase) para que no se pierdan ni se puedan modificar. Tus ajustes y tus tiempos de carrera quedan en tu teléfono."],
+	["Qué se guarda", "En tu teléfono: tus ajustes, tu nombre de piloto, tus estrellas y tiempos, y el estado de cada auto (pintura, ajuste fino, kilómetros, desgaste). En nuestro servidor, asociado a tu cuenta: tu correo, tus créditos, qué autos tenés con sus mejoras, gomas y piezas, tus compras de la tienda (el comprobante de Google Play, no tu forma de pago) y un registro técnico de premios y gastos para frenar las trampas. Si desinstalás la app, lo que está en el teléfono se pierde; lo de tu cuenta se recupera al iniciar sesión."],
+	["Internet", "El juego necesita conexión para iniciar sesión y para verificar tu cuenta con el servidor (la primera vez en cada teléfono, cuando comprás algo, si se detecta un cambio raro en el archivo de progreso o si pasaron más de 14 días sin verificar). El resto del tiempo se puede jugar sin conexión y los cambios se envían cuando vuelve la conexión. Las compras pasan por Google Play."],
+	["Cuenta con correo", "Guardamos tu correo electrónico y una contraseña (que nunca vemos: se guarda cifrada) en Supabase, para que puedas entrar a tu cuenta desde cualquier teléfono y recuperar tus créditos y tus autos. Tu correo no se muestra a otros jugadores ni se usa para publicidad. Es solo para mayores de 13 años (o con permiso de un adulto). Podés cerrar sesión cuando quieras y borrar tu cuenta y todo lo que guardamos de ella desde el juego (Modo online → Cuenta) o escribiendo al contacto del juego."],
+	["Compras", "Las compras dentro del juego las cobra y administra Google Play. Para acreditarlas, nuestro servidor verifica el comprobante con Google: recibe el identificador del producto y el código de la compra, nunca tu tarjeta ni tus datos de pago."],
+]
+
 func _privacy() -> Array:
 	var base: Array = _merged(PRIVACY, PRIVACY_STORE) if Release.store() else PRIVACY
-	if m.app != null and m.app.online != null and m.app.online.configured():
-		return _merged(base, PRIVACY_ONLINE)
+	var online_on: bool = m.app != null and m.app.online != null and m.app.online.configured()
+	if online_on:
+		base = _merged(base, PRIVACY_ONLINE)
+	if _account_on():
+		base = _drop(base, ["Cuenta con correo (opcional)"])
+		return _merged(base, PRIVACY_ACCOUNT)
 	return base
+
+## ¿La cuenta del servidor maneja la economía? (cuenta obligatoria con Supabase configurado, sin modo desarrollador)
+func _account_on() -> bool:
+	return m.app != null and m.app.get("account") != null and m.app.account.is_active()
+
+## Saca las secciones con esos títulos
+func _drop(base: Array, titles: Array) -> Array:
+	var out: Array = []
+	for it in base:
+		if not titles.has(str(it[0])):
+			out.append(it)
+	return out
 
 ## Solo si esta versión trae el modo online configurado
 const TERMS_ONLINE := [
@@ -85,10 +110,19 @@ const TERMS_ONLINE := [
 	["Cuenta y rankings online", "Si usás el modo online, tu nombre de piloto y tus mejores marcas se muestran a otros jugadores. Elegí un nombre que no sea ofensivo ni se haga pasar por otra persona: podemos cambiarlo, o quitar marcas conseguidas con trampas o programas externos. La cuenta con correo es personal y solo para mayores de 13 años: cuidá tu contraseña. Podés borrar tu cuenta cuando quieras desde el juego. El servicio online puede cambiar o detenerse, y no afecta lo que jugás sin conexión."],
 ]
 
+## Con la CUENTA obligatoria
+const TERMS_ACCOUNT := [
+	["Tu cuenta", "Para jugar necesitás una cuenta con tu correo (solo para mayores de 13 años o con permiso de un adulto). Cuidá tu contraseña: lo que pase con tu cuenta es responsabilidad tuya. Tus créditos, tus autos y tus compras quedan guardados en la cuenta y pueden verificarse o corregirse si se detectan trampas, errores o compras reembolsadas."],
+	["Trampas", "Está prohibido modificar el juego, su archivo de progreso o su comunicación con el servidor, usar programas externos o aprovechar fallas para conseguir créditos, autos o compras sin pagarlos. Podemos corregir los datos de la cuenta, suspenderla o borrarla."],
+	["Compras", "Podés comprar con dinero real el juego completo y bolsas de créditos a través de Google Play. Las cobra y las administra Google: los reembolsos y reclamos se piden en Google Play, según sus políticas. Antes de acreditarlas, nuestro servidor verifica la compra con Google. Los créditos y el juego completo son para usar en el juego, quedan en tu cuenta y no se pueden transferir ni canjear por dinero."],
+]
+
 func _terms() -> Array:
 	var base: Array = _merged(TERMS, TERMS_STORE) if Release.store() else TERMS
 	if m.app != null and m.app.online != null and m.app.online.configured():
-		return _merged(base, TERMS_ONLINE)
+		base = _merged(base, TERMS_ONLINE)
+	if _account_on():
+		base = _merged(base, TERMS_ACCOUNT)
 	return base
 
 ## Reemplaza las secciones de igual título y agrega las nuevas al final
@@ -139,7 +173,8 @@ func _hub() -> void:
 		g.add_child(m.tile("🔓", "APAGAR MODO DEV", "", func() -> void:
 			Release.deactivate_dev(m.profile)
 			m.toast(tr("Modo desarrollador apagado"))
-			m.go("about", null, false), false, 78.0))
+			m.stack.clear()
+			m.enter_home(), false, 78.0)) # (con la cuenta obligatoria: hay que iniciar sesión y el servidor pisa lo local)
 	m.body.add_child(Kit.wrap("Los textos legales completos están en el repositorio del juego (docs/PRIVACIDAD.md y docs/TERMINOS.md).", 12, Kit.MUTED, 300))
 
 func _tap_version() -> void:
@@ -185,7 +220,9 @@ func consent_screen() -> void:
 	m.set_title("BIENVENIDO")
 	m.body.add_child(Kit.label("Antes de empezar", 26, Kit.ACCENT))
 	var intro := "Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Funciona sin internet; las compras dentro del juego pasan por Google Play." if Release.store() else "Dream Racing guarda tu progreso solo en tu teléfono, no tiene publicidad ni cuentas y no recopila datos personales. Descarga contenido del juego desde internet."
-	if m.app != null and m.app.online != null and m.app.online.configured():
+	if _account_on():
+		intro = "Dream Racing necesita una cuenta con tu correo para jugar: tus créditos, tus autos y tus compras se guardan en nuestro servidor, así no se pierden si cambiás de teléfono ni se pueden modificar. No tiene publicidad. Con la cuenta se guardan tu correo, tu nombre de piloto, tus marcas, tus créditos, tus autos y tus compras. Funciona sin internet por unos días; las compras dentro del juego pasan por Google Play."
+	elif m.app != null and m.app.online != null and m.app.online.configured():
 		intro = "Dream Racing guarda tu progreso solo en tu teléfono y no tiene publicidad. Los rankings online y la cuenta con correo son opcionales: si los usás, se envían tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo. Funciona sin internet; las compras dentro del juego pasan por Google Play." if Release.store() else "Dream Racing guarda tu progreso solo en tu teléfono y no tiene publicidad. Los rankings online y la cuenta con correo son opcionales: si los usás, se envían tu nombre de piloto, tus marcas y, si creás una cuenta, tu correo. Descarga contenido del juego desde internet."
 	m.body.add_child(Kit.wrap(intro, 15, Kit.TEXT, 300))
 	var g := Kit.grid(2, 8, 8)
@@ -209,9 +246,6 @@ func consent_screen() -> void:
 		m.profile.save()
 		m.sfx.play("buy")
 		m.stack.clear()
-		if MenuAccount.should_offer(m.profile, m.app.online):
-			m.go("account", "welcome", false)
-		else:
-			m.go("home", null, false), true, 22, Vector2(0, 56))
+		m.enter_home(), true, 22, Vector2(0, 56))
 	yes.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(yes)

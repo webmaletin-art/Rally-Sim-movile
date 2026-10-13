@@ -1,6 +1,6 @@
 extends RefCounted
-## Cuenta con correo del modo online. El modo online REQUIERE una cuenta; el resto del juego anda sin conexión y sin cuenta (por eso ya no se ofrece al abrir el juego:
-## se crea desde Modo online).
+## Cuenta con correo. En la versión de Play (Release.ACCOUNT_REQUIRED) hay que iniciar sesión para jugar, también sin conexión: los créditos, los autos y las compras los guarda el SERVIDOR (account_econ.gd) y esta
+## pantalla es la puerta («gate») que trae lo de la cuenta antes de entrar. En las compilaciones de desarrollo, o si el servidor no está configurado, la cuenta es opcional (sólo para el modo online).
 ## Los textos de resultado vienen de online.gd como claves en español (con «arg» si llevan %s).
 
 const Kit := preload("res://game/ui/ui_kit.gd")
@@ -16,15 +16,22 @@ var first_run := false # la pantalla de bienvenida del primer inicio (sin botón
 func _online() -> Node:
 	return m.app.online
 
-## La cuenta no se ofrece al abrir el juego (sólo hace falta para el modo online), salvo que esté encendido «iniciar sesión para jugar» (Release.LOGIN_REQUIRED)
+## Con la cuenta obligatoria (Release.ACCOUNT_REQUIRED) la primera pantalla es la de iniciar sesión; con el modo desarrollador o sin Supabase configurado no se pide
 static func should_offer(profile: RefCounted, online: Node) -> bool:
 	return Release.login_wall(profile, online)
+
+## Qué hay que hacer antes de entrar al juego: "" = nada · "login" = iniciar sesión · "sync" = conectarse a confirmar la cuenta con el servidor
+static func gate(app: Node) -> String:
+	if app == null or app.get("account") == null:
+		return ""
+	return str(app.account.gate_state())
 
 func build(arg) -> void:
 	var mode := str(arg) if arg != null else "menu"
 	if mode == "menu" and _online().is_account():
 		mode = "status"
 	match mode:
+		"gate": _gate()
 		"welcome": _welcome()
 		"signup": _form("signup")
 		"login": _form("login")
@@ -38,15 +45,16 @@ func _skip() -> void:
 
 func _intro(first: bool) -> void:
 	first_run = first
+	var required := Release.ACCOUNT_REQUIRED and Release.account_mode(m.profile, m.app.online)
 	m.set_title("TU CUENTA")
-	m.body.add_child(Kit.label("Cuenta para el modo online", 24, Kit.ACCENT))
-	if Release.LOGIN_REQUIRED:
-		m.body.add_child(Kit.wrap("Para jugar iniciá sesión con tu correo. Con la cuenta tu garaje, tus créditos y tus marcas quedan a salvo y los podés usar desde otro teléfono. Una vez adentro, el juego también anda sin conexión.", 15, Kit.TEXT, 300))
+	m.body.add_child(Kit.label("Tu cuenta de Dream Racing" if required else "Cuenta para el modo online", 24, Kit.ACCENT))
+	if required:
+		m.body.add_child(Kit.wrap(Tr.t("Para jugar iniciá sesión con tu correo. Tus créditos, tus autos y tus compras quedan guardados en tu cuenta: no se pierden si cambiás de teléfono y nadie los puede modificar. Una vez adentro, el juego también anda sin conexión (hasta %d días entre una verificación y otra).") % Release.ACCOUNT_GRACE_DAYS, 15, Kit.TEXT, 300))
 	else:
 		m.body.add_child(Kit.wrap("El modo online (rankings y, más adelante, carreras contra otros pilotos) necesita una cuenta con tu correo. El resto del juego funciona sin conexión y sin cuenta, y tu progreso (autos y créditos) se guarda en este teléfono.", 15, Kit.TEXT, 300))
 	m.body.add_child(Kit.button("✉ CREAR CUENTA CON CORREO", func() -> void: m.go("account", "signup"), true, 19, Vector2(0, 58)))
 	m.body.add_child(Kit.button("Ya tengo cuenta · Iniciar sesión", func() -> void: m.go("account", "login"), false, 17, Vector2(0, 50)))
-	if first and not Release.LOGIN_REQUIRED:
+	if first and not required:
 		m.body.add_child(Kit.button("Jugar sin cuenta", func() -> void:
 			_skip()
 			m.go("home", null, false), false, 17, Vector2(0, 50)))
@@ -61,15 +69,24 @@ func _status() -> void:
 	m.body.add_child(Kit.label("✔ Cuenta activa", 24, Kit.GREEN))
 	m.body.add_child(Kit.label(on.email, 18, Kit.TEXT))
 	m.body.add_child(Kit.wrap("Tus marcas del ranking van con tu nombre de piloto. Para entrar desde otro teléfono usá «Iniciar sesión» con este correo.", 14, Kit.MUTED, 300))
+	var acc: Node = m.app.account
+	if acc != null and acc.is_active():
+		var st := Kit.wrap(str(acc.status_text()), 14, Kit.MUTED, 300)
+		m.body.add_child(st)
+		m.body.add_child(Kit.button("☁ SINCRONIZAR AHORA", func() -> void: _sync_now(st), false, 16, Vector2(0, 46)))
 	m.body.add_child(Kit.button("Cambiar la contraseña (te mandamos un correo)", func() -> void:
 		busy = true
 		var r: Dictionary = await on.recover(on.email)
 		busy = false
 		_say(r), false, 16, Vector2(0, 50)))
 	m.body.add_child(Kit.button("Cerrar sesión", func() -> void:
+		if m.app.account != null:
+			await m.app.account.sync() # (se manda lo que haya esperando antes de cerrar: lo local de la economía se borra)
+			m.app.account.on_logout()
 		on.logout()
 		m.toast("Sesión cerrada")
-		m.go("account", null, false), false, 16, Vector2(0, 50)))
+		m.stack.clear()
+		m.go("account", "welcome", false), false, 16, Vector2(0, 50)))
 	var del := Kit.button("Borrar mi cuenta y mis marcas", Callable(), false, 15, Vector2(0, 46))
 	var sure := false
 	del.pressed.connect(func() -> void:
@@ -81,14 +98,70 @@ func _status() -> void:
 		del.disabled = true
 		var r: Dictionary = await on.delete_account()
 		if r["ok"]:
+			if m.app.account != null:
+				m.app.account.on_logout()
 			m.toast(Tr.t(str(r["text"])))
-			m.go("account", null, false)
+			m.stack.clear()
+			m.go("account", "welcome", false)
 		else:
 			del.disabled = false
 			_say(r))
 	m.body.add_child(del)
 	msg = Kit.wrap("", 14, Kit.GREEN, 300)
 	m.body.add_child(msg)
+
+func _sync_now(st: Label) -> void:
+	var acc: Node = m.app.account
+	st.text = Tr.t("☁ Sincronizando…")
+	var sr: Dictionary = await acc.sync()
+	if not is_instance_valid(st):
+		return
+	if bool(sr.get("ok", false)):
+		st.text = str(acc.status_text())
+	else:
+		st.text = Tr.t(str(sr.get("text", "")))
+
+## Entrada al juego con la cuenta del servidor: se trae lo que dice el servidor (créditos, autos, compras) y recién entonces se juega. Pasa después de iniciar sesión, en un teléfono nuevo,
+## si se tocó el archivo del perfil o si pasaron más de Release.ACCOUNT_GRACE_DAYS días sin conexión.
+func _gate() -> void:
+	var acc: Node = m.app.account
+	m.set_title("TU CUENTA")
+	m.body.add_child(Kit.label("Verificando tu cuenta…", 24, Kit.ACCENT))
+	msg = Kit.wrap("Un momento: le preguntamos al servidor qué créditos y qué autos tiene tu cuenta.", 15, Kit.TEXT, 300)
+	m.body.add_child(msg)
+	var retry := Kit.button("REINTENTAR", func() -> void: m.go("account", "gate", false), true, 20, Vector2(0, 56))
+	retry.visible = false
+	m.body.add_child(retry)
+	var out := Kit.button("Cerrar sesión", func() -> void: _logout_from_gate(), false, 16, Vector2(0, 48))
+	out.visible = false
+	m.body.add_child(out)
+	var my_msg := msg
+	var r: Dictionary = await acc.on_login()
+	if not is_instance_valid(my_msg) or m.screen != "account" or m.screen_arg != "gate":
+		return # (el jugador se fue de esta pantalla)
+	if bool(r.get("ok", false)):
+		m.stack.clear()
+		m.go("home", null, false)
+		return
+	if acc.status == "login":
+		m.stack.clear()
+		m.go("account", "welcome", false)
+		return
+	if not acc.is_active():
+		m.stack.clear() # (compilación de prueba y el servidor todavía sin la migración de la cuenta: se juega con el progreso de este teléfono)
+		m.go("home", null, false)
+		return
+	_say({"ok": false, "text": str(r.get("text", "")), "detail": str(r.get("detail", ""))})
+	retry.visible = true
+	out.visible = true
+
+func _logout_from_gate() -> void:
+	var on := _online()
+	if m.app.account != null:
+		m.app.account.on_logout()
+	on.logout()
+	m.stack.clear()
+	m.go("account", "welcome", false)
 
 func _field(hint: String, secret: bool, text := "") -> LineEdit:
 	var le := LineEdit.new()
@@ -142,7 +215,10 @@ func _form(kind: String) -> void:
 			m.profile.set_setting("onlineScores", true) # tener cuenta es querer estar en el ranking (se apaga en Modo online)
 			m.sfx.play("buy")
 			m.stack.clear()
-			m.go("home" if first_run else "account", null, false)
+			if m.app.account != null and m.app.account.is_active():
+				m.go("account", "gate", false) # trae del servidor los créditos y los autos de esta cuenta (y entra al juego)
+			else:
+				m.go("home" if first_run else "account", null, false)
 	go_btn.pressed.connect(run)
 	email.text_submitted.connect(func(_t: String) -> void: if pw == null: run.call() else: pw.grab_focus())
 	if pw != null:

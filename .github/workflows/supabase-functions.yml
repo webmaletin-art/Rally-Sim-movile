@@ -1,0 +1,39 @@
+name: Supabase · publicar funciones
+
+# Publica la función de borde «verify-purchase» (verifica las compras de Google Play con Google y las acredita en la cuenta del jugador: créditos o desbloqueos) y carga sus secretos en TU proyecto de Supabase.
+# Se corre a mano: Actions → «Supabase · publicar funciones» → Run workflow. Es seguro repetirlo.
+# Antes: aplicar las migraciones (flujo «Supabase · aplicar migraciones»: la de la cuenta es 20261014000000_account_economy.sql) y tener el secreto GOOGLE_PLAY_SERVICE_ACCOUNT (ver docs/CUENTA_Y_ECONOMIA.md, «Compras»).
+# Secretos del repositorio: SUPABASE_ACCESS_TOKEN y SUPABASE_PROJECT_ID (los mismos del flujo de migraciones) y GOOGLE_PLAY_SERVICE_ACCOUNT (el JSON de la cuenta de servicio de Google Cloud con acceso a Play Console).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Revisar que estén los secretos
+        run: |
+          for v in SUPABASE_ACCESS_TOKEN SUPABASE_PROJECT_ID GOOGLE_PLAY_SERVICE_ACCOUNT; do
+            if [ -z "${!v}" ]; then echo "::error::Falta el secreto $v (ver docs/CUENTA_Y_ECONOMIA.md)"; exit 1; fi
+          done
+          echo "$GOOGLE_PLAY_SERVICE_ACCOUNT" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d.get('client_email') and d.get('private_key'), 'el JSON no es una cuenta de servicio'; print('cuenta de servicio:', d['client_email'])"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probar la función (sin Google ni Supabase de verdad)
+        run: node tools/online/verify_purchase_test.mjs
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Cargar los secretos de la función
+        run: supabase secrets set --project-ref "$SUPABASE_PROJECT_ID" GOOGLE_PLAY_SERVICE_ACCOUNT="$GOOGLE_PLAY_SERVICE_ACCOUNT" PLAY_PACKAGE_NAME=com.srg.dreamracing
+      - name: Publicar verify-purchase
+        run: supabase functions deploy verify-purchase --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Funciones publicadas
+        run: supabase functions list --project-ref "$SUPABASE_PROJECT_ID"

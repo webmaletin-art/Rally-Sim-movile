@@ -2,11 +2,16 @@
 
 Para el dueño. Todo lo que se puede hacer desde el repositorio ya está hecho (política de privacidad, página de eliminación de cuenta, borrado desde el juego y en la base). Acá van **los pasos que solo se pueden hacer en tu cuenta de Play Console / Supabase / GitHub**, en orden, con **las respuestas exactas** para cada pregunta.
 
+> **Actualizado el 13/10/2026:** el juego ahora **exige una cuenta con correo para jugar** y los créditos, los autos y las compras viven en el servidor (`docs/CUENTA_Y_ECONOMIA.md`). Por eso la versión de Play **siempre recopila datos** (ya no existe la «Opción B» de «sin modo online») y Play Console pide **un usuario y una contraseña de prueba** en «Acceso a la app» (Paso 4).
+
 ## Qué datos maneja Dream Racing (la base de todas las respuestas)
 | Dato | Cuándo se envía a nuestro servidor (Supabase) | Para qué |
 |---|---|---|
-| **Correo electrónico** (y contraseña cifrada) | solo si el jugador **crea una cuenta** (opcional) | recuperar las marcas en otro teléfono; mensajes de confirmación y de «olvidé mi contraseña» |
-| **ID de usuario** (un número anónimo que crea Supabase) | solo si el jugador **participa en los rankings** o crea una cuenta | identificar sus marcas; frenar abusos |
+| **Correo electrónico** (y contraseña cifrada) | siempre: la **cuenta es obligatoria** para jugar | entrar a la cuenta desde cualquier teléfono; mensajes de confirmación y de «olvidé mi contraseña» |
+| **ID de usuario** (un número anónimo que crea Supabase) | siempre (cuenta obligatoria) | identificar la cuenta, sus créditos, autos y marcas; frenar abusos |
+| **Créditos y autos** (con mejoras, gomas y piezas) | siempre: viven en el servidor | que no se pierdan al cambiar de teléfono y que nadie los edite |
+| **Compras de la tienda** (producto y hash del recibo de Google Play; nunca datos de pago) | cuando el jugador compra | acreditar la compra una sola vez y desbloquear lo comprado |
+| **Registro técnico de premios y gastos** (tipo, referencia, monto, hora) | mientras se juega | frenar las trampas; se borra solo a los 3 días |
 | **Nombre de piloto** (apodo que elige) | solo si participa en los rankings | se muestra en el ranking |
 | **Marcas** (tiempo/puntos, pista, auto) | solo si participa en los rankings | armar el ranking |
 | **Mensajes de chat** (mundial y privados) | solo en el **mundo online** (con cuenta), al escribirlos | chat entre jugadores; se guardan para revisar abusos |
@@ -14,7 +19,7 @@ Para el dueño. Todo lo que se puede hacer desde el repositorio ya está hecho (
 | **Amigos, reportes y autos en venta** | solo en el mundo online, cuando el jugador los usa | lista de amigos, revisión de abusos (evidencia guardada), mercado entre jugadores |
 | Registro de envíos (`score_log`: ID + hora) | cada vez que manda una marca | limitar a 40 envíos por hora (antiabuso) |
 
-**Todo lo demás se queda en el teléfono** (autos, mejoras, créditos, nafta, opciones, capturas) y nunca se envía. No hay anuncios, ni analytics, ni ID de publicidad, ni ubicación **real** del teléfono, ni contactos. (Las coordenadas del mundo online son del mapa del juego.) Las **compras** las procesa Google Play (el juego no ve datos de pago). Los rankings vienen **apagados de fábrica**.
+**Todo lo demás se queda en el teléfono** (ajustes, estrellas y tiempos, pintura y ajuste fino de cada auto, nafta, capturas) y nunca se envía. No hay anuncios, ni analytics, ni ID de publicidad, ni ubicación **real** del teléfono, ni contactos. (Las coordenadas del mundo online son del mapa del juego.) Las **compras** las procesa Google Play (el juego no ve datos de pago). Los rankings vienen **apagados de fábrica**.
 
 ## Paso 0 · Tres comprobaciones antes de tocar Play Console
 1. **Que las dos páginas web abran** (GitHub → Settings → Pages → Source: «GitHub Actions», y que el flujo «Deploy static content to Pages» salga verde):
@@ -22,7 +27,7 @@ Para el dueño. Todo lo que se puede hacer desde el repositorio ya está hecho (
    - **Eliminar cuenta** (la nueva): `https://webmaletin-art.github.io/Rally-Sim-movile/docs/eliminar-cuenta.html`
    Abrilas desde el teléfono y fijate que se lean bien.
 2. **Que el borrado de cuenta funcione en la base real** (Supabase → tu proyecto → *Database → Functions*): tiene que existir **`delete_my_account`**. Si no aparece, en GitHub: *Actions → «Supabase · aplicar migraciones» → Run workflow* (aplica `supabase/migrations/20261003010000_delete_account.sql`).
-3. **¿La versión de Play lleva el modo online?** Solo lo lleva si cargaste los secretos `SUPABASE_URL` y `SUPABASE_ANON_KEY` en GitHub (*Settings → Secrets and variables → Actions*) antes de compilar el AAB. Mirá en el registro de «Build Play Store AAB» el paso *«Configurar el modo online (Supabase)»*: si dice *«Modo online configurado»* → seguí con **la Opción A**; si dice *«Sin secretos de Supabase»* → **Opción B**.
+3. **Que la versión de Play lleve la cuenta:** necesita los secretos `SUPABASE_URL` y `SUPABASE_ANON_KEY` en GitHub (*Settings → Secrets and variables → Actions*) antes de compilar el AAB: **el flujo «Build Play Store AAB» ahora falla si faltan**. En el registro, el paso *«Configurar el modo online (Supabase)»* tiene que decir *«Modo online configurado»*. Además tienen que estar aplicadas la migración `20261014000000_account_economy.sql` (flujo «Supabase · aplicar migraciones») y publicada la función de compras (flujo «Supabase · publicar funciones»): ver `docs/CUENTA_Y_ECONOMIA.md`.
 
 ## Paso 1 · Probar el borrado desde el juego (5 minutos, con el APK de prueba)
 1. Abrí el juego → **MODO ONLINE** → **Cuenta con correo (opcional)** → creá una cuenta de prueba.
@@ -33,7 +38,7 @@ Para el dueño. Todo lo que se puede hacer desde el repositorio ya está hecho (
 ## Paso 2 · Play Console → «Seguridad de los datos»
 Ruta: *Play Console → tu app → **Política y programas → Contenido de la app → Seguridad de los datos** → Empezar / Administrar*.
 
-### Opción A (la versión de Play lleva el modo online) — respuestas
+### Respuestas (la versión de Play siempre lleva la cuenta)
 **Pantalla «Recopilación y seguridad de los datos»**
 | Pregunta | Respuesta |
 |---|---|
@@ -45,6 +50,7 @@ Ruta: *Play Console → tu app → **Política y programas → Contenido de la a
 **Pantalla «Tipos de datos»** — tildá **solo** estos (dejá todo lo demás sin tildar). Con el chat y la posición del mundo online hay que sumar los de abajo:
 | Categoría | Tipo | 
 |---|---|
+| Información financiera | **Historial de compras** (qué producto compró; el recibo de Google Play, no sus datos de pago) |
 | Información personal | **Dirección de correo electrónico** |
 | Información personal | **Nombre** (el apodo de piloto) |
 | Información personal | **ID de usuario** («Identificadores de usuario») |
@@ -54,20 +60,18 @@ Ruta: *Play Console → tu app → **Política y programas → Contenido de la a
 
 *No* tildes: ubicación **precisa**, contactos, fotos/videos, audio, archivos, información financiera (las compras las maneja Google), identificadores de dispositivo o de publicidad, historial de navegación, diagnósticos de fallas.
 
-**Pantalla de cada tipo de dato** (te la hace para cada uno de los cuatro):
+**Pantalla de cada tipo de dato** (te la hace para cada uno):
 | Tipo | ¿Se recopila? | ¿Se comparte? | ¿Efímero? | ¿Obligatorio u opcional? | Finalidades |
 |---|---|---|---|---|---|
-| Correo electrónico | Se recopila | **No** | No | **Los usuarios pueden elegir** si se recopila | Administración de la cuenta |
+| Correo electrónico | Se recopila | **No** | No | **Obligatorio** (la cuenta es obligatoria) | Funciones de la app · Administración de la cuenta |
+| Historial de compras | Se recopila | **No** | No | **Obligatorio** | Funciones de la app · Prevención del fraude, seguridad y cumplimiento |
 | Nombre (apodo) | Se recopila | **No** | No | **Opcional** | Funciones de la app |
-| ID de usuario | Se recopila | **No** | No | **Opcional** | Funciones de la app · Administración de la cuenta · Prevención del fraude, seguridad y cumplimiento |
+| ID de usuario | Se recopila | **No** | No | **Obligatorio** | Funciones de la app · Administración de la cuenta · Prevención del fraude, seguridad y cumplimiento |
 | Otras acciones (marcas) | Se recopila | **No** | No | **Opcional** | Funciones de la app |
 
 Por qué «No se comparte»: los datos los procesa Supabase **por nuestra cuenta** (proveedor de servicios), y Google no cuenta eso como «compartir». Que el apodo y las marcas se vean en el ranking tampoco es compartir con terceros.
 
 **Prácticas de seguridad (última pantalla):** cifrado en tránsito **Sí** · borrado **Sí** (misma URL) · «Cumple la política de Familias» **No** (público 13+) · revisión de seguridad independiente **No**.
-
-### Opción B (la versión de Play NO lleva el modo online todavía)
-Contestá **«No»** a «¿Tu app recopila o comparte alguno de los tipos de datos de usuario obligatorios?» y listo (las compras las maneja Google; el progreso queda en el teléfono). Cuando actives el online, **repetí este paso con la Opción A**.
 
 Al final: **Guardar → Vista previa** (revisá que diga lo mismo que la política de privacidad) → **Enviar**.
 
@@ -77,9 +81,9 @@ Play pide dos cosas y las dos ya están: **borrar desde la app** (MODO ONLINE �
 
 ## Paso 4 · Otras declaraciones que tienen que coincidir
 - **Política de privacidad (URL):** la de arriba (ya habla del modo online, la cuenta, el borrado y los derechos).
-- **Acceso a la app:** *«Toda la funcionalidad está disponible sin restricciones de acceso especiales»* (la cuenta es opcional).
+- **Acceso a la app:** *«Toda o parte de la funcionalidad está restringida»* → agregá las instrucciones y **una cuenta de prueba** (correo y contraseña): hay que iniciar sesión para jugar. Cómo crearla (cuenta nueva desde el juego + `account_admin_grant` para darle saldo): `docs/CUENTA_Y_ECONOMIA.md`, «Operación». Con «Confirm email» apagado en Supabase el revisor también puede crear su propia cuenta.
 - **Anuncios:** No. **ID de publicidad:** No.
-- **Público objetivo:** 13 años o más (la cuenta con correo es para mayores de 13).
+- **Público objetivo:** 13 años o más (la cuenta con correo es obligatoria y es para mayores de 13).
 - **Clasificación de contenido (IARC):** carreras, sin violencia ni apuestas; con el mundo online hay **chat entre usuarios** (con filtro de insultos, bloqueos automáticos y botón de reportar): en «interacción de usuarios» marcá que **los usuarios pueden interactuar / intercambiar contenido** y que se **comparte información de usuario** (el apodo se ve en rankings y en el mundo online). Si la versión de Play sale sin el mundo online, mantené «sin chat».
 
 ## Paso 5 · Cuando alguien pide borrar su cuenta por correo (a roldanhr98@gmail.com)
@@ -93,6 +97,6 @@ Prometimos hacerlo en **30 días como máximo**. Pasos (Supabase → tu proyecto
 4. Contestale al jugador que ya está hecho.
 
 ## Qué me tenés que pasar o decidir
-1. **El resultado del Paso 0.3** (¿Opción A o B?).
+1. **El resultado del Paso 0.3** (¿el paso «Configurar el modo online» dice «Modo online configurado»?).
 2. Confirmar que **querés comprometerte a 30 días** para los pedidos por correo (si preferís otro plazo, lo cambio en la página y en este documento).
 3. Si cambia el correo de contacto, decime y regenero las páginas (`python3 tools/play/make_legal_html.py`).

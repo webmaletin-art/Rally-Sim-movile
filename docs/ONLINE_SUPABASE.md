@@ -1,15 +1,15 @@
 # Modo online con Supabase — paso a paso
 
 Ya está todo **cableado** en el repositorio: base de datos (tablas, seguridad y funciones), cliente del juego, compilación con tus claves y prueba de conexión.
-Lo único que falta son **tus claves**, que se cargan una vez en GitHub. Nada de esto se activa hasta que lo hagas, y aun con todo cargado los rankings
-están **apagados de fábrica** y cada jugador elige si participa.
+Lo único que falta son **tus claves**, que se cargan una vez en GitHub. Nada de esto se activa hasta que lo hagas.
+**Desde octubre de 2026 la cuenta con correo es obligatoria para jugar** y los créditos, los autos y las compras viven en el servidor: ver `docs/CUENTA_Y_ECONOMIA.md` (migración `20261014000000_account_economy.sql` y función de borde `verify-purchase`). El modo online multijugador (mundo, chat, mercado, tiempo real) sigue **cerrado** (`Release.ONLINE_OPEN := false`) hasta que el dueño diga: ver «Lista para abrir el online» más abajo.
 
 ## Qué hay en el repositorio
 | Qué | Dónde |
 |---|---|
 | Base: jugadores anónimos, pistas, mejores marcas, seguridad por filas (RLS) y funciones `submit_score`, `get_leaderboard`, `set_player_name` | `supabase/migrations/20261003000000_online_base.sql` (probada contra un Postgres real) |
-| Configuración de Supabase (con «anonymous sign-ins» activado) | `supabase/config.toml` |
-| Cliente del juego (entra sin cuenta, manda marcas, trae rankings) | `godot/game/online/online.gd` + `online_config.json` (vacío en el repo) |
+| Configuración de Supabase | `supabase/config.toml` |
+| Cliente del juego (cuenta con correo, marcas, rankings, economía de la cuenta) | `godot/game/online/online.gd`, `account_econ.gd` + `online_config.json` (vacío en el repo) |
 | Envío automático de la marca al terminar una carrera (si el jugador participa) | `godot/game/app.gd` (`_submit_online`) |
 | Pantalla Online: opción «Participar en los rankings online» y, en modo desarrollador, **«Probar conexión con Supabase»** | `ui/menu.gd` (`_online_options`) |
 | Compilación del APK y del AAB: escriben la dirección y la clave pública dentro de la app desde los secretos | `.github/workflows/build-godot.yml` y `build-aab.yml` |
@@ -20,7 +20,7 @@ están **apagados de fábrica** y cada jugador elige si participa.
 
 ### 1) En Supabase (supabase.com)
 1. **Proyecto**: si todavía no lo creaste, *New project* → nombre `dream-racing`, región **South America (São Paulo)**, y una **contraseña de base de datos** (guardala).
-2. **Autenticación anónima** (imprescindible: el juego entra sin cuenta): *Authentication → Sign In / Providers* (o *Settings → Authentication*) → activá **«Allow anonymous sign-ins»**.
+2. **Autenticación**: *Authentication → Sign In / Providers* → **Email** encendido y «Allow new users to sign up» encendido. **«Allow anonymous sign-ins»: APAGADO** (el juego ya no crea usuarios anónimos: la cuenta con correo es obligatoria; ver «Cuentas con correo» más abajo).
 3. **Copiá tres datos** de *Project Settings*:
    - *Data API / API*: **Project URL** (`https://xxxx.supabase.co`) y la clave **`anon` `public`**. (La `service_role` **NO**: esa es secreta y nunca va en el juego ni en GitHub.)
    - *General*: **Project ID** (la parte `xxxx` de la URL, también llamada *Reference ID*).
@@ -50,12 +50,12 @@ Corré la compilación (cada push a `main` ya lo hace). En el registro, el paso 
 ### 5) Probar en el celular
 1. Abrí **Acerca de → tocá la «Versión» 7 veces seguidas** (modo desarrollador; solo existe en el APK de GitHub, no en el de Play).
 2. Menú principal → **Modo online**: aparece la opción **«Participar en los rankings online»** (activala) y el botón **«🛠 Probar conexión con Supabase»**.
-3. Tiene que decir **«✔ Conectado a Supabase (usuario xxxxxx…)»**. Si falla, el mensaje dice por qué (falta la clave, la autenticación anónima está apagada, o no se aplicaron las migraciones).
+3. Tiene que decir **«✔ Conectado a Supabase (usuario xxxxxx…)»**. Si falla, el mensaje dice por qué (falta la clave, no hay sesión o no se aplicaron las migraciones).
 4. El modo desarrollador **no manda marcas** (para que nadie ensucie los rankings). Apagalo (**Acerca de → APAGAR MODO DESARROLLADOR**), corré una carrera y mirá en Supabase → *Table Editor → scores*: aparece tu marca. (Con el modo desarrollador apagado ya no ves el botón de prueba, pero el juego sigue funcionando igual.)
 
-## Cuentas con correo (obligatorias para el modo online)
-El juego entero anda **sin conexión y sin cuenta**; el **modo online exige una cuenta con correo** (se crea desde *Modo online → Cuenta*; «Ya tengo cuenta» para entrar desde otro teléfono; hay «Olvidé mi contraseña» y «Cerrar sesión»). Ya no se crean usuarios anónimos desde el juego, y la base **rechaza a los anónimos** en la economía, el mercado, el chat y la presencia (migración `20261009010000_require_account.sql`), así que nadie puede juntar plata con miles de cuentas anónimas. El progreso sin conexión (autos, créditos) sigue guardado en el teléfono; el del mundo online (billetera y autos) vive en el servidor (`docs/ECONOMIA_ONLINE.md`).
-Si algún día se quiere **pedir cuenta para jugar** (no sólo para el online): `Release.LOGIN_REQUIRED := true` en `godot/game/data/release.gd` (apagado a propósito: Google Play pide poder revisar la app sin registrarse y se pierden jugadores; ver `docs/SEGURIDAD.md`).
+## Cuentas con correo (obligatorias para jugar)
+**Para jugar hay que iniciar sesión** con un correo (`Release.ACCOUNT_REQUIRED := true`): se crea desde la primera pantalla («Crear cuenta con correo» o «Ya tengo cuenta · Iniciar sesión»; hay «Olvidé mi contraseña», «Cerrar sesión» y «Borrar mi cuenta»). Una vez adentro el juego también anda sin conexión (hasta 14 días entre una verificación y otra). Ya no se crean usuarios anónimos desde el juego, y la base **rechaza a los anónimos** en la economía, el mercado, el chat, la presencia y la cuenta (migraciones `20261009010000_require_account.sql` y `20261014000000_account_economy.sql`), así que nadie puede juntar plata con miles de cuentas anónimas. **Los créditos, los autos y las compras viven en el servidor** (`docs/CUENTA_Y_ECONOMIA.md`); el mundo online tiene además su propia billetera y sus propios autos (`docs/ECONOMIA_ONLINE.md`).
+Sin Supabase configurado en la compilación (o con el modo desarrollador de las compilaciones de prueba) el juego anda todo local, como antes: así se pueden seguir probando cosas sin cuenta. La versión de Play **exige** los secretos de Supabase (el flujo del AAB falla si faltan).
 
 **Qué configurar en Supabase** (*Authentication*):
 1. *Sign In / Providers → Email*: **Enable Email provider** encendido (y «Allow new users to sign up» encendido).
@@ -76,6 +76,13 @@ Si algún día se quiere **pedir cuenta para jugar** (no sólo para el online): 
 - La política de privacidad ya trae el apartado «Rankings online (opcional)» (en el juego solo se muestra si la versión trae el online configurado; también está en `docs/PRIVACIDAD.md` y `docs/privacidad.html`). **Volvé a publicar `privacidad.html`** si la tenés alojada (GitHub Pages lo hace solo al hacer push).
 - **Play Console → Seguridad de los datos**: pasá a declarar que se recopilan *Dirección de correo electrónico* (solo si el jugador crea una cuenta), *Identificadores de usuario* (ID) y *Datos del juego* (puntuaciones), opcionales, usados para la «Funcionalidad de la app», no compartidos.
 - El AAB ahora lleva el permiso de Internet.
+
+## Lista para abrir el online (resumen)
+Todo el código está hecho y probado contra servidores de mentira y Postgres de verdad; lo que falta es **encenderlo y probarlo con dos teléfonos**. Orden:
+1. **Cuenta y compras** (obligatorio, ya sin el online): aplicar `20261014000000_account_economy.sql` y publicar la función de compras (`docs/CUENTA_Y_ECONOMIA.md`, «Puesta en marcha»).
+2. **Tiempo real:** aplicar `20261012000000_realtime_private.sql`, en Supabase → *Realtime → Settings* apagar «Allow public access» y mirar los topes de tu plan (ver «Tiempo real» más abajo).
+3. En `godot/game/data/release.gd`: `ONLINE_OPEN := true` y `REALTIME := true` (son las **dos únicas** líneas del juego que hay que cambiar), compilar y probar con dos teléfonos en el mundo online.
+4. Play Console → *Seguridad de los datos*: ver `docs/PLAY_SEGURIDAD_DATOS.md` (la cuenta, las compras y, con el online, mensajes y ubicación aproximada del mapa del juego).
 
 ## Lo que sigue (cuando quieras)
 Carreras uno contra uno en tiempo real (Supabase Realtime), eventos mensuales (tabla de eventos + función), nombres con filtro, y borrado de datos desde el juego. Todo se apoya en lo que ya quedó conectado.

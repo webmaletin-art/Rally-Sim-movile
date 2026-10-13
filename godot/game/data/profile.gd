@@ -19,6 +19,8 @@ const DEFAULT_SETTINGS := {
 }
 
 var d: Dictionary
+## La cuenta del servidor (online/account_econ.gd) cuando la economía no es local: cada premio, gasto y compra se anota ahí como un evento para que el servidor lo valide. null = todo local.
+var acct: Node = null
 
 func _init() -> void:
 	d = load_data()
@@ -30,7 +32,8 @@ static func new_car_state(id: String) -> Dictionary:
 static func default_profile() -> Dictionary:
 	return {"v": 1, "name": "Piloto", "credits": 5000, "fuel": 1.0, "toll_pass": 0, "migr": 1, "xp": 0, "level": 1, "owned": {}, "current": "", "events": {}, "cups": {},
 		"stats": {"km": 0.0, "races": 0, "wins": 0, "podiums": 0, "events": 0, "driftBest": 0, "topSpeed": 0, "boards": {}, "traps": {}, "time": 0.0},
-		"iap": {}, "settings": DEFAULT_SETTINGS.duplicate(true), "daily": {"day": "", "streak": 0}, "claimed": {}, "created": Time.get_unix_time_from_system(), "tutorial": false}
+		"iap": {}, "settings": DEFAULT_SETTINGS.duplicate(true), "daily": {"day": "", "streak": 0}, "claimed": {}, "created": Time.get_unix_time_from_system(), "tutorial": false,
+		"acct": {"uid": "", "synced": 0, "seq": 0, "pending": [], "n": 0, "seal": ""}}
 
 func load_data() -> Dictionary:
 	var def := default_profile()
@@ -73,6 +76,8 @@ func load_data() -> Dictionary:
 	return def
 
 func save() -> void:
+	if acct != null:
+		acct.stamp()
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(d))
@@ -93,9 +98,12 @@ func current_id() -> String:
 func owns(id: String) -> bool:
 	return (d["owned"] as Dictionary).has(id)
 
-func give(id: String) -> void:
+## Pone un auto en el garaje. `why` le dice a la cuenta del servidor de dónde salió: «starter» (el auto de partida), «iap» (lo compró en la tienda) o «adventure» (premio de la aventura)
+func give(id: String, why := "") -> void:
 	if not owns(id):
 		d["owned"][id] = new_car_state(id)
+		if acct != null and why != "":
+			acct.log_event({"t": "give_car", "car": id, "why": why}, 0)
 	if str(d["current"]) == "":
 		d["current"] = id
 	save()
@@ -105,22 +113,36 @@ func select(id: String) -> void:
 		d["current"] = id
 		save()
 
-func spend(n: int) -> bool:
-	if credits < n:
+## Gasta créditos. `kind` (nafta, peaje, pintura…) es sólo para el registro de la cuenta del servidor
+func spend(n: int, kind := "misc") -> bool:
+	if not _take(n):
 		return false
-	d["credits"] = credits - n
+	if acct != null and n > 0:
+		acct.log_event({"t": "spend", "amount": n, "kind": kind}, -n)
 	save()
 	return true
 
-func earn(n: float) -> void:
+## Descuenta sin anotar nada en la cuenta (lo usan las compras, que anotan su propio evento)
+func _take(n: int) -> bool:
+	if credits < n:
+		return false
+	d["credits"] = credits - n
+	return true
+
+## Premio en créditos. `kind` y `ref` (qué carrera, qué logro) le sirven al servidor para no pagar dos veces lo mismo y para poner topes
+func earn(n: float, kind := "misc", ref := "") -> void:
 	d["credits"] = credits + roundi(n)
+	if acct != null and roundi(n) > 0:
+		acct.log_event({"t": "earn", "amount": roundi(n), "kind": kind, "ref": ref}, roundi(n))
 	save()
 
 func buy_car(id: String) -> bool:
 	var m: Dictionary = CarBuild.catalog()["cars"][id]
-	if owns(id) or not spend(int(m["price"])):
+	if owns(id) or not _take(int(m["price"])):
 		return false
 	give(id)
+	if acct != null:
+		acct.log_event({"t": "buy_car", "car": id}, -int(m["price"]))
 	d["current"] = id
 	save()
 	return true
@@ -150,8 +172,11 @@ func buy_upgrade(id: String, cat: String, level: int) -> bool:
 		car_d["owned"] = {}
 	var key := "%s:%d" % [cat, level]
 	if not car_d["owned"].has(key):
-		if not spend(int(u["levels"][level].get("cost", 0))):
+		var cost := int(u["levels"][level].get("cost", 0))
+		if not _take(cost):
 			return false
+		if acct != null and cost > 0:
+			acct.log_event({"t": "buy_upgrade", "car": id, "cat": cat, "level": level}, -cost)
 		car_d["owned"][key] = 1
 	car_d["upg"][cat] = level
 	save()
@@ -169,8 +194,10 @@ func buy_tires(id: String, tid: String) -> bool:
 	var car_d: Dictionary = d["owned"][id]
 	var t := CarBuild.tire(tid)
 	if not (car_d["tiresOwned"] as Array).has(tid):
-		if not spend(int(t["cost"])):
+		if not _take(int(t["cost"])):
 			return false
+		if acct != null and int(t["cost"]) > 0:
+			acct.log_event({"t": "buy_tires", "car": id, "tire": tid}, -int(t["cost"]))
 		car_d["tiresOwned"].append(tid)
 	car_d["tires"] = tid
 	save()
@@ -193,8 +220,10 @@ func replace_tires(id: String) -> int:
 	var rep: Variant = d.get("worldRep")
 	var rk := WorldProgress.rank_for(float((rep as Dictionary).get("pts", 0.0))) if rep is Dictionary else 0
 	var cost := int(round(float(TireWear.replace_cost(float(CarBuild.tire(t).get("cost", 0)))) * WorldProgress.tire_price_k(rk)))
-	if not spend(cost):
+	if not _take(cost):
 		return -1
+	if acct != null:
+		acct.log_event({"t": "replace_tires", "car": id, "tire": t, "cost": cost}, -cost)
 	var tw: Dictionary = car_d.get("tireWear", {})
 	tw[t] = 0.0
 	car_d["tireWear"] = tw
@@ -212,8 +241,11 @@ func buy_part(id: String, part_id: String, vehicles: Dictionary) -> Dictionary:
 		return c
 	var own: Array = car_d.get("partsOwned", [])
 	if not own.has(part_id):
-		if not spend(int(PartCatalog.part(part_id).get("price", 0))):
+		var price := int(PartCatalog.part(part_id).get("price", 0))
+		if not _take(price):
 			return {"ok": false, "reason": "no alcanza el dinero"}
+		if acct != null and price > 0:
+			acct.log_event({"t": "buy_part", "car": id, "part": part_id}, -price)
 		own.append(part_id)
 		car_d["partsOwned"] = own
 	var r := VehicleCustomization.install(car_d, id, part_id, ctx["V"], ctx["meta"])
@@ -237,6 +269,8 @@ func add_xp(n: float) -> Array:
 		d["level"] = int(d["level"]) + 1
 		var bonus := 300 + int(d["level"]) * 100
 		d["credits"] = credits + bonus
+		if acct != null:
+			acct.log_event({"t": "earn", "amount": bonus, "kind": "level", "ref": "lv%d" % int(d["level"])}, bonus)
 		ups.append({"level": d["level"], "bonus": bonus})
 	save()
 	return ups
@@ -266,7 +300,7 @@ func record_event(eid: String, value: float, medal: int, lower_is_better: bool) 
 	return {"improved": better, "firstMedal": first_medal}
 
 func daily_check() -> Dictionary:
-	var today := Time.get_date_string_from_system()
+	var today := Time.get_date_string_from_system(acct != null) # con la cuenta del servidor el día cambia a la medianoche UTC (como en el servidor)
 	var dl: Dictionary = d["daily"]
 	if dl["day"] == today:
 		return {}
@@ -275,6 +309,8 @@ func daily_check() -> Dictionary:
 	dl["day"] = today
 	var amount := 300 + int(dl["streak"]) * 150
 	d["credits"] = credits + amount
+	if acct != null:
+		acct.log_event({"t": "daily"}, amount)
 	save()
 	return {"amount": amount, "streak": dl["streak"]}
 

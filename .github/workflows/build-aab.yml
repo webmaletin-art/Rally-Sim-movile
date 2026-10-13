@@ -156,7 +156,9 @@ jobs:
             python3 -c "import json,os,urllib.parse as u; p=u.urlparse(os.environ['SUPABASE_URL'].strip()); json.dump({'url': p.scheme+'://'+p.netloc, 'anon_key': os.environ['SUPABASE_ANON_KEY'].strip()}, open('game/online/online_config.json','w'))"
             echo "Modo online configurado (${SUPABASE_URL%%.*}…)"
           else
-            echo "Sin secretos de Supabase: el modo online queda apagado en esta compilación."
+            # La versión de Play pide cuenta para jugar (Release.ACCOUNT_REQUIRED): los créditos, los autos y las compras viven en Supabase. Sin los secretos el AAB saldría sin forma de entrar al juego.
+            echo "::error::Faltan los secretos SUPABASE_URL y SUPABASE_ANON_KEY: la versión de Play necesita la cuenta del servidor (ver docs/CUENTA_Y_ECONOMIA.md)."
+            exit 1
           fi
 
       - name: Número de versión (sube con cada compilación)

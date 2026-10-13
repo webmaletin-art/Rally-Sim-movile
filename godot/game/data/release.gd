@@ -29,14 +29,21 @@ static func online_open(profile: RefCounted) -> bool:
 ## (docs/ONLINE_SUPABASE.md, «Tiempo real»); sólo tiene efecto con el modo online abierto, el mundo online y Supabase configurado.
 const REALTIME := false
 
-## «Iniciar sesión para jugar»: con true (y el modo online abierto y Supabase configurado) la primera pantalla pide la cuenta con correo y no deja entrar sin ella.
-## Apagado a propósito: TODO el juego anda sin conexión y sin cuenta (y Google Play pide que se pueda revisar sin registrarse); sólo el modo online pide cuenta, y el servidor
-## ya la exige para la economía, el mercado, el chat y la presencia (migración require_account). Para encenderlo, junto con ONLINE_OPEN: poner true acá (ver docs/ONLINE_SUPABASE.md).
-const LOGIN_REQUIRED := false
+## CUENTA OBLIGATORIA: para jugar hay que iniciar sesión con un correo (también para jugar «sin conexión»). Los créditos, los autos y las compras viven en el SERVIDOR (Supabase, ver
+## docs/CUENTA_Y_ECONOMIA.md): el juego le pregunta al servidor cuánto tenés y qué autos tiene la cuenta, y le manda cada premio y cada compra para que los valide; lo que diga el archivo
+## del teléfono no vale (así no se pueden editar los créditos ni regalarse autos premium). Sin Supabase configurado en la compilación (o con el modo desarrollador en las compilaciones de
+## prueba) el juego anda como antes, todo local.
+const ACCOUNT_REQUIRED := true
+## Días que se puede jugar sin conexión desde la última vez que el servidor confirmó la cuenta; pasado ese tiempo hay que conectarse una vez para seguir
+const ACCOUNT_GRACE_DAYS := 14
+
+## ¿La economía de este perfil la maneja la cuenta del servidor?
+static func account_mode(profile: RefCounted, online: Node) -> bool:
+	return ACCOUNT_REQUIRED and not dev(profile) and online != null and online.configured()
 
 ## ¿Hay que mostrar la pared de «creá tu cuenta / iniciá sesión»? (`required` sólo se cambia en las pruebas)
-static func login_wall(profile: RefCounted, online: Node, required := LOGIN_REQUIRED) -> bool:
-	return required and online != null and online.configured() and online_open(profile) and not online.is_account()
+static func login_wall(profile: RefCounted, online: Node, required := ACCOUNT_REQUIRED) -> bool:
+	return required and not dev(profile) and online != null and online.configured() and not online.is_account()
 
 ## Hay compras dentro del juego para desbloquear el juego completo (si es false, lo bloqueado dice «próxima actualización»)
 const IAP_FULL := true
@@ -81,7 +88,7 @@ static func sync_cars(profile: RefCounted) -> void:
 	var changed := false
 	for id in PREMIUM_CARS:
 		if not profile.owns(str(id)) and car_unlocked(profile, str(id)) and not dev(profile):
-			profile.give(str(id))
+			profile.give(str(id), "iap")
 			changed = true
 	if changed:
 		profile.save()

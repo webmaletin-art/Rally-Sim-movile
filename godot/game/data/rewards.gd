@@ -185,7 +185,7 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 			xp += 1500
 			cup_msg = "🏆 ¡%s completada! +%s" % [tier2["name"], "$ " + str(bonus)]
 	cr = int(round(float(cr) / 10.0)) * 10
-	profile.earn(cr)
+	profile.earn(cr, "race", str(ev.get("id", "quick_" + t)))
 	var ups: Array = profile.add_xp(xp)
 	out["cup_msg"] = cup_msg
 	out["medal"] = medal

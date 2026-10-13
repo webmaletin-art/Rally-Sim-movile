@@ -25,9 +25,15 @@ jobs:
       PGPASSWORD: test
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probar la función de borde de compras (verify-purchase)
+        run: node tools/online/verify_purchase_test.mjs
       - name: Probar la economía online
         run: |
           out=$(bash tools/online/run_economy_test.sh 2>&1) || { echo "$out"; exit 1; }
           echo "$out" | tail -60
           echo "$out" | grep -q "FALLA" && exit 1
           echo "$out" | grep -q "ECONOMIA_ONLINE_TEST OK"
+          echo "$out" | grep -q "CUENTA_TEST OK"

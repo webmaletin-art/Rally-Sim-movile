@@ -13,14 +13,14 @@ major_version = 15
 
 [auth]
 enabled = true
-# El juego entra sin cuenta, con un usuario anónimo: hay que dejar activado «Allow anonymous sign-ins» (Authentication → Sign In / Providers).
-enable_anonymous_sign_ins = true
+# Desde octubre de 2026 la cuenta con correo es obligatoria para jugar y el juego ya no crea usuarios anónimos: «Allow anonymous sign-ins» queda APAGADO (Authentication → Sign In / Providers).
+enable_anonymous_sign_ins = false
 enable_signup = true
 jwt_expiry = 3600
 enable_refresh_token_rotation = true
 
 [auth.email]
-# Cuenta con correo y contraseña (opcional en el juego). Con «Confirm email» apagado la cuenta anda al toque; si se enciende hace falta un SMTP propio (ver docs/ONLINE_SUPABASE.md).
+# Cuenta con correo y contraseña (obligatoria para jugar). Con «Confirm email» apagado la cuenta anda al toque; si se enciende hace falta un SMTP propio (ver docs/ONLINE_SUPABASE.md).
 enable_signup = true
 enable_confirmations = false
 double_confirm_changes = false

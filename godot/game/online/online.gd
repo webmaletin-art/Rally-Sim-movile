@@ -113,6 +113,11 @@ func sign_in() -> bool:
 		if r["ok"] and r["data"] is Dictionary:
 			_set_session(parse_session(r["data"] as Dictionary))
 			return token != ""
+		var code := int(r.get("code", 0))
+		if code >= 400 and code < 500 and code != 429:
+			# el servidor dijo que esa sesión ya no sirve (se cambió la contraseña, se cerró la sesión en otro teléfono, la cuenta se borró): hay que volver a iniciar sesión
+			_clear_session()
+			last_error = "sesión vencida"
 		return false
 	last_error = "sin sesión"
 	return false
@@ -147,7 +152,13 @@ func call_fn(fn: String, args: Dictionary, need_session := true) -> Dictionary:
 		return {"ok": false, "code": 0, "data": null, "error": last_error if last_error != "" else "sin sesión"}
 	return await request(HTTPClient.METHOD_POST, "/rest/v1/rpc/" + fn, args, token if need_session else "")
 
-# ───────────────────────── cuenta con correo (opcional) ─────────────────────────
+## Llama a una función de borde de Supabase (supabase/functions/<nombre>, por ejemplo «verify-purchase»: verifica el recibo de Google Play y acredita la compra) con la sesión de la cuenta
+func call_edge(fn: String, args: Dictionary) -> Dictionary:
+	if not await sign_in():
+		return {"ok": false, "code": 0, "data": null, "error": last_error if last_error != "" else "sin sesión"}
+	return await request(HTTPClient.METHOD_POST, "/functions/v1/" + fn, args, token)
+
+# ───────────────────────── cuenta con correo ─────────────────────────
 ## Para jugar online hace falta una cuenta con correo y contraseña; en otro teléfono se vuelve a entrar con «iniciar sesión». El progreso del juego (autos, créditos) sigue guardado en el teléfono.
 static func valid_email(e: String) -> bool:
 	var parts := e.strip_edges().split("@")

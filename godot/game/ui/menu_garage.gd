@@ -718,7 +718,7 @@ func _draft_bar(id: String, st: Dictionary, with_test: bool) -> void:
 		var fee := _fee(id, st)
 		if fee <= 0:
 			return
-		if not m.profile.spend(fee):
+		if not m.profile.spend(fee, "tune"):
 			m.sfx.play("error")
 			m.toast(tr("No te alcanza el dinero"))
 			return

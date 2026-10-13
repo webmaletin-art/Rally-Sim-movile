@@ -186,8 +186,9 @@ func flush() -> void:
 	base.save()
 
 # ───────────────────────── reglas propias del online ─────────────────────────
-## En un local el cobro es un espejo (el servidor cobra de verdad); en la calle (nafta, peajes) todavía no se cobra online
-func spend(n: int) -> bool:
+## En un local el cobro es un espejo (el servidor cobra de verdad); en la calle (nafta, peajes) todavía no se cobra online.
+## (Se redefine `_take`, que usan `spend` y todas las compras del perfil base; la cuenta del servidor del perfil offline no interviene: acá `acct` es null.)
+func _take(n: int) -> bool:
 	if shop == "":
 		return true
 	if credits < n:
@@ -195,8 +196,12 @@ func spend(n: int) -> bool:
 	d["credits"] = credits - n
 	return true
 
+## (sin guardar, como antes: el espejo se manda al servidor al guardar las compras)
+func spend(n: int, _kind := "misc") -> bool:
+	return _take(n)
+
 ## Los premios online los paga el servidor cuando valide los resultados (todavía no hay): acá no se crea dinero
-func earn(_n: float) -> void:
+func earn(_n: float, _kind := "misc", _ref := "") -> void:
 	pass
 
 func daily_check() -> Dictionary:

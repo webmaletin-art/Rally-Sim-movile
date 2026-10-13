@@ -130,7 +130,7 @@ func _try_pay(t: Dictionary, s: Dictionary, lane: int) -> void:
 			race.race_hud.toast(Tr.t("🛣 No te alcanzan los créditos para el peaje"), "down")
 		return
 	if price > 0:
-		race.profile.spend(price)
+		race.profile.spend(price, "toll")
 		var left := int(race.profile.d.get("toll_pass", 0))
 		if left > 0:
 			race.profile.d["toll_pass"] = left - 1

@@ -177,7 +177,7 @@ func _finish() -> void:
 	var added := level - _from
 	var cost := 0 if _free else int(ceil(added * PRICE_FULL * (FAST_PRICE_K if _fast else 1.0) * _rank_k()))
 	if cost > 0:
-		race.profile.spend(mini(cost, race.profile.credits))
+		race.profile.spend(mini(cost, race.profile.credits), "fuel")
 	if level > LOW:
 		_warned_low = false
 	if level > 0.0:

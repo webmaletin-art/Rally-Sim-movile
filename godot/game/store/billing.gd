@@ -19,11 +19,13 @@ const USER_CANCELED := 1
 const PURCHASED := 1 # BillingClient.PurchaseState.PURCHASED
 
 var profile: RefCounted
+var account: Node = null # online/account_econ.gd: con la cuenta del servidor activa, las compras las verifica y las acredita el servidor (supabase/functions/verify-purchase)
 var client = null
 var connected := false
 var details: Dictionary = {} # id → {"title", "price"}
 var busy := false
 const TOKENS_KEPT := 60 # cuántos «recibos» de bolsas de monedas ya acreditadas se recuerdan (evita acreditar dos veces la misma compra)
+var _verifying := {} # compras que se están verificando con el servidor (para no mandarlas dos veces)
 
 ## ¿Está el plugin en esta compilación?
 static func supported() -> bool:
@@ -129,6 +131,9 @@ func _handle(p: Dictionary) -> void:
 		if def == null:
 			continue
 		var pd: Dictionary = def
+		if account != null and account.is_active():
+			_handle_server(str(id), pd, token, p)
+			continue
 		if str(pd["kind"]) == "credits":
 			_grant_credits(token, int(pd["amount"]))
 			client.consume_purchase(token) # libera la compra para poder volver a comprar la bolsa (si falla, se reintenta al abrir)
@@ -136,6 +141,30 @@ func _handle(p: Dictionary) -> void:
 			_grant_unlock(str(id))
 			if p.get("is_acknowledged", false) != true:
 				client.acknowledge_purchase(token)
+
+## Con la cuenta del servidor: el servidor verifica el recibo con Google Play y acredita (monedas) o desbloquea (compra única). Hasta que no lo confirma no se consume ni se reconoce la compra en Google:
+## si falla (sin conexión, función sin publicar) queda pendiente y se reintenta sola al abrir el juego. (Google devuelve el dinero si una compra no se reconoce en 3 días.)
+func _handle_server(id: String, pd: Dictionary, token: String, p: Dictionary) -> void:
+	if token == "":
+		return
+	var key := id + "|" + token.left(24)
+	if _verifying.has(key):
+		return
+	_verifying[key] = true
+	var r: Dictionary = await account.verify_purchase(id, token)
+	_verifying.erase(key)
+	if not bool(r.get("ok", false)):
+		message.emit(Tr.t("Todavía no pudimos verificar tu compra. Se reintenta sola al abrir el juego."))
+		return
+	if str(pd["kind"]) == "credits":
+		client.consume_purchase(token) # libera la compra para poder volver a comprar la bolsa (si falla, se reintenta al abrir: el servidor reconoce el recibo repetido y no acredita de nuevo)
+		message.emit(Tr.t("¡Gracias! Te acreditamos $ %d.") % int(pd["amount"]))
+	else:
+		Release.sync_cars(profile) # los autos premium comprados pasan al garaje (el servidor confirma el desbloqueo con el evento «give_car»)
+		if p.get("is_acknowledged", false) != true:
+			client.acknowledge_purchase(token)
+		message.emit(Tr.t("¡Gracias! Compra lista."))
+	state_changed.emit()
 
 func _grant_unlock(id: String) -> void:
 	if profile == null or ((profile.d.get("iap", {}) as Dictionary).get(id, false) == true):
