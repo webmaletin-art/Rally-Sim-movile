@@ -169,9 +169,9 @@ func _studio_lights(preset: String) -> void:
 			ls[0].light_energy = 1.25
 			ls[0].light_color = Color(1.0, 0.94, 0.84)
 			ls[0].rotation_degrees = Vector3(-36, -48, 0)
-			ls[1].light_energy = 2.1
+			ls[1].light_energy = 1.7
 			ls[1].light_color = Color(1.0, 0.56, 0.22)
-			ls[1].rotation_degrees = Vector3(-14, 200, 0)
+			ls[1].rotation_degrees = Vector3(-34, 205, 0) # más de arriba: marca el contorno del auto sin lavar el piso
 			ls[2].light_energy = 0.8
 			ls[2].light_color = Color(0.40, 0.58, 1.0)
 			ls[2].rotation_degrees = Vector3(-12, 118, 0)
@@ -348,8 +348,19 @@ func _save(name: String) -> void:
 		img.save_jpg(base + ".jpg", 0.96)
 	count += 1
 
+## Cambia la pintura del auto de la sala (sólo estudio): se rearma el auto con la pintura nueva
+func _repaint(pt: Dictionary) -> void:
+	var car_id := str(job.get("car", "hatch"))
+	var state: Dictionary = _car_state(car_id)
+	for k in pt:
+		(state["paint"] as Dictionary)[k] = pt[k]
+	room.set_car(car_id, state, vehicles)
+
 func _shot(s: Dictionary) -> void:
 	var name := str(s.get("name", "foto_%04d" % count))
+	if s.has("paint") and mode == "studio":
+		_repaint(s["paint"])
+		await _frames(3)
 	if s.has("tp"):
 		_teleport(s["tp"])
 	if s.has("env"):

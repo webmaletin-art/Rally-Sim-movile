@@ -51,7 +51,7 @@ for cid in cars_info.ORDER:
     if only and cid not in only:
         continue
     i = cars_info.ALL[cid]
-    j = {'mode': 'studio', 'out': os.path.join(out_dir, cid), 'car': cid, 'shots': portraits(i)}
+    j = {'mode': 'studio', 'out': os.path.join(out_dir, cid), 'car': cid, 'lights': 'dramatic', 'shots': portraits(i)}
     json.dump(j, open(os.path.join(jobs_dir, 'studio_%s.json' % cid), 'w'), indent=1)
 
 # vueltas completas de los autos «estrella» (36 cuadros) y de pintura (la misma pose con los 24 estilos)
@@ -63,5 +63,18 @@ for cid in TURN:
     f = framing(i)
     shot = dict(name='turn', wait=2, **orbit(0, f['r'] * 0.98, f['h'] + 0.1, f['lh'], 30))
     shot['cam']['orbit'].update({'a0': 0, 'a1': 360, 'n': 36})
-    json.dump({'mode': 'studio', 'out': os.path.join(out_dir, 'turn_' + cid), 'car': cid, 'shots': [shot]}, open(os.path.join(jobs_dir, 'turn_%s.json' % cid), 'w'), indent=1)
+    json.dump({'mode': 'studio', 'out': os.path.join(out_dir, 'turn_' + cid), 'car': cid, 'lights': 'dramatic', 'shots': [shot]}, open(os.path.join(jobs_dir, 'turn_%s.json' % cid), 'w'), indent=1)
 print('listo')
+
+# los 24 estilos de pintura de Garaje → Pintura → Estilos sobre un mismo auto y una misma cámara (para el «cambio de pintura» cuadro a cuadro)
+for cid in ['moust', 'rally80', 'hyper']:
+    if only and cid not in only:
+        continue
+    i = cars_info.ALL[cid]
+    f = framing(i)
+    shots = []
+    for k, st in enumerate(PAINTS):
+        pt = {'body': st['body'], 'accent': st['accent'], 'text': st['text'], 'livery': st['livery'], 'finish': st['finish']}
+        shots.append(dict(name='paint_%02d' % k, paint=pt, wait=2, **orbit(34, f['r'] * 0.95, f['h'] + 0.05, f['lh'], 29)))
+    json.dump({'mode': 'studio', 'out': os.path.join(out_dir, 'paint_' + cid), 'car': cid, 'lights': 'dramatic', 'shots': shots}, open(os.path.join(jobs_dir, 'paint_%s.json' % cid), 'w'), indent=1)
+print('pinturas listas')

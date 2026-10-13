@@ -132,8 +132,8 @@ def grade(a, contrast=1.10, sat=1.12, warm=0.0, teal=0.0, gamma=1.0, lift=0.0):
     lum = (a[:, :, 0] * 0.299 + a[:, :, 1] * 0.587 + a[:, :, 2] * 0.114)[:, :, None]
     a = lum + (a - lum) * sat
     if warm or teal:
-        hi = np.clip(lum * 1.4 - 0.4, 0, 1)
-        lo = np.clip(0.6 - lum * 1.4, 0, 1)
+        hi = np.clip(lum[:, :, 0] * 1.4 - 0.4, 0, 1)
+        lo = np.clip(0.6 - lum[:, :, 0] * 1.4, 0, 1)
         a[:, :, 0] += warm * hi * 0.10 - teal * lo * 0.04
         a[:, :, 1] += warm * hi * 0.02 + teal * lo * 0.03
         a[:, :, 2] += -warm * hi * 0.07 + teal * lo * 0.08
@@ -218,10 +218,17 @@ def draw_text_spaced(d, xy, txt, f, fill, spacing=0, anchor='la'):
         x += d.textlength(ch, font=f) + spacing
 
 
+def shear_layer(layer, shear, cy):
+    """Inclina una capa RGBA (cursiva) alrededor de la altura cy."""
+    if abs(shear) < 1e-4:
+        return layer
+    return layer.transform(layer.size, Image.AFFINE, (1, shear, -shear * cy, 0, 1, 0), Image.BICUBIC)
+
+
 def text_layer(lines, size=(W, H)):
-    """lines: [{txt, font, size, pos (fracción x,y del centro), color, spacing, alpha, scale, shadow, glow, anchor}] → (RGB float, alfa float) para mezclar encima."""
-    layer = Image.new('RGBA', size, (0, 0, 0, 0))
-    glow_layer = Image.new('RGBA', size, (0, 0, 0, 0))
+    """lines: [{txt, font, size, pos (fracción x,y del centro), color, spacing, alpha, scale, shadow, glow, anchor, italic}] → imagen RGBA para mezclar encima."""
+    out = Image.new('RGBA', size, (0, 0, 0, 0))
+    glow_total = Image.new('RGBA', size, (0, 0, 0, 0))
     for ln in lines:
         f = font(ln.get('font', 'anton'), ln.get('size', 120) * ln.get('scale', 1.0))
         col = ln.get('color', (255, 255, 255))
@@ -232,20 +239,36 @@ def text_layer(lines, size=(W, H)):
         pos = (px * size[0], py * size[1])
         anchor = ln.get('anchor', 'mm')
         sp = ln.get('spacing', 0) * ln.get('scale', 1.0)
-        # sombra suave y brillo
+        sh_k = ln.get('italic', 0.0)
+        one = Image.new('RGBA', size, (0, 0, 0, 0))
         if ln.get('shadow', True):
-            sh = Image.new('RGBA', size, (0, 0, 0, 0))
-            draw_text_spaced(ImageDraw.Draw(sh), (pos[0] + 4, pos[1] + 6), ln['txt'], f, (0, 0, 0, int(al * 0.55)), sp, anchor)
-            sh = sh.filter(ImageFilter.GaussianBlur(8))
-            layer = Image.alpha_composite(layer, sh)
+            shd = Image.new('RGBA', size, (0, 0, 0, 0))
+            draw_text_spaced(ImageDraw.Draw(shd), (pos[0] + 4, pos[1] + 6), ln['txt'], f, (0, 0, 0, int(al * 0.55)), sp, anchor)
+            one = Image.alpha_composite(one, shear_layer(shd, sh_k, pos[1]).filter(ImageFilter.GaussianBlur(8)))
+        top = Image.new('RGBA', size, (0, 0, 0, 0))
+        draw_text_spaced(ImageDraw.Draw(top), pos, ln['txt'], f, tuple(col) + (al,), sp, anchor)
+        top = shear_layer(top, sh_k, pos[1])
         if ln.get('glow'):
-            gl = Image.new('RGBA', size, (0, 0, 0, 0))
             gc = ln.get('glow_color', (255, 130, 30))
-            draw_text_spaced(ImageDraw.Draw(gl), pos, ln['txt'], f, gc + (int(al * 0.9),), sp, anchor)
-            glow_layer = Image.alpha_composite(glow_layer, gl.filter(ImageFilter.GaussianBlur(ln.get('glow', 18))))
-        draw_text_spaced(ImageDraw.Draw(layer), pos, ln['txt'], f, tuple(col) + (al,), sp, anchor)
-    layer = Image.alpha_composite(glow_layer, layer)
-    return layer
+            gl = Image.new('RGBA', size, (0, 0, 0, 0))
+            draw_text_spaced(ImageDraw.Draw(gl), pos, ln['txt'], f, tuple(gc) + (int(al * 0.9),), sp, anchor)
+            glow_total = Image.alpha_composite(glow_total, shear_layer(gl, sh_k, pos[1]).filter(ImageFilter.GaussianBlur(ln.get('glow', 18))))
+        out = Image.alpha_composite(out, Image.alpha_composite(one, top))
+    return Image.alpha_composite(glow_total, out)
+
+
+def stripes_layer(k, size=(W, H), angle=-18.0, bands=((0.0, 150, (255, 122, 26)), (210, 54, (235, 238, 244)), (330, 110, (255, 122, 26)))):
+    """Franjas diagonales de carrera (como el gráfico de la tienda) que entran deslizando; k = 0..1 (progreso de la entrada)."""
+    lay = Image.new('RGBA', size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(lay)
+    t = math.tan(math.radians(angle))
+    slide = (1.0 - ease_out(k, 3.0)) * size[0] * 1.2
+    for off, width, col in bands:
+        x0 = size[0] * 0.18 + off - slide
+        # paralelogramo de borde a borde (diagonal)
+        pts = [(x0 + (0 - size[1] / 2) * t, 0), (x0 + width + (0 - size[1] / 2) * t, 0), (x0 + width + (size[1] - size[1] / 2) * t, size[1]), (x0 + (size[1] - size[1] / 2) * t, size[1])]
+        d.polygon(pts, fill=tuple(col) + (int(235 * clamp(k * 4.0)),))
+    return lay
 
 
 def overlay(a, layer):
@@ -285,12 +308,13 @@ class Clip:
         self.stamp = kw.get('stamp')  # nombre para el registro
         self.mirror = kw.get('mirror', False)
         self.seq_zoom = kw.get('seq_zoom', (1.0, 1.0))  # en 'seq': zoom de cada foto (inicio → fin de su tiempo en pantalla)
+        self.seq_flash = kw.get('seq_flash', 0.0)  # en 'seq': destello al aparecer cada foto
 
     def active(self, t):
         return self.t0 <= t < self.t1
 
     def source_at(self, u):
-        """Para 'seq': cuál foto toca en el instante relativo u (0..duración) y su avance (0..1) dentro de su tiempo en pantalla."""
+        """Para 'seq': (cuál foto toca en el instante relativo u, su avance 0..1 dentro de su tiempo en pantalla, segundos desde que apareció)."""
         n = len(self.src)
         dur = self.t1 - self.t0
         if self.seq_times:
@@ -298,10 +322,10 @@ class Clip:
             for i in range(n):
                 if u < ts[i + 1] or i == n - 1:
                     d = max(1e-6, ts[i + 1] - ts[i])
-                    return i, clamp((u - ts[i]) / d)
+                    return i, clamp((u - ts[i]) / d), max(0.0, u - ts[i])
         i = min(n - 1, int(u / dur * n))
         d = dur / n
-        return i, clamp((u - i * d) / d)
+        return i, clamp((u - i * d) / d), max(0.0, u - i * d)
 
 
 class Renderer:
@@ -338,7 +362,7 @@ class Renderer:
         if c.kind == 'color':
             return Image.new('RGB', (W, H), tuple(int(v * 255) for v in c.bg))
         if c.kind == 'seq':
-            i, kk = c.source_at(u)
+            i, kk, _iu = c.source_at(u)
             path = c.src[i]
             e = kk
             z = lerp(c.seq_zoom[0], c.seq_zoom[1], e)
@@ -379,10 +403,9 @@ class Renderer:
             if c.speed > 0:
                 im = radial_blur(im, c.speed * 0.10, steps=8)
             a = to_arr(im)
-            if c.grade:
-                g = dict(self.gg)
-                g.update(c.grade)
-                a = grade(a, **g)
+            g = dict(self.gg)
+            g.update(c.grade)
+            a = grade(a, **g)
             if c.dim != 1.0:
                 a = a * c.dim
             # entrada/salida en fundido (con la toma de abajo)
@@ -398,7 +421,10 @@ class Renderer:
             first = False
         c0 = cl[-1]
         u = t - c0.t0
-        # destello y aberración al empezar la toma
+        # destello y aberración al empezar la toma (y en cada foto de una secuencia)
+        if c0.kind == 'seq' and c0.seq_flash > 0:
+            _i, _k, iu = c0.source_at(u)
+            arr = additive_flash(arr, c0.seq_flash * ease_out(1.0 - clamp(iu / 0.09), 2.0), c0.flash_color)
         if c0.flash > 0:
             arr = additive_flash(arr, c0.flash * ease_out(1.0 - clamp(u / 0.22), 2.0), c0.flash_color)
         if c0.chroma > 0:
