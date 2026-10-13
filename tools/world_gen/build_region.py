@@ -375,6 +375,12 @@ def finish(W_, rng):
     os.makedirs(out, exist_ok=True)
     sizes = export.write(W_, os.path.join(out, "region_1.bin"), stats)
     log("escrito:", sizes)
+    # alturas de las rutas parejas en los cruces y con la pendiente de su clase (fix_heights.py, reemplaza a topo.compute_heights) y después los empalmes entre rutas paralelas sin conexión (add_connectors.py)
+    import fix_heights
+    import add_connectors
+    fix_heights.patch(os.path.join(out, "region_1.bin"))
+    n_conn = add_connectors.run(os.path.join(out, "region_1.bin"))
+    log("alturas rehechas · empalmes:", n_conn)
 
 
 if __name__ == "__main__":

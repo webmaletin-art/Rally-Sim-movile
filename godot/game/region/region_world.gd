@@ -22,6 +22,9 @@ const C_SIDE := Color(0.66, 0.62, 0.50)
 const C_YEL := Color(1.0, 0.82, 0.30)
 const C_WHT := Color(0.97, 0.96, 0.93)
 const BIOME_COL := [Color(0.62, 0.72, 0.42), Color(0.78, 0.70, 0.48), Color(0.45, 0.62, 0.38), Color(0.58, 0.55, 0.52), Color(0.95, 0.96, 0.98), Color(0.28, 0.50, 0.30), Color(0.80, 0.46, 0.30), Color(0.90, 0.82, 0.60), Color(0.45, 0.66, 0.52)]
+const SOLID_ID0 := 40000000 # los objetos sólidos de la región tienen ids por encima de los de la ciudad (índices chicos): el auto los choca pero no los rompe
+const ROAD_EPS := 0.12 # la malla del terreno queda al menos tanto por debajo de la calzada (las banquinas van 5 cm más abajo)
+const CAP_STEP := 1.5 # cada cuántos metros se mira la calzada para que el terreno no la tape (ver _road_caps)
 const TREE_SPACING := [58.0, 90.0, 20.0, 0.0, 0.0, 12.0, 0.0, 0.0, 38.0] # metros entre árboles por bioma (0 = ninguno)
 
 var track # CityTrack
@@ -55,6 +58,8 @@ var _svc_nodes: Dictionary = {} # "toll_<id>" / "shop_<id>" -> Node3D (los usa C
 var _stations_by_chunk: Dictionary = {}
 var _tolls_by_chunk: Dictionary = {}
 var _shops_by_chunk: Dictionary = {}
+var _solids: Dictionary = {} # Vector2i (cuadrado) -> Array de [id, x, z]: los objetos sólidos de gasolineras, gomerías y peajes de ese cuadrado (para sacarlos al borrarlo)
+var _solid_next := SOLID_ID0
 
 func setup(p_track, p_cw) -> void:
 	track = p_track
@@ -236,6 +241,7 @@ func _stream(c: Vector2, r: int, sync: bool) -> void:
 		if (k - ck).length() > float(r) + 2.0:
 			var ent: Dictionary = _chunks[k]
 			_forget_services(ent["node"] as Node3D)
+			_drop_solids(k)
 			(ent["node"] as Node3D).queue_free()
 			_chunks.erase(k)
 
@@ -286,15 +292,25 @@ func _build(k: Vector2i, tier: int) -> Dictionary:
 
 func _terrain(s, x0: float, z0: float, step: float, tier: int) -> void:
 	var n := int(CHUNK / step)
+	var w := n + 3 # un anillo de vértices de más alrededor del cuadrado: los vértices de los bordes salen iguales en el cuadrado de al lado (sin escalones)
+	var drop: float = [0.0, 0.5, 2.2][tier]
+	var y0 := PackedFloat32Array()
+	y0.resize(w * w)
+	for iz in w:
+		for ix in w:
+			var hw := rg.height_w(x0 + float(ix - 1) * step, z0 + float(iz - 1) * step)
+			y0[iz * w + ix] = hw.x - 0.1 - drop * hw.y
+	# el terreno nunca tapa la calzada: donde la malla (de 8, 16 o 32 m) quedaría por encima de un camino, los vértices más altos del triángulo se bajan
+	var cap := PackedFloat32Array()
+	cap.resize(w * w)
+	cap.fill(1.0e9)
+	_road_caps(x0 - step, z0 - step, step, w, y0, cap)
 	var hs := PackedFloat32Array()
 	hs.resize((n + 1) * (n + 1))
-	var drop: float = [0.0, 0.5, 2.2][tier]
 	for iz in n + 1:
 		for ix in n + 1:
-			var wx := x0 + float(ix) * step
-			var wz := z0 + float(iz) * step
-			var hw := rg.height_w(wx, wz)
-			hs[iz * (n + 1) + ix] = hw.x - 0.1 - drop * hw.y
+			var j := (iz + 1) * w + ix + 1
+			hs[iz * (n + 1) + ix] = minf(y0[j], cap[j])
 	var rr := 0.0
 	for iz in n:
 		for ix in n:
@@ -323,6 +339,163 @@ func _terrain(s, x0: float, z0: float, step: float, tier: int) -> void:
 		var h1 := Vector3(x0 + CHUNK, hs[(i + 1) * (n + 1) + n], z0 + t0 + step)
 		s.quad_out(h0, h1, h1 - Vector3(0, sk, 0), h0 - Vector3(0, sk, 0), Color(0.45, 0.42, 0.36), Vector2(1, 0), Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO)
 	rr = rr
+
+## Desfase en altura de cada calle sobre su perfil (m): evita que dos calles que se pisan (cruces) titilen y deja el asfalto por encima de los caminos de tierra y ripio (la tierra no «pinta» sobre el asfalto)
+func _road_off(ei: int, surf: int) -> float:
+	return 0.004 * float(ei % 5) + (0.02 if surf == 0 else 0.0)
+
+## El terreno nunca tapa un camino. La malla es una grilla de triángulos (con la diagonal de (ix, iz) a (ix+1, iz+1)) y un camino de 7 m que cruza una ladera no cabe en una grilla de 8, 16 o 32 m:
+## entre un vértice sobre la calzada y otro más alto afuera, la malla se levantaba por encima del asfalto (tierra y pasto sobre la ruta). Para cada punto de la calzada y de la banquina se calcula la altura
+## de la malla ahí (combinación de los 3 vértices del triángulo) y, si queda por encima de la calzada, se baja el «nivel de corte» de esos vértices (los más altos primero; los que ya están abajo no se tocan)
+## hasta que la malla pase por debajo. Los puntos salen sólo de la geometría de los caminos y las alturas son las de antes de bajar, así que el cuadrado vecino llega a los mismos valores en los vértices que comparten.
+## (ox, oz) es la posición del vértice (0, 0) de la grilla de w×w vértices (con un anillo de más alrededor del cuadrado).
+func _road_caps(ox: float, oz: float, step: float, w: int, y0: PackedFloat32Array, cap: PackedFloat32Array) -> void:
+	var span := float(w - 1) * step
+	var seen := {}
+	for cx in range(int(floor((ox - 24.0) / 128.0)), int(floor((ox + span + 24.0) / 128.0)) + 1):
+		for cz in range(int(floor((oz - 24.0) / 128.0)), int(floor((oz + span + 24.0) / 128.0)) + 1):
+			var k2 := Vector2i(cx, cz)
+			var lst: Variant = rg.cells.get(k2)
+			if lst != null:
+				for k in (lst as PackedInt32Array):
+					if seen.has(k):
+						continue
+					seen[k] = true
+					_cap_segment(k, ox, oz, step, w, y0, cap)
+			# playones de las gasolineras y gomerías (discos planos a su altura + 6 cm)
+			var pl: Variant = rg.pad_cells.get(k2)
+			if pl != null:
+				for pi in (pl as PackedInt32Array):
+					if seen.has(-2 - pi):
+						continue
+					seen[-2 - pi] = true
+					var pd: Dictionary = rg.pads[pi]
+					_cap_disc(float(pd["x"]), float(pd["z"]), float(pd["r"]), float(pd["h"]) + 0.06, ox, oz, step, w, y0, cap)
+	# plazoletas de los cruces (el disco de asfalto de _junction)
+	for kx in range(int(floor((ox - 40.0) / CHUNK)), int(floor((ox + span + 40.0) / CHUNK)) + 1):
+		for kz in range(int(floor((oz - 40.0) / CHUNK)), int(floor((oz + span + 40.0) / CHUNK)) + 1):
+			for ni in (_nodes_by_chunk.get(Vector2i(kx, kz), []) as Array):
+				var eds: PackedInt32Array = rg.node_edges[ni]
+				if eds.size() < 3:
+					continue
+				var hmax := 0.0
+				for ei in eds:
+					hmax = maxf(hmax, rg.e_hw[ei])
+				var np := rg.node_pos(ni)
+				_cap_disc(np.x, np.y, hmax + 0.6, float((rg.nodes[ni] as Array)[5]) + 0.05, ox, oz, step, w, y0, cap)
+
+func _cap_segment(k: int, ox: float, oz: float, step: float, w: int, y0: PackedFloat32Array, cap: PackedFloat32Array) -> void:
+	var ei: int = rg.pe[k]
+	var e: Array = rg.edges[ei]
+	var i := k - int(e[6])
+	if i + 1 >= int(e[7]):
+		return
+	var a := Vector2(float(rg.pts[k * 2]) * 0.1, float(rg.pts[k * 2 + 1]) * 0.1)
+	var b := Vector2(float(rg.pts[k * 2 + 2]) * 0.1, float(rg.pts[k * 2 + 3]) * 0.1)
+	var seg_len := a.distance_to(b)
+	if seg_len < 0.05:
+		return
+	var hw: float = rg.e_hw[ei]
+	var reach := hw + RegionData.SHOULDER + 3.0
+	var span := float(w - 1) * step
+	if maxf(a.x, b.x) < ox - reach or minf(a.x, b.x) > ox + span + reach or maxf(a.y, b.y) < oz - reach or minf(a.y, b.y) > oz + span + reach:
+		return
+	var dir := (b - a) / seg_len
+	var nrm := Vector2(-dir.y, dir.x)
+	var off := _road_off(ei, int(e[5]))
+	var ya: float = rg.hs[k] + 0.03 + off
+	var yb: float = rg.hs[k + 1] + 0.03 + off
+	var m := maxi(1, int(ceil(seg_len / CAP_STEP)))
+	var sw := RegionData.SHOULDER
+	for si in m + 1:
+		var t := float(si) / float(m)
+		var c := a.lerp(b, t)
+		var yr := lerpf(ya, yb, t) - ROAD_EPS
+		for lat in [-hw - sw, -hw, hw, hw + sw]:
+			var l: float = lat
+			var target := yr if absf(l) <= hw + 0.01 else yr - 0.05
+			_cap_point(c.x + nrm.x * l, c.y + nrm.y * l, target, ox, oz, step, w, y0, cap)
+
+## Un disco plano (playón, plazoleta) a la altura yr: su borde en 16 puntos y los vértices de la grilla que caen adentro
+func _cap_disc(cx: float, cz: float, r: float, yr: float, ox: float, oz: float, step: float, w: int, y0: PackedFloat32Array, cap: PackedFloat32Array) -> void:
+	var span := float(w - 1) * step
+	if cx + r < ox or cx - r > ox + span or cz + r < oz or cz - r > oz + span:
+		return
+	var target := yr - ROAD_EPS
+	for q in 16:
+		var an := TAU * float(q) / 16.0
+		_cap_point(cx + cos(an) * r, cz + sin(an) * r, target, ox, oz, step, w, y0, cap)
+		_cap_point(cx + cos(an) * r * 0.5, cz + sin(an) * r * 0.5, target, ox, oz, step, w, y0, cap)
+	_cap_point(cx, cz, target, ox, oz, step, w, y0, cap)
+	for iz in range(maxi(0, int(floor((cz - r - oz) / step))), mini(w, int(ceil((cz + r - oz) / step)) + 1)):
+		for ix in range(maxi(0, int(floor((cx - r - ox) / step))), mini(w, int(ceil((cx + r - ox) / step)) + 1)):
+			var dx := ox + float(ix) * step - cx
+			var dz := oz + float(iz) * step - cz
+			if dx * dx + dz * dz <= r * r:
+				var j := iz * w + ix
+				cap[j] = minf(cap[j], target)
+
+## Un punto (px, pz) que tiene que quedar por encima de la malla: si la malla pasa por arriba de `target` se baja el nivel de corte de los vértices del triángulo
+func _cap_point(px: float, pz: float, target: float, ox: float, oz: float, step: float, w: int, y0: PackedFloat32Array, cap: PackedFloat32Array) -> void:
+	var fx := (px - ox) / step
+	var fz := (pz - oz) / step
+	var gx := int(floor(fx))
+	var gz := int(floor(fz))
+	if gx < 0 or gz < 0 or gx >= w - 1 or gz >= w - 1:
+		return
+	var u := fx - float(gx)
+	var v := fz - float(gz)
+	var j1 := gz * w + gx
+	var j2: int
+	var l1: float
+	var l2: float
+	var l3: float
+	if u >= v:
+		j2 = j1 + 1
+		l1 = 1.0 - u
+		l2 = u - v
+		l3 = v
+	else:
+		j2 = j1 + w
+		l1 = 1.0 - v
+		l2 = v - u
+		l3 = u
+	var j3 := j1 + w + 1
+	var y1 := y0[j1]
+	var y2 := y0[j2]
+	var y3 := y0[j3]
+	if l1 * y1 + l2 * y2 + l3 * y3 <= target:
+		return
+	# se ordenan los tres vértices de menor a mayor altura
+	var t_j: int
+	var t_y: float
+	var t_l: float
+	if y1 > y2:
+		t_j = j1; t_y = y1; t_l = l1
+		j1 = j2; y1 = y2; l1 = l2
+		j2 = t_j; y2 = t_y; l2 = t_l
+	if y2 > y3:
+		t_j = j2; t_y = y2; t_l = l2
+		j2 = j3; y2 = y3; l2 = l3
+		j3 = t_j; y3 = t_y; l3 = t_l
+		if y1 > y2:
+			t_j = j1; t_y = y1; t_l = l1
+			j1 = j2; y1 = y2; l1 = l2
+			j2 = t_j; y2 = t_y; l2 = t_l
+	# nivel de corte L: l1·min(y1, L) + l2·min(y2, L) + l3·min(y3, L) = target
+	var lvl := target
+	if lvl > y1:
+		var s_low := l1 * y1
+		lvl = (target - s_low) / maxf(l2 + l3, 1.0e-6)
+		if lvl > y2:
+			s_low += l2 * y2
+			lvl = (target - s_low) / maxf(l3, 1.0e-6)
+	if l1 > 1.0e-4:
+		cap[j1] = minf(cap[j1], lvl)
+	if l2 > 1.0e-4:
+		cap[j2] = minf(cap[j2], lvl)
+	if l3 > 1.0e-4:
+		cap[j3] = minf(cap[j3], lvl)
 
 ## Color del terreno: el de la ciudad cerca de ella, el del bioma lejos; la pendiente fuerte se vuelve roca
 func _color(x: float, z: float, y: float, slope: float) -> Color:
@@ -425,7 +598,7 @@ func _road_segment(rd, mk, sd, rl, k: int) -> void:
 	var b2 := rg.edge_point(ei, i + 1)
 	var na2 := _norm_at(k, ei, p0, n)
 	var nb2 := _norm_at(k + 1, ei, p0, n)
-	var off := 0.004 * float(ei % 5)
+	var off := _road_off(ei, surf)
 	var ya: float = rg.hs[k] + 0.03 + off
 	var yb: float = rg.hs[k + 1] + 0.03 + off
 	var a := Vector3(a2.x, ya, a2.y)
@@ -436,12 +609,13 @@ func _road_segment(rd, mk, sd, rl, k: int) -> void:
 	rd.quad_up(a - na * hw, b - nb * hw, b + nb * hw, a + na * hw, col)
 	# banquina (tierra clara)
 	var sw := 1.9
-	var dn := Vector3(0, -0.015, 0)
+	var dn := Vector3(0, -0.05, 0) # la banquina queda por debajo del asfalto de cualquier calle que la cruce
 	for sg in [-1.0, 1.0]:
 		var s: float = sg
 		sd.quad_up(a + na * (s * hw) + dn, b + nb * (s * hw) + dn, b + nb * (s * (hw + sw)) + dn, a + na * (s * (hw + sw)) + dn, C_SIDE if surf == 0 else col.darkened(0.1))
-	# rayas
-	if surf == 0 and cls != "tierra":
+	# rayas (no en la boca de una calle que termina contra otra: las rayas de la calle chica no cruzan la ruta que atraviesa)
+	var mouth: bool = (i == 0 and not _is_through(int(e[0]), ei)) or (i == n - 2 and not _is_through(int(e[1]), ei))
+	if surf == 0 and cls != "tierra" and not mouth:
 		var mu := Vector3(0, 0.07, 0)
 		var lw := 0.11
 		var wide := hw >= 7.0
@@ -470,8 +644,34 @@ func _road_segment(rd, mk, sd, rl, k: int) -> void:
 			var s3: float = sg
 			var q := a2 + na2 * (s3 * (hw + 7.0))
 			var drop: float = rg.hs[k] - rg.base_height(q.x, q.y)
-			if drop > 2.4:
+			if drop > 2.4 and _rail_clear(a, b, na, nb, s3, hw + sw * 0.85, ei):
 				_rail(rl, a, b, na, nb, s3, hw + sw * 0.85, i)
+
+## ¿La calle ei es de las dos más anchas que llegan al nodo ni (la que sigue derecho en un cruce)? Las demás terminan contra ellas.
+func _is_through(ni: int, ei: int) -> bool:
+	var eds: PackedInt32Array = rg.node_edges[ni]
+	if eds.size() < 3:
+		return true
+	var mine: float = rg.e_hw[ei]
+	var rank := 0
+	for other in eds:
+		if other == ei:
+			continue
+		var ow: float = rg.e_hw[other]
+		if ow > mine or (ow == mine and other < ei):
+			rank += 1
+	return rank < 2
+
+## El guardarraíl de un costado no se arma donde otra calle pasa por encima de ese costado (la boca de un cruce, un empalme): taparía la entrada
+func _rail_clear(a: Vector3, b: Vector3, na: Vector3, nb: Vector3, s: float, off: float, ei: int) -> bool:
+	var pa := a + na * (s * off)
+	var pb := b + nb * (s * off)
+	for t in [0.0, 0.5, 1.0]:
+		var p: Vector3 = pa.lerp(pb, t)
+		var pr: PackedFloat64Array = rg.probe(p.x, p.z, 12.0, false)
+		if pr[0] > -1e8 and int(pr[1]) != ei and pr[4] - pr[5] < 0.6:
+			return false
+	return true
 
 func _rail(rl, a: Vector3, b: Vector3, na: Vector3, nb: Vector3, s: float, off: float, i: int) -> void:
 	var gcol := Color(0.80, 0.82, 0.84)
@@ -517,6 +717,8 @@ func _trees(x0: float, z0: float) -> PackedFloat32Array:
 				var pr: PackedFloat64Array = rg.probe(px, pz, 30.0)
 				if pr[0] > -1e8 and pr[4] < pr[5] + RegionData.WALL + 4.0:
 					continue
+				if rg.corridor(px, pz, 4.0)[0] < 0.0:
+					continue # tampoco donde el auto puede llegar (círculos de los cruces, playones)
 				# las rutas de la ciudad que atraviesan la región (rurales, atajos, panorámica): tampoco hay árboles de la región encima ni pegados (el bosque de la ruta lo pone la ciudad)
 				if track.city.verge_clearance(px, pz) > -14.0:
 					continue
@@ -610,6 +812,16 @@ func _towns_in(s, k: Vector2i) -> void:
 					var pr: PackedFloat64Array = rg.probe(pos.x, pos.y, 20.0)
 					if pr[0] > -1e8 and pr[4] < pr[5] + RegionData.TOWN_WALL + 1.8 + dep * 0.5 - 0.5:
 						continue
+					# ni las esquinas de la casa pisan una calle que cruza (la casa mide `w` a lo largo de la calle)
+					var on_road := false
+					for cs in [Vector2(-1, -1), Vector2(-1, 1), Vector2(1, -1), Vector2(1, 1)]:
+						var cp: Vector2 = pos + wdir * (w * 0.5 * (cs as Vector2).x) + side_n * (dep * 0.5 * (cs as Vector2).y)
+						var pc: PackedFloat64Array = rg.probe(cp.x, cp.y, 20.0, false)
+						if pc[0] > -1e8 and pc[4] - pc[5] < 1.5:
+							on_road = true
+							break
+					if on_road:
+						continue
 					var y: float = rg.height(pos.x, pos.y)
 					var yaw := atan2(wdir.x, wdir.y)
 					var wall: Color = CityLayout.WALLS[_hash(hh + 9) % CityLayout.WALLS.size()]
@@ -658,6 +870,16 @@ func _fence_line(s, k: Vector2i, c: Vector2, ax: Vector2, nrm: Vector2, a: Vecto
 			var pr: PackedFloat64Array = rg.probe(mid.x, mid.y, 20.0)
 			if pr[0] <= -1e8 or absf(pr[4] - (pr[5] + RegionData.TOWN_WALL - 0.25)) > 1.4:
 				continue # una bocacalle, otra ruta cerca o un cerco que no sigue a ninguna calle
+			# el tramo mide 6 m: sus dos puntas también tienen que seguir a la misma calle (si no, una punta se mete en la calle que cruza)
+			var ends_ok := true
+			for q in [mid - wdir * (STEP * 0.5), mid + wdir * (STEP * 0.5)]:
+				var qq: Vector2 = q
+				var pq: PackedFloat64Array = rg.probe(qq.x, qq.y, 20.0)
+				if pq[0] <= -1e8 or int(pq[1]) != int(pr[1]) or absf(pq[4] - (pq[5] + RegionData.TOWN_WALL - 0.25)) > 1.4:
+					ends_ok = false
+					break
+			if not ends_ok:
+				continue
 			var y: float = rg.height(mid.x, mid.y)
 			var hh := int(mid.x * 7.0 + mid.y * 13.0)
 			var col := Color(0.84, 0.82, 0.77) if (_hash(hh) % 3) != 0 else Color(0.62, 0.38, 0.30)
@@ -732,16 +954,20 @@ func _finish(k: Vector2i, tier: int, d: Dictionary) -> void:
 			mmi.visibility_range_end = 700.0 * maxf(view_k, 0.6)
 			root.add_child(mmi)
 	# gasolineras, peajes, gomerías y carteles (se arman con las funciones de Dream City: se ven igual)
+	_drop_solids(k)
 	for st in (_stations_by_chunk.get(k, []) as Array):
 		root.add_child(cw._station(st))
+		root.add_child(_station_props(st, k))
 	for tl in (_tolls_by_chunk.get(k, []) as Array):
 		var tn: Node3D = cw._toll(tl)
 		root.add_child(tn)
 		_svc_nodes[tn.name] = tn
+		_toll_solids(tl, k)
 	for sp in (_shops_by_chunk.get(k, []) as Array):
 		var sn := _shop(sp)
 		root.add_child(sn)
 		_svc_nodes[sn.name] = sn
+		_shop_solids(sp, k)
 	if tier <= 1:
 		_signs_in(root, k)
 	if _chunks.has(k):
@@ -830,6 +1056,86 @@ func _far_build(c: Vector2):
 			s.quad_up(a, d, cc, b, col)
 	return s
 
+
+## Un objeto sólido (un círculo de choque que no se rompe) de los servicios del cuadrado k
+func _add_solid(k: Vector2i, x: float, z: float, r: float) -> void:
+	var id := _solid_next
+	_solid_next += 1
+	track.add_prop(id, x, z, r)
+	if not _solids.has(k):
+		_solids[k] = []
+	(_solids[k] as Array).append([id, x, z])
+
+func _drop_solids(k: Vector2i) -> void:
+	var lst: Variant = _solids.get(k)
+	if lst == null:
+		return
+	for it in (lst as Array):
+		track.remove_prop(int(it[0]), float(it[1]), float(it[2]))
+	_solids.erase(k)
+
+## Los surtidores y los bloques del kiosco de una gasolinera de la región chocan (como los de las gasolineras de la ciudad: nada de esto se rompe) y los surtidores y las columnas se dibujan
+func _station_props(st: Dictionary, k: Vector2i) -> MeshInstance3D:
+	var nr: Vector2 = st["dir"]
+	var yaw := atan2(nr.x, nr.y)
+	var v := PackedVector3Array()
+	var cl := PackedColorArray()
+	for pp in st["pumps"]:
+		var q: Vector2 = pp
+		CityProps.emit(CityProps.PUMP, q.x, rg.height(q.x, q.y), q.y, yaw + PI, 0.5, Vector2.ZERO, v, cl)
+		_add_solid(k, q.x, q.y, CityProps.RADIUS[CityProps.PUMP])
+	for pc in st["pillars"]:
+		var q2: Vector2 = pc
+		CityProps.emit(CityProps.PILLAR, q2.x, rg.height(q2.x, q2.y), q2.y, yaw, 0.5, Vector2.ZERO, v, cl)
+		_add_solid(k, q2.x, q2.y, CityProps.RADIUS[CityProps.PILLAR])
+	for bc in st["blocks"]:
+		var q3: Vector2 = bc
+		_add_solid(k, q3.x, q3.y, CityProps.RADIUS[CityProps.BLOCK])
+	var m := ArrayMesh.new()
+	PaperKit.add_surface(m, v, cl, PaperKit.material(null, 0.0, 0.2, 0.3))
+	var mi := MeshInstance3D.new()
+	mi.name = "props_" + str(st["id"])
+	mi.mesh = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+## La gomería es un galpón de 14 × 8 m (ver _shop): chocan las paredes (círculos pegados que se pisan, un poco hacia adentro)
+func _shop_solids(p: Dictionary, k: Vector2i) -> void:
+	var pos: Vector2 = p["pos"]
+	var nrm: Vector2 = p["dir"]
+	var lx := Vector2(nrm.y, -nrm.x)
+	var pts: Array = []
+	var x_a := -6.0
+	var x_b := 6.0
+	var z_a := 3.0
+	var z_b := 9.0
+	var n_x := int(ceil((x_b - x_a) / 1.8))
+	for i in n_x + 1:
+		var u := x_a + (x_b - x_a) * float(i) / float(n_x)
+		pts.append(Vector2(u, z_a))
+		pts.append(Vector2(u, z_b))
+	var n_z := int(ceil((z_b - z_a) / 1.8))
+	for i in range(1, n_z):
+		var w := z_a + (z_b - z_a) * float(i) / float(n_z)
+		pts.append(Vector2(x_a, w))
+		pts.append(Vector2(x_b, w))
+	for q in pts:
+		var lp: Vector2 = q
+		var wp := pos + lx * lp.x + nrm * lp.y
+		_add_solid(k, wp.x, wp.y, 1.7)
+
+## El peaje: la cabina de la isla central y los dos postes del pórtico chocan (la isla baja y los conos se pisan)
+func _toll_solids(t: Dictionary, k: Vector2i) -> void:
+	var pos: Vector2 = t["pos"]
+	var tn: Vector2 = t["tn"]
+	var hw: float = t["hw"]
+	var lx := Vector2(tn.y, -tn.x)
+	for dz in [-1.2, 0.0, 1.2]:
+		var c := pos + tn * float(dz)
+		_add_solid(k, c.x, c.y, 1.1)
+	for sx in [-1.0, 1.0]:
+		var c2 := pos + lx * (float(sx) * (hw + 1.0))
+		_add_solid(k, c2.x, c2.y, 0.8)
 
 func _forget_services(root: Node3D) -> void:
 	for c in root.get_children():

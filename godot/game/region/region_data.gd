@@ -8,6 +8,7 @@ const WALL := 9.0 # metros de banquina y pasto entre el borde de la calzada y la
 const SHOULDER := 1.9
 const TOWN_WALL := 3.2 # dentro de un pueblo la pared invisible queda pegada al cerco de las casas (como en Villa Aurora)
 const WALL_MONTANA := 2.6 # en las rutas de montaña la pared está pegada al guardarraíl
+const JUNCTION_DISC := 18.0 # en un cruce la pared invisible es un círculo de este radio más el medio ancho de la calle más ancha (para doblar sin chocar la esquina)
 const REACH := 70.0 # hasta dónde llega el corte del terreno alrededor de un camino (ver _carve)
 const SURF_OF_BIOME := [3, 1, 3, 4, 6, 3, 1, 1, 5] # pampa, estepa, sierra, roca, nieve, selva, quebrada, arena, humedal → superficie de la física
 const CLS_NAMES := ["anillo", "autopista", "ruta", "provincial", "camino", "tierra", "montana", "calle", "conector"]
@@ -38,6 +39,8 @@ var e_hw := PackedFloat32Array()
 var e_wall := PackedFloat32Array() # metros de pared invisible de cada calle (WALL, o WALL_MONTANA en las de montaña)
 var pads: Array = [] # playones planos junto a la ruta (gasolineras, gomerías): {x, z, r, h}
 var pad_cells: Dictionary = {} # Vector2i (128 m) -> PackedInt32Array de playones
+var jdiscs: Array = [] # círculos libres alrededor de los cruces (sólo para la pared invisible): {x, z, r}
+var jdisc_cells: Dictionary = {} # Vector2i (128 m) -> PackedInt32Array de círculos
 var _cum: Dictionary = {}
 var secret_sites: Array = [] # lugares secretos de algunas villas: {id, name, kind, pos, h}
 var _zones: Array = [] # recintos de pueblos: {c, ax, hu, hv}
@@ -111,8 +114,36 @@ func load_file(p_city, path := FILE) -> bool:
 			node_edges[int(e[1])] = b
 	_build_zones()
 	_build_secrets()
+	_build_junction_discs()
 	ok = true
 	return true
+
+## En un cruce de tres o más calles la pared invisible es un círculo que cubre la esquina: un auto que dobla rápido en un cruce (sobre todo de montaña, donde la pared está pegada
+## al guardarraíl) corta la curva por el pasto sin chocar contra una pared que no se ve. Es sólo para la pared (el terreno y las alturas no lo usan). Dentro de los pueblos no se arma.
+func _build_junction_discs() -> void:
+	jdiscs.clear()
+	jdisc_cells.clear()
+	for ni in nodes.size():
+		var eds: PackedInt32Array = node_edges[ni]
+		if eds.size() < 3:
+			continue
+		var nd: Array = nodes[ni]
+		var x := float(nd[1])
+		var z := float(nd[2])
+		if in_town(x, z):
+			continue
+		var hw := 0.0
+		for ei in eds:
+			hw = maxf(hw, e_hw[ei])
+		var r := hw + JUNCTION_DISC
+		var idx := jdiscs.size()
+		jdiscs.append({"x": x, "z": z, "r": r})
+		for cx in range(int(floor((x - r) / 128.0)), int(floor((x + r) / 128.0)) + 1):
+			for cz in range(int(floor((z - r) / 128.0)), int(floor((z + r) / 128.0)) + 1):
+				var k := Vector2i(cx, cz)
+				var a: PackedInt32Array = jdisc_cells.get(k, PackedInt32Array())
+				a.append(idx)
+				jdisc_cells[k] = a
 
 ## Los recintos de los pueblos y ciudades (el rectángulo de sus calles, con margen): ahí la pared invisible de las calles se acerca
 func _build_zones() -> void:
@@ -394,6 +425,20 @@ func corridor(x: float, z: float, r: float, reach := 30.0) -> PackedFloat64Array
 							out[0] = pen
 							out[1] = pdx * pinv
 							out[2] = pdz * pinv
+			if not jdiscs.is_empty():
+				var jl: Variant = jdisc_cells.get(k2)
+				if jl != null:
+					for ji in (jl as PackedInt32Array):
+						var jd: Dictionary = jdiscs[ji]
+						var jdx: float = float(jd["x"]) - x
+						var jdz: float = float(jd["z"]) - z
+						var jdist := sqrt(jdx * jdx + jdz * jdz)
+						var jpen := jdist + r - float(jd["r"])
+						if jpen < out[0]:
+							var jinv := 1.0 / maxf(jdist, 0.0001)
+							out[0] = jpen
+							out[1] = jdx * jinv
+							out[2] = jdz * jinv
 			var lst: Variant = cells.get(k2)
 			if lst == null:
 				continue

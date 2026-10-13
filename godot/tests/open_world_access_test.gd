@@ -37,6 +37,22 @@ func _init() -> void:
 		var rad: float = CityProps.RADIUS[int(city.prop_type[id])]
 		if rad > 0.0:
 			tr.add_prop(id, city.prop_x[id], city.prop_z[id], rad)
+	tr.build_world() # los surtidores, los bloques de los kioscos, las gomerías y las cabinas de los peajes de la región chocan (los pone RegionWorld al armar cada cuadrado)
+	var rw = tr.world_node.get_node("region")
+	var n_solid := 0
+	for k in rw._stations_by_chunk:
+		for st in (rw._stations_by_chunk[k] as Array):
+			rw._station_props(st, k)
+	for k in rw._shops_by_chunk:
+		for sp in (rw._shops_by_chunk[k] as Array):
+			rw._shop_solids(sp, k)
+	for k in rw._tolls_by_chunk:
+		for tl in (rw._tolls_by_chunk[k] as Array):
+			rw._toll_solids(tl, k)
+	for k in rw._solids:
+		n_solid += (rw._solids[k] as Array).size()
+	_check(n_solid > 1000, "objetos sólidos de gasolineras, gomerías y peajes de la región: %d" % n_solid)
+	_solid_services(tr, rw)
 	_exits(tr, city, rg)
 	_gates_and_blocks(city)
 	_lots(tr, rg)
@@ -49,6 +65,42 @@ func _init() -> void:
 	_trees(tr, city, rg)
 	print("RESULTADO: ", "FALLA" if fail else "TODO OK")
 	quit(1 if fail else 0)
+
+## Las estaciones y gomerías de la región tienen colisión (antes el auto las atravesaba): un círculo de 1 m puesto sobre cada surtidor, columna, bloque del kiosco, pared del galpón de la gomería y cabina de peaje es empujado
+func _solid_services(tr, rw) -> void:
+	var miss: Array = []
+	var n := 0
+	for k in rw._stations_by_chunk:
+		for st in (rw._stations_by_chunk[k] as Array):
+			for key in ["pumps", "pillars", "blocks"]:
+				for q in (st[key] as Array):
+					var c: Vector2 = q
+					n += 1
+					if (tr.push(c.x, c.y, 1.0) as Vector3).z < 0.5:
+						miss.append("%s %s (%.0f, %.0f)" % [st["name"], key, c.x, c.y])
+	_check(n > 500 and miss.is_empty(), "surtidores, columnas y bloques de las gasolineras de la región chocan (%d objetos, sin colisión: %s)" % [n, str(miss.slice(0, 4))])
+	var miss2: Array = []
+	var n2 := 0
+	for k in rw._shops_by_chunk:
+		for p in (rw._shops_by_chunk[k] as Array):
+			var pos: Vector2 = p["pos"]
+			var nrm: Vector2 = p["dir"]
+			var lx := Vector2(nrm.y, -nrm.x)
+			for lp in [Vector2(-6.0, 3.0), Vector2(0.0, 3.0), Vector2(6.0, 3.0), Vector2(-6.0, 9.0), Vector2(0.0, 9.0), Vector2(6.0, 9.0), Vector2(-6.0, 6.0), Vector2(6.0, 6.0)]:
+				var c2: Vector2 = pos + lx * (lp as Vector2).x + nrm * (lp as Vector2).y
+				n2 += 1
+				if (tr.push(c2.x, c2.y, 1.0) as Vector3).z < 0.5:
+					miss2.append("%s (%.0f, %.0f)" % [p["name"], c2.x, c2.y])
+	_check(n2 > 300 and miss2.is_empty(), "las paredes del galpón de cada gomería chocan (%d puntos, sin colisión: %s)" % [n2, str(miss2.slice(0, 4))])
+	var miss3: Array = []
+	var n3 := 0
+	for k in rw._tolls_by_chunk:
+		for t in (rw._tolls_by_chunk[k] as Array):
+			var tp: Vector2 = t["pos"]
+			n3 += 1
+			if (tr.push(tp.x, tp.y, 0.8) as Vector3).z < 0.3:
+				miss3.append(str(t["name"]))
+	_check(n3 > 5 and miss3.is_empty(), "la cabina de cada peaje de la región choca (%d peajes, sin colisión: %s)" % [n3, str(miss3.slice(0, 4))])
 
 # ───────────────────────── las salidas de la ciudad siguen por la región ─────────────────────────
 func _exits(tr, city: CityLayout, rg: RegionData) -> void:
@@ -175,7 +227,7 @@ func _reaches_road(tr, rg: RegionData, start: Vector2) -> bool:
 			q.append(nc)
 	return false
 
-## Con la física de verdad: un auto automático arranca en tres lugares para aparecer (los de camino de acceso más largo), maneja hacia la calle y la alcanza
+## Con la física de verdad: un auto automático arranca en cada uno de los lugares para aparecer, maneja hacia la calle y la alcanza (con los surtidores, columnas y kioscos sólidos)
 func _drive_out(tr, rg: RegionData) -> void:
 	var vehicles: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
 	# los tres lugares con el camino de acceso más largo
@@ -186,7 +238,9 @@ func _drive_out(tr, rg: RegionData) -> void:
 		if pr[0] > -1e8:
 			cand.append([float(pr[4]) - float(pr[5]), i])
 	cand.sort_custom(func(a, b): return a[0] > b[0])
-	for k in mini(3, cand.size()):
+	var failed: Array = []
+	var slowest := 0.0
+	for k in cand.size():
 		var idx := int(cand[k][1])
 		var sp: Array = tr.city.spawns[idx]
 		var p0 := Vector2(float(sp[0]), float(sp[1]))
@@ -221,7 +275,10 @@ func _drive_out(tr, rg: RegionData) -> void:
 			var pq: PackedFloat64Array = rg.probe(q.x, q.y, 30.0, false)
 			if pq[0] > -1e8 and pq[4] <= pq[5]:
 				reached = true
-		_check(reached, "%s: el auto sale solo del lugar para aparecer hasta la calle en %.1f s (acceso de %.0f m, máx. %.0f km/h)" % [tr.city.spawn_names[idx], t, float(cand[k][0]), vmax * 3.6])
+		slowest = maxf(slowest, t)
+		if not reached:
+			failed.append("%s (acceso de %.0f m, máx. %.0f km/h)" % [tr.city.spawn_names[idx], float(cand[k][0]), vmax * 3.6])
+	_check(failed.is_empty(), "el auto sale solo de los %d lugares para aparecer hasta la calle (el que más tardó %.1f s; no salen: %s)" % [cand.size(), slowest, str(failed.slice(0, 5))])
 
 ## Un auto automático sale de la ciudad por la Ruta N (desde 600 m de su comienzo), cruza la Salida y sigue por la región hasta el primer empalme: sin trabarse ni chocar contra paredes
 func _drive_exit(tr, city: CityLayout, rg: RegionData, num: int) -> void:
