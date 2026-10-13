@@ -11,3 +11,6 @@ tools/cars/src/car2[0-9].glb
 
 # texturas que Godot extrae de los GLB al importarlos (se regeneran solas)
 godot/game/models/cars/*_[0-9].png
+
+# tráiler: el video final y los tramos (pesan cientos de MB; ver docs/TRAILER.md)
+trailer_out/
