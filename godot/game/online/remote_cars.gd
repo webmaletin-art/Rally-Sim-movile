@@ -1,7 +1,8 @@
 extends Node3D
-## Los autos de los otros jugadores en el mundo: se piden las posiciones cada ~2 s (presence_list) y cada auto se dibuja como un auto de papel liviano con el apodo arriba.
-## Entre una lectura y la otra se estima dónde está (la última posición + rumbo × velocidad) y el auto se acerca suave a ese punto, así se ve fluido aunque lleguen pocos datos.
-## Sólo se muestran los más cercanos (hasta MAX_SHOWN, a menos de SHOW_R metros). Sin física compartida: no se chocan.
+## Los autos de los otros jugadores en el mundo: se piden las posiciones cada ~2 s (presence_list; con Realtime llegan varias veces por segundo) y cada auto se dibuja con su apodo arriba:
+## los más cercanos con su modelo real (el mismo que usan los autos de la IA: ruedas que giran y se orientan, carrocería que cabecea y se balancea) y el resto como un auto de papel liviano.
+## El movimiento sale de `remote_motion.gd`: entre una muestra y la otra se estima dónde está (un arco con la velocidad y el giro) y el auto se acerca suave a ese punto, así se ve fluido y dobla
+## las curvas aunque lleguen pocos datos. Sólo se muestran los más cercanos (hasta MAX_SHOWN, a menos de SHOW_R metros). Sin física compartida: no se chocan.
 
 const CityLayout := preload("res://game/city/city_layout.gd")
 const PaperKit := preload("res://game/fx/paper_kit.gd")
@@ -11,13 +12,14 @@ const CarBuild := preload("res://game/data/car_build.gd")
 const CarSnapshot := preload("res://game/car/car_snapshot.gd")
 const VehicleParams := preload("res://game/physics/vehicle_params.gd")
 const Profile := preload("res://game/data/profile.gd")
+const RemoteMotion := preload("res://game/online/remote_motion.gd")
 
 const POLL := 2.0
 const SHOW_R := 700.0
 const MAX_SHOWN := 12
 const LABEL_R := 140.0
-const REAL_R := 80.0 # los más cercanos se dibujan con su modelo real (pintura, llantas y piezas que el SERVIDOR sabe que tiene); el resto, de papel con su color
-const REAL_MAX := 3
+const REAL_R := 170.0 # los más cercanos se dibujan con su modelo real (pintura, llantas y piezas que el SERVIDOR sabe que tiene); el resto, de papel con su color
+const REAL_MAX := 5
 
 var race
 var social: Node
@@ -72,16 +74,15 @@ func _process(dt: float) -> void:
 		var c: Dictionary = cars[id]
 		if not bool(c["has"]):
 			continue
-		var dir := Vector2(sin(float(c["yaw"])), cos(float(c["yaw"])))
-		var age := minf(now - float(c["t"]), 3.0)
-		var want: Vector2 = (c["target"] as Vector2) + dir * float(c["speed"]) * age
-		var p: Vector2 = (c["pos"] as Vector2).lerp(want, 1.0 - exp(-6.0 * dt))
+		var m = c["motion"]
+		m.step(now, dt)
+		var p: Vector2 = m.pos
 		c["pos"] = p
 		var n: Node3D = c["node"]
 		var pr: Array = city.probe(p.x, p.y)
 		var y: float = float(pr[4]) if float(pr[0]) >= -1.0 else city.height(p.x, p.y)
 		n.position = Vector3(p.x, y, p.y)
-		n.rotation.y = lerp_angle(n.rotation.y, float(c["yaw"]), 1.0 - exp(-8.0 * dt))
+		n.basis = Basis.from_euler(Vector3(m.pitch, m.yaw, m.roll), EULER_ORDER_YXZ)
 		(c["label"] as Label3D).visible = p.distance_to(me) < LABEL_R
 		var real: Variant = c.get("real")
 		if real != null and is_instance_valid(real):
@@ -89,8 +90,11 @@ func _process(dt: float) -> void:
 			_snap.px = p.x
 			_snap.py = y + float(vis.V.comHeight)
 			_snap.pz = p.y
-			_snap.yaw = n.rotation.y
-			var w: float = float(c["speed"]) / maxf(0.2, float(vis.V.wheelRadius))
+			_snap.yaw = m.yaw
+			_snap.pitch = m.pitch
+			_snap.roll = m.roll
+			_snap.steerAngle = m.steer
+			var w: float = m.wheel_omega(float(vis.V.wheelRadius))
 			_snap.wheel_omega = PackedFloat64Array([w, w, w, w])
 			vis.sync_from(_snap, dt)
 
@@ -102,12 +106,11 @@ func apply_live(id: String, st: Dictionary) -> void:
 	var c: Dictionary = cars[id]
 	var pos := Vector2(float(st["x"]), float(st["z"]))
 	c["yaw"] = float(st["yaw"])
-	if pos.distance_to(c["pos"]) > 60.0:
-		c["pos"] = pos
 	c["target"] = pos
 	c["speed"] = float(st["kmh"]) / 3.6
 	c["t"] = Time.get_ticks_msec() / 1000.0
 	c["live_t"] = c["t"]
+	(c["motion"] as RefCounted).push_sample(pos, float(st["yaw"]), float(c["speed"]), float(c["t"]))
 
 ## El auto dejó de mandar posiciones en vivo: vuelve a mandar la consulta periódica
 func live_gone(id: String) -> void:
@@ -167,18 +170,16 @@ func _update_car(id: String, p: Dictionary, pos: Vector2) -> void:
 		n.add_child(lab)
 		add_child(n)
 		n.position = Vector3(pos.x, 0.0, pos.y)
-		cars[id] = {"node": n, "label": lab, "pos": pos, "target": pos, "yaw": 0.0, "speed": 0.0, "t": now, "has": true}
+		cars[id] = {"node": n, "label": lab, "pos": pos, "target": pos, "yaw": 0.0, "speed": 0.0, "t": now, "has": true, "motion": RemoteMotion.new()}
 	var c: Dictionary = cars[id]
 	var live: bool = c.has("live_t") and now - float(c["live_t"]) < 3.0 # llegan posiciones en vivo: la consulta sólo trae nombre y modelo
-	var old: Vector2 = c["target"]
 	if not live:
-		if pos.distance_to(old) > 0.6:
-			c["yaw"] = atan2(pos.x - old.x, pos.y - old.y)
-		if pos.distance_to(c["pos"]) > 60.0:
-			c["pos"] = pos # salto grande: se corta en seco en vez de deslizarse por todo el mapa
 		c["target"] = pos
 		c["speed"] = float(p.get("speed", 0.0)) / 3.6
 		c["t"] = now
+		# la consulta no trae el rumbo: sale de hacia dónde se movió el auto desde la consulta anterior (un salto grande se corta en seco en vez de deslizarse por todo el mapa)
+		(c["motion"] as RefCounted).push_track(pos, float(c["speed"]), now)
+		c["yaw"] = (c["motion"] as RefCounted).yaw
 	(c["label"] as Label3D).text = str(p.get("name", "?"))
 	var veh: Variant = p.get("vehicle")
 	c["veh"] = veh if veh is Dictionary else {}
