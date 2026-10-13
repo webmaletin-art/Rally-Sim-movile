@@ -10,13 +10,14 @@ from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 GODOT = os.environ.get('GODOT', '/tmp/godot/Godot_v4.4.1-stable_linux.x86_64')
+PROJECT = os.environ.get('GODOT_PROJECT', os.path.join(ROOT, 'godot'))  # otra copia del proyecto (por ejemplo con datos viejos para comparar)
 
 
 def run(job, res):
     w, h = res.split('x')
     t0 = time.time()
     log = job[:-5] + '.log'
-    cmd = ['xvfb-run', '-a', '-s', '-screen 0 %sx%sx24' % (w, h), GODOT, '--path', os.path.join(ROOT, 'godot'), '--rendering-driver', 'opengl3', '--resolution', res,
+    cmd = ['xvfb-run', '-a', '-s', '-screen 0 %sx%sx24' % (w, h), GODOT, '--path', PROJECT, '--rendering-driver', 'opengl3', '--resolution', res,
            '--script', 'res://tests/trailer/director.gd', '--', '--job=' + job]
     with open(log, 'w') as f:
         p = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, timeout=3 * 3600)

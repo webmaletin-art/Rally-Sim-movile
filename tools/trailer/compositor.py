@@ -225,6 +225,28 @@ def shear_layer(layer, shear, cy):
     return layer.transform(layer.size, Image.AFFINE, (1, shear, -shear * cy, 0, 1, 0), Image.BICUBIC)
 
 
+def _blur_local(layer, radius):
+    """Desenfoque gaussiano de una capa RGBA, sólo en la zona donde hay algo (el texto ocupa poco: sobre el cuadro entero era lo más lento del montaje)."""
+    bb = layer.getbbox()
+    if bb is None:
+        return layer
+    m = int(radius * 3) + 2
+    x0, y0 = max(0, bb[0] - m), max(0, bb[1] - m)
+    x1, y1 = min(layer.width, bb[2] + m), min(layer.height, bb[3] + m)
+    out = Image.new('RGBA', layer.size, (0, 0, 0, 0))
+    out.paste(layer.crop((x0, y0, x1, y1)).filter(ImageFilter.GaussianBlur(radius)), (x0, y0))
+    return out
+
+
+def _union_composite(dst, src):
+    """alpha_composite de src sobre dst, sólo en el rectángulo donde src tiene algo."""
+    bb = src.getbbox()
+    if bb is None:
+        return dst
+    dst.alpha_composite(src.crop(bb), (bb[0], bb[1]))
+    return dst
+
+
 def text_layer(lines, size=(W, H)):
     """lines: [{txt, font, size, pos (fracción x,y del centro), color, spacing, alpha, scale, shadow, glow, anchor, italic}] → imagen RGBA para mezclar encima."""
     out = Image.new('RGBA', size, (0, 0, 0, 0))
@@ -244,7 +266,7 @@ def text_layer(lines, size=(W, H)):
         if ln.get('shadow', True):
             shd = Image.new('RGBA', size, (0, 0, 0, 0))
             draw_text_spaced(ImageDraw.Draw(shd), (pos[0] + 4, pos[1] + 6), ln['txt'], f, (0, 0, 0, int(al * 0.55)), sp, anchor)
-            one = Image.alpha_composite(one, shear_layer(shd, sh_k, pos[1]).filter(ImageFilter.GaussianBlur(8)))
+            _union_composite(one, _blur_local(shear_layer(shd, sh_k, pos[1]), 8))
         top = Image.new('RGBA', size, (0, 0, 0, 0))
         draw_text_spaced(ImageDraw.Draw(top), pos, ln['txt'], f, tuple(col) + (al,), sp, anchor)
         top = shear_layer(top, sh_k, pos[1])
@@ -252,9 +274,10 @@ def text_layer(lines, size=(W, H)):
             gc = ln.get('glow_color', (255, 130, 30))
             gl = Image.new('RGBA', size, (0, 0, 0, 0))
             draw_text_spaced(ImageDraw.Draw(gl), pos, ln['txt'], f, tuple(gc) + (int(al * 0.9),), sp, anchor)
-            glow_total = Image.alpha_composite(glow_total, shear_layer(gl, sh_k, pos[1]).filter(ImageFilter.GaussianBlur(ln.get('glow', 18))))
-        out = Image.alpha_composite(out, Image.alpha_composite(one, top))
-    return Image.alpha_composite(glow_total, out)
+            _union_composite(glow_total, _blur_local(shear_layer(gl, sh_k, pos[1]), ln.get('glow', 18)))
+        _union_composite(one, top)
+        _union_composite(out, one)
+    return _union_composite(glow_total, out)
 
 
 def stripes_layer(k, size=(W, H), angle=-18.0, bands=((0.0, 150, (255, 122, 26)), (210, 54, (235, 238, 244)), (330, 110, (255, 122, 26)))):
@@ -272,10 +295,16 @@ def stripes_layer(k, size=(W, H), angle=-18.0, bands=((0.0, 150, (255, 122, 26))
 
 
 def overlay(a, layer):
-    """Mezcla una capa RGBA (PIL) sobre un arreglo float."""
-    la = np.asarray(layer, dtype=np.float32) / 255.0
+    """Mezcla una capa RGBA (PIL) sobre un arreglo float, sólo donde la capa tiene algo."""
+    bb = layer.getbbox()
+    if bb is None:
+        return a
+    x0, y0, x1, y1 = bb
+    la = np.asarray(layer.crop(bb), dtype=np.float32) / 255.0
     al = la[:, :, 3:4]
-    return a * (1 - al) + la[:, :, :3] * al
+    a = a.copy() if not a.flags.writeable else a
+    a[y0:y1, x0:x1] = a[y0:y1, x0:x1] * (1 - al) + la[:, :, :3] * al
+    return a
 
 
 # ───────────────────────── tomas ─────────────────────────
