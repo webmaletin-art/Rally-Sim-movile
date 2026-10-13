@@ -21,6 +21,8 @@ import sys
 
 import numpy as np
 from scipy.ndimage import gaussian_filter1d, map_coordinates
+from scipy.sparse import csc_matrix, diags
+from scipy.sparse.linalg import splu
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -233,6 +235,104 @@ def _round_corners(h, step, g, J, na, nb, Ha, Hb, iters=120):
     return h
 
 
+# cuánto puede cambiar la pendiente entre dos tramos seguidos (≈12 m): en la plazoleta de un nodo la ruta pasa de plana a la rampa y ese quiebre se veía como un «doblez» del asfalto
+KINK = {"autopista": 0.010, "anillo": 0.010, "ruta": 0.015, "conector": 0.015, "provincial": 0.020, "camino": 0.025, "tierra": 0.025, "montana": 0.030, "calle": 0.040}
+
+
+def _kink_solve(t, cl, fixed, lam):
+    """Mínimos cuadrados con rigidez: min Σ (h − t)² + Σ λ_j (Δpendiente_j)², con los puntos `fixed` (la plazoleta) clavados a su altura. Es un sistema ralo (pentadiagonal)."""
+    n = len(t)
+    ds = np.diff(cl)
+    inv = 1.0 / ds
+    # fila j (puntos 1..n-2): Δpendiente = h[j+1]/ds[j] − h[j]·(1/ds[j] + 1/ds[j−1]) + h[j−1]/ds[j−1]
+    D = diags([inv[:-1], -(inv[1:] + inv[:-1]), inv[1:]], [0, 1, 2], shape=(n - 2, n)).tocsc()
+    A = (diags(np.ones(n)) + D.T @ diags(lam) @ D).tocsc()
+    free = np.where(~fixed)[0]
+    Aff = A[free][:, free]
+    rhs = t[free] - A[free][:, np.where(fixed)[0]] @ t[fixed]
+    h = t.copy()
+    h[free] = splu(Aff.tocsc()).solve(rhs)
+    return h
+
+
+def smooth_kinks(h0, cl, na, nb, g_cap, J):
+    """Redondea los quiebres de pendiente (los que más se ven están donde la plazoleta plana de un nodo se junta con la subida), sin pasarse de la pendiente máxima de la clase.
+    A) rigidez local: sube sólo donde el quiebre pasa de J (el resto de la ruta sigue el terreno);
+    B) rigidez pareja cada vez mayor (una ruta corta y empinada entre dos nodos necesita una S entera);
+    se queda con la mejor que cumpla la pendiente máxima (menor quiebre, y a igual quiebre la que menos se aparta del perfil original)."""
+    n = len(h0)
+    if n - na - nb < 3 or n < 5:
+        return h0
+    fixed = np.zeros(n, dtype=bool)
+    fixed[:na] = True
+    fixed[n - nb:] = True
+    ds = np.diff(cl)
+
+    def measure(h):
+        return float(np.abs(np.diff(h) / ds).max()), float(np.abs(np.diff(np.diff(h) / ds)).max())
+
+    g0, k0 = measure(h0)
+    cands = []
+    # A) rigidez local
+    lam = np.full(n - 2, 60.0)
+    h = h0
+    for _it in range(30):
+        h = _kink_solve(h0, cl, fixed, lam)
+        dg = np.abs(np.diff(np.diff(h) / ds))
+        bad = np.where(dg > J)[0]
+        if len(bad) == 0:
+            break
+        for j in bad:
+            lam[max(0, j - 3):j + 4] *= 2.5
+    cands.append(h)
+    # B) rigidez pareja
+    for k in range(9):
+        cands.append(_kink_solve(h0, cl, fixed, np.full(n - 2, 60.0 * 4.0 ** k)))
+    best = None
+    best_key = None
+    for h in cands:
+        gm, km = measure(h)
+        if gm > max(g_cap * 1.02, g0 * 1.0):
+            continue  # no se pasa de la pendiente máxima (ni de la que ya tenía la ruta si ya se pasaba)
+        key = (max(km, J), float(np.sqrt(np.mean((h - h0) ** 2))))  # cumplir J alcanza: de ahí en más, la que menos se aparta
+        if best_key is None or key < best_key:
+            best, best_key = h, key
+    if best is not None and best_key[0] <= J * 1.5:
+        return best
+    # C) una subida que ya iba a la pendiente máxima apenas sale de la plazoleta no se puede redondear sin quedar por debajo del terreno: se baja el perfil (un corte) con una pendiente que
+    #    crece de a poco desde la plazoleta, y se vuelve a la altura del terreno apenas la pendiente máxima deja
+    tgt = _envelope(h0, cl, na, nb, g_cap, J)
+    for k in range(0, 9, 2):
+        h = _kink_solve(tgt, cl, fixed, np.full(n - 2, 60.0 * 4.0 ** k))
+        gm, km = measure(h)
+        if gm > max(g_cap * 1.02, g0 * 1.0):
+            continue
+        key = (max(km, J), float(np.sqrt(np.mean((h - h0) ** 2))))
+        if best_key is None or key < best_key:
+            best, best_key = h, key
+    if best is None or best_key[0] >= k0:
+        return h0
+    return best
+
+
+def _envelope(h0, cl, na, nb, g_cap, J):
+    """Perfil objetivo cuya pendiente nace en 0 en la plazoleta y llega a la máxima de la clase en la distancia que deja el quiebre J (curva vertical); entre los dos extremos fijos recupera el perfil original lo antes posible."""
+    n = len(h0)
+    ds = np.diff(cl)
+    ramp = 12.0 * g_cap / J * 1.2
+    mid = 0.5 * (cl[:-1] + cl[1:])
+    d_end = np.minimum(mid - cl[na - 1], cl[n - nb] - mid)
+    x = np.clip(d_end / ramp, 0.0, 1.0)
+    g_env = g_cap * x * x * (3.0 - 2.0 * x)
+    h = h0.copy()
+    for _ in range(6):
+        for i in range(na, n - nb):
+            h[i] = min(max(h[i], h[i - 1] - g_env[i - 1] * ds[i - 1]), h[i - 1] + g_env[i - 1] * ds[i - 1])
+        for i in range(n - nb - 1, na - 1, -1):
+            h[i] = min(max(h[i], h[i + 1] - g_env[i] * ds[i]), h[i + 1] + g_env[i] * ds[i])
+    return h
+
+
 def profile(o, f, Ha, Hb, flat_a, flat_b):
     """Perfil de altura de una ruta: terreno suavizado → hacia las alturas de sus nodos → pendiente limitada dentro de la franja alcanzable → plazoleta plana en cada extremo → curvas verticales."""
     g = GRADE[o.cls]
@@ -287,6 +387,7 @@ def profile(o, f, Ha, Hb, flat_a, flat_b):
         h = _limit(h, step, g * 1.02, na, nb, Ha, Hb, 1)
         if np.max(np.abs(h - before)) < 1e-6:
             break
+    h = smooth_kinks(h, cl, na, nb, g, KINK.get(o.cls, 0.03))
     return h[idx_map]
 
 

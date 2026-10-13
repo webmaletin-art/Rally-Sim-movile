@@ -9,8 +9,10 @@ const STATION_COL := [Color(0.95, 0.72, 0.10), Color(0.88, 0.20, 0.15), Color(0.
 const SPAWNS_FILE := "res://game/data/region/spawns.json"
 const MAP_RECT := Rect2(-60000.0, -90000.0, 120000.0, 93000.0) # lo que cubre region_map.png (mismo recorte que la grilla del generador)
 
-const DRIVE_R := 5.0 # radio de los discos del camino de acceso (10 m de ancho de pavimento)
-const DRIVE_STEP := 3.0 # separación entre discos (se pisan: sin muescas)
+const APRON_HALF := 8.0 # medio ancho de la explanada de acceso (16 m de boca)
+const APRON_R := 3.2 # radio de los discos de la explanada (se pisan)
+const APRON_STEP := 2.8 # separación entre discos
+const APRON_CORNER := 5.0 # radio de las esquinas del lado de la calle
 const LOT_GAP := 3.0 # un playón de servicio no puede quedar sobre una calle: si cae encima se lo corre hasta dejar este hueco entre su borde y la banquina
 
 ## ¿Está la región completa en esta compilación? (los datos de las rutas y la lista de lugares para aparecer; si falta algo no se ofrece)
@@ -55,7 +57,8 @@ static func _clear_of_roads(rg: RegionData, pos: Vector2, offs: Array, r: float)
 		p += -Vector2(pr[7], pr[8]) * (LOT_GAP - float(gp[0]) + 0.5)
 	return p
 
-## Camino de acceso: discos de pavimento que se pisan, desde adentro del playón hasta la calle más cercana (el borde del último toca el asfalto). Sin esto el playón queda rodeado de pasto y de pared invisible.
+## Camino de acceso: una explanada de pavimento (discos que se pisan, en filas) desde adentro del playón hasta la calle más cercana, de 16 m de ancho y con las dos esquinas del lado de la calle redondeadas:
+## el borde de los últimos discos toca el asfalto. Sin esto el playón queda rodeado de pasto y de pared invisible, y con un camino angosto la salida quedaba en ángulo recto.
 ## Devuelve [dirección unitaria hacia la calle, altura de la calle en el empalme, metros de camino]; dirección cero si no hay calle a la vista.
 static func _driveway(rg: RegionData, circles: Array, r: float, h: float) -> Array:
 	var gp := _lot_gap(rg, circles, r)
@@ -64,17 +67,28 @@ static func _driveway(rg: RegionData, circles: Array, r: float, h: float) -> Arr
 	var pr: PackedFloat64Array = gp[2]
 	var c0: Vector2 = circles[int(gp[1])]
 	var u := Vector2(pr[7], pr[8])
+	var side := Vector2(-u.y, u.x)
 	var hw: float = pr[5]
 	var hr: float = pr[6]
-	var t0 := r - 1.5 # el primer disco queda adentro del playón
-	var t1 := float(pr[4]) - (hw + DRIVE_R - 0.1) # el último toca el borde del asfalto
-	var L := t1 - t0
-	if L > 0.2:
-		var n := int(ceil(L / DRIVE_STEP))
-		for i in n + 1:
-			var f := float(i) / float(n)
-			var c := c0 + u * (t0 + L * f)
-			rg.add_pad(c.x, c.y, DRIVE_R, lerpf(h, hr, f))
+	var a0 := maxf(r - 4.0, 0.0) # la primera fila queda adentro del playón
+	var a1 := float(pr[4]) - hw - 0.1 # el borde de la explanada toca el borde del asfalto
+	var a_last := a1 - APRON_R * 0.6 # la última fila de centros (los discos llegan hasta casi el asfalto)
+	var L := a1 - a0
+	var rows := maxi(1, int(ceil(maxf(a_last - a0, 0.0) / APRON_STEP)) + 1)
+	for k in rows:
+		var f := float(k) / float(maxi(rows - 1, 1))
+		var a := lerpf(a0, a_last, f) if rows > 1 else a_last
+		for j in range(-4, 5):
+			var x := float(j) * APRON_STEP
+			if absf(x) > APRON_HALF - APRON_R * 0.5:
+				continue
+			# esquinas redondas del lado de la calle: un disco sólo va si está adentro del rectángulo redondeado
+			var dx := absf(x) - (APRON_HALF - APRON_CORNER)
+			var da := a - (a1 - APRON_CORNER)
+			if dx > 0.0 and da > 0.0 and sqrt(dx * dx + da * da) > APRON_CORNER - APRON_R * 0.55:
+				continue
+			var c := c0 + u * a + side * x
+			rg.add_pad(c.x, c.y, APRON_R, lerpf(h, hr, f))
 	return [u, hr, maxf(L, 0.0)]
 
 static func install(city, rg: RegionData) -> void:

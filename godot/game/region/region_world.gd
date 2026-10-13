@@ -25,6 +25,11 @@ const BIOME_COL := [Color(0.62, 0.72, 0.42), Color(0.78, 0.70, 0.48), Color(0.45
 const SOLID_ID0 := 40000000 # los objetos sólidos de la región tienen ids por encima de los de la ciudad (índices chicos): el auto los choca pero no los rompe
 const ROAD_EPS := 0.12 # la malla del terreno queda al menos tanto por debajo de la calzada (las banquinas van 5 cm más abajo)
 const CAP_STEP := 1.5 # cada cuántos metros se mira la calzada para que el terreno no la tape (ver _road_caps)
+const JUNCTION_CLEAR := 4.0 # metros más allá del medio ancho de la calle más ancha de un cruce donde no se dibujan rayas (la plazoleta queda lisa, sin rayas cruzadas)
+const GORE_MIN_DEG := 9.0 # dos calles que salen del nodo con un ángulo entre este y FILLET_MIN_DEG (una bifurcación): el pasto entre las dos se rellena de pavimento hasta que se separan GORE_GAP m
+const GORE_GAP := 6.5
+const FILLET_MIN_DEG := 28.0 # esquinas redondeadas en los cruces: entre dos calles vecinas que forman un ángulo entre estos dos
+const FILLET_MAX_DEG := 152.0
 const TREE_SPACING := [58.0, 90.0, 20.0, 0.0, 0.0, 12.0, 0.0, 0.0, 38.0] # metros entre árboles por bioma (0 = ninguno)
 
 var track # CityTrack
@@ -54,6 +59,7 @@ var _sea: MeshInstance3D
 var _places_by_chunk: Dictionary = {}
 var _nodes_by_chunk: Dictionary = {}
 var _towns: Array = []
+var _jclear: Dictionary = {} # nodo (cruce de 3 o más calles) -> radio dentro del cual no se dibujan rayas
 var _svc_nodes: Dictionary = {} # "toll_<id>" / "shop_<id>" -> Node3D (los usa CityToll y CityShops para animar barreras y portones)
 var _stations_by_chunk: Dictionary = {}
 var _tolls_by_chunk: Dictionary = {}
@@ -119,6 +125,13 @@ func _index() -> void:
 	for p in city.pois:
 		if p.get("region", false) and str(p["kind"]) == "garage":
 			_add_to(_shops_by_chunk, p["pos"], p)
+	for i in rg.nodes.size():
+		var eds_i: PackedInt32Array = rg.node_edges[i]
+		if eds_i.size() >= 3:
+			var hm := 0.0
+			for ei in eds_i:
+				hm = maxf(hm, rg.e_hw[ei])
+			_jclear[i] = hm + JUNCTION_CLEAR
 	for i in rg.nodes.size():
 		var k2 := Vector2i(int(floor(float(rg.nodes[i][1]) / CHUNK)), int(floor(float(rg.nodes[i][2]) / CHUNK)))
 		if not _nodes_by_chunk.has(k2):
@@ -383,6 +396,26 @@ func _road_caps(ox: float, oz: float, step: float, w: int, y0: PackedFloat32Arra
 					hmax = maxf(hmax, rg.e_hw[ei])
 				var np := rg.node_pos(ni)
 				_cap_disc(np.x, np.y, hmax + 0.6, float((rg.nodes[ni] as Array)[5]) + 0.05, ox, oz, step, w, y0, cap)
+				# las esquinas redondeadas: el terreno queda por debajo del pavimento también ahí
+				for fl in _fillets(ni):
+					var fc: Vector3 = fl["c"]
+					var arc: PackedVector3Array = fl["arc"]
+					var fo: Vector2 = fl["o"]
+					_cap_point(fc.x, fc.z, fc.y - ROAD_EPS, 0.0, 0.0, ox, oz, step, w, y0, cap)
+					for q in arc.size():
+						var ap := arc[q]
+						_cap_point(ap.x, ap.z, ap.y - ROAD_EPS, 0.0, 0.0, ox, oz, step, w, y0, cap)
+						_cap_point((ap.x + fc.x) * 0.5, (ap.z + fc.z) * 0.5, (ap.y + fc.y) * 0.5 - ROAD_EPS, 0.0, 0.0, ox, oz, step, w, y0, cap)
+						_cap_point(ap.x + (fo.x - ap.x) * 0.3, ap.z + (fo.y - ap.z) * 0.3, ap.y - 0.05 - ROAD_EPS, 0.0, 0.0, ox, oz, step, w, y0, cap)
+
+## El corte del terreno para una grilla de w×w vértices (el (0, 0) en (ox, oz), separados `step` metros) con las alturas y0: el terreno de la ciudad, más allá de REGION_R, lo usa también
+## (su malla de 16 m tapaba los caminos de la región). Devuelve el nivel de corte de cada vértice (1e9 = ninguno).
+func road_caps(ox: float, oz: float, step: float, w: int, y0: PackedFloat32Array) -> PackedFloat32Array:
+	var cap := PackedFloat32Array()
+	cap.resize(w * w)
+	cap.fill(1.0e9)
+	_road_caps(ox, oz, step, w, y0, cap)
+	return cap
 
 func _cap_segment(k: int, ox: float, oz: float, step: float, w: int, y0: PackedFloat32Array, cap: PackedFloat32Array) -> void:
 	var ei: int = rg.pe[k]
@@ -407,6 +440,9 @@ func _cap_segment(k: int, ox: float, oz: float, step: float, w: int, y0: PackedF
 	var yb: float = rg.hs[k + 1] + 0.03 + off
 	var m := maxi(1, int(ceil(seg_len / CAP_STEP)))
 	var sw := RegionData.SHOULDER
+	var grade := (yb - ya) / seg_len # pendiente del camino (m por m): el tope sigue el plano de la calzada, no un nivel horizontal
+	var gx := dir.x * grade
+	var gz := dir.y * grade
 	for si in m + 1:
 		var t := float(si) / float(m)
 		var c := a.lerp(b, t)
@@ -414,7 +450,7 @@ func _cap_segment(k: int, ox: float, oz: float, step: float, w: int, y0: PackedF
 		for lat in [-hw - sw, -hw, hw, hw + sw]:
 			var l: float = lat
 			var target := yr if absf(l) <= hw + 0.01 else yr - 0.05
-			_cap_point(c.x + nrm.x * l, c.y + nrm.y * l, target, ox, oz, step, w, y0, cap)
+			_cap_point(c.x + nrm.x * l, c.y + nrm.y * l, target, gx, gz, ox, oz, step, w, y0, cap)
 
 ## Un disco plano (playón, plazoleta) a la altura yr: su borde en 16 puntos y los vértices de la grilla que caen adentro
 func _cap_disc(cx: float, cz: float, r: float, yr: float, ox: float, oz: float, step: float, w: int, y0: PackedFloat32Array, cap: PackedFloat32Array) -> void:
@@ -424,9 +460,9 @@ func _cap_disc(cx: float, cz: float, r: float, yr: float, ox: float, oz: float, 
 	var target := yr - ROAD_EPS
 	for q in 16:
 		var an := TAU * float(q) / 16.0
-		_cap_point(cx + cos(an) * r, cz + sin(an) * r, target, ox, oz, step, w, y0, cap)
-		_cap_point(cx + cos(an) * r * 0.5, cz + sin(an) * r * 0.5, target, ox, oz, step, w, y0, cap)
-	_cap_point(cx, cz, target, ox, oz, step, w, y0, cap)
+		_cap_point(cx + cos(an) * r, cz + sin(an) * r, target, 0.0, 0.0, ox, oz, step, w, y0, cap)
+		_cap_point(cx + cos(an) * r * 0.5, cz + sin(an) * r * 0.5, target, 0.0, 0.0, ox, oz, step, w, y0, cap)
+	_cap_point(cx, cz, target, 0.0, 0.0, ox, oz, step, w, y0, cap)
 	for iz in range(maxi(0, int(floor((cz - r - oz) / step))), mini(w, int(ceil((cz + r - oz) / step)) + 1)):
 		for ix in range(maxi(0, int(floor((cx - r - ox) / step))), mini(w, int(ceil((cx + r - ox) / step)) + 1)):
 			var dx := ox + float(ix) * step - cx
@@ -435,53 +471,71 @@ func _cap_disc(cx: float, cz: float, r: float, yr: float, ox: float, oz: float, 
 				var j := iz * w + ix
 				cap[j] = minf(cap[j], target)
 
-## Un punto (px, pz) que tiene que quedar por encima de la malla: si la malla pasa por arriba de `target` se baja el nivel de corte de los vértices del triángulo
-func _cap_point(px: float, pz: float, target: float, ox: float, oz: float, step: float, w: int, y0: PackedFloat32Array, cap: PackedFloat32Array) -> void:
+## Un punto (px, pz) que tiene que quedar por encima de la malla: si la malla pasa por arriba de `target` se baja el nivel de corte de los vértices del triángulo.
+## El camino tiene pendiente (gx, gz son los metros que sube por metro hacia cada eje): se trabaja con las alturas de los vértices «sin la pendiente» (como si el camino fuera horizontal) y el nivel
+## de corte se vuelve a inclinar con el camino. Antes todos los vértices se bajaban al mismo nivel, el del punto más bajo del camino dentro del triángulo: en una subida del 7 % y una grilla de 8 m
+## el terreno quedaba hasta medio metro por debajo de la calzada (el asfalto parecía flotar y «doblado»).
+func _cap_point(px: float, pz: float, target: float, gx: float, gz: float, ox: float, oz: float, step: float, w: int, y0: PackedFloat32Array, cap: PackedFloat32Array) -> void:
 	var fx := (px - ox) / step
 	var fz := (pz - oz) / step
-	var gx := int(floor(fx))
-	var gz := int(floor(fz))
-	if gx < 0 or gz < 0 or gx >= w - 1 or gz >= w - 1:
+	var ix := int(floor(fx))
+	var iz := int(floor(fz))
+	if ix < 0 or iz < 0 or ix >= w - 1 or iz >= w - 1:
 		return
-	var u := fx - float(gx)
-	var v := fz - float(gz)
-	var j1 := gz * w + gx
+	var u := fx - float(ix)
+	var v := fz - float(iz)
+	var j1 := iz * w + ix
 	var j2: int
 	var l1: float
 	var l2: float
 	var l3: float
+	var x1 := ox + float(ix) * step
+	var z1 := oz + float(iz) * step
+	var x3 := x1 + step
+	var z3 := z1 + step
+	var x2: float
+	var z2: float
 	if u >= v:
 		j2 = j1 + 1
 		l1 = 1.0 - u
 		l2 = u - v
 		l3 = v
+		x2 = x3
+		z2 = z1
 	else:
 		j2 = j1 + w
 		l1 = 1.0 - v
 		l2 = v - u
 		l3 = u
+		x2 = x1
+		z2 = z3
 	var j3 := j1 + w + 1
-	var y1 := y0[j1]
-	var y2 := y0[j2]
-	var y3 := y0[j3]
-	if l1 * y1 + l2 * y2 + l3 * y3 <= target:
+	if l1 * y0[j1] + l2 * y0[j2] + l3 * y0[j3] <= target:
 		return
+	# alturas sin la pendiente del camino (distancia al punto medida sobre el camino × pendiente)
+	var s1 := gx * (x1 - px) + gz * (z1 - pz)
+	var s2 := gx * (x2 - px) + gz * (z2 - pz)
+	var s3 := gx * (x3 - px) + gz * (z3 - pz)
+	var y1 := y0[j1] - s1
+	var y2 := y0[j2] - s2
+	var y3 := y0[j3] - s3
 	# se ordenan los tres vértices de menor a mayor altura
 	var t_j: int
 	var t_y: float
 	var t_l: float
+	var t_s: float
 	if y1 > y2:
-		t_j = j1; t_y = y1; t_l = l1
-		j1 = j2; y1 = y2; l1 = l2
-		j2 = t_j; y2 = t_y; l2 = t_l
+		t_j = j1; t_y = y1; t_l = l1; t_s = s1
+		j1 = j2; y1 = y2; l1 = l2; s1 = s2
+		j2 = t_j; y2 = t_y; l2 = t_l; s2 = t_s
 	if y2 > y3:
-		t_j = j2; t_y = y2; t_l = l2
-		j2 = j3; y2 = y3; l2 = l3
-		j3 = t_j; y3 = t_y; l3 = t_l
+		t_j = j2; t_y = y2; t_l = l2; t_s = s2
+		j2 = j3; y2 = y3; l2 = l3; s2 = s3
+		j3 = t_j; y3 = t_y; l3 = t_l; s3 = t_s
 		if y1 > y2:
-			t_j = j1; t_y = y1; t_l = l1
-			j1 = j2; y1 = y2; l1 = l2
-			j2 = t_j; y2 = t_y; l2 = t_l
+			t_j = j1; t_y = y1; t_l = l1; t_s = s1
+			j1 = j2; y1 = y2; l1 = l2; s1 = s2
+			j2 = t_j; y2 = t_y; l2 = t_l; s2 = t_s
 	# nivel de corte L: l1·min(y1, L) + l2·min(y2, L) + l3·min(y3, L) = target
 	var lvl := target
 	if lvl > y1:
@@ -491,11 +545,11 @@ func _cap_point(px: float, pz: float, target: float, ox: float, oz: float, step:
 			s_low += l2 * y2
 			lvl = (target - s_low) / maxf(l3, 1.0e-6)
 	if l1 > 1.0e-4:
-		cap[j1] = minf(cap[j1], lvl)
+		cap[j1] = minf(cap[j1], lvl + s1)
 	if l2 > 1.0e-4:
-		cap[j2] = minf(cap[j2], lvl)
+		cap[j2] = minf(cap[j2], lvl + s2)
 	if l3 > 1.0e-4:
-		cap[j3] = minf(cap[j3], lvl)
+		cap[j3] = minf(cap[j3], lvl + s3)
 
 ## Color del terreno: el de la ciudad cerca de ella, el del bioma lejos; la pendiente fuerte se vuelve roca
 func _color(x: float, z: float, y: float, slope: float) -> Color:
@@ -568,9 +622,9 @@ func _roads(rd, mk, sd, rl, x0: float, z0: float, tier: int) -> void:
 	var kk := Vector2i(int(floor(x0 / CHUNK)), int(floor(z0 / CHUNK)))
 	for ni in (_nodes_by_chunk.get(kk, []) as Array):
 		if (rg.node_edges[ni] as PackedInt32Array).size() >= 3:
-			_junction(rd, int(ni))
+			_junction(rd, sd, int(ni))
 
-func _junction(rd, ni: int) -> void:
+func _junction(rd, sd, ni: int) -> void:
 	var p := rg.node_pos(ni)
 	var hmax := 0.0
 	var hh := float((rg.nodes[ni] as Array)[5])
@@ -582,6 +636,139 @@ func _junction(rd, ni: int) -> void:
 		var a0 := TAU * float(i) / 10.0
 		var a1 := TAU * float(i + 1) / 10.0
 		rd.tri(c, Vector3(p.x + cos(a0) * r, hh + 0.05, p.y + sin(a0) * r), Vector3(p.x + cos(a1) * r, hh + 0.05, p.y + sin(a1) * r), C_ASPH)
+	# esquinas redondeadas entre cada par de calles vecinas
+	for f in _fillets(ni):
+		var fc: Vector3 = f["c"]
+		var arc: PackedVector3Array = f["arc"]
+		var col: Color = f["col"]
+		for k in arc.size() - 1:
+			rd.tri(fc, arc[k], arc[k + 1], col)
+		if f.has("gore"):
+			continue
+		# banquina siguiendo el arco (hacia afuera, donde está el centro del círculo)
+		var oc: Vector2 = f["o"]
+		var dn := Vector3(0, -0.05, 0)
+		for k in arc.size() - 1:
+			var ua := (oc - Vector2(arc[k].x, arc[k].z)).normalized() * RegionData.SHOULDER
+			var ub := (oc - Vector2(arc[k + 1].x, arc[k + 1].z)).normalized() * RegionData.SHOULDER
+			var qa := Vector3(arc[k].x + ua.x, arc[k].y, arc[k].z + ua.y) + dn
+			var qb := Vector3(arc[k + 1].x + ub.x, arc[k + 1].y, arc[k + 1].z + ub.y) + dn
+			sd.quad_up(arc[k] + dn, arc[k + 1] + dn, qb, qa, C_SIDE if col == C_ASPH else col.darkened(0.1))
+
+## Altura de la calzada de la calle ei a s metros del nodo ni (sin el desfase de la calle)
+func _edge_h(ei: int, ni: int, s: float) -> float:
+	var e: Array = rg.edges[ei]
+	var cum := rg.edge_cum(ei)
+	var total := cum[cum.size() - 1]
+	var sa := s if int(e[0]) == ni else total - s
+	sa = clampf(sa, 0.0, total)
+	var lo := 0
+	var hi := cum.size() - 1
+	while hi - lo > 1:
+		var mid := (lo + hi) / 2
+		if cum[mid] <= sa:
+			lo = mid
+		else:
+			hi = mid
+	var p0 := int(e[6])
+	var seg := maxf(cum[hi] - cum[lo], 1.0e-4)
+	return lerpf(rg.hs[p0 + lo], rg.hs[p0 + hi], clampf((sa - cum[lo]) / seg, 0.0, 1.0))
+
+## Las esquinas de un cruce: entre cada par de calles vecinas (ordenadas por el ángulo con que salen del nodo) el pavimento cierra la esquina con un arco de círculo tangente a los bordes de
+## las dos calles (antes la esquina era un ángulo recto: «cuadrados»). Cada una: {c: la esquina (el punto donde se cortan los dos bordes, con su altura), arc: los puntos del arco (con altura),
+## o: centro del círculo, col}. Se arma igual para dibujar (_junction) y para que el terreno no tape el pavimento (_road_caps).
+func _fillets(ni: int) -> Array:
+	var out: Array = []
+	var eds: PackedInt32Array = rg.node_edges[ni]
+	if eds.size() < 3:
+		return out
+	var np := rg.node_pos(ni)
+	var rays: Array = []
+	for ei in eds:
+		var e: Array = rg.edges[ei]
+		var cum := rg.edge_cum(ei)
+		var total := cum[cum.size() - 1]
+		var at_start := int(e[0]) == ni
+		var sa := minf(16.0, total * 0.5) if at_start else maxf(total - 16.0, total * 0.5)
+		var q: Vector2 = (rg.point_at(ei, sa) as Array)[0]
+		var d := q - np
+		if d.length() < 4.0:
+			continue
+		d = d.normalized()
+		rays.append({"a": atan2(d.y, d.x), "d": d, "hw": float(rg.e_hw[ei]), "ei": ei, "surf": int(e[5])})
+	var n := rays.size()
+	if n < 3:
+		return out
+	rays.sort_custom(func(a, b): return float(a["a"]) < float(b["a"]))
+	for k in n:
+		var ri: Dictionary = rays[k]
+		var rj: Dictionary = rays[(k + 1) % n]
+		var phi: float = float(rj["a"]) - float(ri["a"])
+		if phi <= 0.0:
+			phi += TAU
+		var deg := rad_to_deg(phi)
+		if deg < GORE_MIN_DEG or deg > FILLET_MAX_DEG:
+			continue
+		var is_gore := deg < FILLET_MIN_DEG
+		var di: Vector2 = ri["d"]
+		var dj: Vector2 = rj["d"]
+		var hwi: float = ri["hw"]
+		var hwj: float = rj["hw"]
+		var ni_ := Vector2(-di.y, di.x) # a la izquierda de i: del lado de j
+		var mj := Vector2(dj.y, -dj.x) # a la derecha de j: del lado de i
+		var rhs := mj * hwj - ni_ * hwi
+		var bx := -dj.x
+		var by := -dj.y
+		var det := di.x * by - di.y * bx
+		if absf(det) < 1.0e-4:
+			continue
+		var t := (rhs.x * by - rhs.y * bx) / det
+		var u := (di.x * rhs.y - di.y * rhs.x) / det
+		if t < 0.5 or u < 0.5:
+			continue
+		var cpt := np + di * t + ni_ * hwi # la esquina
+		if is_gore:
+			# bifurcación: un triángulo de pavimento entre las dos calles, desde la esquina hasta donde sus bordes quedan a GORE_GAP m
+			var gl := minf(GORE_GAP / (2.0 * sin(phi * 0.5)), 30.0)
+			var ei_a: int = ri["ei"]
+			var ei_b: int = rj["ei"]
+			var offg := (_road_off(ei_a, int(ri["surf"])) + _road_off(ei_b, int(rj["surf"]))) * 0.5 + 0.03
+			var hcg := (_edge_h(ei_a, ni, t) + _edge_h(ei_b, ni, u)) * 0.5 + offg
+			var ea := cpt + di * gl
+			var eb := cpt + dj * gl
+			var garc := PackedVector3Array()
+			garc.append(Vector3(ea.x, _edge_h(ei_a, ni, t + gl) + offg, ea.y))
+			garc.append(Vector3(eb.x, _edge_h(ei_b, ni, u + gl) + offg, eb.y))
+			var gwide: Dictionary = ri if hwi >= hwj else rj
+			out.append({"c": Vector3(cpt.x, hcg, cpt.y), "arc": garc, "o": cpt, "col": [C_ASPH, C_DIRT, C_GRAVEL][clampi(int(gwide["surf"]), 0, 2)], "gore": true})
+			continue
+		var rho := clampf(0.8 * minf(hwi, hwj) + 2.0, 3.5, 9.0)
+		var tau := rho / tan(phi * 0.5)
+		if tau > 24.0:
+			continue
+		var bis := (di + dj).normalized()
+		var oc := cpt + bis * (rho / sin(phi * 0.5))
+		var ti := cpt + di * tau
+		var tj := cpt + dj * tau
+		var a0 := atan2(ti.y - oc.y, ti.x - oc.x)
+		var a1 := atan2(tj.y - oc.y, tj.x - oc.x)
+		var da := wrapf(a1 - a0, -PI, PI)
+		var m := maxi(3, int(ceil(absf(da) * rho / 1.3)))
+		var ei_i: int = ri["ei"]
+		var ei_j: int = rj["ei"]
+		var off := (_road_off(ei_i, int(ri["surf"])) + _road_off(ei_j, int(rj["surf"]))) * 0.5 + 0.03
+		var hc := (_edge_h(ei_i, ni, t) + _edge_h(ei_j, ni, u)) * 0.5 + off
+		var hti := _edge_h(ei_i, ni, t + tau) + off
+		var htj := _edge_h(ei_j, ni, u + tau) + off
+		var arc := PackedVector3Array()
+		for q in m + 1:
+			var f := float(q) / float(m)
+			var an := a0 + da * f
+			arc.append(Vector3(oc.x + cos(an) * rho, lerpf(hti, htj, f), oc.y + sin(an) * rho))
+		var wide: Dictionary = ri if hwi >= hwj else rj
+		var col: Color = [C_ASPH, C_DIRT, C_GRAVEL][clampi(int(wide["surf"]), 0, 2)]
+		out.append({"c": Vector3(cpt.x, hc, cpt.y), "arc": arc, "o": oc, "col": col})
+	return out
 
 func _road_segment(rd, mk, sd, rl, k: int) -> void:
 	var ei: int = rg.pe[k]
@@ -615,6 +802,9 @@ func _road_segment(rd, mk, sd, rl, k: int) -> void:
 		sd.quad_up(a + na * (s * hw) + dn, b + nb * (s * hw) + dn, b + nb * (s * (hw + sw)) + dn, a + na * (s * (hw + sw)) + dn, C_SIDE if surf == 0 else col.darkened(0.1))
 	# rayas (no en la boca de una calle que termina contra otra: las rayas de la calle chica no cruzan la ruta que atraviesa)
 	var mouth: bool = (i == 0 and not _is_through(int(e[0]), ei)) or (i == n - 2 and not _is_through(int(e[1]), ei))
+	var mid2 := (a2 + b2) * 0.5
+	if not mouth and (i < 5 or i > n - 7):
+		mouth = _near_junction(int(e[0]), mid2) or _near_junction(int(e[1]), mid2)
 	if surf == 0 and cls != "tierra" and not mouth:
 		var mu := Vector3(0, 0.07, 0)
 		var lw := 0.11
@@ -646,6 +836,11 @@ func _road_segment(rd, mk, sd, rl, k: int) -> void:
 			var drop: float = rg.hs[k] - rg.base_height(q.x, q.y)
 			if drop > 2.4 and _rail_clear(a, b, na, nb, s3, hw + sw * 0.85, ei):
 				_rail(rl, a, b, na, nb, s3, hw + sw * 0.85, i)
+
+## ¿El punto p está dentro de la plazoleta lisa (sin rayas) de un cruce de 3 o más calles?
+func _near_junction(ni: int, p: Vector2) -> bool:
+	var r: float = _jclear.get(ni, -1.0)
+	return r > 0.0 and p.distance_to(rg.node_pos(ni)) < r
 
 ## ¿La calle ei es de las dos más anchas que llegan al nodo ni (la que sigue derecho en un cruce)? Las demás terminan contra ellas.
 func _is_through(ni: int, ei: int) -> bool:

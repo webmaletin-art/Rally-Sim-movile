@@ -381,6 +381,12 @@ def finish(W_, rng):
     fix_heights.patch(os.path.join(out, "region_1.bin"))
     n_conn = add_connectors.run(os.path.join(out, "region_1.bin"))
     log("alturas rehechas · empalmes:", n_conn)
+    # retoques finales (polish_map.py): espinas de las puntas, cruces de calles sin nodo, codos en los cruces, curvas abiertas en las rutas rectas, ramales a los pueblos y alturas otra vez
+    import polish_map
+    polish_map.run(os.path.join(out, "region_1.bin"))
+    log("retoques del mapa hechos (polish_map)")
+    import render_map
+    render_map.main([os.path.join(out, "region_1.bin"), os.path.join(out, "region_map.png")])
 
 
 if __name__ == "__main__":
@@ -393,5 +399,4 @@ if __name__ == "__main__":
         roads = [dict(cls=e["cls"], pts=[tuple(p) for p in e["pts"]]) for e in W_.edges if e["cls"] != "calle"]
         pl = [dict(kind=n["kind"] if n["kind"] != "pueblo" else "pueblo", x=n["x"], z=n["z"]) for n in W_.nodes.values() if n["kind"] in ("ciudad", "pueblo", "villa")]
         viz.render(W_.Hm, W_.bio, "/tmp/claude-0/shots/region_roads.png", 0.8, roads, pl)
-        viz.render_map(W_.Hm, W_.bio, os.path.join(HERE, "..", "..", "godot", "game", "data", "region", "region_map.png"), [dict(cls=e["cls"], pts=e["pts"]) for e in W_.edges if e["cls"] != "calle"])
     log("listo")

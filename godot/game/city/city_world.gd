@@ -746,6 +746,7 @@ func _surface(m: ArrayMesh, s: Soup, mat: Material) -> void:
 
 # ───────────────────────── terreno ─────────────────────────
 const TC := 16.0 # lado de una celda del terreno
+const TC_REGION_ROADS := 8.0 # donde pasan caminos de la región la malla es más fina (como la de cerca de la región): una calzada de 9 a 18 m no cabe en una grilla de 16 m
 
 func _ground_color(x: float, z: float, y: float) -> Color:
 	for oa in city.open_areas:
@@ -773,40 +774,70 @@ func _ground_color(x: float, z: float, y: float) -> Color:
 			return Color(0.50 + jit, 0.64 + jit, 0.36 + jit)
 	return Color(0.58 + jit, 0.68 + jit, 0.42 + jit)
 
+## Altura de la malla del terreno en un vértice: la del mundo, hundida donde pasa una calle de la ciudad o hay una sala del estacionamiento
+func _terrain_h(wx: float, wz: float) -> float:
+	var h := city.height(wx, wz)
+	# donde hay una calle el terreno se hunde un poco para que el asfalto quede por encima aunque la ladera suba al costado
+	var pr := city.probe(wx, wz)
+	if pr[6] >= 0.0:
+		# el hundimiento se desvanece con la distancia al borde de la vereda (antes era todo o nada por vértice y en las banquinas se veían escalones de 16 m);
+		# bajo tierra se hunde más lejos: si no, las lomas del terreno asoman por adentro de la rampa
+		var lim := 20.0 if float(pr[4]) < -0.3 else 7.0
+		var wcut := smoothstep(-lim - 9.0, -lim + 3.0, float(pr[0]))
+		if wcut > 0.0:
+			h = lerpf(h, minf(h, float(pr[4]) - 0.5), wcut)
+	for oa in city.open_areas:
+		# las salas del estacionamiento a distinta altura: el suelo queda por debajo (y bastante más allá de la pared)
+		if (oa as Dictionary).has("y") and Vector2(wx, wz).distance_to(oa["pos"]) < float(oa["r"]) + 22.0:
+			h = minf(h, float(oa["y"]) - 0.5)
+		if (oa as Dictionary).get("flat", false) and Vector2(wx, wz).distance_to(oa["pos"]) < float(oa["r"]) + 22.0:
+			h = minf(h, float(city.drift["h"]) - 0.2) # el terreno queda un poco por debajo del disco de asfalto
+	return h
+
+## ¿Esta cuadra puede tener caminos de la región? (más allá de REGION_R el suelo lo da la región y sus caminos pasan por acá: la circunvalación, el comienzo de las rutas)
+func _has_region_roads(x0: float, z0: float) -> bool:
+	if region_world == null or x0 > CityLayout.POCKET_X0:
+		return false
+	var fx := maxf(absf(x0), absf(x0 + CityLayout.CELL))
+	var fz := maxf(absf(z0), absf(z0 + CityLayout.CELL))
+	var r := CityLayout.REGION_R - 40.0
+	return fx * fx + fz * fz > r * r
+
 func _terrain(s: Soup, x0: float, z0: float) -> void:
-	var n := int(CityLayout.CELL / TC)
+	var tc := TC
+	var capped := _has_region_roads(x0, z0)
+	if capped:
+		tc = TC_REGION_ROADS
+	var n := int(CityLayout.CELL / tc)
 	var hs := PackedFloat32Array()
 	hs.resize((n + 1) * (n + 1))
-	for iz in n + 1:
-		for ix in n + 1:
-			var wx := x0 + float(ix) * TC
-			var wz := z0 + float(iz) * TC
-			var h := city.height(wx, wz)
-			# donde hay una calle el terreno se hunde un poco para que el asfalto quede por encima aunque la ladera suba al costado
-			var pr := city.probe(wx, wz)
-			if pr[6] >= 0.0:
-				# el hundimiento se desvanece con la distancia al borde de la vereda (antes era todo o nada por vértice y en las banquinas se veían escalones de 16 m);
-				# bajo tierra se hunde más lejos: si no, las lomas del terreno asoman por adentro de la rampa
-				var lim := 20.0 if float(pr[4]) < -0.3 else 7.0
-				var wcut := smoothstep(-lim - 9.0, -lim + 3.0, float(pr[0]))
-				if wcut > 0.0:
-					h = lerpf(h, minf(h, float(pr[4]) - 0.5), wcut)
-			for oa in city.open_areas:
-				# las salas del estacionamiento a distinta altura: el suelo queda por debajo (y bastante más allá de la pared)
-				if (oa as Dictionary).has("y") and Vector2(wx, wz).distance_to(oa["pos"]) < float(oa["r"]) + 22.0:
-					h = minf(h, float(oa["y"]) - 0.5)
-				if (oa as Dictionary).get("flat", false) and Vector2(wx, wz).distance_to(oa["pos"]) < float(oa["r"]) + 22.0:
-					h = minf(h, float(city.drift["h"]) - 0.2) # el terreno queda un poco por debajo del disco de asfalto
-			hs[iz * (n + 1) + ix] = h
+	if capped:
+		# el terreno de la ciudad también tapaba los caminos de la región (la malla queda por encima de una calzada que cruza una ladera): se calcula el corte igual que en
+		# RegionWorld._terrain (con la misma grilla de 8 m), sobre una grilla con un anillo de vértices de más alrededor (los bordes de las cuadras vecinas salen iguales)
+		var w := n + 3
+		var y0 := PackedFloat32Array()
+		y0.resize(w * w)
+		for iz in w:
+			for ix in w:
+				y0[iz * w + ix] = _terrain_h(x0 + float(ix - 1) * tc, z0 + float(iz - 1) * tc)
+		var cap: PackedFloat32Array = region_world.road_caps(x0 - tc, z0 - tc, tc, w, y0)
+		for iz in n + 1:
+			for ix in n + 1:
+				var j := (iz + 1) * w + ix + 1
+				hs[iz * (n + 1) + ix] = minf(y0[j], cap[j])
+	else:
+		for iz in n + 1:
+			for ix in n + 1:
+				hs[iz * (n + 1) + ix] = _terrain_h(x0 + float(ix) * tc, z0 + float(iz) * tc)
 	for iz in n:
 		for ix in n:
-			var wx := x0 + float(ix) * TC
-			var wz := z0 + float(iz) * TC
+			var wx := x0 + float(ix) * tc
+			var wz := z0 + float(iz) * tc
 			var a := Vector3(wx, hs[iz * (n + 1) + ix], wz)
-			var b := Vector3(wx + TC, hs[iz * (n + 1) + ix + 1], wz)
-			var c := Vector3(wx + TC, hs[(iz + 1) * (n + 1) + ix + 1], wz + TC)
-			var d := Vector3(wx, hs[(iz + 1) * (n + 1) + ix], wz + TC)
-			var col := _ground_color(wx + TC * 0.5, wz + TC * 0.5, a.y)
+			var b := Vector3(wx + tc, hs[iz * (n + 1) + ix + 1], wz)
+			var c := Vector3(wx + tc, hs[(iz + 1) * (n + 1) + ix + 1], wz + tc)
+			var d := Vector3(wx, hs[(iz + 1) * (n + 1) + ix], wz + tc)
+			var col := _ground_color(wx + tc * 0.5, wz + tc * 0.5, a.y)
 			s.quad_up(a, d, c, b, col)
 
 # ───────────────────────── calles ─────────────────────────
