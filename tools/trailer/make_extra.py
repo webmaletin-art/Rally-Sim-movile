@@ -16,7 +16,6 @@ def dump(name, j):
 # ── La Aventura («La Ruta de los Sueños»): etapas con paisajes distintos, el auto maneja solo y el rival corre al lado ──
 ADV_CAMS = [
     ('front_low', {'orbit': {'a': 24, 'r': 4.6, 'h': 0.5, 'lh': 0.8}}, 60),
-    ('side', {'orbit': {'a': 86, 'r': 7.2, 'h': 0.9, 'lh': 0.85}}, 32),
     ('rear', {'orbit': {'a': 168, 'r': 6.8, 'h': 1.3, 'lh': 1.0}}, 48),
     ('high', {'orbit': {'a': 40, 'r': 9.5, 'h': 3.4, 'lh': 0.7}}, 40),
 ]
@@ -24,7 +23,7 @@ ADV = [(1, 0.35, 'girasoles'), (2, 0.40, 'rio_bosque'), (4, 0.30, 'tunel'), (7, 
 for stage, at, nm in ADV:
     shots = []
     for ci, (cn, cam, fov) in enumerate(ADV_CAMS):
-        shots.append({'name': '%s_%s' % (nm, cn), 'fov': fov, 'near': 1.2, 'cam': cam, 'wait': 3, 'sim': 6.0 if ci == 0 else 1.0, 'warm': 1.5 if ci == 0 else 0.8})
+        shots.append({'name': '%s_%s' % (nm, cn), 'fov': fov, 'near': 1.2, 'cam': cam, 'wait': 3, 'sim': 6.0 if ci == 0 else 1.0, 'warm': 1.5 if ci == 0 else 0.6})
     dump('adv_%s' % nm, {'mode': 'world', 'out': os.path.join(out_dir, 'adv_' + nm), 'car': 'hatch', 'auto': True, 'cfg': {'type': 'adventure', 'stage': stage, 'back': 'home', 'at': at}, 'shots': shots})
 
 # ── Pilotos: gestos de Mixamo junto al auto (sala) y al costado del camino (mundo) ──
@@ -47,11 +46,11 @@ for nm, car, cfg, at in [('forest_sunset', 'rally80', {'type': 'race', 'track': 
     dump('pilots_world_' + nm, {'mode': 'world', 'out': os.path.join(out_dir, 'pilots_world_' + nm), 'car': car, 'cfg': cfg, 'view_at': at, 'shots': shots})
 
 # ── Derrape (el mapa de drift del juego) y picada ──
-DR = [('front_low', {'orbit': {'a': 28, 'r': 5.2, 'h': 0.5, 'lh': 0.7}}, 58), ('side', {'orbit': {'a': 80, 'r': 7.5, 'h': 0.9, 'lh': 0.8}}, 32), ('rear', {'orbit': {'a': 165, 'r': 7.0, 'h': 1.4, 'lh': 0.9}}, 48), ('high', {'orbit': {'a': 40, 'r': 11.0, 'h': 4.5, 'lh': 0.6}}, 42)]
+DR = [('front_low', {'orbit': {'a': 28, 'r': 5.2, 'h': 0.5, 'lh': 0.7}}, 58), ('side', {'orbit': {'a': 80, 'r': 7.5, 'h': 0.9, 'lh': 0.8}}, 32), ('high', {'orbit': {'a': 40, 'r': 11.0, 'h': 4.5, 'lh': 0.6}}, 42)]
 shots = []
-for k in range(4):
+for k in range(3):
     for ci, (cn, cam, fov) in enumerate(DR):
-        shots.append({'name': 'd%d_%s' % (k, cn), 'fov': fov, 'near': 1.2, 'cam': cam, 'wait': 3, 'sim': 5.0 if ci == 0 else 0.7, 'warm': 1.5 if ci == 0 else 0.7})
+        shots.append({'name': 'd%d_%s' % (k, cn), 'fov': fov, 'near': 1.2, 'cam': cam, 'wait': 3, 'sim': 5.0 if ci == 0 else 0.7, 'warm': 1.5 if ci == 0 else 0.6})
 dump('drift', {'mode': 'world', 'out': os.path.join(out_dir, 'drift'), 'car': 'torito', 'auto': True, 'cfg': {'type': 'drift', 'track': 'drift', 'ai': 0, 'sky': 'sunset'}, 'shots': shots})
 
 print('listo')
