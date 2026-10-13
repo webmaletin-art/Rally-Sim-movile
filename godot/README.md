@@ -1,6 +1,6 @@
 # GSkorp Rally — versión Godot
 
-Segunda versión del juego, hecha con **Godot 4.4** (renderizador Compatibility, el más liviano y compatible con celulares).
+Segunda versión del juego, hecha con **Godot 4.5** (renderizador Compatibility, el más liviano y compatible con celulares).
 Convive con la versión HTML (raíz del repositorio) hasta que esta la iguale; después la HTML se retira.
 
 ## Cómo está armado (cliente liviano)
@@ -11,14 +11,14 @@ Convive con la versión HTML (raíz del repositorio) hasta que esta la iguale; d
 | `tests/` | Pruebas (física contra la versión HTML, IA) | solo desarrollo |
 
 Actualizar el juego = subir cambios a `main`. GitHub Actions (`.github/workflows/build-godot.yml`) compila y publica el
-`content.pck` en la release **godot-content**; la app lo baja sola la próxima vez que se abre. **El APK liviano no hay que reinstalarlo.**
+`content.pck` y `cars.pck` en la release **godot-content-4.5** (una release por versión del motor: los paquetes los tiene que armar la misma versión que corre el APK; `bootstrap/boot.gd` arma el nombre con `Engine.get_version_info()`); la app los baja solos la próxima vez que se abre. **El APK liviano no hay que reinstalarlo.**
 Solo se reinstala si cambia el motor o `bootstrap/`.
 
 El workflow también deja el **APK completo** (todo adentro) por si no hay internet o para comparar.
 
 ## Reglas para no romper las actualizaciones
 - En `game/` **no usar `class_name`**: las clases de un paquete descargado no se registran solas. Usar `const X := preload("res://game/…")`.
-- El paquete se descarga desde `https://github.com/webmaletin-art/Rally-Sim-movile/releases/download/godot-content/` (el repositorio tiene que ser público).
+- El paquete se descarga desde `https://github.com/webmaletin-art/Rally-Sim-movile/releases/download/godot-content-4.5/` (el repositorio tiene que ser público). Los APK viejos de Godot 4.4 leían `godot-content` (ya no se actualiza).
 - La firma del APK usa `keystore/debug.keystore` (fija), así cada APK se instala encima del anterior sin desinstalar.
 
 ## Pruebas locales (sin celular)

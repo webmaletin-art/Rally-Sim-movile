@@ -6,11 +6,11 @@ La versión HTML sigue funcionando y sacando su APK hasta que la de Godot la igu
 
 ## Cómo se instala y se actualiza
 1. Se instala **una vez** el APK liviano (~25 MB: motor + pantalla de arranque).
-2. Al abrirlo, la app consulta `manifest.json` de la release **godot-content** en GitHub y descarga `content.pck` (el juego).
+2. Al abrirlo, la app consulta `manifest.json` de la release **godot-content-4.5** (el nombre lleva la versión del motor) en GitHub y descarga `content.pck` (el juego) y `cars.pck` (los autos).
 3. Cada vez que se sube un cambio a `main`, GitHub Actions compila un `content.pck` nuevo y actualiza esa release.
    La próxima vez que se abre la app, baja lo nuevo. **No hay que reinstalar el APK.**
 4. Si no hay internet, usa el último juego guardado. Si es la primera vez, pide conexión.
-5. Solo se reinstala el APK si cambia el motor (versión de Godot) o `godot/bootstrap/`.
+5. Solo se reinstala el APK si cambia el motor (versión de Godot) o `godot/bootstrap/`. Al subir de Godot 4.4 a **4.5.1** (12/10/2026, por las páginas de 16 KB que exige Google Play) hay que reinstalar el APK una vez: los paquetes de 4.5 no los lee un motor 4.4, así que cada versión del motor baja de su propia release.
 6. El workflow también deja un **APK completo** (todo adentro) para probar sin descarga.
 Cuando esté en la Play Store, los modelos de autos nuevos pueden ir en `content.pck` sin actualizar la tienda.
 

@@ -3,7 +3,7 @@ name: Build Godot APK
 # Versión Godot de GSkorp Rally. Genera:
 #  · APK LIVIANO  (gskorp-light.apk): solo el motor + la pantalla de arranque. Al abrirlo baja el juego (content.pck).
 #  · content.pck (todo menos las carrocerías) + cars.pck (las carrocerías de los autos con textura, sin reducir, ~500 MB) + manifest.json:
-#    se publican en la release "godot-content"; el APK liviano los descarga solo. cars.pck solo se vuelve a bajar si cambia (su versión es su hash).
+#    se publican en la release "godot-content-4.5" (una por versión del motor); el APK liviano los descarga solo. cars.pck solo se vuelve a bajar si cambia (su versión es su hash).
 #  · (el APK «completo» con todo adentro ya no se arma: pesaría más de 600 MB)
 # Cada vez que se actualiza el contenido, el APK liviano NO hay que reinstalarlo: al abrir baja lo nuevo.
 on:
@@ -18,7 +18,10 @@ permissions:
   contents: write
 
 env:
-  GODOT_VERSION: 4.4.1
+  GODOT_VERSION: 4.5.1
+  # El contenido (content.pck + cars.pck) lo tiene que armar la MISMA versión del motor que corre el APK (los paquetes cambian de formato entre versiones): una release por versión (menor) del motor.
+  # El APK liviano arma el nombre solo (bootstrap/boot.gd, Engine.get_version_info()); los APK viejos (4.4) siguen leyendo «godot-content», que ya no se actualiza.
+  CONTENT_TAG: godot-content-4.5
 
 jobs:
   # Las pruebas corren en paralelo y NO frenan la compilación del APK (si fallan, el job queda en rojo y se mira el log).
@@ -142,7 +145,7 @@ jobs:
       - name: Configurar Godot (SDK de Android y firma)
         run: |
           mkdir -p $HOME/.config/godot
-          cat > $HOME/.config/godot/editor_settings-4.4.tres <<EOF
+          cat > $HOME/.config/godot/editor_settings-4.5.tres <<EOF
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
@@ -152,7 +155,7 @@ jobs:
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
           EOF
-          cat $HOME/.config/godot/editor_settings-4.4.tres
+          cat $HOME/.config/godot/editor_settings-4.5.tres
 
       - name: Importar recursos
         working-directory: godot
@@ -210,7 +213,7 @@ jobs:
               return h.hexdigest()
           ver = "r%s-%s" % (os.environ['GITHUB_RUN_NUMBER'], os.environ['GITHUB_SHA'][:7])
           repo = os.environ['GITHUB_REPOSITORY']
-          base = "https://github.com/%s/releases/download/godot-content/" % repo
+          base = "https://github.com/%s/releases/download/%s/" % (repo, os.environ['CONTENT_TAG'])
           cars_sha = sha('build/cars.pck')
           json.dump({
               "version": ver,
@@ -226,11 +229,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view godot-content >/dev/null 2>&1 || gh release create godot-content \
-            --title "Contenido del juego (Godot)" \
-            --notes "Paquete que descarga solo la app liviana al abrirse. No hace falta bajarlo a mano." \
+          gh release view $CONTENT_TAG >/dev/null 2>&1 || gh release create $CONTENT_TAG \
+            --title "Contenido del juego (Godot ${GODOT_VERSION%.*})" \
+            --notes "Paquete que descarga solo la app liviana al abrirse (motor ${GODOT_VERSION%.*}). No hace falta bajarlo a mano." \
             --prerelease
-          gh release upload godot-content build/content.pck build/cars.pck build/manifest.json --clobber
+          gh release upload $CONTENT_TAG build/content.pck build/cars.pck build/manifest.json --clobber
 
       - name: Publicar los APK (link directo para instalar, sin iniciar sesión)
         env:

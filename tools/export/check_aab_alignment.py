@@ -2,7 +2,7 @@
 """Controla que las bibliotecas nativas de 64 bits de un .aab/.apk estén listas para páginas de memoria de 16 KB (exigencia de Google Play
 para apps con API objetivo 35+): cada segmento LOAD del ELF alineado a 0x4000 o más.
 Uso: python3 tools/export/check_aab_alignment.py archivo.aab   (sale con código 1 si alguna biblioteca de 64 bits sigue en 4 KB)
-Godot 4.4.1 NO cumple (libgodot_android.so queda en 0x1000); desde Godot 4.5 sí. Ver docs/PLAY_STORE.md, sección 7.1."""
+Godot 4.4.1 NO cumplía (libgodot_android.so quedaba en 0x1000); desde Godot 4.5 sí. Ver docs/PLAY_STORE.md, sección 7.1."""
 import struct
 import sys
 import zipfile

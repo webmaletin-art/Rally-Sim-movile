@@ -3,17 +3,25 @@ extends Control
 ## El APK solo trae el motor y esta pantalla. El juego (res://game) viaja aparte en dos paquetes:
 ##  · "content.pck": todo menos las carrocerías de los autos;
 ##  · "cars.pck": las carrocerías con su textura, sin reducir (pesa varios cientos de MB, cambia poco: se baja una sola vez).
-##  1. pregunta la versión en GitHub (manifest.json de la release "godot-content"; lista los paquetes),
+##  1. pregunta la versión en GitHub (manifest.json de la release "godot-content-<versión del motor>", por ejemplo "godot-content-4.5"; lista los paquetes),
 ##  2. por cada paquete con versión nueva lo descarga (con barra de progreso) y lo guarda en el teléfono,
 ##  3. sin internet usa los últimos guardados,
 ##  4. monta los paquetes y arranca el juego.
 ## Si el juego ya está dentro del programa (build completo o el editor) arranca directo.
 
 const REPO := "webmaletin-art/Rally-Sim-movile"
-const MANIFEST_URL := "https://github.com/" + REPO + "/releases/download/godot-content/manifest.json"
 const GAME_SCENE := "res://game/main.tscn"
 
-var _manifest_url := MANIFEST_URL
+## Los paquetes (.pck) los arma la misma versión del motor que corre el APK (cambian de formato entre versiones): cada versión (menor) del motor baja de su propia release.
+## Los APK de Godot 4.4 leían «godot-content» (que ya no se actualiza y sigue sirviendo para ellos).
+static func content_tag() -> String:
+	var v := Engine.get_version_info()
+	return "godot-content-%d.%d" % [int(v["major"]), int(v["minor"])]
+
+static func manifest_url() -> String:
+	return "https://github.com/" + REPO + "/releases/download/" + content_tag() + "/manifest.json"
+
+var _manifest_url := manifest_url()
 var _title: Label
 var _status: Label
 var _bar: ProgressBar

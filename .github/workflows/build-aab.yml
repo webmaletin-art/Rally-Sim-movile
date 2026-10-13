@@ -22,7 +22,7 @@ permissions:
   contents: write
 
 env:
-  GODOT_VERSION: 4.4.1
+  GODOT_VERSION: 4.5.1
 
 jobs:
   build:
@@ -62,7 +62,7 @@ jobs:
           unzip -q $HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/android_source.zip -d godot/android/build
           echo "${GODOT_VERSION}.stable" > godot/android/.build_version
           touch godot/android/build/.gdignore
-          # Google Play exige apuntar a la API 36: se compila con la plataforma 36 (la plantilla de Godot 4.4 trae la 35)
+          # Google Play exige apuntar a la API 36: se compila con la plataforma 36 (la plantilla de Godot 4.5 trae la 35)
           sed -i 's/compileSdk *: *[0-9]*/compileSdk : 36/' godot/android/build/config.gradle || true
           echo "android.suppressUnsupportedCompileSdk=36" >> godot/android/build/gradle.properties
           grep -n "compileSdk\|targetSdk\|minSdk" godot/android/build/config.gradle || true
@@ -113,7 +113,7 @@ jobs:
       - name: Configurar Godot (SDK de Android)
         run: |
           mkdir -p $HOME/.config/godot
-          cat > $HOME/.config/godot/editor_settings-4.4.tres <<EOF
+          cat > $HOME/.config/godot/editor_settings-4.5.tres <<EOF
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
@@ -181,14 +181,9 @@ jobs:
           ls -la ../build
 
       - name: Revisar páginas de 16 KB (exigencia de Google Play)
-        # Godot 4.4.1 NO cumple (libgodot_android.so queda alineada a 4 KB): el AAB sale igual para poder probarlo, pero Play lo va a rechazar. Con Godot 4.5+ pasa a verde;
-        # entonces sacar el continue-on-error. Ver docs/PLAY_STORE.md, sección 7.1.
-        continue-on-error: true
+        # Godot 4.5+ alinea las bibliotecas de 64 bits a 16 KB (4.4.1 no): si alguna queda a 4 KB Play rechaza el AAB, así que acá se corta.
         run: |
-          if ! python3 tools/export/check_aab_alignment.py build/DreamRacing-play.aab; then
-            echo "::warning::El AAB tiene bibliotecas de 64 bits sin alinear a 16 KB: Google Play lo rechaza. Hace falta Godot 4.5 o más nuevo (docs/PLAY_STORE.md, 7.1)"
-            exit 1
-          fi
+          python3 tools/export/check_aab_alignment.py build/DreamRacing-play.aab
 
       - name: Nombre del archivo según firma y compras
         run: |

@@ -186,5 +186,38 @@ func _init() -> void:
 					if shown.size() < 4:
 						shown.append("%s (%.0f, %.0f)" % [nm, v.x, v.z])
 	_check(tot > 20000 and on_road == 0, "casas, cercos y guardarraíles fuera de la calzada (%d vértices mirados, %d adentro: %s)" % [tot, on_road, str(shown)])
+	# ── 4. ninguna casa ni cerco sobre una gasolinera, una gomería ni su camino de acceso (un cuadrado con playones de cada 3)
+	var pkeys := {}
+	for pd in rg.pads:
+		pkeys[Vector2i(int(floor(float(pd["x"]) / 256.0)), int(floor(float(pd["z"]) / 256.0)))] = true
+	var pk: Array = pkeys.keys()
+	pk.sort_custom(func(a, b): return a.x < b.x or (a.x == b.x and a.y < b.y))
+	var ptot := 0
+	var pbad := 0
+	var pshown: Array = []
+	var idx4 := 0
+	for k in pk:
+		idx4 += 1
+		if idx4 % 3 != 0:
+			continue
+		var d2: Dictionary = rw._build(k, 0)
+		var seen2 := {}
+		for v in (d2["buildings"]).v:
+			var key2 := Vector2i(int(round(v.x * 2.0)), int(round(v.z * 2.0)))
+			if seen2.has(key2):
+				continue
+			seen2[key2] = true
+			ptot += 1
+			var pl: Variant = rg.pad_cells.get(Vector2i(int(floor(v.x / 128.0)), int(floor(v.z / 128.0))))
+			if pl == null:
+				continue
+			for pi in (pl as PackedInt32Array):
+				var pdd: Dictionary = rg.pads[pi]
+				if Vector2(float(pdd["x"]) - v.x, float(pdd["z"]) - v.z).length() < float(pdd["r"]) - 0.5:
+					pbad += 1
+					if pshown.size() < 4:
+						pshown.append("(%.0f, %.0f)" % [v.x, v.z])
+					break
+	_check(ptot > 5000 and pbad == 0, "casas y cercos fuera de los playones de las estaciones y gomerías (%d vértices mirados, %d adentro: %s)" % [ptot, pbad, str(pshown)])
 	print("RESULTADO: ", "FALLA" if fail else "TODO OK")
 	quit(1 if fail else 0)

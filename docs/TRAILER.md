@@ -47,6 +47,11 @@ python3 tools/trailer/make_trailer.py render --lang en …                      
 
 Las fotos y el video quedan **fuera del repositorio** (pesan cientos de MB): las fotos en `/tmp/trailer/stills` (`TRAILER_STILLS`), el video final en la carpeta `trailer_out/` (ignorada por git).
 
+## Consejos para sacar las fotos del mundo abierto
+- `wait` de cada toma son **cuadros**, no segundos: el mundo abierto (la ciudad y sobre todo la región) arma los cuadrados de a poco, así que en el **primer** tiro de un trabajo hacen falta 60–90 cuadros (los demás 10–15); con menos salen el terreno sin cargar, un plano amarillo de fondo o el auto «enterrado» (pasó con `scoutw/ruta_este` y `circunv_ring`).
+- `DR_POS=x,z,grados` pone el auto: para una ruta usar un punto del eje y su rumbo (`tools/world_gen` lee `region_1.bin` con `binio.py`; la calle más cercana y su rumbo salen de ahí). Un punto a 24 m de la ruta deja al auto en el pasto.
+- Con el procesador ocupado los trabajos tardan mucho: `LP_NUM_THREADS=2` en el entorno limita los hilos del dibujado por software y evita que dos trabajos en paralelo se pisen.
+
 ## Límites honestos
 
 - No se puede **escuchar** el resultado desde acá: el ritmo está medido contra el mapa de la canción, pero cómo suena la mezcla (volumen de los efectos contra la canción) lo decide el dueño al verlo.
