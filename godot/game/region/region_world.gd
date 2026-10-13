@@ -131,7 +131,7 @@ func _index() -> void:
 			var hm := 0.0
 			for ei in eds_i:
 				hm = maxf(hm, rg.e_hw[ei])
-			_jclear[i] = hm + JUNCTION_CLEAR
+			_jclear[i] = maxf(hm + JUNCTION_CLEAR, _hub_overlap(i))
 	for i in rg.nodes.size():
 		var k2 := Vector2i(int(floor(float(rg.nodes[i][1]) / CHUNK)), int(floor(float(rg.nodes[i][2]) / CHUNK)))
 		if not _nodes_by_chunk.has(k2):
@@ -836,6 +836,34 @@ func _road_segment(rd, mk, sd, rl, k: int) -> void:
 			var drop: float = rg.hs[k] - rg.base_height(q.x, q.y)
 			if drop > 2.4 and _rail_clear(a, b, na, nb, s3, hw + sw * 0.85, ei):
 				_rail(rl, a, b, na, nb, s3, hw + sw * 0.85, i)
+
+## Hasta dónde se pisan las calzadas de un cruce con muchas calles: los bordes de dos calles vecinas que salen con poco ángulo entre sí se cortan a (w1 + w2) / 2 / tan(ángulo / 2) del nodo, y ahí las rayas
+## de una calle quedarían encima del asfalto de la otra (un abanico de líneas finas cruzadas en el centro de los pueblos, donde llegan 8 o 9 calles). Hasta ahí no se dibujan rayas.
+func _hub_overlap(ni: int) -> float:
+	var eds: PackedInt32Array = rg.node_edges[ni]
+	var np := rg.node_pos(ni)
+	var rays: Array = []
+	for ei in eds:
+		var e: Array = rg.edges[ei]
+		var cum := rg.edge_cum(ei)
+		var total := cum[cum.size() - 1]
+		var sa := minf(16.0, total * 0.5) if int(e[0]) == ni else maxf(total - 16.0, total * 0.5)
+		var q: Vector2 = (rg.point_at(ei, sa) as Array)[0]
+		var d := q - np
+		if d.length() < 4.0:
+			continue
+		rays.append([atan2(d.y, d.x), float(rg.e_hw[ei])])
+	rays.sort_custom(func(a, b) -> bool: return float(a[0]) < float(b[0]))
+	var worst := 0.0
+	var n := rays.size()
+	for k in n:
+		var a: Array = rays[k]
+		var b: Array = rays[(k + 1) % n]
+		var gap := wrapf(float(b[0]) - float(a[0]), 0.0, TAU)
+		if gap < 0.02 or gap > 2.6:
+			continue
+		worst = maxf(worst, (float(a[1]) + float(b[1])) * 0.5 / tan(gap * 0.5))
+	return minf(worst + 3.0, 45.0)
 
 ## ¿El punto p está dentro de la plazoleta lisa (sin rayas) de un cruce de 3 o más calles?
 func _near_junction(ni: int, p: Vector2) -> bool:
