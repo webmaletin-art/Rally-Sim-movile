@@ -8,6 +8,11 @@ volumen y velocidad de cada muestra (lo hace el motor de audio, en C++):
   · motor: UN ciclo que ya lleva los 5 osciladores + la modulación + la saturación (tanh) del HTML; el pasabajos va aparte
   · seno y triángulo de tablas cortas (silbido del turbo, caja de engranajes)
   · flutter del turbo, petardeos y golpe: muestras de un disparo
+
+Ruidos de fondo (rodado, tierra, viento, lluvia, soplido del turbo, chillido): son bucles LARGOS (12–24 s, de ruido que ya es exactamente periódico, sin costura) y de
+nivel parejo (RMS de referencia 0,10 → volumen 1,0 = −20 dBFS), formas más suaves que las del HTML (sin siseo agudo) y la tierra/lluvia con «crujidos» sueltos
+en vez de ruido blanco. Antes eran de 2 s EXACTOS: a velocidad de ruta el rodado se repetía cada 2 s y sonaba como un viento fuerte que vuelve («loop»).
+Se mide con godot/tests/audio_render.gd + tools/audio/analyze_audio.py (docs/AUDIO.md).
 Uso: python3 tools/godot/make_audio.py
 """
 import json
@@ -23,7 +28,7 @@ rng = np.random.default_rng(20260930)
 consts = {}
 
 
-def save(name, x, peak=0.9):
+def save(name, x, peak=0.9, fs=FS):
     """Guarda en 16 bits normalizando al pico; devuelve el factor (1/escala) que hay que aplicarle al volumen para recuperar el nivel."""
     m = float(np.max(np.abs(x))) or 1.0
     s = peak / m
@@ -31,15 +36,15 @@ def save(name, x, peak=0.9):
     with wave.open(os.path.join(OUT, name + ".wav"), "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
-        w.setframerate(FS)
+        w.setframerate(fs)
         w.writeframes(y.tobytes())
-    consts[name] = {"unit": 1.0 / s, "n": int(len(x))}
+    consts[name] = {"unit": 1.0 / s, "n": int(len(x)), "rate": fs}
     return 1.0 / s
 
 
-def biquad(kind, f, q):
+def biquad(kind, f, q, fs=FS):
     """Coeficientes de Web Audio (pasabajos/pasaaltos con Q en dB, pasabanda con Q lineal)."""
-    w0 = 2 * np.pi * f / FS
+    w0 = 2 * np.pi * f / fs
     cw, sw = np.cos(w0), np.sin(w0)
     if kind == "bp":
         al = sw / (2 * q)
@@ -51,31 +56,81 @@ def biquad(kind, f, q):
     return b, a
 
 
-def noise_loop(name, chain, secs=2.0):
-    """Ruido blanco (uniforme [-1,1] como el del HTML) pasado por la cadena de filtros, en el dominio de la frecuencia:
-    el resultado es exactamente periódico, así que el bucle no tiene costura."""
-    n = int(FS * secs)
-    x = rng.uniform(-1, 1, n)
-    X = np.fft.rfft(x)
+REF = 0.10  # RMS de todos los ruidos de fondo: volumen 1,0 en el juego = −20 dBFS
+
+
+def _rms(x):
+    return float(np.sqrt(np.mean(x ** 2)))
+
+
+def shaped_noise(n, chain, fs, r):
+    """Ruido blanco (uniforme [-1,1]) pasado por la cadena de filtros EN EL DOMINIO DE LA FRECUENCIA: el resultado es exactamente periódico (el bucle no tiene costura)."""
+    X = np.fft.rfft(r.uniform(-1, 1, n))
     w = np.linspace(0, np.pi, len(X))
     H = np.ones(len(X), dtype=complex)
     for kind, f, q in chain:
-        b, a = biquad(kind, f, q)
+        b, a = biquad(kind, f, q, fs)
         _, h = freqz(b, a, worN=w)
         H = H * h
-    y = np.fft.irfft(X * H, n)
-    save(name, y)
-    consts[name]["rms_ref"] = float(np.sqrt(np.mean(y ** 2)))  # nivel real de la cadena del HTML (sin escalar)
+    return np.fft.irfft(X * H, n)
 
 
-# ── ruidos filtrados (cadenas del HTML) ──
-noise_loop("roll", [("bp", 380, 0.7)])
-noise_loop("squeal", [("bp", 1150, 7.0)])
-noise_loop("gravel", [("hp", 900, 0.7), ("bp", 2500, 0.8)])
-noise_loop("wind", [("bp", 700, 0.5)])
-noise_loop("turbo", [("bp", 3600, 4.0)])
-noise_loop("rain", [("hp", 1800, 0.7)])
-noise_loop("engnoise", [("bp", 200, 1.5)])  # base 200 Hz: en el juego se sube/baja con la velocidad de reproducción hasta f0
+def crackle(n, fs, r, rate, f_lo, f_hi, tau_lo, tau_hi, sigma=0.8):
+    """Crujidos sueltos (piedritas, gotas): impulsos al azar (Poisson, `rate` por segundo) que son un seno que se apaga en `tau` s, de frecuencia al azar y de golpe
+    desparejo (lognormal). Dan «textura» sin el siseo del ruido blanco. Circular: lo que pasa del final vuelve al principio (el bucle no tiene costura)."""
+    tail = int(0.03 * fs)
+    out = np.zeros(n + tail)
+    cnt = r.poisson(rate * n / fs)
+    pos = r.integers(0, n, cnt)
+    amp = np.minimum(np.exp(r.normal(0.0, sigma, cnt)), 2.5)  # sin golpes enormes: tienen que ser textura, no chasquidos
+    fr = r.uniform(f_lo, f_hi, cnt)
+    ta = r.uniform(tau_lo, tau_hi, cnt)
+    ph = r.uniform(0, 2 * np.pi, cnt)
+    for i in range(cnt):
+        ln = min(int(ta[i] * fs * 6), tail)
+        t = np.arange(ln) / fs
+        out[pos[i]:pos[i] + ln] += amp[i] * np.sin(2 * np.pi * fr[i] * t + ph[i]) * np.exp(-t / ta[i])
+    out[:tail] += out[n:n + tail]
+    out = out[:n]
+    out = out / _rms(out)
+    return np.tanh(out / 2.2) * 2.2  # pico suave: el golpe más fuerte no pasa de ~4 veces el nivel medio
+
+
+def noise_loop(name, chain, secs, seed, fs=FS, extra=None, mix_extra=0.0):
+    """Bucle de ruido filtrado de `secs` segundos, a RMS REF. `extra(n, fs, r)`: crujidos que se mezclan (mix_extra = su parte de la potencia, 0..1)."""
+    n = int(fs * secs)
+    r = np.random.default_rng(seed)
+    y = shaped_noise(n, chain, fs, r)
+    y = y / _rms(y)
+    if extra is not None and mix_extra > 0:
+        c = extra(n, fs, r)
+        y = np.sqrt(1.0 - mix_extra) * y + np.sqrt(mix_extra) * c / _rms(c)
+    y *= REF / _rms(y)
+    save(name, y, fs=fs)
+    consts[name]["rms_ref"] = REF
+
+
+# ── ruidos de fondo ──
+# Se consumen las mismas tiradas del generador general que antes gastaban los 7 ruidos de 2 s, para que las muestras de un disparo de más abajo (flutter, petardeo, golpe)
+# queden IGUALES a las de siempre: este arreglo sólo toca lo que se repetía.
+for _ in range(7):
+    rng.uniform(-1, 1, 88200)
+
+# rodado de las gomas en asfalto: retumbo grave y parejo (antes un pasabanda ancho en 380 Hz que dejaba pasar siseo hasta los 3 kHz)
+noise_loop("roll", [("hp", 80, 0.7), ("bp", 330, 0.8), ("lp", 950, 0.7)], 24.0, 101, fs=22050)
+# chillido de gomas: pasabanda angosto (menos que antes: Q 5 en vez de 7, para que no sea un silbido fino)
+noise_loop("squeal", [("bp", 1150, 5.0)], 12.0, 102)
+# tierra / ripio / pasto: crujidos de piedritas sobre un colchón de ruido medio (sin el siseo de 2–5 kHz del ruido blanco filtrado)
+noise_loop("gravel", [("hp", 450, 0.7), ("lp", 2400, 0.7), ("lp", 3200, 0.7)], 24.0, 103,
+           extra=lambda n, fs, r: crackle(n, fs, r, 340.0, 800.0, 3000.0, 0.0012, 0.0035), mix_extra=0.45)
+# viento: soplido de aire parejo y grave, sin silbido (casi todo entre 120 y 900 Hz: lo que un parlante de teléfono sí reproduce, sin el retumbo que no sale)
+noise_loop("wind", [("hp", 120, 0.7), ("lp", 800, 0.7), ("lp", 1000, 0.7)], 24.0, 104, fs=22050)
+# soplido del turbo: banda ancha en 2,6 kHz (antes Q 4 en 3,6 kHz: un «ssss» fino que parecía silbido)
+noise_loop("turbo", [("bp", 2600, 1.0), ("lp", 5200, 0.7)], 12.0, 105)
+# lluvia: mucho menos siseo (nada por encima de 7 kHz) y gotas sueltas encima
+noise_loop("rain", [("hp", 1200, 0.7), ("lp", 5600, 0.7), ("lp", 7000, 0.7)], 24.0, 106,
+           extra=lambda n, fs, r: crackle(n, fs, r, 260.0, 2500.0, 6500.0, 0.0003, 0.0009, 0.7), mix_extra=0.25)
+noise_loop("engnoise", [("bp", 200, 1.5)], 12.0, 107, fs=22050)  # base 200 Hz: en el juego se sube/baja con la velocidad de reproducción hasta f0
 
 # ── motor: un ciclo de 42 Hz (1050 muestras) ──
 # frecuencias relativas a f0: 1, 0.5, 2, 0.25, 1.5 y la modulación a 0.125 → todas son múltiplos de f0/8 = el ciclo de la tabla

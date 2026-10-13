@@ -3,16 +3,27 @@ extends Node
 ## (las genera tools/godot/make_audio.py con los mismos osciladores y filtros del Web Audio de la versión HTML) y las
 ## reproduce el motor de audio (C++), así que casi no gasta procesador y no se corta.
 ##  · motor: un ciclo con los 5 osciladores + modulación + saturación; velocidad = rpm; pasabajos según carga y vueltas
-##  · ruidos en bucle: rodado, chillido de gomas, grava, viento, soplido del turbo, lluvia, ruido del motor
-##  · silbido del turbo y caja de engranajes: senos/triángulos de tabla corta a la frecuencia justa
+##  · ruidos en bucle: rodado, chillido de gomas, grava, viento, soplido del turbo, lluvia, ruido del motor. Son bucles LARGOS (12–24 s) y parejos: con los de 2 s del principio
+##    el rodado se repetía idéntico cada 2 s y sonaba como un viento fuerte que vuelve (ver tools/godot/make_audio.py y docs/AUDIO.md)
+##  · silbido del turbo y caja de engranajes: senos/triángulos de tabla corta a la frecuencia justa. Son tonos puros: por eso son bajitos, no pasan de ~3 kHz y NO se quedan
+##    (el silbido sólo se oye mientras el turbo carga o se vacía; el zumbido de la caja se va apagando si la velocidad no cambia)
 ##  · flutter del turbo, petardeos, golpes: muestras de un disparo
+## Niveles: los ruidos de fondo están grabados a RMS 0,10, así que un volumen de 1,0 es −20 dBFS y 0,1 es −40 dBFS.
 
 const CarSnapshot := preload("res://game/car/car_snapshot.gd")
 const VehicleParams := preload("res://game/physics/vehicle_params.gd")
 const DIR := "res://game/audio/samples/"
 
-## niveles generales (los mismos de la versión web)
-const SND := {"master": 0.55, "engine": 0.62, "tires": 0.35, "squeal": 0.28, "gravel": 0.45, "wind": 0.25, "turbo": 0.10, "whistle": 0.06, "flutter": 0.75, "whine": 0.06, "pops": 0.35, "impacts": 0.8}
+## niveles generales. El motor, el flutter, los petardeos y los golpes son los de la versión web; los ruidos de fondo (gomas, tierra, viento, turbo, silbido, caja) se bajaron mucho
+## (el rodado, la tierra y la lluvia sonaban tan fuertes como el motor, y el silbido del turbo era un seno de 8 kHz): ver docs/AUDIO.md
+const SND := {"master": 0.55, "engine": 0.62, "tires": 0.13, "squeal": 0.17, "gravel": 0.092, "wind": 0.04, "turbo": 0.075, "whistle": 0.015, "flutter": 0.75, "whine": 0.012, "pops": 0.35, "impacts": 0.8,
+	"rain": 0.06}
+const SURF_DEFAULT := 0.30 # «Gomas y tierra» y «Viento y lluvia» en su valor normal (30): los niveles de arriba son para ese valor
+const WHINE_MAX_HZ := 2400.0 # la caja de cambios nunca pasa de acá (antes llegaba a 4,2 kHz y se oía como un silbido fino)
+const WHISTLE_MAX_HZ := 3300.0 # ídem el silbido del turbo (antes llegaba a 8 kHz)
+const STEADY_RATE := 0.04 # cambio relativo de frecuencia por segundo por debajo del cual un tono se considera «parado»
+const STEADY_FADE_S := 2.5 # un tono parado se va apagando en este tiempo
+const STEADY_MIN := 0.30 # …hasta este nivel (y vuelve enseguida cuando la frecuencia se mueve)
 const TURBO_SND := {
 	"pickup": {"f": 1.0, "spool": 0.55, "w": 1.0, "fl": 1.0}, "t1plus": {"f": 1.12, "spool": 0.42, "w": 0.8, "fl": 0.9},
 	"truck": {"f": 0.55, "spool": 0.9, "w": 0.9, "fl": 1.2}, "genesis": {"f": 1.3, "spool": 0.3, "w": 1.1, "fl": 1.0},
@@ -67,6 +78,7 @@ var active := true
 var vehicle_id := "t1plus"
 var voice := {} # carácter del motor (VOICE) del auto actual; vacío = la voz de siempre
 var pop_t := -10.0 # última vez que sonó un petardeo (pausa mínima entre ráfagas)
+var thump_t := -10.0 # último golpe grave (pausa mínima entre golpes)
 var pops_ok := false # lo calcula update(): hay petardeo/flutter solo en 1ª–2ª o bajando de marcha
 var mix := {"eng": 1.0, "surf": 0.3, "wind": 0.3, "turbo": 1.0, "gear": 1.0}
 var volume := 80.0
@@ -77,6 +89,10 @@ var prev_thr := 0.0
 var time := 0.0
 var rng := RandomNumberGenerator.new()
 var gw_tau := 0.05
+var spool := 0.0 # cuánto se está moviendo la carga del turbo (0 quieto … 1 cargando o vaciándose): sólo entonces se oye el silbido
+var _boost_prev := 0.0
+var _steady := {} # tono → {f, rate, k}: seguimiento de los tonos puros que se quedan quietos (ver _steady_gain)
+var _rain_k := 1.0 # «Viento y lluvia»
 
 func _ready() -> void:
 	rng.randomize()
@@ -98,12 +114,12 @@ func _ready() -> void:
 	lp_engine.resonance = 0.55
 	lp_engine.db = AudioEffectFilter.FILTER_12DB
 	AudioServer.add_bus_effect(engine_bus, lp_engine)
-	# viento: ruido grave y filtrado (se siente el aire, sin silbido)
+	# viento: ruido grave y filtrado (se siente el aire, sin silbido); la muestra ya es grave, el pasabajos sólo asegura que nada agudo se cuele
 	var wind_bus := _make_bus("GSViento")
 	var lp_w := AudioEffectLowPassFilter.new()
-	lp_w.cutoff_hz = 650.0
+	lp_w.cutoff_hz = 1800.0
 	lp_w.resonance = 0.4
-	lp_w.db = AudioEffectFilter.FILTER_24DB
+	lp_w.db = AudioEffectFilter.FILTER_12DB
 	AudioServer.add_bus_effect(wind_bus, lp_w)
 	ai_bus = _make_bus("GSRival")
 	var lp_ai := AudioEffectLowPassFilter.new()
@@ -165,7 +181,8 @@ func _voice(vname: String, bus: String, random_start := true, sample := "") -> v
 	p.bus = bus
 	p.volume_db = -80.0
 	add_child(p)
-	p.play(rng.randf() * 1.5 if random_start else 0.0)
+	var length := float(consts[smp]["n"]) / float(consts[smp].get("rate", 44100))
+	p.play(rng.randf() * length if random_start else 0.0) # los bucles de ruido son largos: cada partida arranca en otro lugar
 	p.stream_paused = true
 	voices[vname] = {"p": p, "unit": float(consts[smp]["unit"])}
 
@@ -212,7 +229,7 @@ func set_active(v: bool) -> void:
 			(voices[k]["p"] as AudioStreamPlayer).stream_paused = true
 
 func rain(on: bool) -> void:
-	tgt["rain"] = 0.10 if on else 0.0
+	tgt["rain"] = float(SND["rain"]) if on else 0.0
 
 ## elige la voz del auto: los autos nuevos tienen la suya (VOICE, TURBO_SND, GEAR_SND); los demás siguen como estaban
 func set_vehicle(id: String) -> void:
@@ -247,7 +264,26 @@ func flutter(b: float, T: Dictionary, L: float, mt: float) -> void:
 	_shoot(smp, amp, float(T["f"]))
 
 func thump(strength: float) -> void:
+	if time - thump_t < 0.15:
+		return # rozando una pared los golpes llegaban en cada cuadro y se juntaban en un retumbo continuo
+	thump_t = time
 	_shoot("thump", minf(1.0, strength) * SND["impacts"])
+
+## Un tono puro que no cambia de altura enseguida se vuelve un silbido que molesta. Si la frecuencia `f` casi no se mueve (menos de STEADY_RATE por segundo, mirando la tendencia y no
+## el temblor de cuadro a cuadro) el volumen se va apagando de a poco hasta STEADY_MIN; en cuanto se mueve (acelerando, frenando) vuelve a sonar entero. Devuelve el factor (STEADY_MIN..1).
+func _steady_gain(key: String, f: float, dt: float) -> float:
+	var st: Dictionary = _steady.get(key, {"f": f, "rate": 0.0, "k": 1.0})
+	var f_old := float(st["f"])
+	var f_new := f_old + (f - f_old) * (1.0 - exp(-dt / 0.4)) # frecuencia alisada
+	var rel := absf(f_new - f_old) / maxf(dt, 0.001) / maxf(f, 50.0)
+	st["f"] = f_new
+	st["rate"] = float(st["rate"]) + (rel - float(st["rate"])) * (1.0 - exp(-dt / 0.3))
+	if float(st["rate"]) > STEADY_RATE:
+		st["k"] = minf(1.0, float(st["k"]) + dt / 0.4)
+	else:
+		st["k"] = maxf(STEADY_MIN, float(st["k"]) - dt * (1.0 - STEADY_MIN) / STEADY_FADE_S)
+	_steady[key] = st
+	return float(st["k"])
 
 ## acerca cada parámetro a su objetivo (como setTargetAtTime)
 func _smooth(dt: float) -> void:
@@ -270,7 +306,7 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 	# parado y sin acelerar el motor no suena (el ralentí sonaba a motor de turismo carretera con petardeos): el sonido entra con el pedal o al andar
 	var alive := clampf(maxf(p.throttle * 2.5, (sp - 0.6) / 3.0), 0.0, 1.0)
 	tgt["eng"] = SND["engine"] * float(voice.get("eng", 1.0)) * mix["eng"] * (0.35 + 0.25 * rn) * (0.62 + 0.38 * load) * alive
-	tgt["engn"] = 0.25 * load * float(voice.get("noise", 1.0))
+	tgt["engn"] = 0.145 * load * float(voice.get("noise", 1.0)) # (el ruido mecánico está grabado más fuerte que antes: 0,145 deja el mismo nivel de siempre)
 	var asf := 0.0
 	var loose := 0.0
 	var sl := 0.0
@@ -292,27 +328,33 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 		else:
 			loose += 0.25 + s2
 	var dirt_k := float(dirt) / float(nl) if nl > 0 else 0.0
-	tgt["roll"] = SND["tires"] * asf * minf(1.0, sp / 30.0)
-	tgt["sq"] = SND["squeal"] * clampf((sl - 0.08) * 3.0, 0.0, 1.0)
+	# «Gomas y tierra» manda sobre el rodado, el chillido y la tierra; «Viento y lluvia» sobre el viento y la lluvia (antes el rodado y la lluvia no tenían control)
+	var surf_k := float(mix["surf"]) / SURF_DEFAULT
+	var wind_k := float(mix["wind"]) / SURF_DEFAULT
+	_rain_k = wind_k
+	tgt["roll"] = SND["tires"] * surf_k * asf * minf(1.0, sp / 30.0)
+	tgt["sq"] = SND["squeal"] * surf_k * clampf((sl - 0.08) * 3.0, 0.0, 1.0)
 	tgt["sqf"] = 1000.0 + sl * 400.0 + _r() * 120.0
 	# pasto/tierra: nada parado, sube con la velocidad; el pasto suena más suave que la tierra/ripio
 	var mv := clampf((sp - 0.8) / 12.0, 0.0, 1.0)
-	tgt["grav"] = SND["gravel"] * mix["surf"] * minf(1.0, loose) * (0.35 + 0.65 * dirt_k) * mv * mv * (0.8 + _r() * 0.4)
-	tgt["wind"] = SND["wind"] * mix["wind"] * 0.85 * pow(clampf((sp - 6.0) / 45.0, 0.0, 1.0), 1.7)
-	tgt["windf"] = 330.0 + sp * 5.5 # tono bajo: soplido del aire, no silbido
+	tgt["grav"] = SND["gravel"] * surf_k * minf(1.0, loose) * (0.35 + 0.65 * dirt_k) * mv * mv
+	# viento: aire grave que sube con la velocidad (casi nada hasta ~20 km/h) y sopla con ráfagas lentas (dos ondas que no se alinean: nunca se repite igual)
+	var gust := 1.0 + 0.18 * sin(time * 0.69) + 0.12 * sin(time * 1.09 + 1.3)
+	tgt["wind"] = SND["wind"] * wind_k * pow(clampf((sp - 6.0) / 54.0, 0.0, 1.0), 1.7) * gust
+	tgt["windf"] = 630.0 + sp * 3.5 # la muestra es grave y se corre un poco hacia arriba con la velocidad (pitch 0,9 … 1,2)
 	# caja: el tono sigue a la velocidad (eje de salida × dientes); suena acelerando y más aún levantando el pie; se corta en cada cambio
 	var G: Dictionary = GEAR_SND.get(vehicle_id, GEAR_SND["pickup"])
 	var shaft := absf(p.vLong) / (TAU * V.wheelRadius) * V.finalDrive
-	var wf := minf(4200.0, shaft * float(G["tooth"]))
+	var wf := minf(WHINE_MAX_HZ, shaft * float(G["tooth"]) * 0.5)
 	var drive := p.gear != 0 and p.clutchLocked and not (p.shiftT > 0.0)
 	var coast := maxf(0.0, 0.5 - p.throttle) * 2.0
 	var sk := clampf((absf(p.vLong) - 2.0) / 20.0, 0.0, 1.0)
-	var gg: float = SND["whine"] * float(G["k"]) * mix["gear"] * sk * (0.55 + 0.3 * load + 0.45 * coast) if drive else 0.0
+	var gg: float = SND["whine"] * float(G["k"]) * mix["gear"] * sk * (0.55 + 0.3 * load + 0.45 * coast) * _steady_gain("whine", wf, dt) if drive else 0.0
 	gw_tau = 0.05 if drive else 0.015
 	tgt["gw"] = gg
 	tgt["wf"] = wf
 	tgt["gwe"] = gg * 0.25 * (0.4 + 0.6 * rn) if drive else 0.0
-	tgt["gwef"] = rpm / 60.0 * float(G["tooth"]) * 0.36
+	tgt["gwef"] = minf(WHINE_MAX_HZ, rpm / 60.0 * float(G["tooth"]) * 0.36)
 	# turbo: carga con retardo al acelerar y se vacía al soltar; silbido + soplido siguen la carga
 	var T: Dictionary = TURBO_SND.get(vehicle_id, TURBO_SND["pickup"])
 	var L := float(V.turboLvl)
@@ -327,10 +369,15 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 	var tc := (float(T["spool"]) * (1.0 - 0.12 * L)) if bt > boost else 0.12
 	boost += (bt - boost) * (1.0 - exp(-dt / tc))
 	var b := boost
-	var twf := float(T["f"]) * (1800.0 + b * b * 5200.0)
-	tgt["tw"] = SND["whistle"] * float(T["w"]) * (1.0 + 0.3 * L) * mt * pow(b, 1.5) * (0.5 + 0.5 * load)
+	# el silbido sólo se oye mientras la carga se mueve (cargando o vaciándose); con el turbo estable queda un resto muy bajo. Antes, a fondo en una ruta, era un seno fijo de
+	# 8 kHz que se quedaba sonando todo el tiempo
+	var act := clampf(absf(b - _boost_prev) / maxf(dt, 0.001) * 1.6, 0.0, 1.0)
+	_boost_prev = b
+	spool += (act - spool) * (1.0 - exp(-dt / (0.12 if act > spool else 1.1)))
+	var twf := minf(WHISTLE_MAX_HZ, float(T["f"]) * (1500.0 + b * b * 1900.0))
+	tgt["tw"] = SND["whistle"] * float(T["w"]) * (1.0 + 0.3 * L) * mt * pow(b, 1.5) * (0.5 + 0.5 * load) * (0.2 + 0.8 * spool)
 	tgt["twf"] = twf
-	tgt["tb"] = SND["turbo"] * mt * b * (0.4 + 0.6 * load)
+	tgt["tb"] = SND["turbo"] * mt * b * (0.4 + 0.6 * load) * (0.35 + 0.65 * spool)
 	tgt["tbf"] = twf * 0.9
 	# se recuerda cuánto turbo había con el pie a fondo: al soltar (en rampa) la carga ya cayó, pero el flutter suena igual
 	if thr > 0.5:
@@ -376,8 +423,8 @@ func _apply() -> void:
 	_set_voice("squeal", cur["sq"], cur["sqf"] / 1150.0)
 	_set_voice("gravel", cur["grav"], 1.0)
 	_set_voice("wind", cur["wind"], cur["windf"] / 700.0)
-	_set_voice("turbo", cur["tb"], cur["tbf"] / 3600.0)
-	_set_voice("rain", cur["rain"], 1.0)
+	_set_voice("turbo", cur["tb"], cur["tbf"] / 2600.0)
+	_set_voice("rain", cur["rain"] * _rain_k, 1.0)
 	var w: float = maxf(40.0, cur["wf"])
 	_set_voice("whine1", cur["gw"] * 0.418, w / tone)
 	_set_voice("whine2", cur["gw"] * 0.328, w * 1.007 / tone)

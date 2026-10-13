@@ -202,7 +202,7 @@ func _apply_weather() -> void:
 			if race.get("audio") != null:
 				race.audio.rain(on)
 		if race.get("audio") != null and on:
-			race.audio.tgt["rain"] = 0.04 + 0.08 * clampf(float(wx["rain"]), 0.0, 1.0) # la lluvia suena más fuerte cuanto más llueve
+			race.audio.tgt["rain"] = 0.05 + 0.07 * clampf(float(wx["rain"]), 0.0, 1.0) # la lluvia suena más fuerte cuanto más llueve (la muestra está a RMS 0,10: 0,12 = −38 dBFS; antes era un siseo de −23 dBFS)
 
 # ───────────── faros: un haz plano aditivo sobre el piso, delante del auto ─────────────
 func _build_beam() -> void:

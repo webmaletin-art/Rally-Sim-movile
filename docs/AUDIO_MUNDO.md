@@ -6,8 +6,8 @@
 |---|---|
 | Ruido de ciudad | rodado grave filtrado; sube con los autos del tránsito que hay a menos de 150 m, baja de noche y a alta velocidad el viento lo tapa |
 | Motores del tránsito en 3D | los 2/3/4 autos civiles más cercanos (según calidad LOW/MEDIA/ALTA, a menos de 60 m) suenan de donde vienen (`AudioStreamPlayer3D`), con tono según su velocidad y **efecto Doppler** (cálculo propio, barato). Un auto que ya suena se conserva hasta 75 m (no parpadea) |
-| Viento ambiente | un poco siempre; más con nubes, tormenta y altura (la Ruta Panorámica sube) |
-| Lluvia | la del auto, ahora con volumen según cuánto llueve (clima del mundo) |
+| Viento ambiente | casi nada con cielo despejado; más con nubes, tormenta y altura (la Ruta Panorámica sube). Bucle largo y grave (24 s), bajito: con tormenta −41 dBA |
+| Lluvia | la del auto, con volumen según cuánto llueve (clima del mundo); sin siseo agudo y bajo el control «Viento y lluvia» (ver `docs/AUDIO.md`) |
 | Truenos | sólo en tormenta; salen de la **semilla y la hora del mundo**: todos los jugadores online oyen el mismo trueno a la vez |
 | Eco bajo tierra | un reverb en el Master que se enciende sólo dentro de túneles y estacionamientos |
 

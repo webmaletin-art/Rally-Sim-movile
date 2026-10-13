@@ -2,6 +2,7 @@ extends Node
 ## Audio del mundo abierto (Etapa 20): ambiente de ciudad según el tránsito y la hora, viento y lluvia según el clima, truenos que suenan a la vez para todos (salen de la hora del mundo),
 ## motores del tránsito civil en 3D (suenan de donde vienen, con efecto Doppler) y eco bajo tierra (túneles y estacionamientos).
 ## Todo reusa las muestras que ya están (rodado, viento, lluvia, motor de rival, golpe grave): no suma archivos ni peso. Los motores en 3D son pocos (2–4 según la calidad).
+## El viento y el ruido de ciudad usan los bucles largos y parejos de car_audio (24 s, RMS 0,10: volumen 1,0 = −20 dBFS) y van bajitos: antes el viento de tormenta sonaba como un soplido fuerte.
 ## La lógica de decisión está en funciones estáticas (se prueba sin audio): pick_nearest, doppler, engine_pitch, bed_level, thunder_events.
 
 const DIR := "res://game/audio/samples/"
@@ -35,7 +36,7 @@ func setup(p_race, n_engines: int) -> void:
 	rng.randomize()
 	consts = JSON.parse_string(FileAccess.get_file_as_string(DIR + "consts.json"))
 	amb_bus = _make_bus("GSAmbiente", 900.0)
-	_make_bus("GSAmbViento", 520.0)
+	_make_bus("GSAmbViento", 1500.0)
 	if AudioServer.get_bus_index("GSRival") < 0:
 		_make_bus("GSRival", 900.0)
 	_voice("bed", "roll", "GSAmbiente")
@@ -102,7 +103,7 @@ func _voice(vname: String, sample: String, bus: String) -> void:
 	p.bus = bus
 	p.volume_db = -80.0
 	add_child(p)
-	p.play(rng.randf() * 1.5)
+	p.play(rng.randf() * float(consts[sample]["n"]) / float(consts[sample].get("rate", 44100))) # bucle largo: arranca en cualquier lugar
 	p.stream_paused = true
 	voices[vname] = {"p": p, "unit": float(consts[sample]["unit"])}
 
@@ -191,11 +192,11 @@ func update(dt: float, pl: Vector2, pl_speed: float) -> void:
 		_assign(vehs, pos3)
 	var k := 1.0 - exp(-1.5 * dt)
 	_bed = lerpf(_bed, bed_level(_density, night, pl_speed), k)
-	_set_voice("bed", _bed * 0.16 * level, 0.9)
+	_set_voice("bed", _bed * 0.10 * level, 0.9)
 	# viento ambiente: un poco siempre, más con tormenta, nubes y con la altura (la ruta panorámica sube)
 	var storm := 1.0 if str(wx.get("kind", "clear")) == "storm" else 0.0
 	var alt := clampf((pos3.y - 40.0) / 160.0, 0.0, 1.0)
-	var gust_t := 0.03 + 0.10 * float(wx.get("cloud", 0.0)) + 0.18 * storm + 0.08 * alt
+	var gust_t := 0.01 + 0.03 * float(wx.get("cloud", 0.0)) + 0.06 * storm + 0.03 * alt # (todo junto = 0,13: con el ambiente en 70, −41 dBA; con cielo despejado no se oye)
 	_gust = lerpf(_gust, gust_t, k)
 	_set_voice("gust", _gust * level, 0.8 + 0.4 * alt)
 	# truenos

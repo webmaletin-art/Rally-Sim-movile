@@ -17,6 +17,14 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 window/handheld/orientation=4
 
+[importer_defaults]
+
+; Los .wav (sólo las 23 muestras de godot/game/audio/samples) se guardan SIN comprimir: los .import no se suben al repositorio (godot/.gitignore), así que esto es lo que
+; decide el formato en la compilación. Las tablas cortas (seno, motor de 1050 muestras) y los bucles de ruido suenan igual de limpios y no gastan procesador en descomprimir.
+wav={
+"compress/mode": 0
+}
+
 [input_devices]
 
 sensors/enable_accelerometer=true
