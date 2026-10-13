@@ -31,7 +31,7 @@ Todo lo que dicen los letreros sale del juego tal como está (26 autos, 12 etapa
    (`P` = un golpe = 0,434 s; los cortes caen en los golpes; el silencio del segundo 95,85 y el final de 185,25 s están marcados en el mapa).
 2. **Fotos**: `director.gd` arma una escena real del juego (sala de exhibición, ruta, mundo abierto o aventura), pone la cámara donde pide un trabajo `.json` y guarda cada foto en Full HD.
    `run_jobs.py` los corre con pantalla virtual (`xvfb`, OpenGL por software; tarda varios minutos por trabajo). Los generadores de trabajos:
-   `make_studio_jobs.py` (retratos, vueltas de 360° y los 24 estilos de pintura de los 26 autos) · `make_survey.py` (recorrido de cada mapa) · `make_action.py` (el auto maneja solo por cada mapa,
+   `make_studio_jobs.py` (retratos, vueltas de 360° y los 24 estilos de pintura de los 26 autos) · `make_survey.py` (recorrido de cada mapa; `--only dream,anillo --fr 0.03,0.13,…` para sacar sólo algunos mapas y lugares) · `make_action.py` (el auto maneja solo por cada mapa,
    con polvo y barro) · `make_extra.py` (la Aventura, los pilotos con gestos, el derrape) · `make_scout_world.py` / `make_scout_aerial.py` (ciudad, región y vistas aéreas) · `ui_shots.sh` (pantallas del menú con
    un perfil de vitrina de `make_profile.py`).
 3. **Montaje**: `make_trailer.py` (`build()` es la lista de tomas, compás por compás, en español e inglés) + `compositor.py` (el motor de imagen). `sheet_dir.py` arma hojas de contactos para elegir las fotos.

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Recorrido de cada ruta con el auto puesto cada 5 % del trayecto (dos cámaras), para elegir los mejores lugares del tráiler.
-Uso: python3 tools/trailer/make_survey.py /carpeta_de_trabajos /carpeta_de_fotos"""
+Uso: python3 tools/trailer/make_survey.py /carpeta_de_trabajos /carpeta_de_fotos [--only mapa,mapa …] [--fr 0.03,0.13,…]
+  --only  sólo esos recorridos (por defecto los 11)
+  --fr    en qué fracciones del trayecto sacar las fotos (por defecto cada 5 %: 19 lugares × 2 cámaras)"""
 import json
 import os
 import sys
@@ -8,6 +10,17 @@ import sys
 jobs_dir, out_dir = sys.argv[1], sys.argv[2]
 os.makedirs(jobs_dir, exist_ok=True)
 FR = [round(0.03 + 0.05 * i, 2) for i in range(19)]
+ONLY = []
+a = sys.argv[3:]
+while a:
+    if a[0] == '--only' and len(a) > 1:
+        ONLY = a[1].split(',')
+        a = a[2:]
+    elif a[0] == '--fr' and len(a) > 1:
+        FR = [float(x) for x in a[1].split(',')]
+        a = a[2:]
+    else:
+        a = a[1:]
 SCENES = [
     ('forest_sunset', 'rally80', {'type': 'race', 'track': 'forest', 'ai': 0, 'laps': 1, 'sky': 'sunset'}),
     ('forest_day', 'pickup', {'type': 'race', 'track': 'forest', 'ai': 0, 'laps': 1, 'sky': 'day'}),
@@ -22,6 +35,8 @@ SCENES = [
     ('paper', 'hatch2', {'type': 'race', 'track': 'paperRace', 'ai': 0, 'laps': 1, 'sky': 'day'}),
 ]
 for name, car, cfg in SCENES:
+    if ONLY and name not in ONLY:
+        continue
     shots = []
     for f in FR:
         shots.append({'name': 'p%02d_a' % int(f * 100), 'tp': {'frac': f}, 'fov': 38, 'near': 1.5, 'cam': {'orbit': {'a': 28, 'r': 6.5, 'h': 0.8, 'lh': 0.7}}, 'wait': 8})

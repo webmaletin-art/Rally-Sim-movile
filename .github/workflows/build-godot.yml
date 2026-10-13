@@ -92,6 +92,7 @@ jobs:
           timeout -k 5 600 godot --headless --script res://tests/world_weather_test.gd
           timeout -k 5 600 godot --headless --script res://tests/online_profile_test.gd
           timeout -k 5 600 godot --headless --script res://tests/remote_cars_test.gd
+          timeout -k 5 600 godot --headless --script res://tests/remote_motion_test.gd
           timeout -k 5 600 godot --headless --script res://tests/realtime_test.gd
           timeout -k 5 600 godot --headless --script res://tests/region_test.gd
           timeout -k 5 900 godot --headless --script res://tests/region_drive_test.gd
@@ -99,10 +100,12 @@ jobs:
           timeout -k 5 900 godot --headless --script res://tests/region_junction_test.gd
           timeout -k 5 900 godot --headless --script res://tests/region_connectors_test.gd
           timeout -k 5 900 godot --headless --script res://tests/region_terrain_test.gd
+          timeout -k 5 900 godot --headless --script res://tests/region_polish_test.gd
           timeout -k 5 600 godot --headless --script res://tests/spawn_menu_test.gd -- --menu --noconsent
           timeout -k 5 600 godot --headless --script res://tests/language_test.gd
           timeout -k 5 600 godot --headless --script res://tests/music_test.gd
           timeout -k 5 600 godot --headless --script res://tests/login_wall_test.gd
+          timeout -k 5 600 godot --headless --script res://tests/account_econ_test.gd
           timeout -k 5 600 godot --headless --script res://tests/world_ambient_test.gd
           timeout -k 5 600 godot --headless --script res://tests/audio_levels_test.gd
           timeout -k 5 600 godot --headless --script res://tests/ambient_peds_test.gd
