@@ -62,7 +62,10 @@ func _ready() -> void:
 		st["n"] = crashes
 		_save(st)
 	_rotate()
-	_path = "%s/s_%d.log" % [DIR, int(started * 1000.0)] # (en milisegundos: dos aperturas en el mismo segundo no se pisan)
+	var ms := int(started * 1000.0)
+	while FileAccess.file_exists("%s/s_%d.log" % [DIR, ms]): # (dos aperturas en el mismo milisegundo no se pisan)
+		ms += 1
+	_path = "%s/s_%d.log" % [DIR, ms]
 	_file = FileAccess.open(_path, FileAccess.WRITE)
 	_mark_open()
 	write("== sesión %s · %s" % [Time.get_datetime_string_from_system(), _device()])
