@@ -367,6 +367,8 @@ func _ready() -> void:
 	if track is NetTrack:
 		_net_atmosphere()
 	audio = CarAudio.new()
+	var cg: Node = get_tree().root.get_node_or_null("CrashGuard") # se cerró de golpe la vez anterior (o el jugador lo pidió): audio simple
+	audio.simple = (cg != null and cg.simple_audio(profile.setting("simpleAudio") == true)) or profile.setting("simpleAudio") == true
 	audio.set_vehicle(str(cfg.get("car", "")))
 	add_child(audio)
 	sfx = UiSfx.new()

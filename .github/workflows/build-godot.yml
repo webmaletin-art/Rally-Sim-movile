@@ -217,13 +217,32 @@ jobs:
           ver = "r%s-%s" % (os.environ['GITHUB_RUN_NUMBER'], os.environ['GITHUB_SHA'][:7])
           repo = os.environ['GITHUB_REPOSITORY']
           base = "https://github.com/%s/releases/download/%s/" % (repo, os.environ['CONTENT_TAG'])
-          cars_sha = sha('build/cars.pck')
+          # La versión de los autos sale de SUS ARCHIVOS de origen (no del hash del .pck, que cambia en cada armado aunque los autos sean los mismos): así el teléfono no
+          # vuelve a bajar ~600 MB con cada actualización. Si el manifiesto publicado ya tiene esa versión se reusa su entrada y no se vuelve a subir cars.pck.
+          import subprocess, urllib.request
+          tree = subprocess.check_output(['git', 'rev-parse', 'HEAD:godot/game/models/cars']).decode().strip()
+          presets = hashlib.sha256(open('tools/export/split_presets.py', 'rb').read()).hexdigest()[:8]
+          cars_ver = "%s-%s-%s" % (tree[:12], presets, os.environ.get('GODOT_VERSION', ''))
+          cars = None
+          try:
+              old = json.load(urllib.request.urlopen(base + "manifest.json", timeout=30))
+              for q in old.get("packs", []):
+                  if q.get("name") == "cars" and q.get("version") == cars_ver:
+                      cars = q
+          except Exception as e:
+              print("sin manifiesto anterior:", e)
+          if cars is None:
+              cars_sha = sha('build/cars.pck')
+              cars = {"name": "cars", "version": cars_ver, "url": base + "cars.pck", "size": os.path.getsize('build/cars.pck'), "sha256": cars_sha}
+              open('build/cars_new', 'w').write('1')
+          else:
+              print("autos sin cambios (%s): se reusa el cars.pck publicado" % cars_ver)
           json.dump({
               "version": ver,
               "url": base + "content.pck",
               "size": os.path.getsize('build/content.pck'),
               "sha256": sha('build/content.pck'),
-              "packs": [{"name": "cars", "version": cars_sha[:16], "url": base + "cars.pck", "size": os.path.getsize('build/cars.pck'), "sha256": cars_sha}],
+              "packs": [cars],
           }, open('build/manifest.json', 'w'), indent=1)
           print(open('build/manifest.json').read())
           PY
@@ -236,7 +255,9 @@ jobs:
             --title "Contenido del juego (Godot ${GODOT_VERSION%.*})" \
             --notes "Paquete que descarga solo la app liviana al abrirse (motor ${GODOT_VERSION%.*}). No hace falta bajarlo a mano." \
             --prerelease
-          gh release upload $CONTENT_TAG build/content.pck build/cars.pck build/manifest.json --clobber
+          # cars.pck (~600 MB) solo se vuelve a subir si los autos cambiaron (si no, el publicado sigue valiendo y los teléfonos no lo bajan de nuevo)
+          if [ -f build/cars_new ]; then gh release upload $CONTENT_TAG build/cars.pck --clobber; fi
+          gh release upload $CONTENT_TAG build/content.pck build/manifest.json --clobber
 
       - name: Publicar los APK (link directo para instalar, sin iniciar sesión)
         env:

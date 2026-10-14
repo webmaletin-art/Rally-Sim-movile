@@ -5,6 +5,7 @@ extends RefCounted
 const Kit := preload("res://game/ui/ui_kit.gd")
 const Release := preload("res://game/data/release.gd")
 const MenuAccount := preload("res://game/ui/menu_account.gd")
+const CrashGuardLog := preload("res://bootstrap/crash_guard.gd")
 
 const POLICY_URL := "https://webmaletin-art.github.io/Rally-Sim-movile/docs/privacidad.html"
 const TERMS_URL := "https://github.com/webmaletin-art/Rally-Sim-movile/blob/main/docs/TERMINOS.md"
@@ -56,7 +57,7 @@ const TERMS := [
 ## Versión de Google Play: con compras dentro del juego
 const TERMS_STORE := [
 	["Compras", "Podés comprar con dinero real el juego completo y bolsas de créditos a través de Google Play. Las cobra y las administra Google: los reembolsos y reclamos se piden en Google Play, según sus políticas. Los créditos y el juego completo son para usar en el juego y no se pueden transferir ni canjear por dinero."],
-	["Contenido descargable", "El juego completo viene dentro de la app y funciona sin conexión. Las actualizaciones se instalan desde Google Play."],
+	["Contenido descargable", "El juego completo viene dentro de la app. Las actualizaciones se instalan desde Google Play."],
 ]
 
 ## Solo si esta versión trae el modo online configurado (los rankings son opcionales y están apagados de fábrica)
@@ -67,7 +68,7 @@ const PRIVACY_ONLINE := [
 	["Qué se guarda", "Tu perfil de juego (autos, mejoras, pintura, dinero del juego, estrellas, tiempos y opciones) queda en el almacenamiento privado de la app, en tu teléfono. Solo si participás en el modo online se envían tu nombre de piloto y tus mejores marcas, y tu correo si creás una cuenta. Si desinstalás la app, se pierde lo que está en el teléfono."],
 	["Internet", "El juego funciona sin conexión. Se usa internet para las compras (a través de Google Play), para descargar contenido en la versión de prueba y, solo si participás, para el modo online (rankings y cuenta)."],
 	["Dónde se guardan los datos online", "Los datos del modo online (nombre de piloto, marcas y, si creás una cuenta, tu correo) se guardan en servidores de Supabase, que los procesa por nuestra cuenta. Los conservamos hasta que borres tu cuenta o nos pidas borrarlos. Los registros técnicos de envíos solo sirven para frenar abusos."],
-	["Rankings online (opcional)", "Si activás «Participar en los rankings online» (viene apagado), el juego crea un usuario anónimo y envía a nuestro servidor (Supabase) tu nombre de piloto y tus mejores marcas (tiempo o puntos, pista y auto) para armar el ranking, que ven todos los jugadores. No se envía ningún otro dato, y lo podés apagar cuando quieras. Para borrar tus marcas escribí al contacto del juego."],
+	["Rankings online (opcional)", "Con tu cuenta, «Participar en los rankings online» se activa al crearla y lo podés apagar cuando quieras en Modo online. Si está activado, el juego envía a nuestro servidor (Supabase) tu nombre de piloto y tus mejores marcas (tiempo o puntos, pista y auto), asociados a tu cuenta, para armar el ranking, que ven todos los jugadores. No se envía ningún otro dato. Para borrar tus marcas, borrá tu cuenta desde el juego o escribí al contacto del juego."],
 	["Mundo online: chat, posición y mercado", "Si entrás al mundo abierto desde Modo online (hace falta una cuenta), el juego envía a nuestro servidor (Supabase) la posición de tu auto en el mapa del juego, tu velocidad y tu auto (cada pocos segundos, mientras estás conectado; no es la ubicación real de tu teléfono), los mensajes de chat que escribís (los insultos se tapan con asteriscos), a quién seguís y los autos que ponés a la venta. Si alguien te reporta, se guarda la evidencia (tus mensajes recientes y tus últimas posiciones y velocidades) para revisarla a mano: un reporte no castiga a nadie automáticamente. Todo se borra junto con tu cuenta."],
 	["Garaje, créditos y tiempo real", "En el mundo online tu billetera de créditos online y tus autos online (con mejoras, pintura y gomas) viven en nuestro servidor (Supabase), no en tu teléfono, y son aparte de tu perfil sin conexión. Con el tiempo real, mientras estás en el mundo online tu auto (posición en el mapa del juego, velocidad, rumbo, modelo y pintura) se envía varias veces por segundo a los jugadores cercanos para que te vean moverte; ese tráfico no se guarda. Las compras con créditos online, los anuncios del mercado y el regalo diario quedan registrados para evitar abusos y se borran con tu cuenta."],
 	["Cuenta con correo (opcional)", "Si creás una cuenta, guardamos tu correo electrónico y una contraseña (que nunca vemos: se guarda cifrada) en Supabase, solo para que puedas recuperar tus marcas del ranking en otro teléfono. Tu correo no se muestra a otros jugadores ni se usa para publicidad. Es solo para mayores de 13 años. Podés cerrar sesión cuando quieras y borrar tu cuenta y tus marcas desde el juego (Modo online → Cuenta) o escribiendo al contacto del juego."],
@@ -80,6 +81,9 @@ const PRIVACY_ACCOUNT := [
 	["Internet", "El juego necesita conexión para iniciar sesión y para verificar tu cuenta con el servidor (la primera vez en cada teléfono, cuando comprás algo, si se detecta un cambio raro en el archivo de progreso o si pasaron más de 14 días sin verificar). El resto del tiempo se puede jugar sin conexión y los cambios se envían cuando vuelve la conexión. Las compras pasan por Google Play."],
 	["Cuenta con correo", "Guardamos tu correo electrónico y una contraseña (que nunca vemos: se guarda cifrada) en Supabase, para que puedas entrar a tu cuenta desde cualquier teléfono y recuperar tus créditos y tus autos. Tu correo no se muestra a otros jugadores ni se usa para publicidad. Es solo para mayores de 13 años (o con permiso de un adulto). Podés cerrar sesión cuando quieras y borrar tu cuenta y todo lo que guardamos de ella desde el juego (Modo online → Cuenta) o escribiendo al contacto del juego."],
 	["Compras", "Las compras dentro del juego las cobra y administra Google Play. Para acreditarlas, nuestro servidor verifica el comprobante con Google: recibe el identificador del producto y el código de la compra, nunca tu tarjeta ni tus datos de pago."],
+	["Permisos", "Vibración (opcional) y los permisos de red, que sirven para iniciar sesión, verificar tu cuenta y usar el servicio de compras de Google Play (el juego no los usa para nada más). No pedimos ubicación, cámara, micrófono, contactos ni archivos personales. Los sensores de movimiento se usan solo para manejar inclinando el teléfono."],
+	["Niños", "El juego no tiene publicidad. Para jugar hace falta una cuenta con correo, solo para mayores de 13 años (o con permiso de un adulto). El mundo online incluye un chat entre jugadores con filtro de insultos y botón de reportar. Las compras dentro del juego se hacen con la cuenta de Google Play de un adulto."],
+	["Dónde se guardan los datos online", "Los datos de tu cuenta (correo, créditos, autos y compras) y, si participás en los rankings o en el modo online, tu nombre de piloto, tus marcas y los datos del mundo online se guardan en servidores de Supabase, que los procesa por nuestra cuenta. Los conservamos hasta que borres tu cuenta o nos pidas borrarla. El registro técnico de premios y gastos se borra solo a los pocos días y los registros técnicos de envíos solo sirven para frenar abusos."],
 ]
 
 func _privacy() -> Array:
@@ -106,7 +110,7 @@ func _drop(base: Array, titles: Array) -> Array:
 
 ## Solo si esta versión trae el modo online configurado
 const TERMS_ONLINE := [
-	["Mundo online: chat, mercado y conducta", "Para el mundo online (chat, garaje y mercado online) hace falta una cuenta con correo; los rankings se pueden usar sin cuenta. El chat tiene filtro de insultos y botón de reportar: quien acumula faltas queda sin chat por un tiempo cada vez más largo. Los créditos y autos online son virtuales: no valen dinero, no se compran ni se venden por dinero fuera del juego y sólo pasan de una cuenta a otra por el mercado del juego. Podemos suspender o borrar cuentas que usen trampas, programas externos o fallas del servicio para sacar ventaja, o que acosen a otros jugadores."],
+	["Mundo online: chat, mercado y conducta", "Para el mundo online (chat, garaje y mercado online) y para los rankings hace falta una cuenta con correo. El chat tiene filtro de insultos y botón de reportar: quien acumula faltas queda sin chat por un tiempo cada vez más largo. Los créditos y autos online son virtuales: no valen dinero, no se compran ni se venden por dinero fuera del juego y sólo pasan de una cuenta a otra por el mercado del juego. Podemos suspender o borrar cuentas que usen trampas, programas externos o fallas del servicio para sacar ventaja, o que acosen a otros jugadores."],
 	["Cuenta y rankings online", "Si usás el modo online, tu nombre de piloto y tus mejores marcas se muestran a otros jugadores. Elegí un nombre que no sea ofensivo ni se haga pasar por otra persona: podemos cambiarlo, o quitar marcas conseguidas con trampas o programas externos. La cuenta con correo es personal y solo para mayores de 13 años: cuidá tu contraseña. Podés borrar tu cuenta cuando quieras desde el juego. El servicio online puede cambiar o detenerse, y no afecta lo que jugás sin conexión."],
 ]
 
@@ -115,6 +119,7 @@ const TERMS_ACCOUNT := [
 	["Tu cuenta", "Para jugar necesitás una cuenta con tu correo (solo para mayores de 13 años o con permiso de un adulto). Cuidá tu contraseña: lo que pase con tu cuenta es responsabilidad tuya. Tus créditos, tus autos y tus compras quedan guardados en la cuenta y pueden verificarse o corregirse si se detectan trampas, errores o compras reembolsadas."],
 	["Trampas", "Está prohibido modificar el juego, su archivo de progreso o su comunicación con el servidor, usar programas externos o aprovechar fallas para conseguir créditos, autos o compras sin pagarlos. Podemos corregir los datos de la cuenta, suspenderla o borrarla."],
 	["Compras", "Podés comprar con dinero real el juego completo y bolsas de créditos a través de Google Play. Las cobra y las administra Google: los reembolsos y reclamos se piden en Google Play, según sus políticas. Antes de acreditarlas, nuestro servidor verifica la compra con Google. Los créditos y el juego completo son para usar en el juego, quedan en tu cuenta y no se pueden transferir ni canjear por dinero."],
+	["Cuenta y rankings online", "Tu nombre de piloto y tus mejores marcas se muestran a otros jugadores en los rankings online. Elegí un nombre que no sea ofensivo ni se haga pasar por otra persona: podemos cambiarlo, o quitar marcas conseguidas con trampas o programas externos. Podés apagar tu participación en los rankings o borrar tu cuenta cuando quieras desde el juego. El servicio online puede cambiar o detenerse; tus créditos y tus autos quedan en tu cuenta y podés jugar sin conexión hasta 14 días entre verificaciones."],
 ]
 
 func _terms() -> Array:
@@ -169,6 +174,9 @@ func _hub() -> void:
 		g.add_child(m.tile(str(it[0]), str(it[1]), "", func() -> void:
 			page = 0
 			m.go(dest), false, 78.0))
+	g.add_child(m.tile("🪲", "COPIAR REGISTRO", "", func() -> void: # el registro de la sesión anterior: si el juego se cerró solo, se pega para ver qué pasó justo antes
+		DisplayServer.clipboard_set(CrashGuardLog.last_log())
+		m.toast(tr("Registro copiado: pegalo en un mensaje")), false, 78.0))
 	if Release.dev(m.profile):
 		g.add_child(m.tile("🔓", "APAGAR MODO DEV", "", func() -> void:
 			Release.deactivate_dev(m.profile)

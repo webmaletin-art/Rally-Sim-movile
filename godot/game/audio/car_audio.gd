@@ -94,6 +94,10 @@ var _boost_prev := 0.0
 var _steady := {} # tono → {f, rate, k}: seguimiento de los tonos puros que se quedan quietos (ver _steady_gain)
 var _rain_k := 1.0 # «Viento y lluvia»
 
+## Audio simple: sólo el motor y los golpes, sin filtros ni compresor y sin las voces de rodado, viento, turbo, caja, lluvia ni rival. Se activa solo si el juego se cerró de golpe la vez anterior
+## (CrashGuard) o desde Opciones → Sonido; sirve para descartar al audio como causa de un cierre inesperado.
+var simple := false
+
 func _ready() -> void:
 	rng.randomize()
 	consts = JSON.parse_string(FileAccess.get_file_as_string(DIR + "consts.json"))
@@ -108,6 +112,12 @@ func _ready() -> void:
 		cur[k] = 1000.0
 		tgt[k] = 1000.0
 	# buses: el motor pasa por un pasabajos que sube con la carga; el rival por otro fijo; el master comprime como el del HTML
+	if simple:
+		_voice("engine", "Master", false)
+		for n in ["pop", "thump"]:
+			_pool(n, 3)
+		apply_settings()
+		return
 	engine_bus = _make_bus("GSMotor")
 	lp_engine = AudioEffectLowPassFilter.new()
 	lp_engine.cutoff_hz = 400.0
@@ -198,6 +208,8 @@ func _pool(pname: String, n: int) -> void:
 	pools[pname] = {"players": arr, "unit": float(consts[pname]["unit"])}
 
 func _shoot(pname: String, amp: float, pitch := 1.0) -> void:
+	if not pools.has(pname):
+		return
 	var pl: Dictionary = pools[pname]
 	for p in pl["players"]:
 		if not p.playing:
@@ -208,6 +220,8 @@ func _shoot(pname: String, amp: float, pitch := 1.0) -> void:
 
 ## fija el volumen (lineal) y la velocidad de una voz; si es inaudible la pausa (no gasta nada)
 func _set_voice(vname: String, vol: float, pitch: float) -> void:
+	if not voices.has(vname):
+		return
 	var v: Dictionary = voices[vname]
 	var p: AudioStreamPlayer = v["p"]
 	var lin: float = vol * float(v["unit"])
@@ -417,7 +431,8 @@ func _apply() -> void:
 	var f0: float = cur["f0"]
 	var eg: float = cur["eng"]
 	_set_voice("engine", eg, f0 / 8.0 / base_f)
-	lp_engine.cutoff_hz = clampf(cur["cut"], 100.0, 20000.0)
+	if lp_engine != null:
+		lp_engine.cutoff_hz = clampf(cur["cut"], 100.0, 20000.0)
 	_set_voice("engnoise", cur["engn"] * eg, f0 / 200.0)
 	_set_voice("roll", cur["roll"], 1.0)
 	_set_voice("squeal", cur["sq"], cur["sqf"] / 1150.0)

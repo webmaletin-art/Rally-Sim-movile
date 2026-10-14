@@ -73,6 +73,7 @@ const OPTION_LIST := [
 	["sonido", "volGear", "Caja de cambios", [0, 50, 100, 140], ["Silencio", "Bajo", "Normal", "Fuerte"]],
 	["sonido", "musicMode", "Música", ["menu", "always", "off"], ["Sólo en los menús", "También jugando", "Apagada"]],
 	["sonido", "volMusic", "Volumen de la música", [0, 10, 25, 40, 60, 80], ["Silencio", "Muy bajo", "Bajo (radio)", "Medio", "Alto", "Muy alto"]],
+	["sonido", "simpleAudio", "Audio simple (sólo motor; sirve si el juego se cierra solo)", [false, true], ["No", "Sí"]],
 	["sonido", "copilot", "Voz del copiloto (campeonato)", [false, true], ["No", "Sí"]],
 	["manejo", "gearbox", "Caja de cambios", ["auto", "manual"], ["Automática", "Manual"]],
 	["manejo", "steerMode", "Dirección", ["wheel", "slider"], ["Volante", "Barra"]],

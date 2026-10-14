@@ -44,3 +44,12 @@ mesh_lod/lod_change/threshold_pixels=2.0
 lights_and_shadows/directional_shadow/size.mobile=2048
 lights_and_shadows/directional_shadow/soft_shadow_filter_quality.mobile=1
 environment/defaults/default_clear_color=Color(0.05, 0.07, 0.1, 1)
+
+[autoload]
+
+CrashGuard="*res://bootstrap/crash_guard.gd"
+
+[debug]
+
+file_logging/enable_file_logging=true
+file_logging/max_log_files=6
