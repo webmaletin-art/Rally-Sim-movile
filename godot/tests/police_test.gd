@@ -24,6 +24,8 @@ class FakeRace:
 	var sim_t := 0.0
 	var profile = null
 	var teleports := 0
+	var police = null
+	var ow_events = null
 	func add_ai_car(vid: String, x: float, z: float, yaw: float, driver: RefCounted, paint := Color.WHITE, mods := {}):
 		var su: Dictionary = CarBuild.build_params(vehicles[vid], Profile.new_car_state(vid), AiCars.ASSISTS)
 		for k in mods:

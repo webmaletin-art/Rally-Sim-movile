@@ -23,6 +23,11 @@ var idx := 0
 var stuck_t := 0.0
 var rev_t := 0.0
 var side := 1.0 # de qué lado se pega («side») o hacia dónde se cruza («block»)
+var pace := 1.0 # modo «path» (rivales de las carreras del mundo abierto): fracción de la velocidad que permite el camino
+var errors := false # comete errores chicos: cada tanto levanta el pie un momento en una curva
+var _err_t := 6.0
+var _err_on := 0.0
+var _rng := RandomNumberGenerator.new()
 
 func update(ph, dt: float) -> Vector3:
 	hb = false
@@ -31,9 +36,18 @@ func update(ph, dt: float) -> Vector3:
 		return Vector3(0.0, 0.0, 0.0)
 	var p := Vector2(ph.px, ph.pz)
 	var spd := sqrt(ph.vx * ph.vx + ph.vz * ph.vz)
-	if mode == "path": # (pruebas y autos de paseo) sólo sigue el camino y frena al final
+	if mode == "path": # (rivales de las carreras del mundo abierto, pruebas) sólo sigue el camino y frena al final
 		var rr := _follow(p, spd)
-		return _drive(ph, p, spd, rr[0], minf(float(rr[1]), sqrt(2.0 * 0.7 * G * _remaining(p))), dt)
+		var w := float(rr[1]) * pace
+		if errors:
+			_err_t -= dt
+			if _err_t <= 0.0:
+				_err_t = _rng.randf_range(7.0, 16.0)
+				_err_on = _rng.randf_range(0.4, 0.9)
+			if _err_on > 0.0:
+				_err_on -= dt
+				w *= 0.72 # un error chico: llega pasado a la curva y levanta
+		return _drive(ph, p, spd, rr[0], minf(w, sqrt(2.0 * 0.7 * G * _remaining(p))), dt)
 	var tp := Vector2(target.px, target.pz)
 	var tv := Vector2(target.vx, target.vz)
 	var tspd := tv.length()

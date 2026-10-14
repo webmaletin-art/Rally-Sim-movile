@@ -20,6 +20,7 @@ var gps
 var region: RegionData # (o null)
 var profile # perfil (para recordar si se ven o no las referencias del mapa)
 var places: Array = [] # lugares de la región: {name, pos, kind, front}
+var marks: Array = [] # carreras descubiertas del mundo abierto (city_events.gd): {pos, name, col}
 var refs_on := true # referencias y lugares en el mapa (se oculta con el botón del mapa grande)
 var avg_v := 25.0 # velocidad promedio (m/s) para el tiempo estimado de llegada
 var eta_l: Label
@@ -323,6 +324,13 @@ func _pick(p: Vector2) -> void:
 		if d < bd:
 			bd = d
 			best = i
+	# una carrera descubierta (va primero: es lo que se busca en el mapa)
+	var bm := 30.0 / mv.scale_px()
+	for mk in marks:
+		if (mk["pos"] as Vector2).distance_to(w) < bm:
+			set_dest(mk["pos"], str(mk["name"]))
+			_set_big(false)
+			return
 	# un lugar de la región (ciudad, pueblo, villa, estación o gomería)
 	var rb := ""
 	var rpos := Vector2.ZERO
@@ -705,6 +713,15 @@ class MapView extends Control:
 			draw_circle(sp, 7.0 if big else 5.0, col)
 			if big:
 				draw_string(f, sp + Vector2(12.0, 6.0), CityNames.t(str(p["name"])), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color.WHITE)
+		for mk in hud.marks: # carreras descubiertas: bandera de color (verde = ya ganada)
+			var spm: Vector2 = xf * (mk["pos"] as Vector2)
+			if not Rect2(Vector2.ZERO, sz).grow(12.0).has_point(spm):
+				continue
+			draw_rect(Rect2(spm - Vector2(7, 7), Vector2(14, 14)), Color(0, 0, 0, 0.75))
+			draw_rect(Rect2(spm - Vector2(5, 5), Vector2(10, 10)), mk["col"])
+			if big and view_m() < 30000.0:
+				draw_string_outline(f, spm + Vector2(10.0, 5.0), str(mk["name"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, 4, Color(0, 0, 0, 0.85))
+				draw_string(f, spm + Vector2(10.0, 5.0), str(mk["name"]), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, mk["col"])
 		for ex in (hud.city.exits if (not big or view_m() < 6000.0) else []):
 			var sp: Vector2 = xf * (ex["pos"] as Vector2)
 			if Rect2(Vector2.ZERO, sz).grow(12.0).has_point(sp):

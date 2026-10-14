@@ -40,6 +40,7 @@ var track
 var region
 var gps
 var enabled := true
+var suspended := false # durante una carrera del mundo abierto no se arman controles (city_events.gd)
 var checkpoints: Array = [] # {p: Vector2, dir: Vector2, ei: int, hw: float}
 var _cells := {} # Vector2i (2 km) -> índices de controles
 var _settle: Array = [] # Vector2 de pueblos y ciudades
@@ -125,6 +126,11 @@ func update(dt: float) -> void:
 		return
 	var me = race.cars[0].phys
 	var p := Vector2(me.px, me.pz)
+	if suspended and state != "chase":
+		if state == "armed":
+			_clear()
+		_hud_update()
+		return
 	_heat(dt, p)
 	for k in cool.keys():
 		cool[k] = float(cool[k]) - dt
@@ -332,6 +338,20 @@ func _chase(dt: float, p: Vector2, me) -> void:
 		lose_t = maxf(0.0, lose_t - dt * 2.0)
 	if lose_t >= ESCAPE_T:
 		_escaped()
+
+## Evento «Huida» (carreras del mundo abierto): la persecución arranca ya, con patrulleros detrás (fuera de la vista) y uno de frente
+func event_chase(me, level: int) -> void:
+	_clear()
+	heat = clampi(level, 0, 3)
+	var p := Vector2(me.px, me.pz)
+	var fwd := Vector2(sin(me.yaw), cos(me.yaw))
+	for k in wanted():
+		var back := p - fwd * (140.0 + 45.0 * float(k))
+		var pose: Array = track.nearest_road_pose(back, me.yaw)
+		if not pose.is_empty():
+			_spawn(Vector2(pose[0], pose[1]), float(pose[2]), ROLES[k % ROLES.size()])
+	cp = _near_cp(p) if _near_cp(p) >= 0 else 0
+	_start_chase(me)
 
 func _escaped() -> void:
 	stats["escapes"] += 1

@@ -11,6 +11,7 @@ const CityTires := preload("res://game/city/city_tires.gd")
 const CityActivities := preload("res://game/city/city_activities.gd")
 const CityToll := preload("res://game/city/city_toll.gd")
 const CityPolice := preload("res://game/city/city_police.gd")
+const CityEvents := preload("res://game/city/city_events.gd")
 
 var race # race.gd
 
@@ -33,6 +34,8 @@ func setup(p_race) -> void:
 	race.city_drift.setup(race, track.world_node, track.city)
 	race.police = CityPolice.new() # controles policiales en las rutas de la región (docs/POLICIA.md)
 	race.police.setup(race)
+	race.ow_events = CityEvents.new() # carreras para descubrir en el mundo abierto (docs/CARRERAS_MUNDO_ABIERTO.md)
+	race.ow_events.setup(race)
 
 func update(dt: float) -> void:
 	race.shops.update(dt)
@@ -47,3 +50,5 @@ func update(dt: float) -> void:
 		race.city_drift.update(dt)
 	if race.police != null:
 		race.police.update(dt)
+	if race.ow_events != null:
+		race.ow_events.update(dt)

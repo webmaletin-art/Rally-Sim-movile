@@ -1224,6 +1224,8 @@ func _rebuild_cars() -> void:
 	_finish_physics()
 	if police != null:
 		police.forget() # los patrulleros son autos de la lista: se rehacen sólo los de la parrilla
+	if ow_events != null:
+		ow_events.forget()
 	if fx != null:
 		fx.reset()
 	for c in cars:
@@ -1875,6 +1877,7 @@ var acts # CityActivities: radares, contrarreloj panorámica y encargos
 var tolls # CityToll: peajes de las rutas
 var city_drift # CityDrift: la Plaza de Drift al final de la Ruta 60
 var police # CityPolice: controles policiales y persecuciones en las rutas de la región
+var ow_events # CityEvents: carreras para descubrir en el mundo abierto
 var life # CityLife: conecta la vida del mundo con Dream City (city/city_life.gd)
 var ambient # WorldAmbient: audio del mundo abierto (tránsito en 3D, clima, ecos); sólo en Dream City
 var world_life # WorldLife: la capa de vida del mundo (reloj, semilla, sectores, sistemas de vida); sólo en Dream City

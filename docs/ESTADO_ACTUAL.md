@@ -13,6 +13,9 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 - ✅ Dream City + región de ~2.700 km (rutas, pueblos, estaciones, peajes, GPS, mapa). 📱 retoques del 13/10.
 - 🚧 Reorganización del centro (autopistas elevadas, concesionarios, sectores bloqueados): ver `docs/REGISTRO_TECNICO.md`.
 
+## Carreras del mundo abierto
+- ✅📱 79 eventos para descubrir (sprint, rally, montaña, velocidad, picada, circuito urbano, huida, persecución), en el mapa, con rivales adaptables y premios que valida el servidor (`docs/CARRERAS_MUNDO_ABIERTO.md`). Apagados en el online.
+
 ## Policía
 - ✅📱 Controles policiales en las 176 rutas largas entre ciudades, persecución con barrera, interceptor de frente, arresto, multa y comisaría de Dream City (`docs/POLICIA.md`). Probado en la computadora; falta sentirlo en el teléfono.
 
