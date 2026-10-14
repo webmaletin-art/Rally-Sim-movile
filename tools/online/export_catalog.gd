@@ -21,6 +21,8 @@ func _init() -> void:
 	var modular := []
 	for id in cat["cars"]:
 		var c: Dictionary = cat["cars"][id]
+		if c.get("special", false) == true:
+			continue # vehículos especiales (monoplaza): bloqueados, no se venden en el servidor
 		var m := VehicleCustomization.supports(str(id))
 		if m:
 			modular.append(str(id))

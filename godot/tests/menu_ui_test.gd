@@ -61,6 +61,23 @@ func _run() -> void:
 		await _frames()
 		check(menu.get("screen") == "workshop" and int(garage.ws_tab) == k, "riel: la pestaña %d del taller abre el taller en esa pestaña" % k)
 		check(chrome.bottom == null and chrome.rail != null, "taller %d: sin carrusel, con riel compacto" % k)
+	# taller → Pintura: interior, volante y diseños exclusivos (cosméticos que se compran)
+	for tgt in ["interior", "steer", "body"]:
+		garage.ws_tab = 3
+		garage.paint_target = tgt
+		garage.cos_pick = {"interior": "cab_carbono", "steer": "vol_pro", "body": "st_llamas"}[tgt]
+		menu.call("go", "workshop", null, false)
+		await _frames()
+		var buy_found := false
+		var st2: Array = [menu.get("body")]
+		while not st2.is_empty():
+			var n2: Node = st2.pop_back()
+			if n2 is Button and (n2 as Button).text.begins_with("🛒"):
+				buy_found = true
+			st2.append_array(n2.get_children())
+		check(menu.get("screen") == "workshop" and buy_found, "taller → Pintura → %s: lista y barra de COMPRAR" % tgt)
+	garage.cos_pick = ""
+	garage.paint_target = "body"
 	# tienda (compra de autos) desde el riel
 	menu.call("go", "workshop", 0)
 	await _frames()

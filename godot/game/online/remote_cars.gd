@@ -241,6 +241,7 @@ func _build_real(veh: Dictionary) -> Node3D:
 	vis.mods = st["mods"]
 	vis.setup(VehicleParams.from_dict(d), true, Color(str(pp.get("body", "#1a4fe0"))), Color(str(pp.get("rim", "#2a2d33"))), str(pp.get("finish", "gloss")))
 	if int(pp.get("livery", 0)) > 0:
+		vis.race_number = str(pp.get("number", "77"))
 		vis.set_livery(int(pp["livery"]), Color(str(pp["body"])), Color(str(pp.get("accent", "#ff6a08"))), str(pp.get("finish", "gloss")), Color(str(pp.get("text", "#f2f2ee"))))
 	if pp.has("tire"):
 		vis.set_tire_color(Color(str(pp["tire"])))

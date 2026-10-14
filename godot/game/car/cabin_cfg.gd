@@ -40,9 +40,9 @@ const OVR := {
 	"hyper": {"wmul": 1.30, "back": -0.7, "eye_h": 0.2, "cage": false},
 	"genesis": {"wmul": 1.40, "eye_h": 0.30, "back": -1.1, "halfW": 0.74, "cage": false},
 	"police": {"wmul": 1.35, "eye_h": 0.24, "back": -1.0, "cage": false},
-	"strix": {"wmul": 1.50, "eye_h": 0.20, "back": -0.95, "cage": true},
+	"strix": {"wmul": 1.50, "eye_h": 0.20, "back": -0.95, "cage": false},
 	# monoplaza: cabina abierta (sin vidrios en el modelo), piloto bajo entre el halo y la toma de aire
-	"f1": {"cowlZ": 0.95, "cowlY": 0.72, "eyeZ": 0.22, "eyeY": 0.80, "back": -0.05, "halfW": 0.42, "cage": false},
+	"f1": {"cowlZ": 0.95, "cowlY": 0.70, "eyeZ": 0.12, "eyeY": 0.74, "back": -0.05, "halfW": 0.42, "cage": false},
 }
 
 static func has(id: String) -> bool:

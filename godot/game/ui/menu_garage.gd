@@ -16,7 +16,9 @@ const VehicleCustomization := preload("res://game/car/vehicle_customization.gd")
 
 const DARK := Color(0.05, 0.06, 0.08)
 const GROUP_SHORT := {"Neumáticos": "Gomas", "Alineación": "Alineac.", "Suspensión": "Susp.", "Frenos": "Frenos", "Transmisión": "Transm.", "Aerodinámica": "Aero", "Diversión (gustos raros)": "Extras"}
-const PAINT_TARGETS := [["body", "Carrocería"], ["accent", "Detalles"], ["text", "Letras"], ["rim", "Llantas"], ["tire", "Gomas"], ["spring", "Resortes"], ["caliper", "Pinzas"], ["disc", "Discos"]]
+const PAINT_TARGETS := [["body", "Carrocería"], ["accent", "Detalles"], ["text", "Letras"], ["rim", "Llantas"], ["tire", "Gomas"], ["spring", "Resortes"], ["caliper", "Pinzas"], ["disc", "Discos"], ["interior", "Interior"], ["steer", "Volante"]]
+const Cosmetics := preload("res://game/data/cosmetics.gd")
+var cos_pick := "" # cosmético elegido para comprar (interior, volante o diseño): se muestra su barra de COMPRAR
 const DISC_NAMES := {"steel": "Acero", "dark": "Oscuro", "gold": "Dorado", "carbon": "Carbono"}
 
 var m # menu.gd
@@ -878,6 +880,9 @@ func _ws_paint(id: String, st: Dictionary) -> void:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.clip_text = true
 		tg.add_child(b)
+	if paint_target in ["interior", "steer"]:
+		_ws_cosmetic(id, st, paint_target)
+		return
 	if paint_target == "disc":
 		var dg := Kit.grid(4, 6, 6)
 		m.body.add_child(dg)
@@ -922,6 +927,7 @@ func _ws_paint(id: String, st: Dictionary) -> void:
 					_draft_refresh(id, st)
 					m.go("workshop", null, false))
 				pg.add_child(pb)
+			_ws_styles(id, st, paint)
 		var swatches: Array = _cat()["paints"]
 		if paint_target == "tire":
 			swatches = ["#141516", "#2b2d31", "#55585e", "#5a3f2a", "#e8e6e1", "#c1121f", "#ffc300", "#1a4fe0", "#12a454", "#ff6a08"]
@@ -953,7 +959,8 @@ func _ws_paint(id: String, st: Dictionary) -> void:
 	m.body.add_child(sg)
 	var lids: Array = []
 	for li in CarVisualS.LIVERIES.size():
-		lids.append(li)
+		if li < CarVisualS.FREE_LIVERIES or Cosmetics.paint_ok(id, {"paint": {"livery": li}, "partsOwned": st.get("partsOwned", [])}).get("livery", 0) == li:
+			lids.append(li)
 	sg.add_child(Kit.selector("Rotulado (letras: color «Letras»)", lids, int(paint.get("livery", 0)), func(v) -> String: return str(CarVisualS.LIVERIES[int(v)]), func(v) -> void:
 		paint["livery"] = int(v)
 		_draft_refresh(id, st), m.sfx, 62.0))
@@ -965,3 +972,119 @@ func _ws_paint(id: String, st: Dictionary) -> void:
 	sg.add_child(Kit.selector("Acabado", fids, str(paint.get("finish", "gloss")), func(v) -> String: return str(fnames[v]), func(v) -> void:
 		paint["finish"] = str(v)
 		_draft_refresh(id, st), m.sfx, 62.0))
+
+# ───────────────────────── cosméticos que se compran (data/cosmetics.gd): diseños, interior y volante ─────────────────────────
+## Diseños exclusivos de pintura: se compran una vez por auto; después se ponen como los estilos de siempre (con el cargo de pintura de siempre)
+func _ws_styles(id: String, st: Dictionary, paint: Dictionary) -> void:
+	m.body.add_child(Kit.label(tr("Diseños exclusivos (se compran una vez por auto)"), 16, Kit.GOLD))
+	var g := Kit.grid(3, 6, 6)
+	m.body.add_child(g)
+	for it in Cosmetics.styles_for(id):
+		var item: Dictionary = it
+		var sid := str(item["id"])
+		var have := Cosmetics.owns(st, sid)
+		var pr: Dictionary = item["preset"]
+		var on := int(paint.get("livery", 0)) == int(pr["livery"]) and str(paint.get("body", "")).to_lower() == str(pr["body"]).to_lower()
+		var b := Button.new()
+		b.text = Tr.t(str(item["n"])) + ("" if have else "\n" + Kit.fmt_cr(float(item["price"])))
+		b.custom_minimum_size = Vector2(0, 52)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.clip_text = true
+		b.add_theme_font_size_override("font_size", 13)
+		var bcol := Color(str(pr["body"]))
+		var fg := Color(0.08, 0.08, 0.1) if bcol.get_luminance() > 0.45 else Color(0.97, 0.97, 0.97)
+		for sn in ["normal", "hover", "pressed"]:
+			b.add_theme_stylebox_override(sn, Kit.box(bcol.lightened(0.08) if sn == "hover" else bcol, 10, Color.WHITE if (on or cos_pick == sid) else Color(str(pr["accent"])), 4 if (on or cos_pick == sid) else 2))
+			b.add_theme_color_override("font_color" if sn == "normal" else "font_" + sn + "_color", fg)
+		b.pressed.connect(func() -> void:
+			m.sfx.play("click")
+			if have:
+				PaintPresets.apply(draft_paint, pr)
+				draft_paint["number"] = str(pr.get("number", draft_paint.get("number", "77")))
+				cos_pick = ""
+			else:
+				cos_pick = sid # se prueba en el auto (sin cobrar); la plata se pide al tocar COMPRAR
+				var prev := draft_paint.duplicate()
+				PaintPresets.apply(prev, pr)
+				prev["number"] = str(pr.get("number", "77"))
+				var ds := _draft_state(st)
+				ds["paint"] = prev
+				ds["partsOwned"] = (st.get("partsOwned", []) as Array) + [sid]
+				m.refresh_car(id, ds)
+				m.go("workshop", null, false)
+				return
+			_draft_refresh(id, st)
+			m.go("workshop", null, false))
+		g.add_child(b)
+	if cos_pick != "" and Cosmetics.item(cos_pick).has("preset"):
+		var it2 := Cosmetics.item(cos_pick)
+		m.body.add_child(_cos_buy_bar(id, it2, func() -> void:
+			PaintPresets.apply(draft_paint, it2["preset"])
+			draft_paint["number"] = str((it2["preset"] as Dictionary).get("number", "77"))
+			_draft_refresh(id, st)))
+
+## Interior o volante: el de fábrica y los que se compran; lo tuyo se pone gratis al instante (se ve con las cámaras de adentro)
+func _ws_cosmetic(id: String, st: Dictionary, kind: String) -> void:
+	var list: Array = Cosmetics.catalog().get("interiors" if kind == "interior" else "wheels", [])
+	var cur := Cosmetics.interior_of(id, st) if kind == "interior" else Cosmetics.wheel_of(id, st)
+	m.body.add_child(Kit.wrap(tr("Se ve con las cámaras de adentro. Se compra una vez por auto y después se cambia gratis."), 13, Kit.MUTED, 300))
+	var g := Kit.grid(2, 8, 8)
+	m.body.add_child(g)
+	for it in list:
+		var item: Dictionary = it
+		var cid := str(item["id"])
+		var have := Cosmetics.owns(st, cid)
+		var eq := cid == cur
+		var rt := tr("EQUIPADO") if eq else (tr("PONER") if have else Kit.fmt_cr(float(item.get("price", 0))))
+		var b := Kit.card_button(tr(str(item["n"])), tr(str(item.get("desc", ""))) if cos_pick == cid else "", rt, func() -> void:
+			m.sfx.play("click")
+			if have:
+				_cos_equip(id, st, kind, cid)
+				cos_pick = ""
+				m.toast(tr("Listo: %s") % tr(str(item["n"])))
+			else:
+				cos_pick = cid
+			m.go("workshop", null, false), eq or cos_pick == cid, true, 64.0, 16, "", cos_pick == cid)
+		g.add_child(b)
+	if cos_pick != "" and not Cosmetics.owns(st, cos_pick) and list.any(func(x) -> bool: return str(x["id"]) == cos_pick):
+		var it2 := Cosmetics.item(cos_pick)
+		m.body.add_child(_cos_buy_bar(id, it2, func() -> void: _cos_equip(id, st, kind, str(it2["id"]))))
+
+func _cos_equip(id: String, st: Dictionary, kind: String, cid: String) -> void:
+	var key := "interior" if kind == "interior" else "steer"
+	(st["paint"] as Dictionary)[key] = cid
+	draft_paint[key] = cid
+	m.profile.save()
+
+## Barra de COMPRAR de un cosmético (el servidor valida el precio: buy_part)
+func _cos_buy_bar(id: String, item: Dictionary, after: Callable) -> Control:
+	var box := Kit.panel(8, Kit.PANEL2)
+	var col := Kit.vbox(5)
+	box.add_child(col)
+	col.add_child(Kit.label("%s · %s" % [tr(str(item["n"])), Kit.fmt_cr(float(item.get("price", 0)))], 15, Kit.GOLD))
+	if item.has("desc"):
+		col.add_child(Kit.wrap(tr(str(item["desc"])), 13, Kit.MUTED, 300))
+	var row := Kit.hbox(6)
+	col.add_child(row)
+	var b := Kit.button("🛒 %s %s" % [tr("COMPRAR"), Kit.fmt_cr(float(item.get("price", 0)))], func() -> void:
+		var r: Dictionary = Cosmetics.buy(m.profile, id, str(item["id"]))
+		if bool(r["ok"]):
+			m.sfx.play("buy")
+			after.call()
+			cos_pick = ""
+			m.update_credits()
+			m.refresh_car()
+			m.go("workshop", null, false)
+		else:
+			m.sfx.play("error")
+			m.toast(tr(str(r["reason"]))), true, 16, Vector2(0, 44))
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(b)
+	var c := Kit.button("✖ " + tr("VOLVER"), func() -> void:
+		m.sfx.play("click")
+		cos_pick = ""
+		m.refresh_car()
+		m.go("workshop", null, false), false, 15, Vector2(0, 44))
+	c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(c)
+	return box

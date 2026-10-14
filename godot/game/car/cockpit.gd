@@ -23,6 +23,8 @@ const CABIN := {
 	"genesis": {"eyeY": 1.08, "eyeZ": -0.12, "cowlZ": 0.98, "halfW": 0.74, "roofY": 1.33},
 }
 const WHEEL_R := 0.17 # radio del aro (el mismo de la versión anterior)
+const PRO_WHEEL := "res://game/models/cabin/volante_pro.glb" # «Volante Pro 3D» (tools/cars/build_cabin_parts.py)
+const Cosmetics := preload("res://game/data/cosmetics.gd")
 
 var C: Dictionary
 var xD := 0.37
@@ -90,7 +92,11 @@ var dz0 := 0.2
 var fw := 0.83
 var cowl_y := 0.9
 
-func _init(p_type: String, p_paint := Color(0.10, 0.31, 0.88), p_accent := Color(1.0, 0.42, 0.03)) -> void:
+## Interior y volante elegidos (data/cosmetics.gd): {"interior": "cab_…", "steer": "vol_…"}; vacío = los de fábrica
+var trim := {}
+
+func _init(p_type: String, p_paint := Color(0.10, 0.31, 0.88), p_accent := Color(1.0, 0.42, 0.03), p_trim := {}) -> void:
+	trim = p_trim
 	own = CabinCfg.has(p_type)
 	C = CabinCfg.build(p_type) if own else (CABIN.get(p_type, CABIN["t1plus"]) as Dictionary).duplicate()
 	if own:
@@ -373,6 +379,7 @@ func _build() -> void:
 	glass.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 	var mir := _m("mirror", Color(1, 1, 1), 0.1, 0.0, _mirror_tex())
 	mir.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_apply_interior()
 	_b_floor_and_walls()
 	_b_dash()
 	_yoff = seat_dy
@@ -904,6 +911,34 @@ func _hood_mesh(w: float, l: float, hwid: float) -> ArrayMesh:
 	return st.commit()
 
 # ───────────────────────── volante ─────────────────────────
+## Interior comprado (cosmetics.json → interiors[].mats): recolorea los materiales del habitáculo. «carbon» = trama de carbono.
+## El tablero y las puertas usan un grano claro (el de fábrica es oscuro y multiplica el color): así un cuero crema se ve crema.
+func _apply_interior() -> void:
+	var it: Dictionary = Cosmetics.item(str(trim.get("interior", "")))
+	var mats: Dictionary = it.get("mats", {})
+	if mats.is_empty():
+		return
+	var light := _grain_tex(196, 48, true)
+	for k in mats:
+		if not _mats.has(k):
+			continue
+		var m: StandardMaterial3D = _mats[k]
+		var v := str(mats[k])
+		if v == "carbon":
+			m.albedo_color = Color(1, 1, 1)
+			m.albedo_texture = _carbon_tex()
+			m.uv1_scale = Vector3(3, 3, 1)
+			m.roughness = 0.35
+			m.metallic = 0.3
+		else:
+			m.albedo_color = Color(v)
+			if k in ["dash", "door"]:
+				m.albedo_texture = light
+
+## Volante comprado: «pro» = el modelo 3D (models/cabin/volante_pro.glb); los demás cambian los colores del aro (rim, grip, mark) y el centro (hub)
+func _steer_item() -> Dictionary:
+	return Cosmetics.item(str(trim.get("steer", "")))
+
 func _b_wheel() -> void:
 	wheel_c = Vector3(xD, eY - 0.31, eZ + 0.31)
 	wheel_group = Node3D.new()
@@ -919,14 +954,27 @@ func _b_wheel() -> void:
 	_mesh_node(col, _mats["trim"], Vector3(0, -0.02, -0.09), Basis(Vector3.RIGHT, PI / 2.0), wheel_group)
 	rim = Node3D.new()
 	wheel_group.add_child(rim)
+	var sw := _steer_item()
+	if str(sw.get("kind", "")) == "pro" and ResourceLoader.exists(PRO_WHEEL):
+		var ps: PackedScene = load(PRO_WHEEL)
+		var pro := ps.instantiate() as Node3D
+		pro.position = Vector3(0, 0.006, 0.012)
+		pro.scale = Vector3.ONE * 1.16 # (el aro del modelo es un poco más chico que el de siempre: las manos quedan sobre el aro)
+		rim.add_child(pro)
+		_build_cluster()
+		return
 	var rm := StandardMaterial3D.new()
 	rm.vertex_color_use_as_albedo = true
 	rm.roughness = 0.65
-	_mesh_node(_rim_mesh(), rm, Vector3.ZERO, Basis.IDENTITY, rim)
+	_mesh_node(_rim_mesh(Color(str(sw.get("rim", "#0d0d0e"))), Color(str(sw.get("grip", "#080809"))), Color(str(sw.get("mark", "#ff6b0a")))), rm, Vector3.ZERO, Basis.IDENTITY, rim)
 	# cubo de carbono con botones de colores, perillas y una pantallita
 	var hub := BoxMesh.new()
 	hub.size = Vector3(0.17, 0.095, 0.026)
 	var cm := _mats["carbon"] as StandardMaterial3D
+	if sw.has("rim") and str(sw.get("hub", "")) != "carbon": # aro de color: el centro del mismo tono (madera, cuero blanco, gamuza)
+		cm = StandardMaterial3D.new()
+		cm.albedo_color = Color(str(sw["grip"])).darkened(0.25)
+		cm.roughness = 0.6
 	_mesh_node(hub, cm, Vector3(0, 0.0, 0.004), Basis.IDENTITY, rim)
 	for sx in [-1.0, 1.0]:
 		var wing := BoxMesh.new()
@@ -1048,7 +1096,7 @@ class ClusterFace extends Control:
 			draw_circle(Vector2(26.0 + float(k) * 26.0, 112.0), 6.0, [Color(0.1, 0.5, 0.2), Color(0.6, 0.45, 0.05), Color(0.5, 0.1, 0.1), Color(0.1, 0.3, 0.55)][k])
 
 ## Aro circular y grueso: tubo que recorre un círculo; la marca naranja de las 12 va pintada
-func _rim_mesh() -> ArrayMesh:
+func _rim_mesh(c_rim := Color(0.05, 0.05, 0.055), c_grip := Color(0.03, 0.03, 0.035), c_mark := Color(1.0, 0.42, 0.04)) -> ArrayMesh:
 	var n := 96
 	var seg := 14
 	var verts := PackedVector3Array()
@@ -1078,7 +1126,7 @@ func _rim_mesh() -> ArrayMesh:
 			var v := Vector3(p.x + out2.x * off_out, p.y + out2.y * off_out, off_z)
 			verts.append(v)
 			nrms.append(Vector3(out2.x * cos(a), out2.y * cos(a), sin(a)).normalized())
-			cols.append(Color(1.0, 0.42, 0.04) if mark > 0.5 else (Color(0.05, 0.05, 0.055) if absf(cos(th)) < 0.55 else Color(0.03, 0.03, 0.035)))
+			cols.append(c_mark if mark > 0.5 else (c_rim if absf(cos(th)) < 0.55 else c_grip))
 	for i in n:
 		var i2 := (i + 1) % n
 		for j in seg:

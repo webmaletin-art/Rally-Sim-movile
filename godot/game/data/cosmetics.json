@@ -1,0 +1,42 @@
+{
+ "_info": "Cosméticos que se compran por auto (docs/PERSONALIZACION.md): diseños de pintura (patrones 12-19 de car_visual.gd), interiores y volantes (cockpit.gd). Cada compra pasa por la cuenta del servidor como una pieza (buy_part): los ids tienen que estar en online_cat_parts con el mismo precio (tools/online/cosmetics_migration.py arma la migración).",
+ "styles": [
+  {"id": "st_carbono_rojo", "n": "Carbono Rojo", "price": 6500, "preset": {"body": "#d3162b", "accent": "#ff6a08", "text": "#f5f5f2", "livery": 12, "finish": "gloss"}},
+  {"id": "st_carbono_negro", "n": "Carbono Total", "price": 8000, "preset": {"body": "#15161a", "accent": "#c9a24b", "text": "#f5f5f2", "livery": 12, "finish": "matte"}},
+  {"id": "st_competicion", "n": "Competición", "price": 7000, "preset": {"body": "#f2f3f5", "accent": "#1a4fe0", "text": "#f5f5f2", "livery": 13, "finish": "gloss", "number": "77"}},
+  {"id": "st_competicion_roja", "n": "Competición Roja", "price": 7000, "preset": {"body": "#d3162b", "accent": "#15161a", "text": "#f5f5f2", "livery": 13, "finish": "gloss", "number": "21"}},
+  {"id": "st_rojo_negro", "n": "Rojo y Negro", "price": 4500, "preset": {"body": "#d3162b", "accent": "#15161a", "text": "#f5f5f2", "livery": 14, "finish": "gloss"}},
+  {"id": "st_dos_tonos_azul", "n": "Dos Tonos Océano", "price": 4500, "preset": {"body": "#00b4d8", "accent": "#0b2a35", "text": "#f5f5f2", "livery": 14, "finish": "metal"}},
+  {"id": "st_neon_cian", "n": "Neón Nocturno", "price": 9500, "preset": {"body": "#121318", "accent": "#00e5ff", "text": "#00e5ff", "livery": 15, "finish": "gloss"}},
+  {"id": "st_neon_violeta", "n": "Neón Violeta", "price": 9500, "preset": {"body": "#121318", "accent": "#d62bff", "text": "#d62bff", "livery": 15, "finish": "gloss"}},
+  {"id": "st_rally_clasico", "n": "Rally Clásico", "price": 6000, "preset": {"body": "#f2f3f5", "accent": "#d3162b", "text": "#1a4fe0", "livery": 16, "finish": "gloss"}},
+  {"id": "st_rally_dakar", "n": "Rally Dakar", "price": 6000, "preset": {"body": "#ffc300", "accent": "#15161a", "text": "#d3162b", "livery": 16, "finish": "matte"}},
+  {"id": "st_degrade_atardecer", "n": "Degradé Atardecer", "price": 5500, "preset": {"body": "#ff6a08", "accent": "#6a1fd1", "text": "#f5f5f2", "livery": 17, "finish": "metal"}},
+  {"id": "st_degrade_hielo", "n": "Degradé Hielo", "price": 5500, "preset": {"body": "#f2f3f5", "accent": "#00b4d8", "text": "#0b2a35", "livery": 17, "finish": "metal"}},
+  {"id": "st_damero", "n": "Bandera a Cuadros", "price": 5000, "preset": {"body": "#ffc300", "accent": "#15161a", "text": "#f5f5f2", "livery": 18, "finish": "gloss"}},
+  {"id": "st_llamas", "n": "Llamas", "price": 8500, "preset": {"body": "#15161a", "accent": "#ff6a08", "text": "#ffd21a", "livery": 19, "finish": "gloss"}},
+  {"id": "st_llamas_azul", "n": "Llamas Azules", "price": 8500, "preset": {"body": "#0b0f1e", "accent": "#1a4fe0", "text": "#00e5ff", "livery": 19, "finish": "gloss"}},
+  {"id": "st_oro", "n": "Oro Metálico", "price": 12000, "preset": {"body": "#c9a24b", "accent": "#15161a", "text": "#15161a", "livery": 0, "finish": "metal"}},
+  {"id": "st_strix_vandal", "n": "Vandal de Fábrica Naranja", "price": 7500, "cars": ["strix"], "preset": {"body": "#2a2d33", "accent": "#ff6a08", "text": "#ff6a08", "livery": 12, "finish": "matte"}},
+  {"id": "st_interceptor_noche", "n": "Interceptor Encubierto", "price": 7500, "cars": ["police"], "preset": {"body": "#121318", "accent": "#1a4fe0", "text": "#e11d2a", "livery": 15, "finish": "matte"}}
+ ],
+ "interiors": [
+  {"id": "cab_dream", "n": "Dream (de fábrica)", "price": 0, "desc": "El habitáculo de siempre: tablero gris, butacas negras con detalles rojos y acolchado naranja."},
+  {"id": "cab_rally", "n": "Rally Gamuza", "price": 5000, "desc": "Gamuza gris oscura, butacas de competición negras con costuras naranja y jaula gris.", "mats": {"dash": "#3a3c41", "door": "#2a2c30", "seat": "#141518", "seat_acc": "#ff6a08", "pad": "#ff6a08", "trim": "#1b1c1f", "cage": "#5a5d63", "roof": "#232428"}},
+  {"id": "cab_carbono", "n": "Carbono", "price": 9000, "desc": "Tablero y puertas de fibra de carbono, butacas negras con detalles rojos y jaula negra.", "mats": {"dash": "carbon", "door": "carbon", "seat": "#0d0e10", "seat_acc": "#d3162b", "pad": "#d3162b", "trim": "#0f1012", "cage": "#1b1c1f", "roof": "#141518"}},
+  {"id": "cab_cuero_rojo", "n": "Cuero Rojo y Negro", "price": 7500, "desc": "Butacas de cuero rojo, tablero negro y detalles en negro piano.", "mats": {"dash": "#1b1c1f", "door": "#7a1021", "seat": "#8c1222", "seat_acc": "#1b1c1f", "pad": "#8c1222", "trim": "#0d0e10", "cage": "#2a2c30", "roof": "#1b1c1f"}},
+  {"id": "cab_clasico", "n": "Clásico Crema", "price": 6500, "desc": "Cuero crema, tablero marrón madera y detalles cromados, como un auto de los 60.", "mats": {"dash": "#5a3a22", "door": "#d8c7a4", "seat": "#e2d3b1", "seat_acc": "#7a4a2a", "pad": "#7a4a2a", "trim": "#2a1d14", "cage": "#c0c5cc", "roof": "#efe4cc"}},
+  {"id": "cab_patrulla", "n": "Patrulla", "price": 5500, "desc": "Interior de trabajo de la policía: gris oscuro, butacas azules y detalles blancos.", "mats": {"dash": "#2a2c30", "door": "#2a2c30", "seat": "#14244a", "seat_acc": "#f2f3f5", "pad": "#1a4fe0", "trim": "#1b1c1f", "cage": "#2a2c30", "roof": "#3a3c41"}},
+  {"id": "cab_neon", "n": "Noche Neón", "price": 10000, "desc": "Todo negro con detalles celestes que se notan de noche.", "mats": {"dash": "#0d0e10", "door": "#0d0e10", "seat": "#0d0e10", "seat_acc": "#00e5ff", "pad": "#00b4d8", "trim": "#08090a", "cage": "#00b4d8", "roof": "#0d0e10"}},
+  {"id": "cab_trabajo", "n": "Trabajo y Campo", "price": 4000, "desc": "Plástico gris y tela beige, resistente al barro: para camionetas y camiones.", "mats": {"dash": "#55585e", "door": "#4a4d52", "seat": "#a8946e", "seat_acc": "#5a3f2a", "pad": "#5a3f2a", "trim": "#2a2c30", "cage": "#55585e", "roof": "#8a8c90"}}
+ ],
+ "wheels": [
+  {"id": "vol_dream", "n": "Deportivo (de fábrica)", "price": 0, "desc": "Aro negro con la marca naranja arriba y el centro de carbono con botones."},
+  {"id": "vol_pro", "n": "Volante Pro 3D", "price": 9000, "kind": "pro", "desc": "Volante de competición con levas, botones de colores y pantalla: el modelo 3D completo."},
+  {"id": "vol_gamuza", "n": "Rally Gamuza", "price": 3500, "rim": "#2b2d31", "grip": "#3a3c41", "mark": "#ff6a08", "desc": "Gamuza gris que no resbala, con la marca naranja de rally."},
+  {"id": "vol_carbono", "n": "Carbono y Rojo", "price": 6000, "rim": "#141518", "grip": "#1b1c1f", "mark": "#d3162b", "hub": "carbon", "desc": "Aro de carbono con agarres de cuero y la marca roja."},
+  {"id": "vol_madera", "n": "Madera Clásico", "price": 5000, "rim": "#6b3f1e", "grip": "#4f2e15", "mark": "#c9a24b", "desc": "Aro de madera lustrada, como los autos de los 60."},
+  {"id": "vol_blanco", "n": "Cuero Blanco", "price": 4500, "rim": "#e8e6e1", "grip": "#d0cdc6", "mark": "#1a4fe0", "desc": "Cuero blanco con la marca azul."}
+ ],
+ "defaults": {"interior": {"police": "cab_patrulla", "f1": "cab_carbono"}, "wheel": {"f1": "vol_pro", "strix": "vol_carbono"}}
+}

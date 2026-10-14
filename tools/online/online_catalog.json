@@ -37,7 +37,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -71,7 +73,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -105,7 +109,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -139,7 +145,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -173,7 +181,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -207,7 +217,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -241,7 +253,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -275,7 +289,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -324,7 +340,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -358,7 +376,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -434,7 +454,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -485,7 +507,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -519,7 +543,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -553,7 +579,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -587,7 +615,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -621,7 +651,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -655,7 +687,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -689,7 +723,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -740,7 +776,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -774,7 +812,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -858,7 +898,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -937,7 +979,9 @@
 				"veltor_gtr",
 				"hatch2",
 				"pro_gt",
-				"moust"
+				"moust",
+				"police",
+				"strix"
 			]
 		},
 		{
@@ -1525,6 +1569,32 @@
 				"rim": "#1b1d22"
 			},
 			"price": 205000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "police",
+			"modular": true,
+			"paint": {
+				"accent": "#1a4fe0",
+				"body": "#f2f2ee",
+				"livery": 11.0,
+				"rim": "#c0c5cc"
+			},
+			"price": 140000,
+			"starter": false
+		},
+		{
+			"buyable": true,
+			"id": "strix",
+			"modular": true,
+			"paint": {
+				"accent": "#ff6a08",
+				"body": "#3a3d44",
+				"livery": 11.0,
+				"rim": "#1b1d22"
+			},
+			"price": 170000,
 			"starter": false
 		}
 	]

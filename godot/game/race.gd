@@ -55,6 +55,7 @@ const VehiclePhysics := preload("res://game/physics/vehicle_physics.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const AiCars := preload("res://game/data/ai_cars.gd")
 const Profile := preload("res://game/data/profile.gd")
+const Cosmetics := preload("res://game/data/cosmetics.gd")
 const Convoy := preload("res://game/ai/convoy.gd")
 const RaceRules := preload("res://game/race_rules.gd")
 const TravesiaProps := preload("res://game/track/travesia_props.gd")
@@ -1157,7 +1158,7 @@ func _car_setups() -> Array:
 	var pst: Dictionary = cfg["state"]
 	if not lab_state.is_empty():
 		pst = lab_state # taller de prueba de la pausa: el mismo auto con todos los ajustes liberados
-	var pp: Dictionary = pst.get("paint", {"body": "#1a4fe0", "rim": "#ff6a08"})
+	var pp: Dictionary = Cosmetics.paint_ok(pid, pst) if pst.has("paint") else {"body": "#1a4fe0", "rim": "#ff6a08"} # (un diseño pago sin comprar se dibuja liso)
 	out.append({"params": CarBuild.build_params(vehicles[pid], pst, assists), "paint": Color(str(pp["body"])), "rim": Color(str(pp.get("rim", "#2a2d33"))), "name": str(profile.d["name"]), "finish": str(pp.get("finish", "gloss")), "visual_type": str(vehicles[pid].get("visualType", pid)), "ai": {},
 		"livery": int(pp.get("livery", 0)), "accent": Color(str(pp.get("accent", "#ff6a08"))), "text": Color(str(pp.get("text", "#f2f2ee"))), "tire": Color(str(pp.get("tire", "#141516"))), "parts": pp})
 	if _is_convoy():
@@ -1254,6 +1255,7 @@ func _rebuild_cars() -> void:
 				su["livery"] = int(a.substr(9)) # prueba: rotulado del auto del jugador
 				su["accent"] = Color(1.0, 0.5, 0.1)
 		if int(su.get("livery", 0)) > 0:
+			car.visual.race_number = str((su.get("parts", {}) as Dictionary).get("number", "77")) if su.get("parts") is Dictionary else "77"
 			car.visual.set_livery(int(su["livery"]), paint, su.get("accent", Color(1.0, 0.5, 0.1)), str(su.get("finish", "gloss")), su.get("text", Color(0.95, 0.95, 0.93)))
 		if su.has("tire"):
 			car.visual.set_tire_color(su["tire"])
@@ -1292,7 +1294,10 @@ func _rebuild_cars() -> void:
 		# los vidrios son oscuros: la tripulación y el habitáculo solo se dibujan con las cámaras interiores del jugador
 		if i == 0:
 			var Vp: VehicleParams = car.phys.V
-			cockpit = Cockpit.new(str(su["visual_type"]), paint, su["rim"])
+			var trim := {}
+			if cfg.get("state") is Dictionary and cfg.has("car"): # interior y volante comprados (data/cosmetics.gd)
+				trim = {"interior": Cosmetics.interior_of(str(cfg["car"]), cfg["state"]), "steer": Cosmetics.wheel_of(str(cfg["car"]), cfg["state"])}
+			cockpit = Cockpit.new(str(su["visual_type"]), paint, su["rim"], trim)
 			cockpit.crew_out = _crew_out_enabled()
 			car.visual.set_clear_glass(cockpit.crew_out)
 			cockpit.position = Vector3(0, -Vp.comHeight + Vp.rideOffset, 0)

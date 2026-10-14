@@ -230,7 +230,7 @@ func cowl_z() -> float:
 func _own_paint(pattern: int, paint: Color, accent: Color, finish: String, accent2: Color, inside := false, clear := false) -> ShaderMaterial:
 	var sm := _paint_material(pattern, paint, accent, finish, accent2, inside, clear)
 	sm.set_shader_parameter("vk", 1.0)
-	if pattern >= 7 and pattern <= 10:
+	if (pattern >= 7 and pattern <= 10) or pattern in [13, 14, 19]:
 		_set_decal(sm, pattern)
 	var g: Variant = meta.get("glass")
 	if g is Dictionary:
@@ -279,11 +279,20 @@ func _set_tex(sm: ShaderMaterial, tex: Texture2D, mode: float) -> void:
 
 ## Letras del rotulado en las puertas: la fila del atlas (según el patrón) y el rectángulo sobre la puerta, medido con los pasos de rueda y la línea de cintura del GLB
 func _set_decal(sm: ShaderMaterial, pattern: int) -> void:
-	var rows: Dictionary = _decal_rows.get("rows", {})
-	var key := str(meta.get("id", "")) if pattern == 10 else ("dream" if pattern == 7 else ("sr" if pattern == 8 else "sport"))
-	var total := float(_decal_rows.get("total", 1))
-	var r := float(rows.get(key, 0))
-	sm.set_shader_parameter("decal_v", Vector2((r + 0.04) / total, (r + 0.96) / total))
+	if pattern == 13: # número de competición (atlas propio)
+		if _nums == null:
+			_nums = load(NUM_TEX)
+			_num_rows = JSON.parse_string(FileAccess.get_file_as_string(NUM_JSON))
+		sm.set_shader_parameter("decal_tex", _nums)
+		var nr := float((_num_rows.get("rows", {}) as Dictionary).get(race_number, 5))
+		var nt := float(_num_rows.get("total", 1))
+		sm.set_shader_parameter("decal_v", Vector2((nr + 0.04) / nt, (nr + 0.96) / nt))
+	elif pattern >= 7 and pattern <= 10:
+		var rows: Dictionary = _decal_rows.get("rows", {})
+		var key := str(meta.get("id", "")) if pattern == 10 else ("dream" if pattern == 7 else ("sr" if pattern == 8 else "sport"))
+		var total := float(_decal_rows.get("total", 1))
+		var r := float(rows.get(key, 0))
+		sm.set_shader_parameter("decal_v", Vector2((r + 0.04) / total, (r + 0.96) / total))
 	var ar: Array = meta.get("arches", [])
 	var lift := float(meta.get("lift", 0.1))
 	var zc := 0.0
@@ -308,7 +317,11 @@ func set_parts(pp: Dictionary) -> void:
 
 ## Rotulados: dibujos de pintura calculados sobre la carrocería (no hace falta textura): franjas, banda lateral, la «onda»
 ## de Dream Racing, bicolor y el rally con el círculo del número en las puertas. 0 = liso.
-const LIVERIES := ["Liso", "Franjas", "Banda lateral", "Onda Dream", "Bicolor", "Rally", "Camuflaje Multicam", "Dream Racing", "SRGamestudios", "Sport", "Nombre del auto", "Textura original"]
+const LIVERIES := ["Liso", "Franjas", "Banda lateral", "Onda Dream", "Bicolor", "Rally", "Camuflaje Multicam", "Dream Racing", "SRGamestudios", "Sport", "Nombre del auto", "Textura original",
+	"Fibra de carbono", "Competición con número", "Dos tonos", "Neón nocturno", "Rally clásico", "Degradé", "Damero", "Llamas"]
+const FREE_LIVERIES := 12 # del 12 en adelante son diseños que se compran (cosmetics.json); el selector libre muestra sólo los primeros
+const NUM_TEX := "res://game/models/paint/numbers.png" # números de competición (patrón 13), en el contenido: no obliga a bajar de nuevo los autos
+const NUM_JSON := "res://game/models/paint/numbers.json"
 const ORIGINAL_TEXTURE := 11 # rotulado «textura original»: el auto con su textura de fábrica sin tocar
 const CAMO_TEX := "res://game/models/cars/camo_multicam.png"
 ## rotulados con letras (patrones 7 a 10): una fila del atlas decals.png (tools/cars/gen_decals.py) proyectada sobre las puertas; 7 = DREAM RACING, 8 = SRGamestudios, 9 = SPORT, 10 = el nombre del auto
@@ -317,6 +330,9 @@ const DECAL_JSON := "res://game/models/cars/decals.json"
 static var _camo: Texture2D
 static var _decal: Texture2D
 static var _decal_rows: Dictionary = {}
+static var _nums: Texture2D
+static var _num_rows: Dictionary = {}
+var race_number := "77" # número de competición del patrón 13 (paint["number"])
 const LIVERY_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
@@ -441,6 +457,7 @@ void fragment() {
 	float side = smoothstep(0.35, 0.55, abs(ln.x));
 	float top = smoothstep(0.25, 0.5, ln.y);
 	float ax = abs(lp.x);
+	vec3 em = vec3(0.0); // brillo propio (neón)
 	if (pattern == 1) {
 		float m = (band(ax, 0.10, 0.30) * top) + band(ax, 0.10, 0.30) * smoothstep(0.3, 0.6, abs(ln.z)) * step(0.5, lp.y);
 		c = mix(c, accent, clamp(m, 0.0, 1.0));
@@ -489,6 +506,64 @@ void fragment() {
 			c = mix(c, accent, line);
 		}
 		c = mix(c, accent, a);
+	} else if (pattern == 12) { // fibra de carbono: capó, techo y zócalos con trama de carbono; el resto pintado, filete del color de detalles
+		vec2 uvc = (abs(ln.y) > 0.55 ? lp.xz : (abs(ln.x) > 0.55 ? lp.zy : lp.xy)) * 22.0;
+		float chk = mod(floor(uvc.x) + floor(uvc.y), 2.0);
+		float fib = 0.5 + 0.5 * sin((chk > 0.5 ? uvc.x : uvc.y) * 6.2832 * 3.0);
+		vec3 carbon = mix(vec3(0.018, 0.019, 0.022), vec3(0.085, 0.09, 0.1), 0.35 + 0.4 * fib * (0.6 + 0.4 * chk));
+		float zone = max(top * smoothstep(-0.2, 0.2, lp.z), band(lp.y, -1.0, 0.40) * side);
+		c = mix(c, carbon, clamp(zone, 0.0, 1.0));
+		c = mix(c, accent, band(lp.y, 0.40, 0.43) * side);
+	} else if (pattern == 13) { // competición: círculo blanco con el número en las puertas, franjas diagonales del color de detalles
+		float sx = lp.x >= 0.0 ? 1.0 : -1.0;
+		vec2 dc = vec2(lp.z - decal_rect.x, lp.y - decal_rect.y);
+		float rr = length(dc);
+		float rad = decal_rect.w * 1.75;
+		float disc = (1.0 - smoothstep(rad - 0.01, rad, rr)) * side;
+		c = mix(c, accent2, disc);
+		float du = 0.5 - sx * dc.x / (2.0 * rad * 1.6);
+		float dv = 0.5 - dc.y / (2.0 * rad * 0.82);
+		float inside = step(0.0, du) * step(du, 1.0) * step(0.0, dv) * step(dv, 1.0);
+		float a = texture(decal_tex, vec2(du, mix(decal_v.x, decal_v.y, clamp(dv, 0.02, 0.98)))).a * inside * disc;
+		c = mix(c, vec3(0.02), a);
+		float k2 = lp.z * 0.8 + lp.y * 1.4;
+		float stripes = (band(fract(k2 * 0.9), 0.0, 0.18) + band(fract(k2 * 0.9), 0.30, 0.36)) * side * step(0.5, 1.0 - disc) * step(abs(dc.x), decal_rect.z * 2.2) * step(lp.z, decal_rect.x - rad);
+		c = mix(c, accent, clamp(stripes, 0.0, 1.0));
+		c = mix(c, accent, band(ax, 0.0, 0.08) * top);
+	} else if (pattern == 14) { // dos tonos: abajo el color de detalles, filete fino en el medio
+		float cut = decal_rect.y + 0.02;
+		c = mix(c, accent, (1.0 - smoothstep(cut - 0.006, cut + 0.006, lp.y)) * (1.0 - top * 0.5));
+		c = mix(c, accent2, band(lp.y, cut + 0.012, cut + 0.028) * side);
+	} else if (pattern == 15) { // neón nocturno: base oscura, líneas de luz en los zócalos, el capó y los paragolpes (brillan de noche)
+		float sill = band(lp.y, 0.28, 0.31) * side;
+		float hood = band(ax, 0.36, 0.385) * top * step(0.2, lp.z);
+		float chev = band(abs(lp.z - 1.2 + ax * 0.9), 0.0, 0.03) * top * step(0.6, lp.z);
+		float neon = clamp(sill + hood + chev, 0.0, 1.0);
+		c = mix(c, accent, neon);
+		em = accent * neon * 1.8;
+	} else if (pattern == 16) { // rally clásico: banda ancha cruzada en las puertas y el techo, dos filetes finos
+		float k3 = lp.z * 0.55 - lp.y * 0.9;
+		float sash = band(k3, -0.62, -0.36) * side;
+		c = mix(c, accent, sash);
+		c = mix(c, accent2, (band(k3, -0.70, -0.66) + band(k3, -0.32, -0.28)) * side);
+		c = mix(c, accent, band(ax, 0.0, 0.16) * top);
+		c = mix(c, accent2, band(ax, 0.18, 0.21) * top);
+	} else if (pattern == 17) { // degradé: del color de pintura adelante al de detalles atrás
+		float g = smoothstep(1.6, -1.8, lp.z);
+		c = mix(c, accent, g);
+	} else if (pattern == 18) { // damero: techo y parte de atrás a cuadros, franja a cuadros en los zócalos
+		vec2 q2 = (abs(ln.y) > 0.55 ? lp.xz : lp.zy) * 5.0;
+		float chk2 = mod(floor(q2.x) + floor(q2.y), 2.0);
+		float zone2 = top * smoothstep(0.3, -0.2, lp.z) + band(lp.y, 0.26, 0.42) * side;
+		c = mix(c, mix(accent, accent2, chk2), clamp(zone2, 0.0, 1.0));
+	} else if (pattern == 19) { // llamas: lenguas de fuego que salen de la trompa por los costados y el capó
+		float fz = lp.z + 0.25 * sin(lp.y * 18.0 + lp.x * 3.0) + 0.18 * sin(lp.y * 31.0);
+		float fy = abs(lp.y - decal_rect.y) * 2.4;
+		float edge = 1.3 - fy * 1.1;
+		float fire = smoothstep(edge - 0.06, edge + 0.06, fz) * side + smoothstep(0.9, 1.2, lp.z + 0.3 * sin(ax * 22.0)) * top;
+		float core = smoothstep(edge + 0.25, edge + 0.4, fz) * side;
+		c = mix(c, accent, clamp(fire, 0.0, 1.0));
+		c = mix(c, accent2, clamp(core, 0.0, 1.0));
 	} else if (pattern == 6) { // camuflaje multicam: textura proyectada en tres ejes (la carrocería no necesita UV); el color de pintura la tiñe (blanco = camuflaje puro)
 		vec3 w = pow(abs(ln), vec3(4.0));
 		w /= max(w.x + w.y + w.z, 0.001);
@@ -504,6 +579,7 @@ void fragment() {
 		gm = max(max(glass_strip(lp, ln, ws, ws_w), glass_strip(lp, ln, rg, rg_w)), glass_side(lp, ln));
 	}
 	ALBEDO = mix(base, vec3(0.02, 0.03, 0.045), gm);
+	EMISSION = em;
 	float pm = use_tex > 0.5 ? tmall : 1.0; // con textura: solo la pintura brilla según el acabado; el carbono y los detalles oscuros son más mates
 	METALLIC = mix(mix(0.25, metal, pm), 0.85, gm);
 	ROUGHNESS = mix(mix(0.55, rough, pm), 0.06, gm);
@@ -513,7 +589,7 @@ void fragment() {
 		float fr = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 2.5);
 		vec3 R = (INV_VIEW_MATRIX * vec4(reflect(-V, N), 0.0)).xyz;
 		vec3 sky = mix(vec3(0.16, 0.22, 0.30), vec3(0.45, 0.62, 0.85), clamp(R.y * 0.8 + 0.3, 0.0, 1.0));
-		EMISSION = sky * gm * (0.14 + 0.55 * fr);
+		EMISSION += sky * gm * (0.14 + 0.55 * fr);
 	}
 }
 """

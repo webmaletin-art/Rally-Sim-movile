@@ -17,7 +17,11 @@ func _init() -> void:
 	var vis := CarVisual.new()
 	vis.setup(V, false, Color(0.75, 0.08, 0.1), Color(0.8, 0.82, 0.86), "gloss")
 	vp.add_child(vis)
-	var ck := Cockpit.new(str(V.visualType), Color(0.75, 0.08, 0.1), Color(1.0, 0.5, 0.1))
+	var trim := {}
+	if OS.has_environment("CAB_TRIM"): # prueba: CAB_TRIM=cab_carbono,vol_pro
+		var tt := OS.get_environment("CAB_TRIM").split(",")
+		trim = {"interior": tt[0], "steer": tt[1] if tt.size() > 1 else ""}
+	var ck := Cockpit.new(str(V.visualType), Color(0.75, 0.08, 0.1), Color(1.0, 0.5, 0.1), trim)
 	ck.position = Vector3(0, -V.comHeight + V.rideOffset, 0)
 	vis.add_child(ck)
 	ck.set_engine(V.maxRpm, V.shiftUpRpm, 0.0)
