@@ -1509,9 +1509,13 @@ func lot_blocked(x: float, z: float) -> bool:
 		if Vector2(x, z).distance_to(tl["pos"]) < 16.0:
 			return true
 	if not garage.is_empty():
+		# el frente del Estacionamiento Central queda despejado hasta la ruta (y del otro lado, enfrente de la salida): sin alambrados, árboles ni flores
+		# delante de la explanada (el dueño veía «una valla enfrente de la entrada», 14/10/2026)
 		for gi in 3:
-			if Vector2(x, z).distance_to(garage["c"][gi]) < float(garage["r"][gi]) + 3.0:
+			if Vector2(x, z).distance_to(garage["c"][gi]) < float(garage["r"][gi]) + 30.0:
 				return true
+		if Vector2(x, z).distance_to(garage["p"]) < 32.0:
+			return true
 	return false
 
 func _add_prop(t: int, x: float, z: float, to_road: Vector2, y_over := NAN) -> void:
@@ -1519,6 +1523,14 @@ func _add_prop(t: int, x: float, z: float, to_road: Vector2, y_over := NAN) -> v
 	var pr := probe(x, z)
 	if pr[6] >= 0.0 and float(pr[1]) <= float(pr[5]) + 0.2:
 		return
+	if t == 13:
+		# el alambrado es un tramo de 6 m: ni los alambres pueden cruzar una calle (cruzaba la entrada del Estacionamiento Central, reporte del dueño 14/10/2026)
+		for f in [-3.4, -1.7, 1.7, 3.4]:
+			var qx: float = x + to_road.x * float(f)
+			var qz: float = z + to_road.y * float(f)
+			var pq := probe(qx, qz)
+			if pq[6] >= 0.0 and float(pq[1]) <= float(pq[5]):
+				return
 	if not _lot_props and lot_blocked(x, z):
 		return
 	var id := prop_type.size()

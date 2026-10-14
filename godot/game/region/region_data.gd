@@ -115,6 +115,11 @@ func load_file(p_city, path := FILE) -> bool:
 	_build_zones()
 	_build_secrets()
 	_build_junction_discs()
+	# las distancias acumuladas de todas las calles, ya: edge_cum() se usa desde los hilos que arman el terreno (region_world._build → _road_caps → _fillets)
+	# y a la vez desde el hilo principal (GPS, policía, carreras). Antes se llenaban a demanda y dos hilos escribían la misma tabla al mismo tiempo:
+	# un error nativo (SIGSEGV, «estado 11») que cerraba el juego sólo en el mundo abierto (docs/REGISTRO_TECNICO.md, 14/10/2026). Así, durante el juego, sólo se lee.
+	for ei in edges.size():
+		edge_cum(ei)
 	ok = true
 	return true
 
@@ -482,6 +487,7 @@ func edge_point(ei: int, i: int) -> Vector2:
 func edge_n(ei: int) -> int:
 	return int((edges[ei] as Array)[7])
 
+## Distancia acumulada a cada punto de la calle ei. Se calculan todas en load_file (antes de que arranquen los hilos): durante el juego sólo se leen.
 func edge_cum(ei: int) -> PackedFloat32Array:
 	if _cum.has(ei):
 		return _cum[ei]

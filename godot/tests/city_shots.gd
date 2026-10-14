@@ -109,6 +109,11 @@ func _init() -> void:
 			var cam_g := gfr + Vector2(gdr.y, -gdr.x) * 30.0
 			var dvg: Vector2 = (pg["pos"] as Vector2) - cam_g
 			shots.append(["76_garaje_fachada", cam_g.x, cam_g.y, rad_to_deg(atan2(dvg.x, dvg.y)), 3.0, -3.0])
+			var gdo: Vector2 = pg["door"] # la entrada vista desde la ruta (de frente) y desde arriba
+			var cam_e := gfr - gdr * 14.0
+			shots.append(["77_garaje_entrada", cam_e.x, cam_e.y, rad_to_deg(atan2(gdr.x, gdr.y)), 2.2, -3.0])
+			shots.append(["78_garaje_entrada_alto", gfr.x - gdr.x * 10.0, gfr.y - gdr.y * 10.0, rad_to_deg(atan2(gdr.x, gdr.y)), 38.0, -62.0])
+			print("estacionamiento: frente %s puerta %s dir %s" % [str(gfr.round()), str(gdo.round()), str(gdr)])
 	for rdx in track.city.roads:
 		if str(rdx["kind"]) == "rural":
 			var ptx: PackedVector3Array = rdx["pts"]

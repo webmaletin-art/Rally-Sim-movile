@@ -4,7 +4,7 @@ Una sección por sistema, con lo que anda, lo que falta y lo que espera prueba e
 el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hecho y probado en la computadora · 📱 falta probar en el APK · 🚧 en curso · ⛔ bloqueado.
 
 ## Estabilidad (cierre al acelerar)
-- 🚧📱 El juego se cierra de golpe **sólo en el mundo abierto** (Dream City), a veces 8–25 s después de cargar, **también quieto y con audio simple** (registros del 14/10): no es el acelerador ni el audio. Causa **sin confirmar** (¿falta de RAM o error nativo del motor 4.5.1?).
+- 🚧📱 El juego se cierra de golpe **sólo en el mundo abierto** (Dream City), a veces 8–25 s después de cargar, **también quieto y con audio simple** (registros del 14/10): no es el acelerador ni el audio. Android confirma **ERROR NATIVO (SIGSEGV)**, no falta de RAM. Se corrigió una carrera entre hilos en la región (`RegionData._cum`) que puede causarlo; falta confirmar en el teléfono.
 - ✅ Registro de diagnóstico que anda con cualquier APK (`game/diag/crash_log.gd`): migas cada segundo al manejar (velocidad, marcha, RAM del juego y libre, video, FPS), al acelerar a fondo, al cargar y salir; errores del motor; escritura inmediata; tras un cierre, el motivo que da Android.
 - ✅ «COPIAR REGISTRO» en Acerca de y en Opciones → Sonido (antes la pantalla Acerca de no cargaba con un APK viejo).
 - 📱 Siguiente paso: otro «COPIAR REGISTRO» tras un cierre: la línea `[android] cierre 1: …` dice el motivo.
