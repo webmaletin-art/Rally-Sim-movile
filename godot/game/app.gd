@@ -18,6 +18,7 @@ const Online := preload("res://game/online/online.gd")
 const OnlineEconomy := preload("res://game/online/online_economy.gd")
 const OnlineProfile := preload("res://game/data/online_profile.gd")
 const AccountEcon := preload("res://game/online/account_econ.gd")
+const CrashLog := preload("res://game/diag/crash_log.gd")
 
 var autorace_used := false
 var profile: RefCounted
@@ -32,6 +33,8 @@ var race: Node
 var music: Node # la música de fondo (radio de los menús; ver audio/music_player.gd)
 
 func _ready() -> void:
+	if CrashLog.get_instance() == null: # registro de diagnóstico (anda con cualquier APK): lo primero, así anota todo lo que sigue
+		add_child(CrashLog.new())
 	profile = Profile.new()
 	Tr.setup(profile)
 	billing = Billing.new()

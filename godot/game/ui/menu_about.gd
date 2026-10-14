@@ -5,7 +5,7 @@ extends RefCounted
 const Kit := preload("res://game/ui/ui_kit.gd")
 const Release := preload("res://game/data/release.gd")
 const MenuAccount := preload("res://game/ui/menu_account.gd")
-const CrashGuardLog := preload("res://bootstrap/crash_guard.gd")
+const CrashLog := preload("res://game/diag/crash_log.gd") # (no cargar bootstrap/: un APK viejo no lo trae y esta pantalla dejaba de andar)
 
 const POLICY_URL := "https://webmaletin-art.github.io/Rally-Sim-movile/docs/privacidad.html"
 const TERMS_URL := "https://github.com/webmaletin-art/Rally-Sim-movile/blob/main/docs/TERMINOS.md"
@@ -175,7 +175,7 @@ func _hub() -> void:
 			page = 0
 			m.go(dest), false, 78.0))
 	g.add_child(m.tile("🪲", "COPIAR REGISTRO", "", func() -> void: # el registro de la sesión anterior: si el juego se cerró solo, se pega para ver qué pasó justo antes
-		DisplayServer.clipboard_set(CrashGuardLog.last_log())
+		CrashLog.copy_to_clipboard()
 		m.toast(tr("Registro copiado: pegalo en un mensaje")), false, 78.0))
 	if Release.dev(m.profile):
 		g.add_child(m.tile("🔓", "APAGAR MODO DEV", "", func() -> void:

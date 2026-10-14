@@ -5,6 +5,7 @@ extends RefCounted
 const Kit := preload("res://game/ui/ui_kit.gd")
 const Lens := preload("res://game/fx/lens.gd")
 const Autotune := preload("res://game/autotune.gd")
+const CrashLog := preload("res://game/diag/crash_log.gd")
 
 signal changed(key: String)
 
@@ -147,6 +148,13 @@ func options_page(body: VBoxContainer, cat = null) -> void:
 				changed.emit("retune"), false, 15, Vector2(0, 50)))
 	if cat == "inclinacion":
 		_accel_block(body)
+	if cat == "sonido": # también en Acerca de: si el juego se cerró solo, se copia lo que pasó justo antes y se pega en un mensaje
+		var cb := Kit.button("🪲 " + tr("COPIAR REGISTRO"), Callable(), false, 15, Vector2(0, 50))
+		cb.pressed.connect(func() -> void:
+			sfx.play("click")
+			CrashLog.copy_to_clipboard()
+			cb.text = "✓ " + tr("Registro copiado: pegalo en un mensaje"))
+		body.add_child(cb)
 
 ## Idioma de los textos del juego (la voz del copiloto sigue el idioma del teléfono)
 func _language_page(body: VBoxContainer) -> void:

@@ -76,6 +76,27 @@ func _run() -> void:
 	((chrome.rail.get_children())[0] as Button).pressed.emit()
 	await _frames()
 	check(menu.get("screen") == "home", "riel: ATRÁS vuelve al inicio")
+	# ── Acerca de y Opciones → Sonido: el botón «COPIAR REGISTRO» está (sin modo desarrollador) y copia el informe
+	for dest in [["about", null], ["options", "sonido"]]:
+		menu.call("go", dest[0], dest[1])
+		await _frames()
+		var found: Button = null
+		var stack: Array = [menu.get("body")]
+		while not stack.is_empty():
+			var n: Node = stack.pop_back()
+			var txt := (n as Button).text if n is Button else ((n as Label).text if n is Label else "")
+			if txt.contains("COPIAR REGISTRO") or txt.begins_with("🪲"): # (el botón de Opciones va traducido al idioma del teléfono)
+				var up: Node = n
+				while up != null and not (up is Button):
+					up = up.get_parent()
+				found = up
+			stack.append_array(n.get_children())
+		check(found != null, "«COPIAR REGISTRO» visible en %s" % str(dest))
+		if found != null:
+			DisplayServer.clipboard_set("")
+			found.pressed.emit()
+			await _frames(2)
+			check(DisplayServer.clipboard_get().contains("DREAM RACING · registro") or DisplayServer.get_name() == "headless", "«COPIAR REGISTRO» copia el informe (%s)" % str(dest))
 	# ── cámara libre: un arrastre sobre el auto la activa en todas las pantallas con el auto
 	var sr: Node3D = menu.get("showroom")
 	var win := Vector2(get_root().size)

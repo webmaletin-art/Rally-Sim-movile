@@ -74,6 +74,7 @@ signal finished(result: Dictionary)
 signal exit_requested(back: String)
 ## Carga del mapa por etapas (la pantalla de carga muestra el avance); «loaded» avisa que ya se puede largar
 signal load_progress(frac: float, text: String)
+const CrashLog := preload("res://game/diag/crash_log.gd")
 signal loaded
 
 ## Configuración de la carrera (la arma el menú): car, state, track, weather, ai, laps, seg, type, event, tier…
@@ -367,8 +368,11 @@ func _ready() -> void:
 	if track is NetTrack:
 		_net_atmosphere()
 	audio = CarAudio.new()
+	var want_simple: bool = profile.setting("simpleAudio") == true
 	var cg: Node = get_tree().root.get_node_or_null("CrashGuard") # se cerró de golpe la vez anterior (o el jugador lo pidió): audio simple
-	audio.simple = (cg != null and cg.simple_audio(profile.setting("simpleAudio") == true)) or profile.setting("simpleAudio") == true
+	var cl: Node = CrashLog.get_instance() # (el del contenido: anda también con APK viejos, que no traen CrashGuard)
+	audio.simple = want_simple or (cg != null and cg.simple_audio(want_simple)) or (cl != null and cl.simple_audio(want_simple))
+	CrashLog.mark("audio", "%s · auto %s" % ["SIMPLE" if audio.simple else "completo", str(cfg.get("car", ""))])
 	audio.set_vehicle(str(cfg.get("car", "")))
 	add_child(audio)
 	sfx = UiSfx.new()
@@ -481,6 +485,7 @@ func _ready() -> void:
 		add_child(diag_panel)
 		diag_panel.setup(self)
 	is_loaded = true
+	CrashLog.mark("carrera", "cargada · tipo %s · pista %s · autos %d · %s" % [str(cfg.get("type", "")), str(cfg.get("track", "")), cars.size(), CrashLog.mem_line()])
 	if OS.get_cmdline_user_args().has("--labtest"):
 		print("LABTEST: carga lista, sesión ", session)
 	load_progress.emit(1.0, "Listo")
@@ -1976,6 +1981,7 @@ func on_teleport() -> void:
 	_ug_base = _ug_base # (la luz cambia sola con la posición)
 
 func _exit_tree() -> void:
+	CrashLog.mark("carrera", "salida · " + CrashLog.mem_line())
 	if rec != null and rec.active:
 		rec.stop() # el video queda cerrado y reproducible aunque se salga grabando
 	if social != null and is_instance_valid(social):
@@ -2904,10 +2910,29 @@ func _process(dt: float) -> void:
 	if not is_loaded:
 		return
 	var t0 := Time.get_ticks_usec()
+	_diag_tick(dt)
 	_frame(dt)
 	script_ms = lerpf(script_ms, float(Time.get_ticks_usec() - t0) / 1000.0, 0.1)
 	if res_auto:
 		_auto_res(dt)
+
+## Migas para el registro de diagnóstico (diag/crash_log.gd): cada 2 s mientras se maneja, velocidad, marcha, acelerador y memoria;
+## al acelerar a fondo desde parado, una línea extra. Si el juego se cierra de golpe, la última línea dice qué estaba pasando.
+var _dg_t := 0.0
+var _dg_gas := false
+func _diag_tick(dt: float) -> void:
+	if cars.is_empty() or paused:
+		return
+	var p = cars[0].phys
+	var gas: bool = controls != null and controls.gas > 0.8
+	if gas and not _dg_gas:
+		CrashLog.mark("gas", "a fondo · %d km/h · %s" % [int(sqrt(p.vx * p.vx + p.vz * p.vz) * 3.6), CrashLog.mem_line()])
+	_dg_gas = gas
+	_dg_t += dt
+	if _dg_t < 2.0:
+		return
+	_dg_t = 0.0
+	CrashLog.mark("auto", "%d km/h · %d rpm · %dª · gas %.1f · %s" % [int(sqrt(p.vx * p.vx + p.vz * p.vz) * 3.6), int(p.rpm), int(p.gear), controls.gas if controls != null else 0.0, CrashLog.mem_line()])
 
 ## Resolución automática del mundo 3D: baja si el teléfono no llega y sube de a poco si le sobra
 var _ar_t := 0.0
