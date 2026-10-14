@@ -126,6 +126,10 @@ func _ids(mine: bool) -> Array:
 				out.append(str(id))
 		elif Release.car_for_sale(m.profile, str(id)):
 			out.append(str(id))
+	if mine: # especiales (monoplaza) que ya tenés, sólo si están habilitados (o en modo desarrollador)
+		for id in Release.special_ids(m.profile):
+			if m.profile.owns(str(id)):
+				out.append(str(id))
 	return out
 
 ## Miles con punto (2.700), como el resto del juego

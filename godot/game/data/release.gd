@@ -100,6 +100,16 @@ static func tier_allowed(profile: RefCounted, tier_id: String) -> bool:
 	return full(profile) or PUBLIC_TIERS.has(tier_id)
 
 ## ¿Aparece en la concesionaria? (todos: los autos de premio se pueden ver y probar, pero no comprar hasta ganarlos)
+## Vehículos ESPECIALES (monoplaza): no están en la tienda ni en el orden del catálogo (catalog.json → "special"). Se habilitan con una actualización o un evento
+## poniendo esto en true (y definiendo cómo se consiguen); en modo desarrollador ya se pueden manejar para probarlos. La moto todavía no tiene física de dos ruedas (docs/AUTOS.md).
+const SPECIAL_OPEN := false
+
+static func special_ids(profile: RefCounted) -> Array:
+	var CarBuild := preload("res://game/data/car_build.gd")
+	if not (SPECIAL_OPEN or dev(profile)):
+		return []
+	return (CarBuild.catalog().get("special", []) as Array).duplicate()
+
 static func car_for_sale(_profile: RefCounted, _id: String) -> bool:
 	return true
 
@@ -118,6 +128,8 @@ static func activate_dev(profile: RefCounted) -> void:
 	var CarBuild := preload("res://game/data/car_build.gd")
 	profile.set_setting("dev", true)
 	for id in CarBuild.catalog()["order"]:
+		profile.give(str(id))
+	for id in CarBuild.catalog().get("special", []): # (especiales: sólo para probarlos)
 		profile.give(str(id))
 	profile.d["credits"] = maxi(int(profile.d["credits"]), 5000000)
 	profile.save()

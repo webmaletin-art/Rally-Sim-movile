@@ -31,11 +31,27 @@ SPEC['moust'] = _s('genesis', 'Moust Extreme', '👹', 'Superdeportivo extremo �
                    _c('MOUST', 'Extreme', 'Superdeportivo extremo', 205000, 'V8 4.0 biturbo · 800 cv', 'AWD', 2027,
                       'Ancho, bajo y con aire de mal humor. Un V8 biturbo que empuja sin parar y una tracción integral que no te deja ir por el pasto.', '#3a3d44', '#e11d2a', '#0b0c0e'))
 
+# ── tanda del 14/10/2026
+SPEC['strix'] = _s('genesis', 'Strix Vandal RS', '🦅', 'Superdeportivo · aletas, carbono y mal genio', 10, 1480, 0.43, 0.11, (1.75, 1.85), 0.38, 0.65, 860, 8600, True,
+                   [3.2, 2.3, 1.78, 1.42, 1.18, 0.99, 0.84], 3.8, 'AWD', 0.38, 0.38, 1250, 13.5, 0.5, 11.0, 0.82, 1.12, SURF_ROAD, 'road', 0.115, 0.155, 0.17, 0.35, 0.07, 0.013,
+                   _c('STRIX', 'Vandal RS', 'Superdeportivo', 170000, 'V10 5.2 biturbo · 820 cv', 'AWD', 2027,
+                      'Ancho, bajo y lleno de aletas de carbono. Un V10 biturbo que no se cansa de empujar y una tracción integral que lo pega al asfalto: para los que ya saben frenar tarde.', '#3a3d44', '#ff6a08', '#1b1d22'))
+SPEC['police'] = _s('genesis', 'Interceptor DRP', '🚓', 'Patrullero de persecución · V8 preparado', 8, 1720, 0.48, 0.14, (1.6, 1.7), 0.38, 0.64, 900, 7600, True,
+                    [3.1, 2.2, 1.65, 1.32, 1.08, 0.9, 0.76], 3.6, 'AWD', 0.42, 0.4, 1200, 13.0, 0.52, 10.5, 0.86, 1.1, SURF_MIX, 'road', 0.12, 0.16, 0.2, 0.4, 0.08, 0.014,
+                    _c('DRP', 'Interceptor', 'Patrullero de persecución', 140000, 'V8 5.0 biturbo · 700 cv', 'AWD', 2027,
+                       'El patrullero de la Policía de Dream City: V8 biturbo, tracción integral y una trompa reforzada para cerrar el paso. El mismo que te persigue en las rutas, ahora en tu garaje.', '#f2f2ee', '#1a4fe0', '#c0c5cc'))
+# monoplaza: vehículo ESPECIAL (no está en la tienda ni en el orden; se habilita con Release.SPECIAL_OPEN en una actualización o evento). Aerodinámica de base (aero).
+SPEC['f1'] = _s('genesis', 'Dream Fórmula DR-1', '🏎️', 'Monoplaza de competición · alerones y slicks', 6, 800, 0.38, 0.06, (3.0, 3.2), 0.45, 0.75, 700, 12000, True,
+                [3.2, 2.55, 2.1, 1.78, 1.53, 1.35, 1.2, 1.07], 4.4, 'RWD', 0.0, 0.5, 900, 16.0, 0.42, 13.0, 1.0, 1.25, SURF_ROAD, 'slick', 0.11, 0.14, 0.12, 0.25, 0.04, 0.011,
+                _c('DREAM', 'Fórmula DR-1', 'Monoplaza de competición', 0, 'V6 1.6 turbo híbrido · 1.000 cv', 'RWD', 2027,
+                   'Un monoplaza de verdad: 800 kg, mil caballos y alerones que lo aplastan contra el piso a medida que acelera. En las curvas rápidas no hay nada igual; en la tierra, ni lo intentes.', '#e11d2a', '#f2f2ee', '#1b1d22'))
+SPECIAL = {'f1': dict(aeroBaseF=1.7, aeroBaseR=2.5)}   # ClA (m²) de base por eje: con 0,6·v² da ~1,5 veces su peso a 250 km/h
+
 # precios definitivos (de menor a mayor): el más lento y fácil de comprar es el primero
 PRICE = {
     'hatch': 9000, 'torito': 18000, 'hatch2': 24000, 'clasico60': 30000, 'titan': 32000, 'pickup': 34000, 'suv': 38000, 'kodiak': 44000, 'camo': 46000,
     'buggy': 50000, 'muscle': 56000, 'truck': 60000, 'rally80': 64000, 'gt': 72000, 'trilux': 78000, 'pro_gt': 92000, 'kl5': 98000, 'trilux_s': 104000,
-    'trilux_gt': 118000, 'gt3': 130000, 'veltor': 150000, 'veltor_s': 185000, 'genesis': 190000, 'moust': 205000, 'veltor_gtr': 225000, 'hyper': 260000,
+    'trilux_gt': 118000, 'gt3': 130000, 'veltor': 150000, 'veltor_s': 185000, 'genesis': 190000, 'moust': 205000, 'police': 140000, 'strix': 170000, 'veltor_gtr': 225000, 'hyper': 260000,
 }
 ORDER = sorted(PRICE, key=lambda k: PRICE[k])
 for k, p in PRICE.items():

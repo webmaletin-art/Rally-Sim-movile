@@ -333,7 +333,7 @@ func _quick() -> void:
 			c.queue_free()
 		pv_box.add_child(preview(str(quick["map"]), 128.0))
 	var car_ids: Array = []
-	for id in _cars_cat()["order"]:
+	for id in _cars_cat()["order"] + Release.special_ids(m.profile):
 		if m.profile.owns(str(id)):
 			car_ids.append(str(id)) # Carrera rápida: solo con tus autos (los de la tienda se prueban desde la tienda)
 	if str(quick.get("car", "cur")) == "cur" or not car_ids.has(str(quick.get("car", "cur"))):

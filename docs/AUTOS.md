@@ -1,4 +1,4 @@
-# Autos (lista definitiva, 26)
+# Autos (lista definitiva: 28 del catálogo + vehículos especiales)
 
 Todos los autos tienen **modelo con textura propia, sin reducir** (de 300 mil a casi 1 millón de triángulos; `<id>.glb`) más una versión liviana de ~6 mil triángulos con la misma textura para los rivales (`<id>_lo.glb`), en `godot/game/models/cars/`.
 Los modelos crudos (`Autos_texturas.part*.rar` + `MoustExtreme.glb`) NO están en el repo: `tools/cars/build_final.py` los lee de una carpeta (`CARS_SRC`, por defecto `/tmp/claude-0/autos`).
@@ -54,6 +54,15 @@ Los modelos crudos (`Autos_texturas.part*.rar` + `MoustExtreme.glb`) NO están e
 | 24 | `moust` | MOUST Extreme | Superdeportivo extremo | AWD | 205.000 | 2.9 s | 781 |  |
 | 25 | `veltor_gtr` | VELTOR Max Pro GTR | Hypercar de pista | AWD | 225.000 | 2.9 s | 805 |  |
 | 26 | `hyper` | VORTEX Aerion | Hypercar híbrido | AWD | 260.000 | 3.0 s | 766 |  |
+| 27 | `police` | DRP Interceptor | Patrullero de persecución | AWD | 140.000 | 3.3 s | 743 | nuevo 14/10 · lo usa la policía del mundo abierto |
+| 28 | `strix` | STRIX Vandal RS | Superdeportivo | AWD | 170.000 | 2.9 s | 742 | nuevo 14/10 |
+
+## Vehículos especiales (14/10/2026)
+- **`f1` · Dream Fórmula DR-1** (monoplaza, modelo `Monoplaza3dmodel.glb` del dueño): física propia (800 kg, 1.000 cv, caja de 8, slicks de fábrica, **carga aerodinámica de base** `aeroBaseF/aeroBaseR` en `vehicles.json` → `car_build.gd`). Medido: 0-100 3,9 s, 100-0 en 30 m, 305 km/h, 1,44 g.
+  Cabina abierta (`cabin_cfg.gd`, sin vidrios). **No está en la tienda ni en el orden**: va en `catalog.json → "special"` y se habilita con `Release.SPECIAL_OPEN` (falso) en una actualización o evento; en modo desarrollador se recibe al activarlo y se maneja en Carrera rápida. Sin precio.
+  Ajuste que hizo falta: con el centro de masa (0,28 m) más bajo que el radio de la rueda (0,345 m) las gomas no apoyaban (Fz = 0, el auto «flotaba» y tardaba 11 s de 0 a 100); quedó en 0,38 m.
+- **Moto deportiva** (`moto_deportiva3d.glb` entera y `moto_deportiva3ddividida.glb` en 82 piezas, guardada en `biblioteca/modelos/vehiculos_especiales/`): **no está en el juego**. Falta una física de dos ruedas (equilibrio, inclinación en curva, contramanillar, caída) que el motor de autos no tiene, y armar el tren delantero (horquilla, tijas, manillar, carenado y guardabarros girando como una unidad: piezas 1, 5, 23, 27 son la rueda/disco de adelante; 7, 8, 14 la de atrás, a ±0,33 del centro en el modelo de 1 m). No se registra como auto para no prometer algo que no anda.
+- Pipeline: `final_cars.py` (`strix`, `police`, `f1` con pasos de rueda a mano), `final_wheels.py`, `final_specs.py` (`SPECIAL`), `make_final_vehicles.py`, `gen_decals.py` (rótulos con el nombre), `tools/godot/gen_thumbs.gd` (miniaturas). Los crudos se copian a `CARS_SRC` como `Sportcar.glb`, `Policia.glb`, `Monoplaza.glb`.
 
 ## Paquetes de contenido
 Los autos pesan ~500 MB: el contenido se parte en `content.pck` (todo menos `game/models/cars/`) y `cars.pck` (los autos). `tools/export/split_presets.py` arma el preset «Cars»; el APK liviano baja los dos (ver `bootstrap/boot.gd`), `cars.pck` solo si cambió (su versión es su hash). Ya no se arma el APK «completo». El AAB de Play (preset.3) lleva todo adentro y supera el límite: hay que usar Play Asset Delivery antes de subirlo.

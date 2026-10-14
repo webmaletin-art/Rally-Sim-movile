@@ -32,6 +32,17 @@ def main():
         meta = json.load(open(os.path.join(MODELS, cid + '.json')))
         v[cid] = MV.build_entry(cid, FS.SPEC[cid], meta, v)
         cat['cars'][cid] = dict(FS.SPEC[cid]['cat'])
+    # especiales (monoplaza): física y ficha, pero NO van al orden (ni tienda ni garaje); Release.SPECIAL_OPEN los habilita
+    for cid, extra in FS.SPECIAL.items():
+        meta = json.load(open(os.path.join(MODELS, cid + '.json')))
+        v[cid] = MV.build_entry(cid, FS.SPEC[cid], meta, v)
+        v[cid].update(extra)
+        v[cid]['special'] = True
+        cat['cars'][cid] = dict(FS.SPEC[cid]['cat'])
+        cat['cars'][cid]['special'] = True
+        cat['cars'][cid]['tires'] = 'slick'   # sale de fábrica con slicks (Profile.new_car_state)
+        cat['cars'][cid].setdefault('paint', {})['livery'] = 11
+    cat['special'] = list(FS.SPECIAL)
     # ficha de tienda de los de la versión HTML: solo el precio
     for cid in ('pickup', 'truck', 'genesis'):
         cat['cars'][cid]['price'] = FS.PRICE[cid]
@@ -43,13 +54,14 @@ def main():
     for cid in final:
         cat['cars'][cid].setdefault('paint', {})['livery'] = 11
     for cid, col in FW.RIM.items():
-        cat['cars'][cid]['paint']['rim'] = col
+        if cid in cat['cars']:
+            cat['cars'][cid]['paint']['rim'] = col
     # fuera los que no están en la lista
     for cid in list(cat['cars']):
-        if cid not in final:
+        if cid not in final and cid not in FS.SPECIAL:
             del cat['cars'][cid]
     for cid in list(v):
-        if cid not in final and cid != 't1plus':
+        if cid not in final and cid != 't1plus' and cid not in FS.SPECIAL:
             del v[cid]
     v['t1plus']['hidden'] = True        # solo física (IA y pruebas); no está en la tienda ni en el garaje
     cat['order'] = final

@@ -145,8 +145,8 @@ static func build_params(base: Dictionary, car: Dictionary, assists := {"abs": t
 	V["driveType"] = "RWD" if sp <= 0.0 else ("FWD" if sp >= 100.0 else "AWD")
 	V["finalDrive"] = float(base["finalDrive"]) * (pct.call("final") if has.call("final") else 1.0)
 	# aerodinámica: ClA (m²) por eje
-	V["aeroF"] = e["aeroF"] * (float(tu["aeroF"]) / 50.0 if has.call("aero") else 0.0)
-	V["aeroR"] = e["aeroR"] * (float(tu["aeroR"]) / 60.0 if has.call("aero") else 0.0)
+	V["aeroF"] = float(base.get("aeroBaseF", 0.0)) + e["aeroF"] * (float(tu["aeroF"]) / 50.0 if has.call("aero") else 0.0) # (aeroBase: carga aerodinámica de fábrica, p. ej. el monoplaza)
+	V["aeroR"] = float(base.get("aeroBaseR", 0.0)) + e["aeroR"] * (float(tu["aeroR"]) / 60.0 if has.call("aero") else 0.0)
 	V["dragCoef"] = float(base["dragCoef"]) * (1.0 + e["drag"] * (0.5 + float(tu["aeroR"]) / 120.0 if has.call("aero") else 0.0))
 	# nitro
 	V["nitroCap"] = e["nitro"]

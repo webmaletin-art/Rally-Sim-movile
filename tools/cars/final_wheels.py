@@ -33,6 +33,9 @@ WHEEL = {
     'veltor_gtr': _w('centerlock', 0.26, 0.30, 0.36, tread='slick', sc='#00b4d8', cc='#00b4d8'),
     'moust':     _w('blade3', 0.255, 0.29, 0.345, tread='sport', sc='#e11d2a', cc='#e11d2a'),
     'hyper':     _w('aero', 0.26, 0.285, 0.33, tread='sport', sc='#c0c5cc', cc='#00b4d8'),
+    'strix':     _w('blade3', 0.255, 0.285, 0.335, tread='sport', sc='#ff6a08', cc='#ff6a08'),
+    'police':    _w('steelcap', 0.24, 0.27, 0.29, tread='road', sc='#1a4fe0', cc='#e11d2a'),
+    'f1':        _w('centerlock', 0.23, 0.305, 0.405, tread='slick', sc='#e11d2a', cc='#e11d2a'),
     'genesis':   _w('bead10', 0.2286, 0.34, tread='mud', susp='truck', sc='#c9a24b', cc='#c9a24b'),
 }
 
@@ -76,9 +79,13 @@ TEX = {
     'moust': _t(ROJO, NEUTRO, va=0.8, vb=0.75),
     'hyper': _t(NEUTRO, va=0.8),
     'genesis': _t((1, 0.22, 0.45, 0.18), va=0.45),
+    'strix': _t(NEUTRO, NARANJA, va=0.8),
+    'police': _t(NEUTRO, AZUL, va=0.85),
+    'f1': _t(ROJO, NEUTRO, va=0.8, vb=0.8),
 }
 
 # color de llanta de fábrica de cada auto (el resto conserva el de su ficha)
 RIM = {'hatch': '#1b1d22', 'hatch2': '#e6e7ea', 'rally80': '#d4a017', 'torito': '#c9ccd2', 'clasico60': '#c9ccd2', 'muscle': '#2a2d33', 'suv': '#1b1d22', 'kodiak': '#1b1d22',
        'camo': '#2a2d33', 'buggy': '#f2f2f2', 'gt': '#c0c5cc', 'trilux': '#2a2d33', 'trilux_s': '#c0c5cc', 'pro_gt': '#1b1d22', 'kl5': '#c0c5cc', 'veltor': '#c0c5cc',
-       'veltor_s': '#2a2d33', 'moust': '#1b1d22', 'hyper': '#c0c5cc', 'genesis': '#15161a'}
+       'veltor_s': '#2a2d33', 'moust': '#1b1d22', 'hyper': '#c0c5cc', 'genesis': '#15161a',
+       'strix': '#1b1d22', 'police': '#c0c5cc', 'f1': '#1b1d22'}

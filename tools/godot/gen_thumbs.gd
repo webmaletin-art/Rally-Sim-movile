@@ -31,7 +31,7 @@ func _run() -> void:
 	var out_dir := ProjectSettings.globalize_path("res://game/ui/thumbs")
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	var only_new := not OS.get_cmdline_user_args().has("--all") # sin --all: solo los autos que todavía no tienen miniatura
-	for id in CarBuild.catalog()["order"]:
+	for id in CarBuild.catalog()["order"] + CarBuild.catalog().get("special", []):
 		if only_new and FileAccess.file_exists("%s/%s.png" % [out_dir, str(id)]):
 			continue
 		sh.set_car(str(id), prof.new_car_state(str(id)), vehicles)

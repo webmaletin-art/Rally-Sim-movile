@@ -24,12 +24,15 @@
   "trilux_s": 20,
   "trilux_gt": 21,
   "gt3": 22,
-  "veltor": 23,
-  "veltor_s": 24,
-  "genesis": 25,
-  "moust": 26,
-  "veltor_gtr": 27,
-  "hyper": 28
+  "police": 23,
+  "veltor": 24,
+  "strix": 25,
+  "veltor_s": 26,
+  "genesis": 27,
+  "moust": 28,
+  "veltor_gtr": 29,
+  "hyper": 30,
+  "f1": 31
  },
- "total": 29
+ "total": 32
 }

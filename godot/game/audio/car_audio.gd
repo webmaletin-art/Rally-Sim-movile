@@ -35,7 +35,8 @@ const TURBO_SND := {
 	"veltor": {"f": 1.25, "spool": 0.4, "w": 0.8, "fl": 0.9}, "veltor_s": {"f": 1.3, "spool": 0.35, "w": 0.9, "fl": 1.0},
 	"veltor_gtr": {"f": 1.4, "spool": 0.3, "w": 1.0, "fl": 1.2},
 	"hatch": {"f": 1.15, "spool": 0.5, "w": 0.8, "fl": 0.8}, "hatch2": {"f": 1.2, "spool": 0.3, "w": 1.4, "fl": 1.6},
-	"pro_gt": {"f": 1.3, "spool": 0.35, "w": 1.2, "fl": 1.2}, "moust": {"f": 1.2, "spool": 0.3, "w": 1.3, "fl": 1.4}}
+	"pro_gt": {"f": 1.3, "spool": 0.35, "w": 1.2, "fl": 1.2}, "moust": {"f": 1.2, "spool": 0.3, "w": 1.3, "fl": 1.4},
+	"police": {"f": 1.1, "spool": 0.4, "w": 0.9, "fl": 1.0}, "strix": {"f": 1.3, "spool": 0.3, "w": 1.1, "fl": 1.2}, "f1": {"f": 1.5, "spool": 0.25, "w": 0.7, "fl": 0.6}}
 const GEAR_SND := {
 	"pickup": {"k": 0.55, "tooth": 40.0}, "t1plus": {"k": 1.0, "tooth": 48.0},
 	"truck": {"k": 0.8, "tooth": 34.0}, "genesis": {"k": 0.8, "tooth": 44.0},
@@ -43,7 +44,8 @@ const GEAR_SND := {
 	"rally80": {"k": 0.9, "tooth": 46.0}, "kl5": {"k": 0.6, "tooth": 44.0}, "trilux": {"k": 0.6, "tooth": 42.0}, "trilux_s": {"k": 0.7, "tooth": 44.0},
 	"trilux_gt": {"k": 0.9, "tooth": 46.0}, "veltor": {"k": 0.5, "tooth": 52.0}, "veltor_s": {"k": 0.6, "tooth": 54.0},
 	"veltor_gtr": {"k": 1.2, "tooth": 40.0},
-	"hatch": {"k": 0.35, "tooth": 38.0}, "hatch2": {"k": 0.9, "tooth": 44.0}, "pro_gt": {"k": 0.9, "tooth": 46.0}, "moust": {"k": 1.0, "tooth": 48.0}}
+	"hatch": {"k": 0.35, "tooth": 38.0}, "hatch2": {"k": 0.9, "tooth": 44.0}, "pro_gt": {"k": 0.9, "tooth": 46.0}, "moust": {"k": 1.0, "tooth": 48.0},
+	"police": {"k": 0.5, "tooth": 42.0}, "strix": {"k": 0.7, "tooth": 50.0}, "f1": {"k": 1.2, "tooth": 56.0}}
 ## Carácter del motor de los autos nuevos (los de siempre conservan su voz): tono (f), brillo del filtro (cut), volumen (eng), ruido mecánico (noise) y petardeos (pops)
 const VOICE := {
 	"torito": {"f": 0.92, "cut": 0.85, "eng": 1.10, "noise": 1.3, "pops": 1.2},
@@ -61,7 +63,10 @@ const VOICE := {
 	"hatch": {"f": 1.12, "cut": 0.95, "eng": 0.90, "noise": 1.0, "pops": 0.9},
 	"hatch2": {"f": 1.06, "cut": 1.15, "eng": 1.00, "noise": 1.1, "pops": 1.6},
 	"pro_gt": {"f": 1.04, "cut": 1.25, "eng": 1.05, "noise": 1.0, "pops": 1.3},
-	"moust": {"f": 0.96, "cut": 1.20, "eng": 1.10, "noise": 1.2, "pops": 1.5}}
+	"moust": {"f": 0.96, "cut": 1.20, "eng": 1.10, "noise": 1.2, "pops": 1.5},
+	"police": {"f": 0.94, "cut": 1.00, "eng": 1.10, "noise": 1.2, "pops": 1.1},
+	"strix": {"f": 1.08, "cut": 1.30, "eng": 1.05, "noise": 1.0, "pops": 1.3},
+	"f1": {"f": 1.10, "cut": 1.60, "eng": 1.10, "noise": 0.8, "pops": 0.8}}
 ## constante de tiempo de cada parámetro (como setTargetAtTime de Web Audio)
 const TIME_K := {"f0": 0.012, "cut": 0.03, "eng": 0.03, "engn": 0.05, "roll": 0.08, "sq": 0.05, "sqf": 0.03, "grav": 0.03, "wind": 0.1, "windf": 0.1,
 	"gw": 0.05, "wf": 0.03, "gwe": 0.04, "gwef": 0.02, "tw": 0.05, "twf": 0.06, "tb": 0.08, "tbf": 0.05, "rain": 0.4, "ai": 0.08, "aif": 0.05}

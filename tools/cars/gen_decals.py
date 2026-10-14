@@ -27,7 +27,7 @@ def main():
     veh = json.load(open(os.path.join(ROOT, 'godot', 'game', 'data', 'vehicles.json'), encoding='utf-8'))
     cat = json.load(open(os.path.join(ROOT, 'godot', 'game', 'data', 'catalog.json'), encoding='utf-8'))
     texts = [('dream', 'DREAM RACING'), ('sr', 'SRGamestudios'), ('sport', 'SPORT')]
-    for cid in cat['order']:
+    for cid in cat['order'] + cat.get('special', []):
         texts.append((cid, veh[cid]['name'].upper()))
     atlas = Image.new('RGBA', (W, H * len(texts)), (255, 255, 255, 0))
     rows = {}
