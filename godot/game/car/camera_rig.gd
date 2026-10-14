@@ -169,8 +169,8 @@ func _chase(dt: float, p: CarSnapshot, c: Dictionary) -> void:
 	pos.y += (iy - pos.y) * kh
 	var look := Vector3(p.px + fx * float(c["look"]), p.py + float(c["lookH"]), p.pz + fz * float(c["look"]))
 	var rough := 2.2 if _loose(p) else 1.0
-	shake += dt * 37.0
-	var sa := minf(1.0, spd / 40.0) * 0.012 * rough
+	shake += dt * 19.0 # (antes 37 rad/s y 12 mm: en el teléfono se veía como temblor; ahora una ondulación suave del camino)
+	var sa := minf(1.0, spd / 40.0) * 0.004 * rough
 	cam.position = Vector3(pos.x, pos.y + sin(shake) * sa, pos.z)
 	cam.look_at(look)
 	var bt := clampf(-p.aLat * 0.010, -0.07, 0.07)
@@ -220,11 +220,12 @@ func _custom(dt: float, p: CarSnapshot, c: Dictionary) -> void:
 ## capó / paragolpes: rígidas, con la vibración del camino
 func _mounted(p: CarSnapshot, c: Dictionary, rough: float) -> void:
 	var m: Dictionary = mount[c["mode"]]
-	var vib := (0.006 if c["mode"] == "bumper" else 0.003) * (0.4 + rough * 1.6) * minf(1.0, absf(p.vLong) / 20.0)
+	# vibración del camino lenta y chica (antes hasta 12 mm a 6–7 Hz: temblaba en el teléfono; ver cockpit.cam_jitter)
+	var vib := (0.0016 if c["mode"] == "bumper" else 0.0009) * (0.4 + rough * 1.6) * minf(1.0, absf(p.vLong) / 20.0)
 	var ax := adj_of("side")
 	var ay := adj_of("height")
 	var az := -adj_of("dist") # «distancia» positiva = más atrás
-	var lp := Vector3(sin(time * 39.7) * vib + ax, float(m["y"]) + sin(time * 47.3) * vib + ay, float(m["z"]) + az)
+	var lp := Vector3(sin(time * 16.3) * vib + ax, float(m["y"]) + sin(time * 19.1 + 0.6) * vib + ay, float(m["z"]) + az)
 	var ll := Vector3(ax, float(m["y"]) + ay + float(m["ly"]), float(m["z"]) + az + 12.0)
 	var t := visual.global_transform
 	var wp := t * lp # los puntos de montaje ya vienen en el marco del auto

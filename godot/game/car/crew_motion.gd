@@ -23,6 +23,7 @@ var prev: Array = []
 var body := Vector3.ZERO # desplazamiento del torso
 var head := Vector3.ZERO # desplazamiento de la cabeza
 var cam := Vector3.ZERO # lo que se mueve la cámara del casco (menos: no marea)
+var cam_s := Vector3.ZERO # lo mismo, suavizado (lo usa la cámara de adentro: sin saltos entre cuadros)
 var kick := 0.0
 var lim_t := 0.17 # cuánto se puede mover el torso (m) y la cabeza respecto del torso (m)
 var lim_r := 0.11
@@ -134,6 +135,7 @@ func step_forces(dt: float, p) -> void:
 	body = t * 0.8
 	head = t + r
 	cam = t * 0.6 + r * 0.25
+	cam_s += (cam - cam_s) * (1.0 - exp(-dt * 10.0))
 
 ## mano al freno de mano, pie derecho en acelerador/freno, ataje del copiloto
 func step_limbs(dt: float, p) -> void:

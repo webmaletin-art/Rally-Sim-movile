@@ -1427,24 +1427,31 @@ func set_engine(max_rpm: float, shift_up_rpm: float, nitro_cap: float) -> void:
 	_nitro_cap = nitro_cap
 
 ## Posición y mirada de la cámara interior, en el marco del habitáculo. mode: "onboard" | "rearcabin"
+## Vibración de la cámara de adentro (x, y en metros). La usa camera_local y la prueba tests/cabin_shake_test.gd.
+## Lenta y chica (pedido del dueño, 14/10/2026: «la cámara de adentro tiembla mucho»): antes era de hasta 8,5 mm a ~6 Hz y la pantalla del teléfono
+## (30–40 cuadros) la mostraba como un temblor de 8 mm entre cuadro y cuadro; ahora ~2,5 Hz y menos de 2 mm: se siente el camino sin sacudir el tablero.
+static func cam_jitter(time: float, p, rough: float) -> Vector3:
+	var vib := (0.0005 + 0.0014 * rough) * minf(1.0, absf(p.vLong) / 30.0)
+	var nx := sin(time * 15.7) * 0.6 + sin(time * 9.3 + 0.7) * 0.4
+	var ny := sin(time * 17.9 + 1.1) * 0.5 + sin(time * 11.3) * 0.5
+	return Vector3(nx * vib, ny * vib, 0.0)
+
 ## Devuelve {pos, look, roll, hfov}
 func camera_local(mode: String, p: CarSnapshot, time: float, rough: float) -> Dictionary:
-	var vib := (0.0025 + 0.006 * rough) * (0.3 + minf(1.0, absf(p.vLong) / 30.0))
-	var nx := sin(time * 37.1) * 0.6 + sin(time * 23.7) * 0.4
-	var ny := sin(time * 41.3) * 0.5 + sin(time * 29.9) * 0.5
-	var H: Vector3 = (mo[0] as CrewMotion).cam
+	var jv := cam_jitter(time, p, rough)
+	var H: Vector3 = (mo[0] as CrewMotion).cam_s
 	var pos: Vector3
 	var look: Vector3
 	var roll := 0.0
 	if mode == "onboard":
 		# un poco más atrás y arriba que la cabeza: se ven los antebrazos y más tablero; mira apenas hacia la ventanilla del piloto
-		pos = Vector3(xD + H.x + nx * vib, eY + 0.075 + H.y + ny * vib, eZ - ob_dist + H.z)
+		pos = Vector3(xD + H.x + jv.x, eY + 0.075 + H.y + jv.y, eZ - ob_dist + H.z)
 		var yl := clampf(p.steerAngle * 0.45 + p.yawRate * 0.06, -0.35, 0.35) + 0.075
 		look = pos + Vector3(sin(yl), -0.17, cos(yl))
 		roll = -H.x * 0.9
 	else:
 		# atrás de las butacas, más lejos: se ven los respaldos, las cabezas y el tablero
-		pos = Vector3(0.02 + nx * vib * 0.5, eY + minf(0.14, (float(C["roofY"]) - eY) * 0.55) + ny * vib * 0.5, maxf(eZ - rear_dist, back_z + 0.14))
+		pos = Vector3(0.02 + jv.x * 0.5, eY + minf(0.14, (float(C["roofY"]) - eY) * 0.55) + jv.y * 0.5, maxf(eZ - rear_dist, back_z + 0.14))
 		look = Vector3(0.06, eY - 0.32, eZ + 2.4)
 	if OS.has_environment("CAB_POS"): # depuración: cámara libre dentro de la cabina  CAB_POS=x,y,z CAB_LOOK=x,y,z
 		var a := OS.get_environment("CAB_POS").split_floats(",")

@@ -5,6 +5,15 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 14/10/2026 (noche) · Cámaras de adentro que tiemblan
+- **Reporte del dueño:** «los autos con cámara interior se ve que tiemblan, vibran mucho».
+- **Causa confirmada (medida):** `cockpit.camera_local` sumaba una vibración de hasta 8,5 mm a ~6 Hz; con la pantalla a 30–40 cuadros desparejos eso es un salto de **8,3 mm de cuadro a cuadro en promedio (peor 19 mm)** con el tablero a medio metro de los ojos. El movimiento de la cabeza por fuerzas G aportaba 0,9 mm. Las cámaras de capó/paragolpes (hasta 12 mm a 6–7 Hz) y la de atrás (hasta 26 mm en tierra) tenían lo mismo.
+- **Cambio:** `cockpit.cam_jitter` (estática): ~2,5 Hz y < 2 mm; `crew_motion.cam_s` (cabeza suavizada para la cámara); `camera_rig._mounted` y `_chase` con vibración lenta y chica.
+- **Prueba nueva:** `tests/cabin_shake_test.gd` (IA en tierra, física 120 Hz, pantalla 30/37 cuadros): salto medio 8,25 → **0,99 mm**, peor 19,2 → 5,1 mm (un bache de verdad).
+- **Resultado:** PENDIENTE DE APK.
+
+---
+
 ## 14/10/2026 (noche) · Cierre de golpe: Android confirma ERROR NATIVO (SIGSEGV) · carrera entre hilos en la región · entrada del estacionamiento
 - **Registro del dueño (contenido r174, APK con CrashGuard), 2 de 2 se cierran:** `[android] cierre 1: ERROR NATIVO (motor o driver) (código 5, estado 11) · RAM 566 MB (pss 429 MB)`; otro igual con 570 MB y uno anterior con 880 MB.
   **Confirmado:** es un cierre nativo por señal 11 (SIGSEGV: acceso a memoria inválido dentro del motor o del driver), **no es falta de memoria** (430–740 MB de PSS, Android no lo mató por RAM). Sólo en el mundo abierto (drift varios minutos sin problema), 10–30 s después de cargar, también quieto.
