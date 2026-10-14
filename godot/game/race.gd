@@ -1222,6 +1222,8 @@ func _convoy_pose(rank: int, from_idx := 0) -> Array:
 
 func _rebuild_cars() -> void:
 	_finish_physics()
+	if police != null:
+		police.forget() # los patrulleros son autos de la lista: se rehacen sólo los de la parrilla
 	if fx != null:
 		fx.reset()
 	for c in cars:
@@ -1872,6 +1874,7 @@ var tires # CityTires: desgaste de las gomas puestas
 var acts # CityActivities: radares, contrarreloj panorámica y encargos
 var tolls # CityToll: peajes de las rutas
 var city_drift # CityDrift: la Plaza de Drift al final de la Ruta 60
+var police # CityPolice: controles policiales y persecuciones en las rutas de la región
 var life # CityLife: conecta la vida del mundo con Dream City (city/city_life.gd)
 var ambient # WorldAmbient: audio del mundo abierto (tránsito en 3D, clima, ecos); sólo en Dream City
 var world_life # WorldLife: la capa de vida del mundo (reloj, semilla, sectores, sistemas de vida); sólo en Dream City
@@ -1976,6 +1979,39 @@ func _underground_light(dt: float) -> void:
 	env.fog_depth_begin = lerpf(float(_ug_base[3]) * (1.0 + 3.0 * rk), 25.0, _ug)
 	env.fog_depth_end = lerpf(float(_ug_base[4]) * (1.0 + 8.0 * rk), 170.0, _ug)
 	cam.far = lerpf(1600.0, 17000.0, rk)
+
+## Suma un auto con piloto automático en plena partida (la policía del mundo abierto: city/city_police.gd). Liviano (versión _lo), sólido contra la pista,
+## con choque contra los demás autos. Devuelve el Car (o null si no existe el vehículo).
+func add_ai_car(vid: String, x: float, z: float, yaw: float, driver: RefCounted, paint := Color(0.95, 0.95, 0.93), mods := {}) -> Car:
+	if not vehicles.has(vid):
+		return null
+	_finish_physics()
+	var st := Profile.new_car_state(vid)
+	var su: Dictionary = CarBuild.build_params(vehicles[vid], st, AiCars.ASSISTS)
+	for k in mods:
+		su[k] = mods[k]
+	var car := Car.new(track, VehicleParams.from_dict(su), false, true, paint, Color(0.75, 0.77, 0.8), "gloss")
+	car.visual.set_livery(11, paint, Color(0.1, 0.3, 0.9), "gloss", Color(0.95, 0.95, 0.93)) # pintura de fábrica (la del modelo)
+	car.driver = driver
+	car.solid = track is DriftTrack
+	car.place(x, z, yaw)
+	car.restart_history(sim_t)
+	world.add_child(car.visual)
+	cars.append(car)
+	rival_info.append({"name": vid, "color": paint})
+	return car
+
+## Saca un auto agregado con add_ai_car (nunca el del jugador)
+func remove_car(car: Car) -> void:
+	var i := cars.find(car)
+	if i <= 0:
+		return
+	_finish_physics()
+	cars.remove_at(i)
+	if i < rival_info.size():
+		rival_info.remove_at(i)
+	if is_instance_valid(car.visual):
+		car.visual.queue_free()
 
 func on_teleport() -> void:
 	_ug_base = _ug_base # (la luz cambia sola con la posición)

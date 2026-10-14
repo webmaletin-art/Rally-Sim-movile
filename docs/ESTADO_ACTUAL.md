@@ -14,11 +14,11 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 - 🚧 Reorganización del centro (autopistas elevadas, concesionarios, sectores bloqueados): ver `docs/REGISTRO_TECNICO.md`.
 
 ## Policía
-- 🚧 Controles policiales en las rutas entre ciudades, persecución, arresto, multa y aparición frente a la comisaría (`docs/POLICIA.md`).
+- ✅📱 Controles policiales en las 176 rutas largas entre ciudades, persecución con barrera, interceptor de frente, arresto, multa y comisaría de Dream City (`docs/POLICIA.md`). Probado en la computadora; falta sentirlo en el teléfono.
 
 ## Vehículos
 - ✅ 26 autos con textura propia (`docs/AUTOS.md`).
-- 🚧 Modelos nuevos entregados el 14/10: 2 autos (deportivo y patrullero), monoplaza, superbike (entera y por piezas), interior de rally y volante.
+- ✅📱 DRP Interceptor y STRIX Vandal RS en el catálogo (28). Monoplaza DR-1 especial bloqueado (`Release.SPECIAL_OPEN`). ⛔ Moto: falta física de dos ruedas. 🚧 Interior de rally y volante.
 
 ## Online
 - ✅ Cuenta obligatoria, economía en el servidor, Realtime preparado. Cerrado en la versión pública (`Release.ONLINE_OPEN := false`); con el modo desarrollador se abre y conecta dos jugadores (con lag, según el dueño, 14/10).

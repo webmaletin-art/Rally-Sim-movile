@@ -10,6 +10,7 @@ const CityFuel := preload("res://game/city/city_fuel.gd")
 const CityTires := preload("res://game/city/city_tires.gd")
 const CityActivities := preload("res://game/city/city_activities.gd")
 const CityToll := preload("res://game/city/city_toll.gd")
+const CityPolice := preload("res://game/city/city_police.gd")
 
 var race # race.gd
 
@@ -30,6 +31,8 @@ func setup(p_race) -> void:
 	race.tolls.setup(race, track.world_node, track.city)
 	race.city_drift = CityDrift.new()
 	race.city_drift.setup(race, track.world_node, track.city)
+	race.police = CityPolice.new() # controles policiales en las rutas de la región (docs/POLICIA.md)
+	race.police.setup(race)
 
 func update(dt: float) -> void:
 	race.shops.update(dt)
@@ -42,3 +45,5 @@ func update(dt: float) -> void:
 	race.tolls.update(dt)
 	if race.city_drift != null:
 		race.city_drift.update(dt)
+	if race.police != null:
+		race.police.update(dt)

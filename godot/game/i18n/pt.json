@@ -2658,5 +2658,13 @@
 "En el mundo online tu billetera de créditos online y tus autos online (con mejoras, pintura y gomas) viven en nuestro servidor (Supabase), no en tu teléfono, y son aparte de tu perfil sin conexión. Con el tiempo real, mientras estás en el mundo online tu auto (posición en el mapa del juego, velocidad, rumbo, modelo y pintura) se envía varias veces por segundo a los jugadores cercanos para que te vean moverte; ese tráfico no se guarda. Las compras con créditos online, los anuncios del mercado y el regalo diario quedan registrados para evitar abusos y se borran con tu cuenta.": "No mundo online, a sua carteira de créditos online e os seus carros online (com melhorias, pintura e pneus) ficam no nosso servidor (Supabase), não no seu celular, e são separados do seu perfil sem conexão. Com o tempo real, enquanto você está no mundo online, o seu carro (posição no mapa do jogo, velocidade, direção, modelo e pintura) é enviado várias vezes por segundo aos jogadores próximos para que eles vejam você se mover; esse tráfego não é guardado. As compras com créditos online, os anúncios do mercado e o presente diário ficam registrados para evitar abusos e são apagados junto com a sua conta.",
 "Audio simple (sólo motor; sirve si el juego se cierra solo)": "Áudio simples (só o motor; use se o jogo fechar sozinho)",
 "COPIAR REGISTRO": "COPIAR REGISTRO",
-"Registro copiado: pegalo en un mensaje": "Registro copiado: cole numa mensagem"
+"Registro copiado: pegalo en un mensaje": "Registro copiado: cole numa mensagem",
+"🚨 ¡CONTROL POLICIAL! Te persiguen %d patrulleros": "🚨 BLITZ POLICIAL! %d viaturas estão atrás de você",
+"😎 ¡Los perdiste! La policía abandona la persecución": "😎 Você despistou! A polícia desiste da perseguição",
+"🚔 ARRESTADO · pagaste la multa: $%d. Estás frente a la comisaría de Dream City": "🚔 PRESO · você pagou a multa: $%d. Você está em frente à delegacia de Dream City",
+"⚠ CONTROL POLICIAL ADELANTE · %d m": "⚠ BLITZ POLICIAL À FRENTE · %d m",
+"🚨 PERSECUCIÓN · %d 🚓 · nivel %d": "🚨 PERSEGUIÇÃO · %d 🚓 · nível %d",
+"escapando %d/%d s": "fugindo %d/%d s",
+"COMISARÍA": "DELEGACIA",
+"POLICÍA DE DREAM CITY": "POLÍCIA DE DREAM CITY"
 }

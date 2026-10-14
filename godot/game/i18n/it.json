@@ -2658,5 +2658,13 @@
 "En el mundo online tu billetera de créditos online y tus autos online (con mejoras, pintura y gomas) viven en nuestro servidor (Supabase), no en tu teléfono, y son aparte de tu perfil sin conexión. Con el tiempo real, mientras estás en el mundo online tu auto (posición en el mapa del juego, velocidad, rumbo, modelo y pintura) se envía varias veces por segundo a los jugadores cercanos para que te vean moverte; ese tráfico no se guarda. Las compras con créditos online, los anuncios del mercado y el regalo diario quedan registrados para evitar abusos y se borran con tu cuenta.": "Nel mondo online il tuo portafoglio di crediti online e le tue auto online (con potenziamenti, vernice e gomme) stanno sul nostro server (Supabase), non sul tuo telefono, e sono separati dal tuo profilo offline. Con il tempo reale, mentre sei nel mondo online la tua auto (posizione sulla mappa del gioco, velocità, direzione, modello e vernice) viene inviata più volte al secondo ai giocatori vicini perché ti vedano muoverti; quel traffico non viene salvato. Gli acquisti con crediti online, gli annunci del mercato e il regalo giornaliero vengono registrati per evitare abusi e si cancellano insieme al tuo account.",
 "Audio simple (sólo motor; sirve si el juego se cierra solo)": "Audio semplice (solo motore; utile se il gioco si chiude da solo)",
 "COPIAR REGISTRO": "COPIA REGISTRO",
-"Registro copiado: pegalo en un mensaje": "Registro copiato: incollalo in un messaggio"
+"Registro copiado: pegalo en un mensaje": "Registro copiato: incollalo in un messaggio",
+"🚨 ¡CONTROL POLICIAL! Te persiguen %d patrulleros": "🚨 POSTO DI BLOCCO! %d volanti ti inseguono",
+"😎 ¡Los perdiste! La policía abandona la persecución": "😎 Li hai seminati! La polizia abbandona l'inseguimento",
+"🚔 ARRESTADO · pagaste la multa: $%d. Estás frente a la comisaría de Dream City": "🚔 ARRESTATO · hai pagato la multa: $%d. Sei davanti alla questura di Dream City",
+"⚠ CONTROL POLICIAL ADELANTE · %d m": "⚠ POSTO DI BLOCCO AVANTI · %d m",
+"🚨 PERSECUCIÓN · %d 🚓 · nivel %d": "🚨 INSEGUIMENTO · %d 🚓 · livello %d",
+"escapando %d/%d s": "fuga %d/%d s",
+"COMISARÍA": "QUESTURA",
+"POLICÍA DE DREAM CITY": "POLIZIA DI DREAM CITY"
 }

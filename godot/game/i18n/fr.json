@@ -2658,5 +2658,13 @@
 "En el mundo online tu billetera de créditos online y tus autos online (con mejoras, pintura y gomas) viven en nuestro servidor (Supabase), no en tu teléfono, y son aparte de tu perfil sin conexión. Con el tiempo real, mientras estás en el mundo online tu auto (posición en el mapa del juego, velocidad, rumbo, modelo y pintura) se envía varias veces por segundo a los jugadores cercanos para que te vean moverte; ese tráfico no se guarda. Las compras con créditos online, los anuncios del mercado y el regalo diario quedan registrados para evitar abusos y se borran con tu cuenta.": "Dans le monde en ligne, ton portefeuille de crédits en ligne et tes voitures en ligne (avec améliorations, peinture et pneus) sont stockés sur notre serveur (Supabase), pas sur ton téléphone, et sont distincts de ton profil hors ligne. Avec le temps réel, pendant que tu es dans le monde en ligne, ta voiture (position sur la carte du jeu, vitesse, cap, modèle et peinture) est envoyée plusieurs fois par seconde aux joueurs proches pour qu'ils te voient bouger ; ce trafic n'est pas conservé. Les achats avec des crédits en ligne, les annonces du marché et le cadeau quotidien sont enregistrés pour éviter les abus et sont supprimés avec ton compte.",
 "Audio simple (sólo motor; sirve si el juego se cierra solo)": "Audio simple (moteur seul ; utile si le jeu se ferme tout seul)",
 "COPIAR REGISTRO": "COPIER LE JOURNAL",
-"Registro copiado: pegalo en un mensaje": "Journal copié : colle-le dans un message"
+"Registro copiado: pegalo en un mensaje": "Journal copié : colle-le dans un message",
+"🚨 ¡CONTROL POLICIAL! Te persiguen %d patrulleros": "🚨 CONTRÔLE DE POLICE ! %d voitures de patrouille te poursuivent",
+"😎 ¡Los perdiste! La policía abandona la persecución": "😎 Tu les as semés ! La police abandonne la poursuite",
+"🚔 ARRESTADO · pagaste la multa: $%d. Estás frente a la comisaría de Dream City": "🚔 ARRÊTÉ · tu as payé l'amende : %d $. Tu es devant le commissariat de Dream City",
+"⚠ CONTROL POLICIAL ADELANTE · %d m": "⚠ CONTRÔLE DE POLICE DEVANT · %d m",
+"🚨 PERSECUCIÓN · %d 🚓 · nivel %d": "🚨 POURSUITE · %d 🚓 · niveau %d",
+"escapando %d/%d s": "fuite %d/%d s",
+"COMISARÍA": "COMMISSARIAT",
+"POLICÍA DE DREAM CITY": "POLICE DE DREAM CITY"
 }

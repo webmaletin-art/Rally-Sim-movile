@@ -2667,5 +2667,13 @@
 "En el mundo online tu billetera de créditos online y tus autos online (con mejoras, pintura y gomas) viven en nuestro servidor (Supabase), no en tu teléfono, y son aparte de tu perfil sin conexión. Con el tiempo real, mientras estás en el mundo online tu auto (posición en el mapa del juego, velocidad, rumbo, modelo y pintura) se envía varias veces por segundo a los jugadores cercanos para que te vean moverte; ese tráfico no se guarda. Las compras con créditos online, los anuncios del mercado y el regalo diario quedan registrados para evitar abusos y se borran con tu cuenta.": "In the online world, your online credits wallet and your online cars (with upgrades, paint and tires) live on our server (Supabase), not on your phone, and are separate from your offline profile. With real time, while you are in the online world your car (position on the in-game map, speed, heading, model and paint) is sent several times per second to nearby players so they can see you move; that traffic is not stored. Purchases with online credits, market listings and the daily gift are logged to prevent abuse and are deleted along with your account.",
 "Audio simple (sólo motor; sirve si el juego se cierra solo)": "Simple audio (engine only; use it if the game closes by itself)",
 "COPIAR REGISTRO": "COPY LOG",
-"Registro copiado: pegalo en un mensaje": "Log copied: paste it into a message"
+"Registro copiado: pegalo en un mensaje": "Log copied: paste it into a message",
+"🚨 ¡CONTROL POLICIAL! Te persiguen %d patrulleros": "🚨 POLICE CHECKPOINT! %d patrol cars are after you",
+"😎 ¡Los perdiste! La policía abandona la persecución": "😎 You lost them! The police give up the chase",
+"🚔 ARRESTADO · pagaste la multa: $%d. Estás frente a la comisaría de Dream City": "🚔 ARRESTED · you paid the fine: $%d. You are outside the Dream City police station",
+"⚠ CONTROL POLICIAL ADELANTE · %d m": "⚠ POLICE CHECKPOINT AHEAD · %d m",
+"🚨 PERSECUCIÓN · %d 🚓 · nivel %d": "🚨 CHASE · %d 🚓 · level %d",
+"escapando %d/%d s": "escaping %d/%d s",
+"COMISARÍA": "POLICE STATION",
+"POLICÍA DE DREAM CITY": "DREAM CITY POLICE"
 }
