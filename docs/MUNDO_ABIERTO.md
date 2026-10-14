@@ -23,7 +23,10 @@ Ocho locales con puerta de garage, cada uno en una avenida, con cartel de su col
 
 | Local | Qué hace |
 |---|---|
-| Concesionario Dream City | autos nuevos y garaje |
+| Concesionario Dream City (Avenida 7) | todos los autos nuevos y garaje |
+| Rally & 4x4 del Puerto (Avenida 5) | rally, camionetas, buggy y camiones |
+| Clásicos de Colección (Avenida 3) | clásicos y muscle cars |
+| Dream Motorsport (Avenida 1) | deportivos de pista, superdeportivos, hypercars y el Interceptor |
 | Taller de Pintura | colores, acabados, llantas, pinzas y discos |
 | Taller de Motor | motor, turbo, aligerado y nitro |
 | Taller de Transmisión | caja de cambios, diferencial y reparto de tracción |
@@ -32,7 +35,8 @@ Ocho locales con puerta de garage, cada uno en una avenida, con cartel de su col
 | Reglaje Central (pista) | aerodinámica, alineación y presiones |
 | Reglaje del Puerto (tierra y drift) | suspensión, frenos, transmisión y extras |
 
-Se definen en `godot/game/data/shops.gd` (qué pestañas, mejoras y grupos de ajuste muestra cada uno) y en `POI_SPECS` de `city_layout.gd` (dónde están). Cada local tiene una calle de entrada (`kind = "bay"`) que cruza la vereda hasta adentro del edificio. El flujo está en `city_shops.gd` (círculo, portón, entrada y fundido) y en `app.gd`/`menu.gd` (`city_return`: vuelta a la calle).
+Se definen en `godot/game/data/shops.gd` (qué pestañas, mejoras y grupos de ajuste muestra cada uno; en los concesionarios `cars` = qué venden y `display` = los 3 autos de la vidriera) y en `POI_SPECS` / `DEALER_SPECS` de `city_layout.gd` (dónde están).
+**Vidrieras (14/10/2026):** los cuatro concesionarios tienen la planta baja de vidrio a los dos lados del portón, con salón iluminado y 3 autos de verdad (modelo liviano, pintura de fábrica; `city_world.gd` → `_showroom`). El edificio sigue siendo sólido para los choques. Cada local tiene una calle de entrada (`kind = "bay"`) que cruza la vereda hasta adentro del edificio. El flujo está en `city_shops.gd` (círculo, portón, entrada y fundido) y en `app.gd`/`menu.gd` (`city_return`: vuelta a la calle).
 
 ## Subsuelo (oculto: no figura en el mapa ni en el GPS)
 - **Túnel en cruz**: dos calles cubiertas de 1,8 km que se cruzan en el centro (con curvas). Es un tubo cerrado (piso con rayas, paredes con franja, techo con lámparas); en el cruce las paredes se abren hacia la otra calle. Cuatro **bocas** escondidas fuera del centro: este y oeste (en las rutas 20 y 40), norte (ruta 60) y sur (costanera). Se entra por una y se sale por la boca del brazo por el que se llegue al final, con la velocidad conservada.

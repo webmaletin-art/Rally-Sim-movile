@@ -4,7 +4,17 @@ extends RefCounted
 
 const SHOPS := {
 	"dealer": {"name": "Concesionario Dream City", "short": "Concesionario", "icon": "🚗", "color": Color(0.20, 0.45, 0.85), "kind": "dealer",
-		"info": "Autos nuevos y tu garaje."},
+		"info": "Autos nuevos y tu garaje.", "display": ["hatch", "gt", "veltor"]},
+	# concesionarios de especialidad: venden sólo su rubro (cars) y muestran 3 autos de verdad en la vidriera (display)
+	"dealer_rally": {"name": "Rally & 4x4 del Puerto", "short": "Rally y 4x4", "icon": "🚙", "color": Color(0.85, 0.42, 0.12), "kind": "dealer",
+		"info": "Autos de rally, camionetas y camiones para la tierra.", "display": ["hatch2", "kodiak", "buggy"],
+		"cars": ["hatch2", "pickup", "suv", "kodiak", "camo", "buggy", "truck", "titan", "rally80", "genesis"]},
+	"dealer_classic": {"name": "Clásicos de Colección", "short": "Clásicos", "icon": "🏁", "color": Color(0.62, 0.12, 0.14), "kind": "dealer",
+		"info": "Clásicos y muscle cars de colección.", "display": ["clasico60", "torito", "muscle"],
+		"cars": ["torito", "clasico60", "muscle", "rally80", "gt"]},
+	"dealer_sport": {"name": "Dream Motorsport", "short": "Motorsport", "icon": "🏎", "color": Color(0.10, 0.10, 0.12), "kind": "dealer",
+		"info": "Deportivos de pista, superdeportivos e hypercars.", "display": ["gt3", "strix", "hyper"],
+		"cars": ["trilux", "pro_gt", "kl5", "trilux_s", "trilux_gt", "gt3", "veltor", "strix", "veltor_s", "moust", "veltor_gtr", "hyper", "police"]},
 	"paint": {"name": "Taller de Pintura", "short": "Pintura", "icon": "🎨", "color": Color(0.85, 0.30, 0.65), "kind": "workshop", "tabs": [3, 5],
 		"info": "Colores, acabados, llantas, pinzas, discos y estética."},
 	"engine": {"name": "Taller de Motor", "short": "Motor", "icon": "⚙️", "color": Color(0.88, 0.25, 0.20), "kind": "workshop", "tabs": [0], "parts": ["engine", "turbo", "weight", "nitro"],

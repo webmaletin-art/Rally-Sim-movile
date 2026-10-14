@@ -43,7 +43,7 @@ func _init() -> void:
 	check(c.roads.size() >= 47, "%d calles (%.1f km de calzada)" % [c.roads.size(), km])
 	check(rural_n == 4 and c.exits.size() == 4, "4 rutas rurales con su Salida numerada (%s)" % str(c.exits.map(func(e): return e["num"])))
 	check(c.junctions.size() > 140, "%d cruces" % c.junctions.size())
-	check(c.slab_count > 3000 and c.building_count == 8, "%d frentes de edificios y %d lugares especiales (el concesionario y siete talleres)" % [c.slab_count, c.building_count])
+	check(c.slab_count > 3000 and c.building_count == 11, "%d frentes de edificios y %d lugares especiales (cuatro concesionarios y siete talleres)" % [c.slab_count, c.building_count])
 	# gasolineras: cuatro, con 3 a 6 puntos de carga; ningún punto de carga sobre una calle y ningún punto del playón sobre el asfalto
 	check(c.stations.size() == 6, "hay %d gasolineras (4 de la ciudad y 2 en la Ruta Panorámica)" % c.stations.size())
 	var fast_n := 0

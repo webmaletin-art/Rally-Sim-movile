@@ -79,6 +79,7 @@ El dueño vio **tierra y pasto sobre el asfalto**, cercos y casas sobre las call
 
 ## Sectores habilitados (14/10/2026, `game/data/sectors.json`, `game/region/sectors.gd`, `game/city/city_sectors.gd`)
 Pedido del dueño: mejorar Dream City por partes y mientras tanto dejar manejable sólo lo que está listo, sin borrar nada.
+**Hoy (14/10/2026, pedido del dueño) está TODO ABIERTO (`open_all: true`):** «no cierres las otras ciudades, la policía ya es un obstáculo». Lo de abajo describe el modo con sectores en obra, que queda listo para cuando se quiera usar.
 - **Abiertos:** Dream City (círculo de 3,9 km: la ciudad y la circunvalación) y la **Ruta a la Sierra (oeste)**: el polígono que va de la ciudad hacia la izquierda del mapa con Bahía Ámbar, Paso del Cóndor, Laguna Blanca, Arroyo Claro, San Ramiro, El Algarrobal, Los Molles y las rutas de montaña.
 - **En obra (el resto):** se ve en el mapa (rayado oscuro encima del relieve, `CityHud._closed_tex`), pero no se aparece ahí (menú «¿DÓNDE APARECER?» y «última ubicación»), no hay carreras ni controles policiales,
   y cada ruta que entra tiene una **barrera de obra** física y visible a 28 m del límite, de banquina a banquina (barreras New Jersey rojas y blancas + cartel «⛔ CAMINO CERRADO · Sector en obra · Próximamente»;

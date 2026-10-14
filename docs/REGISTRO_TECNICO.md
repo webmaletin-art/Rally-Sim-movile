@@ -5,6 +5,28 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 14/10/2026 · Cierre de golpe: primer registro del teléfono (2 cierres) + motivo del cierre según Android
+- **Síntoma (dueño, con «COPIAR REGISTRO»):** dos cierres seguidos en Dream City con el R2 Turbo, contenido r171, Z2356 (Mali-G57), APK viejo (sin CrashGuard).
+  Sesión 1: carga a los 83 s, **nunca aceleró** (0 km/h todo el tiempo), se cerró entre los 96 y 98 s. Sesión 2: carga a los 77 s, acelera a los 79 s, suelta a 37 km/h, se cerró entre los 85,6 y 87,6 s.
+  En las dos el audio estaba en **SIMPLE** (sólo motor y golpes). FPS 32–36 estables, memoria de video 256 MB estable (no crece). El único error del motor es inofensivo (desconectar una señal que no existe).
+- **Descartado con estos datos:** el acelerador (la sesión 1 se cerró quieta) y las voces/filtros de `car_audio.gd` (las dos con audio simple). La memoria de video no crece.
+- **Hipótesis que quedan (sin confirmar):** (1) Android lo cierra por **falta de RAM** (el registro no medía la RAM del proceso: `MEMORY_STATIC` da 0 en Android); (2) **error nativo** del motor o del driver (los cierres empezaron el 14/10, al día siguiente de pasar a Godot 4.5.1); (3) algo que se arma 8–15 s después de cargar la ciudad (cuadras que se siguen armando: los nodos suben de 454 a 478 antes del cierre).
+- **Cambio:** `game/diag/crash_log.gd`: `ram_line()` (RAM real del juego desde `/proc/self/status` y RAM libre del teléfono con `OS.get_memory_info()`) en cada línea; `_exit_reasons()`: tras un cierre de golpe le pregunta a Android (`ActivityManager.getHistoricalProcessExitReasons`, vía `AndroidRuntime`) el motivo de los últimos 3 cierres (falta de memoria / error nativo / ANR…, con la RAM que usaba). Si esa consulta llegara a cerrar el juego, la marca `exitinfo.try` impide repetirla. `race.gd`: una línea por segundo (antes cada 2 s).
+- **Pruebas:** `crash_log_test`, `scripts_parse_test`. La consulta a Android sólo se puede probar en el teléfono.
+- **Resultado:** PENDIENTE DE APK. **Siguiente paso:** el dueño juega hasta que se cierre, abre y pega «COPIAR REGISTRO»: la línea `[android] cierre 1: …` dice la causa. Si dice FALTA DE MEMORIA → bajar lo que ocupa RAM (modelo del auto, cuadras, texturas); si dice ERROR NATIVO → probar con el motor 4.4.1 (revertir la migración) o aislar el sistema con el 📊.
+- **Leer la próxima vez:** esta entrada, `game/diag/crash_log.gd`.
+
+---
+
+## 14/10/2026 · Ciudades abiertas otra vez (pedido del dueño) + concesionarios con vidriera
+- **Pedido:** «No vayas a cerrar las otras ciudades, total la policía ya es un obstáculo»; que los jugadores intenten ir, los atrape la policía en el tramo y vuelvan a Dream City; sólo un buen conductor con un auto muy rápido pasa. Además (prompt maestro): concesionarios con 3–4 autos reales del catálogo en vidrieras.
+- **Cambios:** `game/data/sectors.json` → `open_all: true` (todo abierto: 79 carreras y 176 controles policiales; el sistema de sectores queda para usarlo cuando haga falta). `tests/sectors_test.gd` prueba el modo con sectores en obra forzándolo con `Sectors.force_open_all(false)` (nuevo: asignar `Sectors._open_all` desde otro script después de `reload()` no se aplicaba en Godot 4.5.1 y la prueba quedaba colgada tras un error).
+  Concesionarios: `data/shops.gd` (`dealer_rally`, `dealer_classic`, `dealer_sport` con `cars` = lo que venden y `display` = los 3 autos de la vidriera; el general muestra 3 también), `city/city_layout.gd` (`DEALER_SPECS` + `_place_dealers()` después del estacionamiento, para no correr los números de las calles; `_place_poi` sale de `_place_pois`; la huella de un local con vidriera deja 3 m libres para que las fachadas no la tapen — antes el concesionario quedaba detrás de las fachadas genéricas), `city/city_world.gd` (`_box_building` abre la planta baja del frente; `_showroom`: salones con piso, techo, luces, vidrio y parantes, y 3 autos de verdad con el modelo liviano y la pintura de fábrica; `_display_car`), `ui/menu_garage.gd` (`dealer`: la tienda de un concesionario de especialidad sólo muestra su rubro), `ui/menu.gd` (se limpia al volver al inicio o a la calle).
+- **Pruebas:** `scripts_parse_test` OK; `city_test` (11 locales: 4 concesionarios y 7 talleres); capturas `tests/city_shots.gd … 3` de los cuatro frentes revisadas a ojo (vidrio, autos adentro, portón en el medio).
+- **Resultado:** PENDIENTE DE APK (¿se ven bien los autos en la vidriera?, ¿FPS al pasar por delante?).
+
+---
+
 ## 14/10/2026 · Menú principal, Carrera rápida y menú online
 - **Pedido:** AVENTURA y MODO ONLINE como accesos principales; Carrera rápida como zona de práctica (pistas, mapas, mundo abierto, Travesía X, Rutas); sacar los mapas «Prueba»; menú online más moderno y claro, sin botones de adorno.
 - **Cambios:** `ui/menu.gd` (`_home`, `_quick_hub`, `menu_button` con tamaño de letra), `ui/menu_career.gd` (mapas `prueba_*` sólo en modo desarrollador), `ui/menu_world.gd` (`_online_hub` nuevo, `_tile_sub`), textos `b60_menus.py`. Detalle: `docs/MENU_PREMIUM.md`.

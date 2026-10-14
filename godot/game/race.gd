@@ -2961,7 +2961,7 @@ func _process(dt: float) -> void:
 	if res_auto:
 		_auto_res(dt)
 
-## Migas para el registro de diagnóstico (diag/crash_log.gd): cada 2 s mientras se maneja, velocidad, marcha, acelerador y memoria;
+## Migas para el registro de diagnóstico (diag/crash_log.gd): cada segundo mientras se maneja, velocidad, marcha, acelerador y memoria;
 ## al acelerar a fondo desde parado, una línea extra. Si el juego se cierra de golpe, la última línea dice qué estaba pasando.
 var _dg_t := 0.0
 var _dg_gas := false
@@ -2974,7 +2974,7 @@ func _diag_tick(dt: float) -> void:
 		CrashLog.mark("gas", "a fondo · %d km/h · %s" % [int(sqrt(p.vx * p.vx + p.vz * p.vz) * 3.6), CrashLog.mem_line()])
 	_dg_gas = gas
 	_dg_t += dt
-	if _dg_t < 2.0:
+	if _dg_t < 1.0:
 		return
 	_dg_t = 0.0
 	CrashLog.mark("auto", "%d km/h · %d rpm · %dª · gas %.1f · %s" % [int(sqrt(p.vx * p.vx + p.vz * p.vz) * 3.6), int(p.rpm), int(p.gear), controls.gas if controls != null else 0.0, CrashLog.mem_line()])

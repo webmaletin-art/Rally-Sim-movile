@@ -1051,6 +1051,13 @@ func _box_building(s: Soup, b: Dictionary) -> void:
 		var sz := Vector2(wd, h)
 		# v empieza en 0 a la altura de la calle (por debajo es el faldón)
 		var outv := ((p + q) * 0.5 - cen).normalized()
+		if b.has("show") and outv.dot(b["fn"]) > 0.9:
+			# concesionario: la planta baja del frente es la vidriera (_showroom); la pared va abajo de la vereda y arriba de la vidriera
+			var lo := Vector3(0, by + 0.1 - base, 0)
+			var hi := Vector3(0, by + SHOW_H - base, 0)
+			s.quad_out(a, a + lo, bb + lo, bb, wall, outv, Vector2(0, base - by), Vector2(0, 0.1), Vector2(wd, 0.1), Vector2(wd, base - by), sz)
+			s.quad_out(a + hi, dd, cc, bb + hi, wall, outv, Vector2(0, SHOW_H), Vector2(0, h), Vector2(wd, h), Vector2(wd, SHOW_H), sz)
+			continue
 		s.quad_out(a, dd, cc, bb, wall, outv, Vector2(0, base - by), Vector2(0, h), Vector2(wd, h), Vector2(wd, base - by), sz)
 	# techo
 	if bool(b["hip"]):
@@ -1680,6 +1687,8 @@ func _shop_front(b: Dictionary) -> Node3D:
 			p = q
 	if p.is_empty() or str(p["shop"]) == "":
 		return root
+	if b.has("show"):
+		root.add_child(_showroom(b, p))
 	var col: Color = p["color"]
 	var door_p: Vector2 = p["door"]
 	var dir: Vector2 = p["dir"]
@@ -1792,6 +1801,142 @@ func _shop_front(b: Dictionary) -> Node3D:
 	circle.add_child(cmi)
 	root.add_child(circle)
 	return root
+
+## Vidriera de un concesionario (pedido del dueño: «autos reales del catálogo en vidrieras»): a cada lado del portón un salón de 9 m de fondo con piso
+## claro, luces en el techo, vidrio y 3 autos de verdad (los modelos livianos de la carrera, con la pintura de fábrica) que cambian según el local
+## (data/shops.gd → display). El edificio sigue siendo una caja sólida para los choques: la vidriera no se atraviesa.
+const SHOW_H := 5.4 # alto de la planta baja vidriada
+const SHOW_D := 9.0 # fondo del salón
+const Shops := preload("res://game/data/shops.gd")
+const CarBuildS := preload("res://game/data/car_build.gd")
+const ProfileS := preload("res://game/data/profile.gd")
+const CarVisualS := preload("res://game/car/car_visual.gd")
+const VehicleParamsS := preload("res://game/physics/vehicle_params.gd")
+static var _veh_cache: Dictionary = {}
+static var _glass_mat: StandardMaterial3D
+static var _lamp_mat: StandardMaterial3D
+
+func _showroom(b: Dictionary, p: Dictionary) -> Node3D:
+	var root := Node3D.new()
+	root.name = "showroom"
+	var door_p: Vector2 = p["door"]
+	var dir: Vector2 = p["dir"]
+	var yaw := atan2(-dir.x, -dir.y) # +z local mira hacia la calle
+	var by: float = b["y"]
+	var xf := Transform3D(Basis(Vector3.UP, yaw), Vector3(door_p.x, by, door_p.y))
+	var hw: float = float(b["w"]) * 0.5 - 0.25
+	var gap := 4.0 # medio ancho del pasillo del portón
+	var wall: Color = b["wall"]
+	wall.a = 1.0
+	var v := PackedVector3Array()
+	var c := PackedColorArray()
+	var lv := PackedVector3Array()
+	var lc := PackedColorArray()
+	var floor_c := Color(0.36, 0.37, 0.40) # piso pulido oscuro: los autos se despegan
+	var in_c := Color(0.74, 0.73, 0.70)
+	var frame_c := Color(0.13, 0.13, 0.15)
+	for sd in [-1.0, 1.0]:
+		var x0: float = gap * sd
+		var x1: float = hw * sd
+		var cx: float = (x0 + x1) * 0.5
+		var w := absf(x1 - x0)
+		CityProps.box(v, c, xf, Vector3(cx, 0.1, -SHOW_D * 0.5), Vector3(w, 0.2, SHOW_D), floor_c) # piso
+		CityProps.box(v, c, xf, Vector3(cx, SHOW_H - 0.1, -SHOW_D * 0.5), Vector3(w, 0.2, SHOW_D), in_c) # techo
+		CityProps.box(v, c, xf, Vector3(cx, SHOW_H * 0.5, -SHOW_D), Vector3(w, SHOW_H, 0.2), wall.lerp(Color(0.95, 0.95, 0.95), 0.55)) # fondo
+		CityProps.box(v, c, xf, Vector3(x0, SHOW_H * 0.5, -SHOW_D * 0.5), Vector3(0.2, SHOW_H, SHOW_D), in_c) # costado del pasillo
+		CityProps.box(v, c, xf, Vector3(x1, SHOW_H * 0.5, -SHOW_D * 0.5), Vector3(0.2, SHOW_H, SHOW_D), in_c) # costado de afuera
+		CityProps.box(v, c, xf, Vector3(cx, SHOW_H * 0.72, -SHOW_D + 0.12), Vector3(w * 0.8, 0.5, 0.05), wall) # franja del color del local
+		CityProps.box(v, c, xf, Vector3(cx, 0.25, 0.0), Vector3(w, 0.3, 0.16), frame_c) # zócalo
+		CityProps.box(v, c, xf, Vector3(cx, SHOW_H - 0.12, 0.0), Vector3(w, 0.24, 0.16), frame_c) # dintel
+		var nm := int(ceil(w / 3.2))
+		for k in nm + 1:
+			CityProps.box(v, c, xf, Vector3(x0 + (x1 - x0) * float(k) / float(nm), SHOW_H * 0.5, 0.0), Vector3(0.12, SHOW_H, 0.16), frame_c) # parantes
+		for k in 3:
+			CityProps.box(lv, lc, xf, Vector3(cx, SHOW_H - 0.22, -1.6 - float(k) * 2.9), Vector3(w * 0.8, 0.05, 0.35), Color(1, 1, 1)) # luces
+	CityProps.box(v, c, xf, Vector3(0, (4.8 + SHOW_H) * 0.5, 0.0), Vector3(gap * 2.0, SHOW_H - 4.8, 0.3), wall) # pared sobre el portón
+	var m := ArrayMesh.new()
+	PaperKit.add_surface(m, v, c, PaperKit.material(null, 0.0, 0.2, 0.15))
+	var mi := MeshInstance3D.new()
+	mi.mesh = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	if _lamp_mat == null:
+		_lamp_mat = StandardMaterial3D.new()
+		_lamp_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_lamp_mat.vertex_color_use_as_albedo = true
+		_glass_mat = StandardMaterial3D.new()
+		_glass_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_glass_mat.albedo_color = Color(0.62, 0.76, 0.86, 0.18)
+		_glass_mat.metallic = 0.5
+		_glass_mat.roughness = 0.04
+		_glass_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var lm := ArrayMesh.new()
+	PaperKit.add_surface(lm, lv, lc, _lamp_mat)
+	var lmi := MeshInstance3D.new()
+	lmi.mesh = lm
+	lmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(lmi)
+	# el vidrio: un plano por salón, delante de los parantes
+	for sd in [-1.0, 1.0]:
+		var g := MeshInstance3D.new()
+		var qm := QuadMesh.new()
+		qm.size = Vector2(hw - gap, SHOW_H - 0.4)
+		g.mesh = qm
+		g.material_override = _glass_mat
+		g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		g.transform = xf * Transform3D(Basis.IDENTITY, Vector3((gap + hw) * 0.5 * sd, SHOW_H * 0.5 + 0.1, 0.1))
+		root.add_child(g)
+	# los autos: dos en el salón izquierdo y uno sobre una tarima en el derecho
+	var disp: Array = Shops.get_shop(str(b["show"])).get("display", [])
+	var spots := [[Vector3(-hw + 3.4, 0.2, -4.6), 0.62], [Vector3(-gap - 3.1, 0.2, -4.4), 0.62], [Vector3((gap + hw) * 0.5, 0.42, -4.5), -0.7]]
+	for i in mini(disp.size(), spots.size()):
+		var car := _display_car(str(disp[i]))
+		if car == null:
+			continue
+		var sp: Array = spots[i]
+		var at: Vector3 = sp[0]
+		if i == 2:
+			var tb := MeshInstance3D.new()
+			var cy := CylinderMesh.new()
+			cy.top_radius = 3.0
+			cy.bottom_radius = 3.1
+			cy.height = 0.22
+			cy.radial_segments = 24
+			tb.mesh = cy
+			var tm := StandardMaterial3D.new()
+			tm.albedo_color = Color(0.16, 0.16, 0.18)
+			tm.metallic = 0.6
+			tm.roughness = 0.25
+			tb.material_override = tm
+			tb.transform = xf * Transform3D(Basis.IDENTITY, Vector3(at.x, 0.31, at.z))
+			root.add_child(tb)
+		var vp = car.get_meta("vp")
+		car.transform = xf * Transform3D(Basis(Vector3.UP, float(sp[1])), at + Vector3(0, float(vp.comHeight) - float(vp.rideOffset), 0))
+		root.add_child(car)
+	return root
+
+## Un auto del catálogo con la pintura de fábrica, quieto (modelo liviano, el de los rivales)
+func _display_car(vid: String) -> Node3D:
+	if _veh_cache.is_empty():
+		_veh_cache = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
+	if not _veh_cache.has(vid) or not (CarBuildS.catalog()["cars"] as Dictionary).has(vid):
+		return null
+	var st: Dictionary = ProfileS.new_car_state(vid)
+	var pp: Dictionary = st["paint"]
+	var vp = VehicleParamsS.from_dict(CarBuildS.build_params(_veh_cache[vid], st))
+	var vis := CarVisualS.new()
+	vis.mods = st.get("mods", {})
+	vis.setup(vp, true, Color(str(pp.get("body", "#1a4fe0"))), Color(str(pp.get("rim", "#2a2d33"))), str(pp.get("finish", "gloss")))
+	if int(pp.get("livery", 0)) > 0:
+		vis.race_number = str(pp.get("number", "77"))
+		vis.set_livery(int(pp["livery"]), Color(str(pp["body"])), Color(str(pp.get("accent", "#ff6a08"))), str(pp.get("finish", "gloss")), Color(str(pp.get("text", "#f2f2ee"))))
+	if pp.has("tire"):
+		vis.set_tire_color(Color(str(pp["tire"])))
+	vis.set_parts(pp)
+	vis.set_meta("vp", vp)
+	for n in vis.find_children("*", "GeometryInstance3D", true, false):
+		(n as GeometryInstance3D).visibility_range_end = 220.0 # de lejos no se dibujan (detrás del vidrio no se distinguen)
+	return vis
 
 ## Cartel de un edificio especial (concesionario, taller)
 func _sign(b: Dictionary) -> Node3D:

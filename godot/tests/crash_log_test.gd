@@ -59,7 +59,7 @@ func _run() -> void:
 	if not rep.contains("[gas] a fondo · prueba"):
 		print(rep)
 	_check(rep.contains("TERMINÓ DE GOLPE") and rep.contains("[gas] a fondo · prueba"), "el informe trae la sesión anterior con sus últimas líneas")
-	_check(rep.contains("mem ") and rep.contains("Godot"), "el informe trae teléfono y memoria")
+	_check(rep.contains("RAM juego") and rep.contains("video ") and rep.contains("Godot"), "el informe trae teléfono y memoria (RAM del juego y libre)")
 	# 4) se conservan a lo sumo KEEP sesiones
 	for i in CrashLog.KEEP + 3:
 		var f := FileAccess.open("%s/s_%d.log" % [CrashLog.DIR, 1000 + i], FileAccess.WRITE)

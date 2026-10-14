@@ -1,4 +1,4 @@
-## Sectores del mundo abierto (region/sectors.gd + game/data/sectors.json + city/city_sectors.gd): abiertos Dream City y el corredor oeste, el resto en obra
+## Sectores del mundo abierto (region/sectors.gd + game/data/sectors.json + city/city_sectors.gd): con open_all = false quedan abiertos Dream City y el corredor oeste, el resto en obra
 ## (barreras físicas en cada ruta que entra, sin aparecer ahí, sin carreras ni controles), y se puede abrir todo con open_all.
 ## Uso: godot --headless --path godot --script res://tests/sectors_test.gd
 extends "res://tests/police_test.gd"
@@ -13,14 +13,16 @@ func _run() -> void:
 	var vehicles: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
 	var tr := CityTrack.new()
 	var rg = tr.region
+	# el juego hoy tiene todo abierto (sectors.json → open_all = true: la policía es el obstáculo); la prueba mira el modo con sectores en obra
+	Sectors.is_open(Vector2.ZERO)
+	Sectors.force_open_all(false)
 	_check(Sectors.is_open(Vector2.ZERO) and Sectors.is_open(Vector2(-36800, -1700)) and Sectors.is_open(Vector2(-49800, -29000)), "abiertos: Dream City, Bahía Ámbar y Paso del Cóndor (sierra)")
 	_check(not Sectors.is_open(Vector2(42800, 300)) and not Sectors.is_open(Vector2(30000, -47000)), "en obra: Puerto Alba y Monte Sol")
 	# todo se abre con open_all (reversible)
-	Sectors._open_all = true
+	Sectors.force_open_all(true)
 	_check(Sectors.is_open(Vector2(42800, 300)), "open_all abre todo")
 	Sectors.reload()
-	Sectors._open_all = false
-	Sectors.reload()
+	Sectors.force_open_all(false)
 	# barreras
 	var gates := CitySectors.find_gates(rg)
 	_check(gates.size() > 5, "barreras de obra en las rutas que entran a sectores cerrados: %d" % gates.size())

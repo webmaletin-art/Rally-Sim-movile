@@ -28,6 +28,7 @@ var ws_tab := 0
 var body_cat := 0
 const BODY_CATS := ["spoiler", "front_bumper", "rear_bumper", "side_skirt", "hood"]
 var shop := "" # taller de Dream City en el que se está (vacío: el taller completo del menú)
+var dealer := "" # concesionario de Dream City en el que se está (vacío: la tienda completa del menú); los de especialidad venden sólo su rubro
 var up_cat := 0
 var pv := {} # vista previa SIN comprar (mejoras, gomas y piezas): {id, kind: upg|tire|part, key, lvl, cat}. Se ve en el auto y en los números; la plata se pide recién al tocar COMPRAR
 var tune_stats_box: VBoxContainer
@@ -55,6 +56,8 @@ func build(name: String, arg) -> void:
 				m.go("home")
 			elif str(sd["kind"]) == "dealer":
 				shop = ""
+				dealer = str(arg)
+				shop_i = 0
 				m.go("dealer", null, false)
 			else:
 				ws_tab = int((sd["tabs"] as Array)[0])
@@ -80,6 +83,8 @@ func shop_info() -> Dictionary:
 ## Título de la barra superior cuando se entra desde la calle (taller de Dream City o concesionario)
 func city_title() -> String:
 	var sd := shop_info()
+	if sd.is_empty() and dealer != "":
+		sd = Shops.get_shop(dealer)
 	if not sd.is_empty():
 		return "%s %s" % [sd["icon"], tr(str(sd.get("title", sd["name"])))]
 	return tr("TIENDA")
@@ -122,11 +127,12 @@ func _class_badge(cls: Dictionary, size := 24) -> Label:
 # ───────────────────────── garaje / tienda ─────────────────────────
 func _ids(mine: bool) -> Array:
 	var out: Array = []
+	var only: Array = Shops.get_shop(dealer).get("cars", []) if dealer != "" else []
 	for id in _cat()["order"]:
 		if mine:
 			if m.profile.owns(str(id)):
 				out.append(str(id))
-		elif Release.car_for_sale(m.profile, str(id)):
+		elif Release.car_for_sale(m.profile, str(id)) and (only.is_empty() or only.has(str(id))):
 			out.append(str(id))
 	if mine: # especiales (monoplaza) que ya tenés, sólo si están habilitados (o en modo desarrollador)
 		for id in Release.special_ids(m.profile):

@@ -426,6 +426,7 @@ var adv_car_shown := false
 func go(name: String, arg = null, push := true) -> void:
 	if name == "home":
 		garage.shop = ""
+		garage.dealer = ""
 	if adv_car_shown and not name.begins_with("adv"):
 		adv_car_shown = false
 		refresh_car()
@@ -604,6 +605,7 @@ func return_to_city() -> void:
 	var c: Dictionary = app.city_return.duplicate(true)
 	app.city_return = {}
 	garage.shop = ""
+	garage.dealer = ""
 	var pid: String = profile.current_id()
 	c["car"] = pid
 	c["state"] = profile.car()

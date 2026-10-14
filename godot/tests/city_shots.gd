@@ -78,6 +78,17 @@ func _init() -> void:
 		var cam_p := fr - Vector2(sin(ty), cos(ty)) * 13.0
 		var dv: Vector2 = (pp["door"] as Vector2) - cam_p
 		shots.append(["30_local_%s" % str(pp["id"]), cam_p.x, cam_p.y, rad_to_deg(atan2(dv.x, dv.y)), 2.8, -3.0])
+	for pd in track.city.pois: # concesionarios con vidriera: desde la vereda de enfrente y de cerca, de costado
+		if str(pd["kind"]) != "dealer":
+			continue
+		var ddr: Vector2 = pd["dir"]
+		var dlat := Vector2(ddr.y, -ddr.x)
+		var ddo: Vector2 = pd["door"]
+		var cam_a := ddo - ddr * 22.0
+		shots.append(["31_conc_%s" % str(pd["id"]), cam_a.x, cam_a.y, rad_to_deg(atan2(ddr.x, ddr.y)), 2.2, -2.0])
+		var cam_b := ddo - ddr * 6.0 + dlat * 10.0
+		var dvb := ddo + ddr * 4.0 + dlat * 9.0 - cam_b
+		shots.append(["32_conc_%s_cerca" % str(pd["id"]), cam_b.x, cam_b.y, rad_to_deg(atan2(dvb.x, dvb.y)), 1.7, -4.0])
 	shots.append(["70_garaje_g_este", 6000.0, 6012.0, 90.0, 1.7, -2.0])
 	shots.append(["71_garaje_g_norte", 6000.0, 6020.0, 180.0, 1.7, -2.0])
 	shots.append(["72_garaje_rampa_u", 6026.0, 6000.0, 90.0, 1.7, 0.0])

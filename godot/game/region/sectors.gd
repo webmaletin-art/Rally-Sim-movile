@@ -65,3 +65,8 @@ static func reload() -> void:
 	_circles.clear()
 	_polys.clear()
 	_load()
+
+## Sólo para pruebas: forzar todo abierto / con sectores en obra (asignar _open_all desde otro script después de reload() no siempre se aplica)
+static func force_open_all(v: bool) -> void:
+	_load()
+	_open_all = v

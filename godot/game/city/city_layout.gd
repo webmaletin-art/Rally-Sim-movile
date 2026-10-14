@@ -172,6 +172,7 @@ func build() -> void:
 	_place_stations()
 	_place_tolls()
 	_place_garage()
+	_place_dealers()
 	_place_facades()
 	_place_props()
 	_place_roadside()
@@ -846,7 +847,7 @@ func _add_building(cen: Vector2, w: float, d: float, h: float, yaw: float, wall:
 	var ok_key := Vector2i(int(floor(cen.x / OCC)), int(floor(cen.y / OCC)))
 	if not _occ.has(ok_key):
 		_occ[ok_key] = []
-	(_occ[ok_key] as Array).append([cen.x, cen.y, yaw, w, d])
+	(_occ[ok_key] as Array).append([cen.x, cen.y, yaw, w, d, 3.0 if extra.has("show") else 0.0]) # (vidriera: 3 m libres alrededor, sin fachadas delante)
 	var key := chunk_of(cen.x, cen.y)
 	if not buildings.has(key):
 		buildings[key] = []
@@ -868,7 +869,8 @@ func _point_covered(x: float, z: float, margin := 0.3) -> bool:
 				var yw := float(c[2])
 				var dx := x - float(c[0])
 				var dz := z - float(c[1])
-				if absf(dx * sin(yw) + dz * cos(yw)) < float(c[3]) * 0.5 + margin and absf(dx * cos(yw) - dz * sin(yw)) < float(c[4]) * 0.5 + margin:
+				var mg := margin + (float(c[5]) if c.size() > 5 else 0.0)
+				if absf(dx * sin(yw) + dz * cos(yw)) < float(c[3]) * 0.5 + mg and absf(dx * cos(yw) - dz * sin(yw)) < float(c[4]) * 0.5 + mg:
 					return true
 	return false
 
@@ -1763,63 +1765,82 @@ func road_named(nm: String) -> int:
 			return int(r["id"])
 	return -1
 
+## Concesionarios de especialidad (rally y 4x4, clásicos, motorsport): mismo formato que POI_SPECS. Se arman DESPUÉS de las estaciones y del
+## estacionamiento para no correr los números de las calles que ya existían; tienen vidriera con autos de verdad (city_world: _showroom).
+const DEALER_SPECS := [
+	["conc_rally", "dealer", "Rally & 4x4 del Puerto", "Avenida 5", 420.0, 1.0, 34.0, 22.0, 9.6, Color(0.85, 0.42, 0.12), "dealer_rally"],
+	["conc_clasicos", "dealer", "Clásicos de Colección", "Avenida 3", 430.0, -1.0, 34.0, 22.0, 9.6, Color(0.62, 0.12, 0.14), "dealer_classic"],
+	["conc_motorsport", "dealer", "Dream Motorsport", "Avenida 1", 430.0, 1.0, 34.0, 22.0, 9.6, Color(0.16, 0.17, 0.20), "dealer_sport"],
+]
+
 func _place_pois() -> void:
 	pois.clear()
 	for sp in POI_SPECS:
-		var ri := road_named(str(sp[3]))
-		if ri < 0:
-			continue
-		var rd: Dictionary = roads[ri]
-		var pts: PackedVector3Array = rd["pts"]
-		var cum: PackedFloat32Array = rd["cum"]
-		var target := float(sp[4]) if float(sp[4]) >= 0.0 else float(cum[cum.size() - 1]) # −1 = el final de la calle
-		var bi := 0
-		for i in pts.size():
-			if cum[i] <= target:
-				bi = i
-		var a := pts[bi]
-		var b := pts[mini(bi + 1, pts.size() - 1)]
-		var tn := Vector2(b.x - a.x, b.z - a.z)
-		if tn.length() < 0.1:
-			tn = Vector2(a.x - pts[maxi(bi - 1, 0)].x, a.z - pts[maxi(bi - 1, 0)].z)
-		tn = tn.normalized()
-		var side := float(sp[5])
-		var nrm := Vector2(-tn.y, tn.x) * side
-		var yaw0 := atan2(tn.x, tn.y)
-		var back := 0.6 # se retira del borde de la vereda hasta que ninguna esquina pise una calle (en las curvas las esquinas asoman)
-		var cen := Vector2(a.x, a.z) + nrm * (float(rd["hw"]) + float(rd["sw"]) + LINE_GAP + back + float(sp[7]) * 0.5)
-		for it in 12:
-			var ok := true
-			for cx in [-0.5, 0.5]:
-				for cz in [-0.5, 0.5]:
-					var wp := cen + Vector2(sin(yaw0), cos(yaw0)) * (float(cx) * float(sp[6])) + Vector2(cos(yaw0), -sin(yaw0)) * (float(cz) * float(sp[7]))
-					if probe(wp.x, wp.y)[0] > -0.6:
-						ok = false
-			if ok:
-				break
-			back += 0.5
-			cen = Vector2(a.x, a.z) + nrm * (float(rd["hw"]) + float(rd["sw"]) + LINE_GAP + back + float(sp[7]) * 0.5)
-		if str(sp[1]) == "view":
-			cen = Vector2(a.x, a.z) # el mirador es la plazoleta del final del camino
-		var yaw := atan2(tn.x, tn.y)
-		var lane := Vector2(a.x, a.z) + nrm * (float(rd["hw"]) * 0.5)
-		var door := Vector2(a.x, a.z) + nrm * (float(rd["hw"]) + float(rd["sw"]) + LINE_GAP + back) # el plano del frente del local
-		pois.append({"id": str(sp[0]), "kind": str(sp[1]), "name": str(sp[2]), "pos": cen, "yaw": yaw, "size": Vector2(float(sp[6]), float(sp[7])), "color": sp[9],
-			"y": height(cen.x, cen.y), "road": ri, "front": lane, "shop": str(sp[10]), "door": door, "dir": nrm, "road_yaw": yaw})
-		if str(sp[10]) != "":
-			# la entrada: una calle cortita desde el círculo verde hasta adentro del local (así el auto puede entrar)
-			var plan := PackedVector3Array()
-			var dist := lane.distance_to(door) + 7.0
-			var n := int(ceil(dist / 3.0))
-			var cum_b := PackedFloat32Array()
-			for bi2 in n + 1:
-				var q := lane + nrm * (dist * float(bi2) / float(n))
-				plan.append(Vector3(q.x, height(q.x, q.y), q.y))
-				cum_b.append(dist * float(bi2) / float(n))
-			roads.append({"id": roads.size(), "name": "Entrada %s" % str(sp[2]), "num": 0, "kind": "bay", "hw": 3.2, "sw": 0.0, "pts": plan, "cum": cum_b, "nj": PackedByteArray([0]).duplicate()})
-			var nj_b := PackedByteArray()
-			nj_b.resize(plan.size())
-			roads[roads.size() - 1]["nj"] = nj_b
-			_index_road(roads.size() - 1)
-		if str(sp[1]) != "view":
-			_add_building(cen, float(sp[6]), float(sp[7]), float(sp[8]), yaw, sp[9], sp[9].darkened(0.3), zone_of(cen.x, cen.y), false, ri, {"poi": str(sp[0]), "side": -side})
+		_place_poi(sp)
+
+func _place_dealers() -> void:
+	for sp in DEALER_SPECS:
+		_place_poi(sp)
+
+func _place_poi(sp: Array) -> void:
+	var ri := road_named(str(sp[3]))
+	if ri < 0:
+		return
+	var rd: Dictionary = roads[ri]
+	var pts: PackedVector3Array = rd["pts"]
+	var cum: PackedFloat32Array = rd["cum"]
+	var target := float(sp[4]) if float(sp[4]) >= 0.0 else float(cum[cum.size() - 1]) # −1 = el final de la calle
+	var bi := 0
+	for i in pts.size():
+		if cum[i] <= target:
+			bi = i
+	var a := pts[bi]
+	var b := pts[mini(bi + 1, pts.size() - 1)]
+	var tn := Vector2(b.x - a.x, b.z - a.z)
+	if tn.length() < 0.1:
+		tn = Vector2(a.x - pts[maxi(bi - 1, 0)].x, a.z - pts[maxi(bi - 1, 0)].z)
+	tn = tn.normalized()
+	var side := float(sp[5])
+	var nrm := Vector2(-tn.y, tn.x) * side
+	var yaw0 := atan2(tn.x, tn.y)
+	var back := 0.6 # se retira del borde de la vereda hasta que ninguna esquina pise una calle (en las curvas las esquinas asoman)
+	var cen := Vector2(a.x, a.z) + nrm * (float(rd["hw"]) + float(rd["sw"]) + LINE_GAP + back + float(sp[7]) * 0.5)
+	for it in 12:
+		var ok := true
+		for cx in [-0.5, 0.5]:
+			for cz in [-0.5, 0.5]:
+				var wp := cen + Vector2(sin(yaw0), cos(yaw0)) * (float(cx) * float(sp[6])) + Vector2(cos(yaw0), -sin(yaw0)) * (float(cz) * float(sp[7]))
+				if probe(wp.x, wp.y)[0] > -0.6:
+					ok = false
+		if ok:
+			break
+		back += 0.5
+		cen = Vector2(a.x, a.z) + nrm * (float(rd["hw"]) + float(rd["sw"]) + LINE_GAP + back + float(sp[7]) * 0.5)
+	if str(sp[1]) == "view":
+		cen = Vector2(a.x, a.z) # el mirador es la plazoleta del final del camino
+	var yaw := atan2(tn.x, tn.y)
+	var lane := Vector2(a.x, a.z) + nrm * (float(rd["hw"]) * 0.5)
+	var door := Vector2(a.x, a.z) + nrm * (float(rd["hw"]) + float(rd["sw"]) + LINE_GAP + back) # el plano del frente del local
+	pois.append({"id": str(sp[0]), "kind": str(sp[1]), "name": str(sp[2]), "pos": cen, "yaw": yaw, "size": Vector2(float(sp[6]), float(sp[7])), "color": sp[9],
+		"y": height(cen.x, cen.y), "road": ri, "front": lane, "shop": str(sp[10]), "door": door, "dir": nrm, "road_yaw": yaw})
+	if str(sp[10]) != "":
+		# la entrada: una calle cortita desde el círculo verde hasta adentro del local (así el auto puede entrar)
+		var plan := PackedVector3Array()
+		var dist := lane.distance_to(door) + 7.0
+		var n := int(ceil(dist / 3.0))
+		var cum_b := PackedFloat32Array()
+		for bi2 in n + 1:
+			var q := lane + nrm * (dist * float(bi2) / float(n))
+			plan.append(Vector3(q.x, height(q.x, q.y), q.y))
+			cum_b.append(dist * float(bi2) / float(n))
+		roads.append({"id": roads.size(), "name": "Entrada %s" % str(sp[2]), "num": 0, "kind": "bay", "hw": 3.2, "sw": 0.0, "pts": plan, "cum": cum_b, "nj": PackedByteArray([0]).duplicate()})
+		var nj_b := PackedByteArray()
+		nj_b.resize(plan.size())
+		roads[roads.size() - 1]["nj"] = nj_b
+		_index_road(roads.size() - 1)
+	if str(sp[1]) != "view":
+		var ex := {"poi": str(sp[0]), "side": -side}
+		if str(sp[1]) == "dealer":
+			ex["show"] = str(sp[10]) # vidriera: la planta baja del frente es de vidrio (city_world: _showroom)
+			ex["fn"] = -nrm # normal del frente (hacia la calle)
+		_add_building(cen, float(sp[6]), float(sp[7]), float(sp[8]), yaw, sp[9], sp[9].darkened(0.3), zone_of(cen.x, cen.y), false, ri, ex)

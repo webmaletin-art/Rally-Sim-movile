@@ -4,8 +4,9 @@ extends Node
 ## nuevo sigue existiendo, pero el contenido no puede depender de él: un APK viejo no lo trae y la pantalla que lo cargaba se rompía.)
 ##  · Detecta si la sesión anterior terminó de golpe (marca en user:// que se borra al salir bien o al ir a segundo plano).
 ##  · Escribe su propio archivo por sesión (user://diag/s_<hora>.log) con escritura inmediata (flush): un cierre de golpe no pierde las últimas líneas.
-##  · Captura los mensajes y errores del motor (Logger de Godot 4.5) y las «migas» que deja el juego: carga, audio, carrera y cada 2 s la
-##    velocidad, FPS y memoria mientras se maneja. Con tope de líneas por segundo, para no escribir miles.
+##  · Captura los mensajes y errores del motor (Logger de Godot 4.5) y las «migas» que deja el juego: carga, audio, carrera y cada segundo la
+##    velocidad, FPS y memoria (RAM real del juego y libre del teléfono) mientras se maneja.
+##  · Tras un cierre de golpe le pregunta a Android el motivo (falta de memoria, error nativo, ANR…): _exit_reasons(). Con tope de líneas por segundo, para no escribir miles.
 ##  · report(): lo que copia el botón «COPIAR REGISTRO» (Acerca de y Opciones → Sonido): teléfono + sesión anterior + sesión actual.
 ## Se crea una sola vez en app.gd; los demás lo buscan con CrashLog.get_instance().
 
@@ -71,6 +72,7 @@ func _ready() -> void:
 	write("== sesión %s · %s" % [Time.get_datetime_string_from_system(), _device()])
 	if crashed_last_time:
 		write("[guard] la sesión anterior terminó de golpe (%d seguidas)" % crashes)
+		_exit_reasons()
 	_logger = _EngineLog.new()
 	_logger._o = weakref(self)
 	OS.add_logger(_logger)
@@ -161,9 +163,66 @@ func _save(d: Dictionary) -> void:
 		f.store_string(JSON.stringify(d))
 		f.close()
 
+## RAM que usa el juego de verdad (lo que mira Android para cerrarlo por falta de memoria) y la que le queda libre al teléfono.
+## (MEMORY_STATIC da 0 en las compilaciones de Android: no sirve.)
+static func ram_line() -> String:
+	var rss := -1
+	var f := FileAccess.open("/proc/self/status", FileAccess.READ) # (sólo Linux/Android; en otros sistemas no existe)
+	if f != null:
+		while not f.eof_reached():
+			var ln := f.get_line()
+			if ln.begins_with("VmRSS:"):
+				rss = int(ln.substr(6).strip_edges().split(" ")[0]) / 1024
+				break
+		f.close()
+	var mi: Dictionary = OS.get_memory_info()
+	var avail := int(mi.get("available", -1))
+	var phys := int(mi.get("physical", -1))
+	return "RAM juego %s · libre %s de %s" % ["%d MB" % rss if rss >= 0 else "?", "%d MB" % (avail / 1048576) if avail > 0 else "?", "%d MB" % (phys / 1048576) if phys > 0 else "?"]
+
+## Android (11 o más) guarda por qué terminó cada proceso de la app: falta de memoria, error nativo, «no responde»…
+## Se le pregunta al arrancar después de un cierre de golpe. Es la prueba que falta para saber la causa (docs/REGISTRO_TECNICO.md).
+## Si preguntarle llegara a cerrar el juego, la marca TRY queda y no se vuelve a intentar nunca más.
+const EXIT_TRY := "user://diag/exitinfo.try"
+const EXIT_REASONS := ["desconocido", "salió solo", "lo mató una señal", "FALTA DE MEMORIA (Android lo cerró)", "error de Java", "ERROR NATIVO (motor o driver)", "NO RESPONDE (ANR)",
+	"falló al iniciar", "cambio de permisos", "uso excesivo de recursos", "lo cerró el usuario", "detenido por el usuario", "dependencia cerrada", "otro", "congelado", "cambio de paquete", "app actualizada"]
+func _exit_reasons() -> void:
+	if OS.get_name() != "Android":
+		return
+	if FileAccess.file_exists(EXIT_TRY):
+		write("[android] (no se pregunta el motivo del cierre: la otra vez falló)")
+		return
+	if not Engine.has_singleton("AndroidRuntime"):
+		write("[android] sin AndroidRuntime: no se puede preguntar el motivo del cierre")
+		return
+	var t := FileAccess.open(EXIT_TRY, FileAccess.WRITE)
+	if t != null:
+		t.store_string("1")
+		t.close()
+	var rt: Object = Engine.get_singleton("AndroidRuntime")
+	var act: Variant = rt.call("getActivity")
+	if act is Object and act != null:
+		var am: Variant = act.call("getSystemService", "activity")
+		var pkg: Variant = act.call("getPackageName")
+		if am is Object and am != null and pkg is String:
+			var lst: Variant = am.call("getHistoricalProcessExitReasons", pkg, 0, 3)
+			if lst is Object and lst != null:
+				var n := int(lst.call("size"))
+				for i in mini(n, 3):
+					var e: Variant = lst.call("get", i)
+					if not (e is Object) or e == null:
+						continue
+					var r := int(e.call("getReason"))
+					var ts := int(e.call("getTimestamp")) / 1000
+					write("[android] cierre %d: %s (código %d, estado %s) · hace %d s · RAM %d MB (pss %d MB) · %s" % [i + 1,
+						EXIT_REASONS[r] if r >= 0 and r < EXIT_REASONS.size() else "?", r, str(e.call("getStatus")),
+						int(Time.get_unix_time_from_system()) - ts, int(e.call("getRss")) / 1024, int(e.call("getPss")) / 1024, str(e.call("getDescription"))])
+			else:
+				write("[android] Android no devolvió los motivos de cierre")
+	DirAccess.remove_absolute(EXIT_TRY)
+
 static func mem_line() -> String:
-	return "mem %.0f MB · video %.0f MB · tex %.0f MB · nodos %d · objetos %d · fps %d" % [
-		Performance.get_monitor(Performance.MEMORY_STATIC) / 1048576.0,
+	return ram_line() + " · video %.0f MB · tex %.0f MB · nodos %d · objetos %d · fps %d" % [
 		Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0,
 		Performance.get_monitor(Performance.RENDER_TEXTURE_MEM_USED) / 1048576.0,
 		int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)),
@@ -195,6 +254,10 @@ func report() -> String:
 			prev = DIR + "/" + str(fn)
 	var out := "DREAM RACING · registro\n" + _device() + "\n" + mem_line() + "\n"
 	out += "cierres de golpe seguidos: %d (la anterior %s)\n" % [crashes, "TERMINÓ DE GOLPE" if crashed_last_time else "terminó bien"]
+	if _path != "" and FileAccess.file_exists(_path): # el motivo que dio Android, siempre arriba (aunque la sesión actual sea larga)
+		for ln in FileAccess.get_file_as_string(_path).split("\n"):
+			if ln.contains("[android]"):
+				out += ln.strip_edges() + "\n"
 	out += "\n--- SESIÓN ANTERIOR [%s] ---\n%s\n" % [prev.get_file(), _tail(prev, 160) if prev != "" else "(no hay)"]
 	out += "\n--- SESIÓN ACTUAL ---\n%s\n" % _tail(_path, 50)
 	var gl := "user://logs/godot.log" # el registro del motor (sólo con el APK nuevo, que lo activa)
