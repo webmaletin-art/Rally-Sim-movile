@@ -243,7 +243,7 @@ end $$;
 
 -- ───────── los 26 autos de la lista definitiva están en el catálogo y se compran ─────────
 reset role;
-select tt.ok((select count(*) from public.online_cat_vehicles where buyable) = 26, 'el catálogo online tiene los 26 autos del juego (compra con créditos)');
+select tt.ok((select count(*) from public.online_cat_vehicles where buyable) = 28, 'el catálogo online tiene los 28 autos del juego (compra con créditos; el monoplaza especial no)');
 select tt.ok((select count(*) from public.online_cat_vehicles where starter) = 1 and (select id from public.online_cat_vehicles where starter) = 'hatch', 'un solo auto de partida: el R2 Turbo');
 select tt.ok(not (select buyable from public.online_cat_vehicles where id = 't1plus'), 't1plus (sólo física oculta) no se vende');
 

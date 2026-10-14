@@ -247,6 +247,12 @@ begin
   end if;
   r := ta.one('{"t":"buy_part","car":"hatch","part":"pieza_trucha"}');
   perform ta.ok(not (r ->> 'ok')::boolean, 'una pieza que no existe');
+  -- cosméticos (diseños de pintura, interiores y volantes: migración 20261015000000): se validan como piezas
+  r := ta.one('{"t":"buy_part","car":"hatch","part":"st_strix_vandal"}');
+  perform ta.ok(not (r ->> 'ok')::boolean, 'un diseño exclusivo de otro auto se rechaza: ' || coalesce(r ->> 'reason', ''));
+  c0 := (public.account_state() ->> 'credits')::bigint;
+  r := ta.one('{"t":"buy_part","car":"hatch","part":"st_rojo_negro"}');
+  perform ta.ok(((r ->> 'ok')::boolean and c0 - (r ->> 'credits')::bigint = 4500 and r -> 'cars' -> 'hatch' -> 'parts' ? 'st_rojo_negro') or (c0 < 4500 and not (r ->> 'ok')::boolean), 'un diseño de pintura se compra como pieza ($4.500)');
   -- cambiar las gomas puestas: la mitad de su precio, mínimo $250, con hasta 20 % de descuento por el rango
   c0 := (public.account_state() ->> 'credits')::bigint;
   r := ta.one('{"t":"replace_tires","car":"hatch","tire":"street","cost":250}');
