@@ -3,6 +3,7 @@ extends RefCounted
 ## apodo del jugador, cuenta/rankings y las pantallas «pronto». `m` es el menú (menu.gd): usa su cuerpo, sonidos, avisos y perfil.
 
 const Kit := preload("res://game/ui/ui_kit.gd")
+const Sectors := preload("res://game/region/sectors.gd")
 const Release := preload("res://game/data/release.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const OnlineSocial := preload("res://game/online/online_social.gd")
@@ -49,7 +50,7 @@ const SPAWN_PLACES := [["Central · Nivel calle", "Estacionamiento Central, a ni
 func _spawn_options() -> Array:
 	var out: Array = []
 	var lp: Variant = _last_pos_value()
-	if lp != null:
+	if lp != null and Sectors.is_open(Vector2(float(lp[0]), float(lp[1]))): # (en un sector en obra no se aparece)
 		out.append({"key": "last", "name": "📍 " + tr("ÚLTIMA UBICACIÓN"), "sub": tr("seguís desde donde dejaste el auto"), "pos": Vector2(float(lp[0]), float(lp[1])), "kind": "last", "spawn": -1})
 	for i in SPAWN_PLACES.size():
 		out.append({"key": "park%d" % i, "name": "🅿 " + tr(str(SPAWN_PLACES[i][0])), "sub": tr(str(SPAWN_PLACES[i][1])), "pos": Vector2.ZERO, "kind": "dream", "spawn": i})
@@ -59,6 +60,8 @@ func _spawn_options() -> Array:
 		for j in list.size():
 			var sp: Dictionary = list[j]
 			var pos := Vector2(float(sp["x"]), float(sp["z"]))
+			if not Sectors.is_open(pos):
+				continue # sector en obra: se ve en el mapa pero no se aparece ahí (game/data/sectors.json)
 			var city_like := str(sp.get("kind", "")) == "ciudad"
 			towns.append({"key": "town:%d" % j, "name": ("🏙 " if city_like else "🏘 ") + str(sp["name"]), "sub": tr("estación de servicio") + " · %d km " % roundi(pos.length() / 1000.0) + tr("de Dream City"),
 				"pos": pos, "kind": "ciudad" if city_like else "pueblo", "label": str(sp["name"]), "spawn": SPAWN_PLACES.size() + j})

@@ -25,6 +25,7 @@ var refs_on := true # referencias y lugares en el mapa (se oculta con el botón 
 var avg_v := 25.0 # velocidad promedio (m/s) para el tiempo estimado de llegada
 var eta_l: Label
 var _map_tex: Texture2D
+var _closed_tex: Texture2D # sombra de los sectores en obra (region/sectors.gd), 400 m por píxel
 var segs: Array = [] # cada tramo: {box: Rect2, pts: PackedVector2Array, hw: float, kind: String}
 var car_pos := Vector2.ZERO
 var heading := 0.0 # yaw del auto (adelante = (sin, cos) en x, z)
@@ -61,6 +62,17 @@ func setup(p_track, toast_cb: Callable, p_profile = null) -> void:
 				places.append({"name": str(n[4]), "pos": Vector2(float(n[1]), float(n[2])), "kind": ["ciudad", "pueblo", "villa"][kd - 3]})
 		places.append({"name": "Dream City", "pos": Vector2.ZERO, "kind": "ciudad"})
 		_map_tex = load("res://game/data/region/region_map.png") as Texture2D
+		var Sectors := preload("res://game/region/sectors.gd")
+		if not Sectors.all_open():
+			var w := int(ceil(float(region.gw) * region.cell / 400.0))
+			var h := int(ceil(float(region.gh) * region.cell / 400.0))
+			var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+			for iz in h:
+				for ix in w:
+					var q := Vector2(region.x0 + (float(ix) + 0.5) * 400.0, region.z0 + (float(iz) + 0.5) * 400.0)
+					var hatch := ((ix + iz) % 4) < 2 # rayado: se ve que está «en obra», no que no existe
+					img.set_pixel(ix, iz, Color(0, 0, 0, 0) if Sectors.is_open(q) else (Color(0.05, 0.05, 0.07, 0.62) if hatch else Color(0.05, 0.05, 0.07, 0.45)))
+			_closed_tex = ImageTexture.create_from_image(img)
 	for rd in city.roads:
 		if str(rd["kind"]) in ["tunnel", "bay"] and not str(rd["name"]).begins_with("Entrada Estacionamiento"):
 			continue # los túneles están ocultos y las entradas de los locales son muy cortas (la del estacionamiento sí se ve)
@@ -678,6 +690,8 @@ class MapView extends Control:
 		if hud.region != null and big and hud._map_tex != null:
 			# el relieve de toda la región (una imagen: 1 píxel = 100 m)
 			draw_texture_rect(hud._map_tex, Rect2(hud.region.x0, hud.region.z0, float(hud.region.gw) * hud.region.cell, float(hud.region.gh) * hud.region.cell), false)
+			if hud._closed_tex != null:
+				draw_texture_rect(hud._closed_tex, Rect2(hud.region.x0, hud.region.z0, float(hud._closed_tex.get_width()) * 400.0, float(hud._closed_tex.get_height()) * 400.0), false)
 		else:
 			var sea := PackedVector2Array([Vector2(-5000.0, 1260.0), Vector2(5000.0, 1260.0), Vector2(5000.0, 5000.0), Vector2(-5000.0, 5000.0)])
 			draw_colored_polygon(sea, Color(0.16, 0.34, 0.50, 0.9))

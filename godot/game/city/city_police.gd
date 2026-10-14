@@ -10,6 +10,7 @@ const WorldGps := preload("res://game/city/world_gps.gd")
 const CityGps := preload("res://game/city/city_gps.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CrashLog := preload("res://game/diag/crash_log.gd")
+const Sectors := preload("res://game/region/sectors.gd")
 
 const VID := "police"
 const CLASSES := [1, 2, 3] # autopista, ruta, provincial (RegionData.CLS_NAMES)
@@ -96,7 +97,7 @@ func _build_checkpoints() -> void:
 		for f in [0.5, 0.38, 0.62, 0.28, 0.72]:
 			var r: Array = region.point_at(ei, L * f)
 			var q: Vector2 = r[0]
-			if q.length() < CITY_R + 400.0 or region.in_town(q.x, q.y):
+			if q.length() < CITY_R + 400.0 or region.in_town(q.x, q.y) or not Sectors.is_open(q):
 				continue
 			var ci := Vector2i(floori(q.x / 2000.0), floori(q.y / 2000.0))
 			if not _cells.has(ci):

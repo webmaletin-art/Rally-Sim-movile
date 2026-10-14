@@ -1,0 +1,10 @@
+{
+ "_info": "Sectores del mundo abierto (docs/REGION.md → «Sectores habilitados»). open_all = true abre todo sin tocar nada más. Un sector abierto se arma con un círculo [x, z, radio] o un polígono [[x, z], …] (x al este, z al sur, metros). Lo que no cae en ningún sector abierto está EN OBRA: se ve en el mapa pero las rutas tienen barreras y no se aparece ahí.",
+ "version": 1,
+ "open_all": false,
+ "sectors": [
+  {"id": "dream_city", "name": "Dream City", "open": true, "circle": [0, 0, 3900]},
+  {"id": "oeste", "name": "Ruta a la Sierra (oeste)", "open": true, "poly": [[-2600, 2500], [-2600, -2600], [-9000, -6500], [-22000, -9500], [-27000, -26000], [-33000, -39000], [-62000, -41000], [-62000, 3500]]}
+ ],
+ "pending_name": "Sector en obra"
+}

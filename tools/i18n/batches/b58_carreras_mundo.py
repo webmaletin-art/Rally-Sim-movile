@@ -33,3 +33,8 @@ T = {
 "🏆 ¡GANASTE!": ["🏆 YOU WON!", "🏆 VOCÊ GANHOU!", "🏆 TU AS GAGNÉ !", "🏆 HAI VINTO!", "🏆 GEWONNEN!"],
 "Llegaste %dº": ["You finished %d.", "Você chegou em %dº", "Tu as fini %de", "Sei arrivato %dº", "Du bist %d. geworden"],
 }
+T.update({
+"CAMINO CERRADO": ["ROAD CLOSED", "ESTRADA FECHADA", "ROUTE FERMÉE", "STRADA CHIUSA", "STRASSE GESPERRT"],
+"Sector en obra": ["Area under construction", "Setor em obras", "Secteur en travaux", "Settore in costruzione", "Bereich im Bau"],
+"Próximamente": ["Coming soon", "Em breve", "Bientôt", "Prossimamente", "Demnächst"],
+})

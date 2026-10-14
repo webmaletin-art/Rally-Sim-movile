@@ -77,6 +77,15 @@ El dueño vio **tierra y pasto sobre el asfalto**, cercos y casas sobre las call
 - **«📍 VOLVER A LA CALLE»** (pausa del mundo abierto, `Race._back_to_road` → `CityTrack.nearest_road_pose`): pone el auto, parado, sobre el eje de la calle más cercana (de la ciudad o de la región, hasta 600 m) mirando hacia donde miraba; para cualquier trabazón que se escape (REINICIAR te lleva de vuelta al lugar donde apareciste).
 - Pruebas (CI): `scripts_parse_test` (todos los scripts del juego compilan: un error de sintaxis en un script que las otras pruebas no cargan, como la pausa, sólo se vería jugando), `region_terrain_test` (el terreno no pasa por encima de la calzada en los tres niveles, los bordes de cuadrados vecinos coinciden, ni casas, cercos ni guardarraíles sobre una calzada) y `open_world_access_test` (los 33 lugares para aparecer salen a la calle con un auto de verdad, todos los surtidores, columnas, bloques, galpones y cabinas chocan, desde cada estación y gomería se sigue llegando a la calle y «volver a la calle» deja el auto sobre el eje).
 
+## Sectores habilitados (14/10/2026, `game/data/sectors.json`, `game/region/sectors.gd`, `game/city/city_sectors.gd`)
+Pedido del dueño: mejorar Dream City por partes y mientras tanto dejar manejable sólo lo que está listo, sin borrar nada.
+- **Abiertos:** Dream City (círculo de 3,9 km: la ciudad y la circunvalación) y la **Ruta a la Sierra (oeste)**: el polígono que va de la ciudad hacia la izquierda del mapa con Bahía Ámbar, Paso del Cóndor, Laguna Blanca, Arroyo Claro, San Ramiro, El Algarrobal, Los Molles y las rutas de montaña.
+- **En obra (el resto):** se ve en el mapa (rayado oscuro encima del relieve, `CityHud._closed_tex`), pero no se aparece ahí (menú «¿DÓNDE APARECER?» y «última ubicación»), no hay carreras ni controles policiales,
+  y cada ruta que entra tiene una **barrera de obra** física y visible a 28 m del límite, de banquina a banquina (barreras New Jersey rojas y blancas + cartel «⛔ CAMINO CERRADO · Sector en obra · Próximamente»;
+  círculos sólidos `track.add_prop` desde el id 970000). No es una pared invisible: el resto del corredor de la ruta ya tenía su borde. Hoy son 14 barreras.
+- **Reversible:** `open_all: true` en `sectors.json` abre todo; para abrir un sector nuevo se agrega su polígono con `"open": true`. No se regenera la región.
+- Prueba: `tests/sectors_test.gd` (abiertos/cerrados, `open_all`, barreras del lado abierto, lugares para aparecer, carreras y controles sólo en lo abierto, y un auto a fondo contra tres barreras no pasa).
+
 ## Pendiente
 - Misiones (paquetes, buscar personas), regalar un auto de verdad en los secretos (hoy pagan créditos), tránsito en las rutas, nafta/taller en cada estación (el flujo anda, falta probarlo con calma), textos nuevos sólo en español.
 - Autos de otros jugadores (online) en la región: cerrado hasta el tiempo real.

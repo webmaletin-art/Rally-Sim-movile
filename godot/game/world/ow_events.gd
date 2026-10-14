@@ -17,6 +17,7 @@ const TYPES := {
 const CLS_V := [40.0, 44.0, 37.0, 33.0, 27.0, 23.0, 21.0, 17.0, 30.0]
 const LEN := {"sprint": [2500.0, 5500.0], "rally": [2000.0, 4500.0], "montana": [1800.0, 4000.0], "velocidad": [1800.0, 3000.0], "persecucion": [2500.0, 5000.0]}
 const CITY_R := 3600.0
+const Sectors := preload("res://game/region/sectors.gd")
 const HUIDA_T := 90.0
 
 ## Todos los eventos: [{id, type, name, start: Vector2, yaw, pts: PackedVector2Array (recorrido), len, laps, rivals, reward, gold, silver, bronze, speed, tier, where}]
@@ -26,7 +27,20 @@ static func build(region, city_gps = null) -> Array:
 		_region_events(region, out)
 	if city_gps != null:
 		_city_events(city_gps, out)
-	return out
+	# sólo los que corren enteros por sectores abiertos (game/data/sectors.json): nada sobre una calle cortada
+	var ok: Array = []
+	for ev in out:
+		var pts: PackedVector2Array = ev["pts"]
+		var good := true
+		var i := 0
+		while i < pts.size():
+			if not Sectors.is_open(pts[i]):
+				good = false
+				break
+			i += 8
+		if good and Sectors.is_open(pts[pts.size() - 1]):
+			ok.append(ev)
+	return ok
 
 static func _region_events(region, out: Array) -> void:
 	var settle: Array = []

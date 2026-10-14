@@ -2704,5 +2704,8 @@
 "PLATA": "SILVER",
 "BRONCE": "BRONZE",
 "🏆 ¡GANASTE!": "🏆 YOU WON!",
-"Llegaste %dº": "You finished %d."
+"Llegaste %dº": "You finished %d.",
+"CAMINO CERRADO": "ROAD CLOSED",
+"Sector en obra": "Area under construction",
+"Próximamente": "Coming soon"
 }

@@ -11,7 +11,8 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 
 ## Mundo abierto y región
 - ✅ Dream City + región de ~2.700 km (rutas, pueblos, estaciones, peajes, GPS, mapa). 📱 retoques del 13/10.
-- 🚧 Reorganización del centro (autopistas elevadas, concesionarios, sectores bloqueados): ver `docs/REGISTRO_TECNICO.md`.
+- ✅📱 Sectores: abiertos Dream City y la Ruta a la Sierra (oeste); el resto en obra con barreras visibles y reversible (`game/data/sectors.json`, `docs/REGION.md`).
+- 🚧 Reorganización del centro (autopistas elevadas, concesionarios): ver `docs/REGISTRO_TECNICO.md`.
 
 ## Carreras del mundo abierto
 - ✅📱 79 eventos para descubrir (sprint, rally, montaña, velocidad, picada, circuito urbano, huida, persecución), en el mapa, con rivales adaptables y premios que valida el servidor (`docs/CARRERAS_MUNDO_ABIERTO.md`). Apagados en el online.

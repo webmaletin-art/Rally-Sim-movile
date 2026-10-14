@@ -58,6 +58,9 @@ func _drive(race, pol, evs, me, pts: PackedVector2Array, pace: float, secs: floa
 			return
 
 func _run() -> void:
+	var SecS: GDScript = load("res://game/region/sectors.gd") # (la lógica se prueba con toda la región abierta; los sectores tienen su prueba: sectors_test)
+	SecS.set("_loaded", true)
+	SecS.set("_open_all", true)
 	var vehicles: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
 	var tr := CityTrack.new()
 	var rg = tr.region

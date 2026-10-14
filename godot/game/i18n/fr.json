@@ -2695,5 +2695,8 @@
 "PLATA": "ARGENT",
 "BRONCE": "BRONZE",
 "🏆 ¡GANASTE!": "🏆 TU AS GAGNÉ !",
-"Llegaste %dº": "Tu as fini %de"
+"Llegaste %dº": "Tu as fini %de",
+"CAMINO CERRADO": "ROUTE FERMÉE",
+"Sector en obra": "Secteur en travaux",
+"Próximamente": "Bientôt"
 }
