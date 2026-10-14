@@ -2,6 +2,8 @@
 ## Uso: godot --headless --path godot --script res://tests/spawn_menu_test.gd -- --menu --noconsent
 extends SceneTree
 
+const Release := preload("res://game/data/release.gd")
+
 const RegionServices := preload("res://game/region/region_services.gd")
 const SpawnMap := preload("res://game/ui/spawn_map.gd")
 const Tr := preload("res://game/i18n/tr.gd")
@@ -58,6 +60,9 @@ func _run() -> void:
 	var spawns := RegionServices.spawn_list()
 	check(spawns.size() >= 5, "hay lugares de la región para aparecer (%d)" % spawns.size())
 	Tr.set_language("es") # los textos se buscan en español: sin esto, en una máquina con el teléfono/idioma en inglés (la compilación de GitHub) el botón sale traducido
+	# (desde el 14/10/2026 los pueblos se habilitan al llegar manejando, city/city_reach.gd: se marca uno como alcanzado; los demás salen con candado)
+	var prof0: RefCounted = menu.get("profile")
+	prof0.set_setting("reached", [str(spawns[0]["name"])])
 	menu.call("go", "spawn")
 	await _frames()
 	var body: Node = menu.get("body")
@@ -77,11 +82,14 @@ func _run() -> void:
 		await _frames(3)
 		var prof: RefCounted = menu.get("profile")
 		var town := {}
+		var locked := 0
 		for mk in map.marks:
-			if str(mk["kind"]) == "pueblo":
+			if str(mk["kind"]) in ["pueblo", "ciudad"] and town.is_empty():
 				town = mk
-				break
-		check(not town.is_empty(), "el mapa tiene pueblos")
+			elif str(mk["kind"]) == "locked":
+				locked += 1
+		check(not town.is_empty(), "el mapa tiene el pueblo alcanzado para elegir")
+		check(locked == spawns.size() - 1 or Release.dev(prof), "los pueblos a los que no se llegó salen con candado (%d)" % locked)
 		if not town.is_empty():
 			_tap(map, map.to_screen(town["pos"]))
 			await _frames(2)

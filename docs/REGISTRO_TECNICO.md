@@ -5,6 +5,15 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 14/10/2026 (noche) · Pruebas de GitHub en rojo desde r175 (arreglado)
+- **Síntoma:** el trabajo «tests» de «Build Godot APK» falló en r175–r178 (el APK y el contenido se publicaron igual: ese trabajo no bloquea).
+- **Causa confirmada:** `spawn_menu_test` buscaba en el mapa de «¿dónde aparecer?» una marca de tipo «pueblo»; desde r175 los pueblos a los que no se llegó manejando salen como «locked» (`city_reach.gd`). Como el paso se corta en el primer error, desde r175 no corrían las pruebas que vienen después.
+- **Cambio:** la prueba marca un pueblo como alcanzado, comprueba que se pueda elegir y que los otros 32 salgan con candado.
+- **Pruebas (acá):** `spawn_menu_test` TODO OK; las que se salteaban en GitHub — `language_test`, `music_test`, `login_wall_test`, `account_econ_test`, `world_ambient_test`, `ambient_peds_test`, `world_budget_test`, `vegbench_test`, `travesia_test` (×2) — salida 0; `audio_levels_test` OK.
+- **Resultado:** RESUELTO (falta ver la corrida de GitHub en verde).
+
+---
+
 ## 14/10/2026 (noche) · Tablero 3D del dueño, velocímetro de aguja y variantes del Volante Pro
 - **Pedido del dueño:** meter el interior 3D (InteriorRally.glb) con textura, que encaje con cada habitáculo y sin bordes afuera («es muy fino y ancho, vas a tener que ajustar»); varias texturas y colores del volante; un velocímetro lindo en el tablero sin sacar el digital del centro.
 - **Tablero:** `tools/cars/build_cabin_dash.py` (nuevo) → `godot/game/models/cabin/tablero_rally.glb` (46.815 triángulos, textura 1024, 3 MB). Se recortó a tablero + consola (afuera el marco del parabrisas, los parantes, las puertas y los espejos: asomaban fuera de la carrocería), se giró 180° y se normalizó. La reducción usa **PyMeshLab con textura** (con el simplificador común la textura salía corrida o con manchas blancas: se probó y se descartó). `cockpit.gd` → `_b_dash_model()`: ancho del habitáculo, del volante al parabrisas, alto en la misma proporción (estirado hasta el piso ovalaba los relojes) y tapa a la altura del parabrisas; faldón oscuro abajo; material sin brillo de metal. En cabinas abiertas (monoplaza) y si falta el archivo queda el tablero de siempre (`CAB_OLD_DASH=1` para comparar).
