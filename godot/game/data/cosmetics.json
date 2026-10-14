@@ -36,7 +36,12 @@
   {"id": "vol_gamuza", "n": "Rally Gamuza", "price": 3500, "rim": "#2b2d31", "grip": "#3a3c41", "mark": "#ff6a08", "desc": "Gamuza gris que no resbala, con la marca naranja de rally."},
   {"id": "vol_carbono", "n": "Carbono y Rojo", "price": 6000, "rim": "#141518", "grip": "#1b1c1f", "mark": "#d3162b", "hub": "carbon", "desc": "Aro de carbono con agarres de cuero y la marca roja."},
   {"id": "vol_madera", "n": "Madera Clásico", "price": 5000, "rim": "#6b3f1e", "grip": "#4f2e15", "mark": "#c9a24b", "desc": "Aro de madera lustrada, como los autos de los 60."},
-  {"id": "vol_blanco", "n": "Cuero Blanco", "price": 4500, "rim": "#e8e6e1", "grip": "#d0cdc6", "mark": "#1a4fe0", "desc": "Cuero blanco con la marca azul."}
+  {"id": "vol_blanco", "n": "Cuero Blanco", "price": 4500, "rim": "#e8e6e1", "grip": "#d0cdc6", "mark": "#1a4fe0", "desc": "Cuero blanco con la marca azul."},
+  {"id": "vol_pro_azul", "n": "Volante Pro Azul Noche", "price": 10000, "kind": "pro", "tex": "volante_pro_azul.png", "desc": "El Volante Pro 3D en cuero azul noche con costuras azules y marca blanca."},
+  {"id": "vol_pro_rojo", "n": "Volante Pro Rojo Pasión", "price": 10000, "kind": "pro", "tex": "volante_pro_rojo.png", "desc": "El Volante Pro 3D en cuero rojo con costuras blancas y marca amarilla."},
+  {"id": "vol_pro_blanco", "n": "Volante Pro Blanco", "price": 10500, "kind": "pro", "tex": "volante_pro_blanco.png", "desc": "El Volante Pro 3D en cuero blanco con costuras rojas y marca azul."},
+  {"id": "vol_pro_oro", "n": "Volante Pro Negro y Oro", "price": 12000, "kind": "pro", "tex": "volante_pro_oro.png", "desc": "El Volante Pro 3D negro con costuras y marcas doradas."},
+  {"id": "vol_pro_verde", "n": "Volante Pro Verde Rally", "price": 10000, "kind": "pro", "tex": "volante_pro_verde.png", "desc": "El Volante Pro 3D en verde con costuras lima."}
  ],
  "defaults": {"interior": {"police": "cab_patrulla", "f1": "cab_carbono"}, "wheel": {"f1": "vol_pro", "strix": "vol_carbono"}}
 }

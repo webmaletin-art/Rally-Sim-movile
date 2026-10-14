@@ -5,6 +5,16 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 14/10/2026 (noche) · Tablero 3D del dueño, velocímetro de aguja y variantes del Volante Pro
+- **Pedido del dueño:** meter el interior 3D (InteriorRally.glb) con textura, que encaje con cada habitáculo y sin bordes afuera («es muy fino y ancho, vas a tener que ajustar»); varias texturas y colores del volante; un velocímetro lindo en el tablero sin sacar el digital del centro.
+- **Tablero:** `tools/cars/build_cabin_dash.py` (nuevo) → `godot/game/models/cabin/tablero_rally.glb` (46.815 triángulos, textura 1024, 3 MB). Se recortó a tablero + consola (afuera el marco del parabrisas, los parantes, las puertas y los espejos: asomaban fuera de la carrocería), se giró 180° y se normalizó. La reducción usa **PyMeshLab con textura** (con el simplificador común la textura salía corrida o con manchas blancas: se probó y se descartó). `cockpit.gd` → `_b_dash_model()`: ancho del habitáculo, del volante al parabrisas, alto en la misma proporción (estirado hasta el piso ovalaba los relojes) y tapa a la altura del parabrisas; faldón oscuro abajo; material sin brillo de metal. En cabinas abiertas (monoplaza) y si falta el archivo queda el tablero de siempre (`CAB_OLD_DASH=1` para comparar).
+- **Velocímetro:** `cockpit._b_speedo()` + `SpeedFace` (esfera dibujada una vez, aro de metal, aguja naranja), máxima según la velocidad al corte en la última marcha (`set_speedo_max`, desde `race.gd`). La pantallita digital del centro queda.
+- **Volantes:** `tools/cars/make_wheel_variants.py` (nuevo) recolorea la textura del Volante Pro por partes (cuero, costuras, marcas): 5 variantes (azul, rojo, blanco, negro y oro, verde) en `cosmetics.json` (`kind: pro`, `tex`), migración **`20261016000000_cosmetics_volantes_pro.sql`** (hay que aplicarla), textos `b63`.
+- **Pruebas:** `cosmetics_test` (precios iguales en el juego y en las migraciones), `menu_ui_test`, `cabin_shake_test`, `scripts_parse_test`; capturas de la cabina (hatch, gt3 con el volante azul) adentro y desde atrás.
+- **Resultado:** PENDIENTE DE APK (¿se ve lindo?, ¿encaja en cada auto?, ¿FPS con 47 mil triángulos más en la cabina? — si pesa, bajar FACES en el script) + **aplicar la migración**.
+
+---
+
 ## 14/10/2026 (noche) · Sonido: motor por capas, caja, freno motor, turbo y estampidos
 - **Pedido del dueño:** sonido de motor real (no robótico), silbido de la caja al acelerar y en inercia, freno motor al soltar, turbo, explosiones al pisar intermitente.
 - **Causa del sonido «robótico» (confirmada en el código):** el motor era un único ciclo de 1050 muestras repetido idéntico.

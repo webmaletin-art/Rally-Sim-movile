@@ -28,3 +28,8 @@ Sin la migración el servidor rechaza esas compras y las devuelve. Si cambia un 
 ## Pruebas
 `tests/cosmetics_test.gd` (compra, evento al servidor, lo no comprado no se dibuja, valores de fábrica, exclusivos, la cabina arma los 8 × 6 combinaciones, precios iguales a la migración);
 `menu_ui_test` (las tres pantallas del taller con su barra de COMPRAR). Vistas: `tests/_liv.gd` (los 8 patrones en un auto) y `CAB_TRIM=cab_carbono,vol_pro tests/_cabview.gd` (cabina).
+
+## Tablero 3D, velocímetro y variantes del Volante Pro (14/10/2026)
+- **Tablero 3D del dueño** en todas las cabinas con techo (`models/cabin/tablero_rally.glb`, `tools/cars/build_cabin_dash.py`, `cockpit._b_dash_model`): se estira a cada habitáculo; sin parantes, marco, puertas ni espejos del modelo.
+- **Velocímetro de aguja** sobre el tablero, entre el volante y el centro (`cockpit._b_speedo`); la pantallita digital del centro sigue.
+- **Volante Pro en 5 colores** (`vol_pro_azul`, `vol_pro_rojo`, `vol_pro_blanco`, `vol_pro_oro`, `vol_pro_verde`): mismo modelo 3D, textura recoloreada (`tools/cars/make_wheel_variants.py`). Se compran en el taller → Pintura → Volante; el servidor los valida con la migración `20261016000000_cosmetics_volantes_pro.sql`.

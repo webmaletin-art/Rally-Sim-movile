@@ -1303,6 +1303,8 @@ func _rebuild_cars() -> void:
 			cockpit.position = Vector3(0, -Vp.comHeight + Vp.rideOffset, 0)
 			car.visual.add_child(cockpit)
 			cockpit.set_engine(Vp.maxRpm, Vp.shiftUpRpm, Vp.nitroCap)
+			if not Vp.gears.is_empty(): # máxima del velocímetro del tablero: la velocidad al corte en la última marcha
+				cockpit.set_speedo_max(Vp.maxRpm / 60.0 * TAU * Vp.wheelRadius / maxf(float(Vp.gears[Vp.gears.size() - 1]) * Vp.finalDrive, 0.1) * 3.6)
 			cockpit.raining = weather_name == "lluvia"
 			weather.set_cabin(cockpit) # la lluvia y la nieve no caen adentro del habitáculo
 			cockpit.set_inside(false, false)

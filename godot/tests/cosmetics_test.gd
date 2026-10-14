@@ -64,7 +64,7 @@ func _initialize() -> void:
 			ck.free()
 	_check(bad.is_empty(), "la cabina arma los %d interiores × %d volantes (%s)" % [cat["interiors"].size(), cat["wheels"].size(), str(bad)])
 	# mismos precios que la migración del servidor
-	var sql := FileAccess.get_file_as_string("res://../supabase/migrations/20261015000000_catalog_28_cosmetics.sql")
+	var sql := FileAccess.get_file_as_string("res://../supabase/migrations/20261015000000_catalog_28_cosmetics.sql") + FileAccess.get_file_as_string("res://../supabase/migrations/20261016000000_cosmetics_volantes_pro.sql")
 	var miss: Array = []
 	for k in ["styles", "interiors", "wheels"]:
 		for it in cat[k]:
