@@ -369,10 +369,10 @@ func _ready() -> void:
 	if track is NetTrack:
 		_net_atmosphere()
 	audio = CarAudio.new()
+	# audio simple sólo si el jugador lo pide (Opciones → Sonido). Antes se prendía solo tras un cierre de golpe, pero el registro del dueño (14/10/2026) mostró
+	# que el juego se cerraba igual con audio simple (error nativo del mundo abierto, no del audio): prenderlo solo sólo le sacaba el sonido nuevo
 	var want_simple: bool = profile.setting("simpleAudio") == true
-	var cg: Node = get_tree().root.get_node_or_null("CrashGuard") # se cerró de golpe la vez anterior (o el jugador lo pidió): audio simple
-	var cl: Node = CrashLog.get_instance() # (el del contenido: anda también con APK viejos, que no traen CrashGuard)
-	audio.simple = want_simple or (cg != null and cg.simple_audio(want_simple)) or (cl != null and cl.simple_audio(want_simple))
+	audio.simple = want_simple
 	CrashLog.mark("audio", "%s · auto %s" % ["SIMPLE" if audio.simple else "completo", str(cfg.get("car", ""))])
 	audio.set_vehicle(str(cfg.get("car", "")))
 	add_child(audio)

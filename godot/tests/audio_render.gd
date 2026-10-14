@@ -6,7 +6,7 @@
 ##   --solo: deja sonar SÓLO esas voces (engine, engnoise, roll, squeal, gravel, wind, turbo, rain, whine1, whine2, whistle, gwe, shots)
 ##   --wind/--surf/--turbo/--gear/--eng: porcentaje de «Viento», «Superficie», «Turbo», «Caja», «Motor» (los del perfil; por defecto 30 / 30 / 100 / 100 / 100)
 ##   --rival=d,rpm: hay un rival a d metros con ese régimen (como race.gd le avisa a CarAudio.rival)
-##   --log: imprime cada segundo el nivel (lineal, ya con la «unidad» de la muestra) y la velocidad de reproducción de cada voz
+##   --log: imprime cada segundo (sólo las voces que suenan) el nivel (lineal, ya con la «unidad» de la muestra) y la velocidad de reproducción de cada voz
 extends SceneTree
 
 const CarSnapshot := preload("res://game/car/car_snapshot.gd")
@@ -112,6 +112,9 @@ func _state(t: float, p: CarSnapshot) -> void:
 		"rain":
 			v = 38.9
 			thr = 0.4
+		"blips": # pisar y soltar seguido (estampidos del escape)
+			v = 22.0
+			thr = 1.0 if fmod(t, 1.1) < 0.45 else 0.0
 		"stop":
 			v = maxf(0.0, 38.9 * (1.0 - t / 5.0))
 			thr = 0.0 if t > 1.0 else 0.4
@@ -141,10 +144,11 @@ func _state(t: float, p: CarSnapshot) -> void:
 
 func _log(t: float) -> void:
 	var s := "LOG %5.1f" % t
-	for k in ["engine", "engine_ai", "engnoise", "roll", "squeal", "gravel", "wind", "turbo", "rain", "whine1", "whine2", "whistle", "gwe"]:
+	for k in audio.voices.keys():
 		var v: Dictionary = audio.voices[k]
 		var pl: AudioStreamPlayer = v["p"]
-		s += " | %s %s %.4f x%.2f" % [k, "-" if pl.stream_paused else "+", (db_to_linear(pl.volume_db) if not pl.stream_paused else 0.0), pl.pitch_scale]
+		if not pl.stream_paused:
+			s += " | %s %.4f x%.2f" % [k, db_to_linear(pl.volume_db), pl.pitch_scale]
 	print(s)
 
 func _run() -> void:

@@ -16,10 +16,13 @@ const DIR := "res://game/audio/samples/"
 
 ## niveles generales. El motor, el flutter, los petardeos y los golpes son los de la versión web; los ruidos de fondo (gomas, tierra, viento, turbo, silbido, caja) se bajaron mucho
 ## (el rodado, la tierra y la lluvia sonaban tan fuertes como el motor, y el silbido del turbo era un seno de 8 kHz): ver docs/AUDIO.md
-const SND := {"master": 0.55, "engine": 0.62, "tires": 0.13, "squeal": 0.17, "gravel": 0.092, "wind": 0.04, "turbo": 0.075, "whistle": 0.015, "flutter": 0.75, "whine": 0.012, "pops": 0.35, "impacts": 0.8,
-	"rain": 0.06}
+const SND := {"master": 0.55, "engine": 0.62, "tires": 0.13, "squeal": 0.17, "gravel": 0.092, "wind": 0.04, "turbo": 0.085, "whistle": 0.018, "flutter": 0.75, "whine": 0.012, "pops": 0.35, "impacts": 0.8,
+	"rain": 0.06,
+	# capas del motor (tools/godot/make_engine_audio.py, a RMS 0,10): motor con carga / sin carga, crepitar al soltar, caja de engranajes rectos, estampidos
+	"layers": 2.4, "overrun": 0.55, "gwhine": 0.18, "backfire": 0.55}
 const SURF_DEFAULT := 0.30 # «Gomas y tierra» y «Viento y lluvia» en su valor normal (30): los niveles de arriba son para ese valor
 const WHINE_MAX_HZ := 2400.0 # la caja de cambios nunca pasa de acá (antes llegaba a 4,2 kHz y se oía como un silbido fino)
+const GWHINE_MAX_HZ := 1500.0 # la caja con armónicos (gearwhine): la fundamental hasta acá (sus armónicos llegan a ~4,5 kHz)
 const WHISTLE_MAX_HZ := 3300.0 # ídem el silbido del turbo (antes llegaba a 8 kHz)
 const STEADY_RATE := 0.04 # cambio relativo de frecuencia por segundo por debajo del cual un tono se considera «parado»
 const STEADY_FADE_S := 2.5 # un tono parado se va apagando en este tiempo
@@ -69,6 +72,7 @@ const VOICE := {
 	"f1": {"f": 1.10, "cut": 1.60, "eng": 1.10, "noise": 0.8, "pops": 0.8}}
 ## constante de tiempo de cada parámetro (como setTargetAtTime de Web Audio)
 const TIME_K := {"f0": 0.012, "cut": 0.03, "eng": 0.03, "engn": 0.05, "roll": 0.08, "sq": 0.05, "sqf": 0.03, "grav": 0.03, "wind": 0.1, "windf": 0.1,
+	"onk": 0.05, "ovr": 0.07, "gwh": 0.05, "gwhf": 0.03,
 	"gw": 0.05, "wf": 0.03, "gwe": 0.04, "gwef": 0.02, "tw": 0.05, "twf": 0.06, "tb": 0.08, "tbf": 0.05, "rain": 0.4, "ai": 0.08, "aif": 0.05}
 
 var consts: Dictionary
@@ -102,6 +106,12 @@ var _rain_k := 1.0 # «Viento y lluvia»
 ## Audio simple: sólo el motor y los golpes, sin filtros ni compresor y sin las voces de rodado, viento, turbo, caja, lluvia ni rival. Se activa solo si el juego se cerró de golpe la vez anterior
 ## (CrashGuard) o desde Opciones → Sonido; sirve para descartar al audio como causa de un cierre inesperado.
 var simple := false
+var layered := false # motor por capas (make_engine_audio.py)
+var eng_refs: Array = []
+var lift_n := 0 # cuántas veces se soltó el acelerador en los últimos segundos (pisar y soltar seguido = más estampidos)
+var lift_t := -10.0
+var bf_t := -10.0
+var _rn := 0.0 # vueltas normalizadas (0 ralentí … 1 corte), suavizadas
 
 func _ready() -> void:
 	rng.randomize()
@@ -150,8 +160,19 @@ func _ready() -> void:
 		comp.release_ms = 250.0
 		AudioServer.add_bus_effect(0, comp)
 		AudioServer.add_bus_effect(0, AudioEffectHardLimiter.new())
-	# voces en bucle
-	_voice("engine", "GSMotor", false)
+	# voces en bucle. El motor son capas (con carga / sin carga a 6 frecuencias de encendido) que se mezclan según vueltas y acelerador, como en los simuladores
+	# (antes un único ciclo repetido idéntico: sonaba a robot). Si faltan las muestras (contenido viejo), queda el motor de siempre.
+	layered = consts.has("eng_refs") and ResourceLoader.exists(DIR + "eng_on0.wav") and not OS.has_environment("DR_OLD_ENGINE") # (DR_OLD_ENGINE: comparar con el de antes)
+	if layered:
+		eng_refs = consts["eng_refs"]
+		for i in eng_refs.size():
+			_voice("eng_on%d" % i, "GSMotor")
+			_voice("eng_off%d" % i, "GSMotor")
+		_voice("overrun", "GSMotor")
+		_voice("gearwhine", "Master")
+		_pool("backfire", 4)
+	else:
+		_voice("engine", "GSMotor", false)
 	_voice("engnoise", "Master")
 	_voice("roll", "Master")
 	_voice("squeal", "Master")
@@ -317,6 +338,7 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 	time += dt
 	var rpm := p.rpm
 	var rn := clampf((rpm - V.idleRpm) / (V.maxRpm - V.idleRpm), 0.0, 1.0)
+	_rn += (rn - _rn) * (1.0 - exp(-dt / 0.05))
 	var load := clampf(p.load, 0.0, 1.0)
 	var f0 := rpm / 60.0 * V.firingOrder * float(voice.get("f", 1.0))
 	tgt["f0"] = f0
@@ -326,6 +348,12 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 	var alive := clampf(maxf(p.throttle * 2.5, (sp - 0.6) / 3.0), 0.0, 1.0)
 	tgt["eng"] = SND["engine"] * float(voice.get("eng", 1.0)) * mix["eng"] * (0.35 + 0.25 * rn) * (0.62 + 0.38 * load) * alive
 	tgt["engn"] = 0.145 * load * float(voice.get("noise", 1.0)) # (el ruido mecánico está grabado más fuerte que antes: 0,145 deja el mismo nivel de siempre)
+	if layered:
+		# con carga (acelerando) ↔ sin carga (soltando: freno motor). El filtro del bus se abre mucho más: las capas ya traen su forma
+		tgt["onk"] = clampf(maxf(p.throttle, load) * 2.4 - 0.05, 0.0, 1.0) # (a medio pedal ya es casi todo «con carga»)
+		tgt["cut"] = (1100.0 + load * 3800.0 + rn * 3200.0) * float(voice.get("cut", 1.0))
+		tgt["eng"] = SND["layers"] * float(voice.get("eng", 1.0)) * mix["eng"] * (0.42 + 0.58 * rn) * (0.72 + 0.28 * load) * alive
+		tgt["engn"] *= 0.45 # (las capas con carga ya traen el ruido mecánico y la admisión)
 	var asf := 0.0
 	var loose := 0.0
 	var sl := 0.0
@@ -370,6 +398,17 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 	var sk := clampf((absf(p.vLong) - 2.0) / 20.0, 0.0, 1.0)
 	var gg: float = SND["whine"] * float(G["k"]) * mix["gear"] * sk * (0.55 + 0.3 * load + 0.45 * coast) * _steady_gain("whine", wf, dt) if drive else 0.0
 	gw_tau = 0.05 if drive else 0.015
+	if layered:
+		# caja de engranajes rectos (pedido del dueño: «la caja hace un silbido muy bonito al acelerar y en inercia se siente»): zumbido con armónicos que sube con la velocidad,
+		# más fuerte soltando (freno motor, rodando en inercia) y en marchas bajas; se corta en cada cambio. Un tono quieto baja hasta la mitad (no se queda clavado)
+		var gwf := minf(GWHINE_MAX_HZ, shaft * float(G["tooth"]) * 0.42)
+		var low_k := 1.0 + 0.5 * clampf((3.0 - float(p.gear)) / 2.0, 0.0, 1.0)
+		var gwv: float = SND["gwhine"] * float(G["k"]) * mix["gear"] * sk * (0.45 + 0.35 * load + 0.75 * coast) * low_k * maxf(0.5, _steady_gain("gwhine", gwf, dt)) if drive else 0.0
+		tgt["gwh"] = gwv
+		tgt["gwhf"] = gwf
+		gg = 0.0 # (los senos de antes quedan sólo para el audio simple)
+		# crepitar del escape soltando con vueltas: el freno motor
+		tgt["ovr"] = SND["overrun"] * mix["eng"] * float(voice.get("pops", 1.0)) * (1.0 - clampf(p.throttle * 3.0, 0.0, 1.0)) * clampf((rn - 0.30) / 0.40, 0.0, 1.0) * clampf((sp - 2.0) / 8.0, 0.0, 1.0) if drive else 0.0
 	tgt["gw"] = gg
 	tgt["wf"] = wf
 	tgt["gwe"] = gg * 0.25 * (0.4 + 0.6 * rn) if drive else 0.0
@@ -401,7 +440,8 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 	# se recuerda cuánto turbo había con el pie a fondo: al soltar (en rampa) la carga ya cayó, pero el flutter suena igual
 	if thr > 0.5:
 		arm_b = maxf(b, arm_b * 0.98)
-	if thr < 0.25 and arm_b > 0.25 and time - fl_t > 0.9 and low_gear:
+	var fl_ok := low_gear or (layered and time - fl_t > 1.2) # con las capas el turbo sopla al soltar en cualquier marcha (como en los simuladores)
+	if thr < 0.25 and arm_b > 0.25 and time - fl_t > 0.9 and fl_ok:
 		flutter(arm_b, T, L, mt)
 		fl_t = time
 		boost *= 0.3
@@ -415,6 +455,16 @@ func update(p: CarSnapshot, V: VehicleParams, dt: float, events: Array, impact: 
 			boost *= 0.6
 	if prev_thr > 0.6 and thr < 0.15 and rpm > 4200.0 and sp > 3.0 and low_gear:
 		pops(2 + int(_r() * 2.0))
+	if layered and prev_thr > 0.55 and thr < 0.2 and rn > 0.5:
+		# soltar con vueltas: estampidos del escape. Pisando y soltando seguido (cada vez que se suelta dentro de 2,5 s) salen más y más fuertes: se siente el motor
+		lift_n = lift_n + 1 if time - lift_t < 2.5 else 1
+		lift_t = time
+		if time - bf_t > 0.45:
+			bf_t = time
+			var nb := mini(1 + lift_n / 2, 4)
+			for k in nb:
+				var a: float = SND["backfire"] * float(voice.get("pops", 1.0)) * mix["eng"] * (0.45 + 0.2 * float(mini(lift_n, 4))) * (0.7 + 0.3 * _r())
+				get_tree().create_timer(0.04 + float(k) * (0.07 + 0.08 * _r())).timeout.connect(_shoot.bind("backfire", a, 0.85 + 0.35 * _r()))
 	prev_thr = thr
 	for e in events:
 		if e is String:
@@ -436,6 +486,26 @@ func _apply() -> void:
 	var f0: float = cur["f0"]
 	var eg: float = cur["eng"]
 	_set_voice("engine", eg, f0 / 8.0 / base_f)
+	if layered:
+		# las dos capas más cercanas a la frecuencia de encendido, mezcladas a igual potencia; cada una se acelera o frena hasta ±30 %
+		var nref := eng_refs.size()
+		var fz := maxf(f0 * 0.5, 1.0) # frecuencia de explosiones de verdad: firingOrder es la cantidad de cilindros y en 4 tiempos explota la mitad por vuelta
+		var ia := 0
+		while ia < nref - 2 and fz >= float(eng_refs[ia + 1]):
+			ia += 1
+		var fr := clampf(log(fz / float(eng_refs[ia])) / log(float(eng_refs[ia + 1]) / float(eng_refs[ia])), 0.0, 1.0)
+		var wa := cos(fr * PI * 0.5)
+		var wb := sin(fr * PI * 0.5)
+		eg *= clampf(pow(220.0 / fz, 0.45), 0.5, 1.25) # (las explosiones agudas de un V12 se oyen más fuertes que las de un 4 cilindros: compensación de sonoridad)
+		var on: float = cur["onk"]
+		var off_k := (1.0 - on) * (0.55 + 0.45 * _rn) # soltando con vueltas el freno motor suena más
+		for i in nref:
+			var w := wa if i == ia else (wb if i == ia + 1 else 0.0)
+			var pit := fz / float(eng_refs[i])
+			_set_voice("eng_on%d" % i, eg * w * on, pit)
+			_set_voice("eng_off%d" % i, eg * w * off_k, pit)
+		_set_voice("overrun", cur["ovr"], 0.85 + 0.3 * clampf(fz / 300.0, 0.0, 1.0))
+		_set_voice("gearwhine", cur["gwh"], maxf(40.0, cur["gwhf"]) / float(consts["gearwhine_hz"]))
 	if lp_engine != null:
 		lp_engine.cutoff_hz = clampf(cur["cut"], 100.0, 20000.0)
 	_set_voice("engnoise", cur["engn"] * eg, f0 / 200.0)

@@ -5,6 +5,15 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 14/10/2026 (noche) · Sonido: motor por capas, caja, freno motor, turbo y estampidos
+- **Pedido del dueño:** sonido de motor real (no robótico), silbido de la caja al acelerar y en inercia, freno motor al soltar, turbo, explosiones al pisar intermitente.
+- **Causa del sonido «robótico» (confirmada en el código):** el motor era un único ciclo de 1050 muestras repetido idéntico.
+- **Cambio:** `tools/godot/make_engine_audio.py` (nuevo) + 18 muestras nuevas (~3 MB); `car_audio.gd` (capas con/sin carga mezcladas por frecuencia de explosiones y pedal, `gearwhine`, `overrun`, `backfire`, soplido del turbo en cualquier marcha, compensación de sonoridad por frecuencia); `race.gd` (el audio simple ya no se prende solo tras un cierre); `tests/audio_render.gd` (escena `blips`, `--log` con todas las voces que suenan). Detalle y mediciones: `docs/AUDIO.md` → «Motor por capas».
+- **Pruebas:** `audio_levels_test` AUDIO_LEVELS_TEST OK (con los controles nuevos de la caja); mediciones con `analyze_audio.py`. **No se escuchó:** se midió (bandas, sonoridad, tonos); falta el oído del dueño.
+- **Resultado:** PENDIENTE DE APK (¿suena a motor de verdad?, ¿la caja, el freno motor, los estampidos?, ¿volumen?). Para ajustar: `SND["layers"/"gwhine"/"overrun"/"backfire"]` en `car_audio.gd`.
+
+---
+
 ## 14/10/2026 (noche) · Cámaras de adentro que tiemblan
 - **Reporte del dueño:** «los autos con cámara interior se ve que tiemblan, vibran mucho».
 - **Causa confirmada (medida):** `cockpit.camera_local` sumaba una vibración de hasta 8,5 mm a ~6 Hz; con la pantalla a 30–40 cuadros desparejos eso es un salto de **8,3 mm de cuadro a cuadro en promedio (peor 19 mm)** con el tablero a medio metro de los ojos. El movimiento de la cabeza por fuerzas G aportaba 0,9 mm. Las cámaras de capó/paragolpes (hasta 12 mm a 6–7 Hz) y la de atrás (hasta 26 mm en tierra) tenían lo mismo.

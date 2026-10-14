@@ -122,6 +122,8 @@ func _level(a: Node, vname: String) -> float:
 
 func _freq(a: Node, vname: String) -> float:
 	var p: AudioStreamPlayer = a.voices[vname]["p"]
+	if vname == "gearwhine":
+		return p.pitch_scale * float(consts["gearwhine_hz"]) # (la fundamental de la caja con armónicos)
 	return p.pitch_scale * float(consts["tone_base_hz"])
 
 func _snap(V: VehicleParams, v: float, thr: float, gear: int, surf := 0, slide := 0.0) -> CarSnapshot:
@@ -158,7 +160,11 @@ func _run(a: Node, V: VehicleParams, secs: float, from: float, fn: Callable) -> 
 		var p: CarSnapshot = fn.call(t)
 		a.update(p, V, DT, [], 0.0)
 		if t >= from:
-			for vn in ["roll", "squeal", "gravel", "wind", "turbo", "rain", "whine1", "whine2", "whistle", "gwe", "engnoise"]:
+			for vn in ["roll", "squeal", "gravel", "wind", "turbo", "rain", "whine1", "whine2", "whistle", "gwe", "engnoise", "gearwhine", "overrun"]:
+				if not a.voices.has(vn):
+					peak[vn] = -140.0
+					peak["f_" + vn] = 0.0
+					continue
 				peak[vn] = maxf(float(peak.get(vn, -140.0)), _level(a, vn))
 				peak["f_" + vn] = maxf(float(peak.get("f_" + vn, 0.0)), _freq(a, vn))
 	return peak
@@ -173,6 +179,7 @@ func _test_driving() -> void:
 		check(pk["whine1"] < -55.0, "%s a 220 km/h parejo: el zumbido de la caja queda en %.0f dBFS (< −55)" % [car, pk["whine1"]])
 		check(pk["roll"] < -36.0 and pk["wind"] < -44.0 and pk["turbo"] < -52.0, "%s a 220 km/h: rodado %.0f · viento %.0f · soplido %.0f dBFS (< −36 / −44 / −52)" % [car, pk["roll"], pk["wind"], pk["turbo"]])
 		check(pk["f_whistle"] <= 3300.0 * 1.01 and pk["f_whine1"] <= 2400.0 * 1.02 * 1.007, "%s: el silbido no pasa de 3,3 kHz (%.0f) ni la caja de 2,4 kHz (%.0f)" % [car, pk["f_whistle"], pk["f_whine1"]])
+		check(pk["gearwhine"] < -38.0 and pk["f_gearwhine"] <= 1500.0 * 1.01, "%s a 220 km/h: la caja con armónicos queda en %.0f dBFS (< −38) y no pasa de 1,5 kHz (%.0f)" % [car, pk["gearwhine"], pk["f_gearwhine"]])
 		a.queue_free()
 		# acelerando: el silbido y la caja se oyen, pero siguen siendo bajos
 		a = await _new_audio(car)
@@ -183,6 +190,8 @@ func _test_driving() -> void:
 		a = await _new_audio(car)
 		pk = _run(a, V, 20.0, 0.0, func(t): return _snap(V, 55.0 - 1.4 * t, 0.0, 6))
 		check(pk["whine1"] < -38.0, "%s soltando el pie: la caja queda en %.0f dBFS (< −38)" % [car, pk["whine1"]])
+		# (pedido del dueño, 14/10/2026: «al soltar se siente la caja y el freno motor»): la caja con armónicos se oye, sin tapar al motor
+		check(pk["gearwhine"] > -62.0 and pk["gearwhine"] < -30.0, "%s soltando el pie: la caja se oye (%.0f dBFS, entre −62 y −30)" % [car, pk["gearwhine"]])
 		a.queue_free()
 		# tono que no cambia: se apaga solo (a los 10 s suena mucho menos que al principio)
 		a = await _new_audio(car)
@@ -190,12 +199,14 @@ func _test_driving() -> void:
 		var late := _run(a, V, 12.0, 10.0, func(_t): return _snap(V, 40.0, 0.0, 5))
 		if early["whine1"] > -80.0:
 			check(late["whine1"] <= early["whine1"] - 6.0, "%s: el zumbido de la caja que no cambia baja de %.0f a %.0f dBFS (al menos −6 dB)" % [car, early["whine1"], late["whine1"]])
+		if early["gearwhine"] > -80.0:
+			check(late["gearwhine"] <= early["gearwhine"] - 3.0, "%s: la caja con armónicos que no cambia baja de %.0f a %.0f dBFS (al menos −3 dB)" % [car, early["gearwhine"], late["gearwhine"]])
 		a.queue_free()
 		# parado: no suena nada de fondo
 		a = await _new_audio(car)
 		pk = _run(a, V, 4.0, 3.0, func(_t): return _snap(V, 0.0, 0.0, 0))
 		var quiet := true
-		for vn in ["roll", "squeal", "gravel", "wind", "turbo", "rain", "whine1", "whistle", "gwe"]:
+		for vn in ["roll", "squeal", "gravel", "wind", "turbo", "rain", "whine1", "whistle", "gwe", "gearwhine", "overrun"]:
 			if pk[vn] > -100.0:
 				quiet = false
 		check(quiet, "%s parado: ninguna capa de fondo suena" % car)

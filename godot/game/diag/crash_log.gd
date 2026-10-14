@@ -95,7 +95,7 @@ func write(line: String) -> void:
 			_dropped += 1
 	_mutex.unlock()
 
-## ¿conviene el audio simple? (se cerró de golpe la vez anterior, o el jugador lo pidió)
+## ¿conviene el audio simple? (se cerró de golpe la vez anterior, o el jugador lo pidió). Desde el 14/10/2026 race.gd ya NO lo usa: el cierre no era del audio
 func simple_audio(profile_on: bool) -> bool:
 	return profile_on or crashes > 0
 

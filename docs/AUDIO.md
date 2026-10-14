@@ -18,6 +18,28 @@ El sonido del auto del jugador lo arma `godot/game/audio/car_audio.gd` (el del m
 | `whine1/2`, `gwe` | seno / triángulo | zumbido de la caja de cambios |
 | flutter, pop, thump | un disparo | «tu-tu-tu» al soltar con turbo, petardeos, golpes |
 
+## Motor por capas, caja, freno motor y estampidos (14/10/2026, pedido del dueño)
+
+*«Los sonidos son muy finos, muy robóticos; quiero oír motor real, caja de cambios, turbo… como en Real Racing; la caja hace un silbido muy bonito al acelerar y en inercia;
+el freno motor al soltar; si piso el acelerador de manera intermitente hace explosiones y se siente el poder del motor».*
+
+- **Por qué sonaba a robot:** el motor era UN ciclo de 1050 muestras repetido idéntico (5 osciladores + saturación). Un motor de verdad son explosiones sueltas, cada una distinta.
+- **Ahora** (`tools/godot/make_engine_audio.py` → `eng_on0..6`, `eng_off0..6`, `overrun`, `gearwhine`, `backfire`): bucles de 2,5 s fabricados explosión por explosión a 7 frecuencias de encendido
+  (32 → 750 Hz: de un V8 en ralentí a un V12 al corte), **con carga** (acelerando: más abierto, admisión y ruido mecánico) y **sin carga** (soltando: pulsos débiles y desparejos, alguna que falla,
+  más apagado = freno motor). Cada explosión varía en tiempo (±1–3 %) y fuerza; cada cilindro empuja distinto (patrón de 4) → el ronroneo grave por debajo de la frecuencia de encendido;
+  el escape son resonancias de los tubos (115/340/780/1650 Hz) y un silenciador. `car_audio.gd` toma los dos bucles más cercanos a la frecuencia de explosiones real
+  (`rpm/60 × cilindros/2`; `firingOrder` es la cantidad de cilindros) y los mezcla a igual potencia, y pasa de «con carga» a «sin carga» según el pedal y la carga.
+- **Caja** (`gearwhine`): engranajes rectos con armónicos 2 y 3, bandas laterales y temblor (no un seno quieto), sube con la velocidad, más fuerte soltando (inercia) y en 1ª–2ª; fundamental ≤ 1,5 kHz;
+  un tono quieto baja hasta la mitad. Medido: soltando −42 (hatch) … −32 dBFS (Veltor GTR); parejo a 220 km/h ≤ −41.
+- **Freno motor** (`overrun`): crepitar del escape soltando con vueltas (más con más vueltas).
+- **Estampidos** (`backfire`): al soltar desde vueltas altas; pisando y soltando seguido salen más y más fuertes (hasta 4 por vez, cada 0,45 s como mínimo). El soplido del turbo al soltar suena en
+  cualquier marcha (antes sólo en 1ª–2ª).
+- **Turbo:** silbido +1,6 dB y soplido +1 dB (dentro de los topes de la prueba).
+- **Sonoridad medida** (`audio_render` acelerando, dBA): hatch −23,3 (antes −27,6), muscle −21,3, Veltor GTR −20,8; las bandas graves (< 400 Hz) ahora pesan como en un motor de verdad.
+- **«Audio simple»** sólo si el jugador lo pide: antes se prendía solo tras un cierre de golpe, pero el registro mostró que el cierre no era del audio y así el dueño no oía el sonido nuevo.
+  El audio simple sigue usando el motor de antes (un ciclo, liviano). `DR_OLD_ENGINE=1` en las pruebas compara con el de antes.
+- **Pruebas:** `audio_levels_test` (nuevo: la caja con armónicos ≤ 1,5 kHz, bajo tope andando, se oye al soltar sin tapar al motor, baja si queda quieta, parado no suena); `audio_render --scene=blips` (pisar y soltar).
+
 ## Qué pasaba («viento fuerte que se repite» y «silbido que se queda»)
 
 El dueño avisó: *«algo se pone en loop y suena feo como si fuera viento fuerte… un silbido se queda en loop»*. Se midió grabando lo que suena (ver abajo) y se encontró:
