@@ -26,7 +26,7 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 ## Vehículos
 - ✅ 26 autos con textura propia (`docs/AUTOS.md`).
 - ✅📱 DRP Interceptor y STRIX Vandal RS en el catálogo (28). Monoplaza DR-1 especial bloqueado (`Release.SPECIAL_OPEN`). ⛔ Moto: falta física de dos ruedas.
-- ✅📱 18 diseños de pintura, 8 interiores y 6 volantes comprables (Volante Pro 3D del dueño) en el taller → Pintura (`docs/PERSONALIZACION.md`). ⛔ Falta aplicar la migración `20261015000000_catalog_28_cosmetics.sql`.
+- ✅📱 18 diseños de pintura, 8 interiores y 6 volantes comprables (Volante Pro 3D del dueño) en el taller → Pintura (`docs/PERSONALIZACION.md`). ✅ Migración `20261015000000_catalog_28_cosmetics.sql` aplicada (14/10/2026 20:26 UTC). 📱 Falta probar una compra con la cuenta.
 
 ## Online
 - ✅ Cuenta obligatoria, economía en el servidor, Realtime preparado. Cerrado en la versión pública (`Release.ONLINE_OPEN := false`); con el modo desarrollador se abre y conecta dos jugadores (con lag, según el dueño, 14/10).
