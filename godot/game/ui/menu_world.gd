@@ -4,6 +4,7 @@ extends RefCounted
 
 const Kit := preload("res://game/ui/ui_kit.gd")
 const Sectors := preload("res://game/region/sectors.gd")
+const CityReach := preload("res://game/city/city_reach.gd")
 const Release := preload("res://game/data/release.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const OnlineSocial := preload("res://game/online/online_social.gd")
@@ -45,10 +46,13 @@ func _has_last_pos() -> bool:
 
 const SPAWN_PLACES := [["Central · Nivel calle", "Estacionamiento Central, a nivel de la calle: salís directo a la ruta"], ["Central · Planta alta", "Estacionamiento Central, un piso arriba: bajás por la rampa"], ["Central · Subsuelo", "Estacionamiento Central, un piso abajo: subís por la rampa"]]
 
+var locked: Array = [] # lugares de la región a los que todavía no se llegó manejando (city/city_reach.gd): en el mapa con candado
+
 ## Lugares para aparecer, en un solo selector: la última ubicación, los 3 estacionamientos de Dream City y las estaciones de servicio de las ciudades y pueblos de la región (los más cercanos primero).
 ## Cada uno: {key, name, sub, pos (mapa), kind, spawn (índice en city.spawns; -1 = última ubicación)}
 func _spawn_options() -> Array:
 	var out: Array = []
+	locked = []
 	var lp: Variant = _last_pos_value()
 	if lp != null and Sectors.is_open(Vector2(float(lp[0]), float(lp[1]))): # (en un sector en obra no se aparece)
 		out.append({"key": "last", "name": "📍 " + tr("ÚLTIMA UBICACIÓN"), "sub": tr("seguís desde donde dejaste el auto"), "pos": Vector2(float(lp[0]), float(lp[1])), "kind": "last", "spawn": -1})
@@ -57,12 +61,17 @@ func _spawn_options() -> Array:
 	if RegionServices.available():
 		var towns: Array = []
 		var list := RegionServices.spawn_list()
+		var reached := CityReach.reached_of(m.profile)
 		for j in list.size():
 			var sp: Dictionary = list[j]
 			var pos := Vector2(float(sp["x"]), float(sp["z"]))
 			if not Sectors.is_open(pos):
 				continue # sector en obra: se ve en el mapa pero no se aparece ahí (game/data/sectors.json)
 			var city_like := str(sp.get("kind", "")) == "ciudad"
+			if not reached.has(str(sp["name"])) and not Release.dev(m.profile):
+				# todavía no llegaste manejando (pasando los controles policiales): se ve en el mapa con candado, no se puede elegir
+				locked.append({"key": "lock:%d" % j, "pos": pos, "label": "🔒 " + str(sp["name"]), "kind": "locked", "name": str(sp["name"])})
+				continue
 			towns.append({"key": "town:%d" % j, "name": ("🏙 " if city_like else "🏘 ") + str(sp["name"]), "sub": tr("estación de servicio") + " · %d km " % roundi(pos.length() / 1000.0) + tr("de Dream City"),
 				"pos": pos, "kind": "ciudad" if city_like else "pueblo", "label": str(sp["name"]), "spawn": SPAWN_PLACES.size() + j})
 		towns.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return (a["pos"] as Vector2).length() < (b["pos"] as Vector2).length())
@@ -96,6 +105,8 @@ func spawn_screen() -> void:
 	# el mapa: una marca por lugar (los 3 estacionamientos son una sola, Dream City)
 	var map := SpawnMap.new()
 	map.marks.append({"key": "dream", "pos": Vector2.ZERO, "label": "Dream City", "kind": "dream"})
+	for lk in locked:
+		map.marks.append(lk)
 	for o in opts:
 		if str(o["kind"]) in ["ciudad", "pueblo", "last"]:
 			map.marks.append({"key": str(o["key"]), "pos": o["pos"], "label": str(o.get("label", tr("Última ubicación"))), "kind": str(o["kind"])})
@@ -106,6 +117,8 @@ func spawn_screen() -> void:
 	side.size_flags_stretch_ratio = 0.0
 	row.add_child(side)
 	side.add_child(Kit.wrap(tr("Tocá un lugar en el mapa o usá las flechas. Todos tienen estación de servicio o estacionamiento: se sale manejando."), 15, Kit.MUTED, 300))
+	if not locked.is_empty():
+		side.add_child(Kit.wrap("🔒 " + tr("Las otras ciudades y pueblos se habilitan cuando llegás manejando (la policía controla las rutas largas)."), 14, Kit.GOLD, 300))
 	var info := Kit.wrap("", 16, Kit.TEXT, 300)
 	var holder := {"sel": sel}
 	var selector: PanelContainer = null
@@ -135,6 +148,12 @@ func spawn_screen() -> void:
 			if not parks.is_empty():
 				var at := parks.find(int(holder["sel"]))
 				target = int(parks[(at + 1) % parks.size()]) if at >= 0 else int(parks[0])
+		elif key.begins_with("lock:"):
+			for lk in locked:
+				if str(lk["key"]) == key:
+					m.sfx.play("click")
+					info.text = "🔒 %s: %s" % [str(lk["name"]), tr("todavía no llegaste manejando. Salí de Dream City por la ruta, pasá los controles policiales y, al llegar, vas a poder aparecer acá.")]
+			return
 		else:
 			for i in opts.size():
 				if str(opts[i]["key"]) == key:

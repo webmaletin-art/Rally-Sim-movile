@@ -5,6 +5,19 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 14/10/2026 (tarde) · Fachadas abiertas y sobre las calles, IA marcha atrás al largar, policía en la banquina, ciudades alcanzadas, registro del mundo abierto
+- **Reporte del dueño:** (1) dos registros más: **se cierra sólo en el mundo abierto** (en drift jugó varios minutos sin problema); (2) al cortar las fachadas para los concesionarios quedaron fachadas abiertas (se ve el hueco), y en el centro hay muchas; hay fachadas encima de las calles; (3) autos que apenas empieza la carrera van marcha atrás; (4) la policía debe controlar desde la orilla, no en el medio; (5) si un jugador logra pasar, que esa ciudad figure en su mapa y pueda aparecer ahí; (6) ¿qué pasa con 3 jugadores online yendo a otra ciudad?
+- **(1) Registro:** el contenido del dueño era r173 (sin la RAM ni el motivo de Android, que entraron en r174). Se agrega una línea `[mundo]` cada 5 s en el mundo abierto (posición, cuadras armadas, triángulos, autos, llamadas de dibujo, primitivas). Causa **sin confirmar**; el próximo registro (r175+) trae `[android] cierre 1: …`.
+- **(2) Fachadas — causa confirmada:** `city_world._slabs` sólo dibujaba el costado de una losa cuando el vecino era más bajo; en los extremos de cada tira (cruce, concesionario, hueco) no había costado → «caja abierta». Además 49 losas pisaban una calle (otra calle que pasa por detrás en curva, o las entradas de las estaciones de servicio). **Cambio:** costado completo (desde abajo) cuando no hay vecino o el vecino es menos hondo; `city_layout._free_depth` achica el fondo de cada losa hasta la calle de atrás (si queda < 4 m no se hace; las paredes de las estaciones < 2 m); los tramos del arco de las estaciones se marcan como vecinos. Resultado: 0 losas sobre calles (antes 49), 30 de 5.291 losas menos.
+- **(3) IA marcha atrás — causa confirmada:** en `ai/ai_driver.gd` el reloj `time` corría durante la cuenta regresiva (`enabled = false`); al largar ya pasaban los 2 s de gracia y un auto que patinaba o estaba encajonado en la grilla a menos de 1,5 m/s durante 1,5 s se creía trabado y tiraba marcha atrás. **Cambio:** con la IA apagada el reloj y el contador de trabado vuelven a 0; gracia de 4 s. Los rivales de las carreras del mundo abierto (`police_driver`) no tenían el problema (prueba nueva).
+- **(4) Policía:** `city_police._arm`: todos en las dos banquinas, escalonados, apuntando a la ruta (sin barrera en la calzada).
+- **(5) Ciudades alcanzadas:** `game/city/city_reach.gd` (servicio nuevo en `city_services.gd`), `ui/menu_world.gd` (lugares no alcanzados con 🔒 en el mapa, no se eligen), `ui/spawn_map.gd` (marca gris). Textos `b62_ciudades_alcanzadas.py`.
+- **(6) Online:** respuesta en `docs/POLICIA.md` (cada teléfono tiene su policía).
+- **Pruebas:** `city_test`, `police_test` (nueva: ninguno en la calzada; parado te arrestan en 8,3 s; superdeportivo a fondo 18 s con los patrulleros encima), `ow_events_test` (nueva: ningún rival marcha atrás al largar), `ai_route_test` (nueva: cuenta regresiva de 3 s y nadie va marcha atrás en los primeros 6 s), `city_reach_test` (nueva), `scripts_parse_test`; capturas del centro, de los concesionarios y de una estación revisadas.
+- **Resultado:** PENDIENTE DE APK.
+
+---
+
 ## 14/10/2026 · Cierre de golpe: primer registro del teléfono (2 cierres) + motivo del cierre según Android
 - **Síntoma (dueño, con «COPIAR REGISTRO»):** dos cierres seguidos en Dream City con el R2 Turbo, contenido r171, Z2356 (Mali-G57), APK viejo (sin CrashGuard).
   Sesión 1: carga a los 83 s, **nunca aceleró** (0 km/h todo el tiempo), se cerró entre los 96 y 98 s. Sesión 2: carga a los 77 s, acelera a los 79 s, suelta a 37 km/h, se cerró entre los 85,6 y 87,6 s.

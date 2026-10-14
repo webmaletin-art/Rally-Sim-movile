@@ -7,7 +7,7 @@ const RegionServices := preload("res://game/region/region_services.gd")
 
 signal tapped(key: String) # el toque eligió esta marca
 
-## [{key, pos (Vector2, metros), label, kind: "dream" | "ciudad" | "pueblo" | "last"}]
+## [{key, pos (Vector2, metros), label, kind: "dream" | "ciudad" | "pueblo" | "last" | "locked"}]
 var marks: Array = []
 var selected := ""
 var zoom := 1.0
@@ -175,6 +175,9 @@ func _draw() -> void:
 				"last":
 					rad = 6.0
 					col = Color(1.0, 0.3, 0.25)
+				"locked": # (todavía no se llegó manejando: gris)
+					rad = 4.0
+					col = Color(0.55, 0.57, 0.6)
 			draw_circle(sp, rad + 2.0, Color(0, 0, 0, 0.75))
 			draw_circle(sp, rad, col)
 			if is_sel:

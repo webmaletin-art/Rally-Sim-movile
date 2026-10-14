@@ -1029,6 +1029,30 @@ func _place_facades() -> void:
 			for r in runs:
 				_slabs_in_run(kind, pts, away, off, float(r[0]), float(r[1]), sdv)
 
+## Fondo libre de una losa: hasta dónde se puede ir hacia atrás desde cada punto del frente sin pisar el corredor de ninguna calle
+func _free_depth(pts: PackedVector3Array, away: PackedVector2Array, depth: float) -> float:
+	var free := depth
+	for i in pts.size():
+		var d := 1.0
+		while d <= free + 0.01:
+			var q := Vector2(pts[i].x, pts[i].z) + away[i] * d
+			if probe(q.x, q.y)[0] > 0.0:
+				free = d - 1.0
+				break
+			d += 1.0
+	# y entre punto y punto (las losas largas en curva)
+	for i in pts.size() - 1:
+		var mid := (Vector2(pts[i].x, pts[i].z) + Vector2(pts[i + 1].x, pts[i + 1].z)) * 0.5
+		var am := (away[i] + away[i + 1]).normalized()
+		var d2 := 1.0
+		while d2 <= free + 0.01:
+			var q2 := mid + am * d2
+			if probe(q2.x, q2.y)[0] > 0.0:
+				free = d2 - 1.0
+				break
+			d2 += 1.0
+	return free
+
 ## Si detrás de la línea de edificación (a menos de ~18 m) pasa el corredor de otra calle: la distancia hasta ahí; 0 si hay lugar de sobra para un edificio
 func _gap_behind(p: Vector2, dir: Vector2, own: int) -> float:
 	for d in [9.0, 18.0]:
@@ -1111,15 +1135,28 @@ func _slabs_in_run(kind: String, pts: PackedVector3Array, away: PackedVector2Arr
 			run_slabs.append(null)
 			continue
 		run_slabs.append(slab)
-	# alturas de los vecinos (para mostrar el costado de la losa más alta)
+	# ninguna losa se mete en una calle (pedido del dueño, 14/10/2026: había edificios encima de calles y de las entradas de las estaciones):
+	# por detrás de la línea de edificación puede pasar otra calle (curvas, entradas): la losa se achica hasta ahí, y si queda muy flaca no se hace
+	for i in run_slabs.size():
+		var sl = run_slabs[i]
+		if sl == null:
+			continue
+		var free := _free_depth(sl["pts"], sl["away"], float(sl["depth"]))
+		if free < 4.0:
+			run_slabs[i] = null
+		elif free < float(sl["depth"]):
+			sl["depth"] = free
+	# alturas y fondos de los vecinos (para cerrar el costado de la losa que asoma: más alta, más honda o sin vecino)
 	for i in run_slabs.size():
 		var sl = run_slabs[i]
 		if sl == null:
 			continue
 		if i > 0 and run_slabs[i - 1] != null:
 			sl["hp"] = float(run_slabs[i - 1]["h"])
+			sl["dp"] = float(run_slabs[i - 1]["depth"])
 		if i + 1 < run_slabs.size() and run_slabs[i + 1] != null:
 			sl["hn"] = float(run_slabs[i + 1]["h"])
+			sl["dn"] = float(run_slabs[i + 1]["depth"])
 		var p0: Vector3 = sl["pts"][0]
 		var key := chunk_of(p0.x, p0.z)
 		var arr: Array = slabs.get(key, [])
@@ -1266,6 +1303,7 @@ func _place_stations() -> void:
 		var steps := 20
 		for cc in circles:
 			var q: Vector2 = cc
+			var prev_sl = null # el tramo anterior del arco (para no cerrar costados entre tramos pegados)
 			for k in steps:
 				var a0 := TAU * float(k) / float(steps)
 				var a1 := TAU * float(k + 1) / float(steps)
@@ -1273,18 +1311,31 @@ func _place_stations() -> void:
 				var mp := q + Vector2(cos(am), sin(am)) * (R + 1.5)
 				var pr := probe(mp.x, mp.y)
 				if pr[6] >= 0.0 and pr[0] > -0.4:
+					prev_sl = null
 					continue # ahí pasa la calle (el frente del lote)
 				var inside_other := false
 				for c2 in circles:
 					if (c2 as Vector2) != q and mp.distance_to(c2) < R + 0.6:
 						inside_other = true
 				if inside_other:
+					prev_sl = null
 					continue
 				var p0 := q + Vector2(cos(a0), sin(a0)) * (R + 1.5)
 				var p1 := q + Vector2(cos(a1), sin(a1)) * (R + 1.5)
 				var sl := {"pts": PackedVector3Array([Vector3(p0.x, height(p0.x, p0.y), p0.y), Vector3(p1.x, height(p1.x, p1.y), p1.y)]),
 					"away": PackedVector2Array([Vector2(cos(a0), sin(a0)), Vector2(cos(a1), sin(a1))]), "h": 9.6, "wall": WALLS[(k * 3 + int(sp[3])) % WALLS.size()], "roof": ROOFS[k % ROOFS.size()],
 					"seed": _rng.randf(), "depth": 6.0, "house": false, "hp": 0.0, "hn": 0.0, "zone": 1}
+				var fd := _free_depth(sl["pts"], sl["away"], 6.0) # (que no tape la entrada ni la calle de atrás)
+				if fd < 2.0:
+					prev_sl = null
+					continue
+				sl["depth"] = fd
+				if prev_sl != null:
+					prev_sl["hn"] = 9.6
+					prev_sl["dn"] = fd
+					sl["hp"] = 9.6
+					sl["dp"] = float(prev_sl["depth"])
+				prev_sl = sl
 				var key := chunk_of(p0.x, p0.y)
 				var arr: Array = slabs.get(key, [])
 				arr.append(sl)

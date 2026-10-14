@@ -1217,9 +1217,14 @@ func _slabs(s: Soup, key: Vector2i) -> void:
 		var tge := Vector2(pe.x - pts[pts.size() - 2].x, pe.z - pts[pts.size() - 2].z).normalized()
 		var hp: float = sl["hp"]
 		var hn: float = sl["hn"]
-		if hp > 0.0 and hp < h - 0.1:
+		# los edificios son cajas cerradas (pedido del dueño): sin vecino, o con un vecino menos hondo, el costado va entero desde abajo
+		if hp <= 0.0 or float(sl.get("dp", depth)) < depth - 0.1:
+			_side_wall(s, p0, away[0], depth, -3.2, h, -tg0, side_col)
+		elif hp < h - 0.1:
 			_side_wall(s, p0, away[0], depth, hp, h, -tg0, side_col)
-		if hn > 0.0 and hn < h - 0.1:
+		if hn <= 0.0 or float(sl.get("dn", depth)) < depth - 0.1:
+			_side_wall(s, pe, away[away.size() - 1], depth, -3.2, h, tge, side_col)
+		elif hn < h - 0.1:
 			_side_wall(s, pe, away[away.size() - 1], depth, hn, h, tge, side_col)
 		if house:
 			if hp < h + rise:

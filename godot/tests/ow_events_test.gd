@@ -34,6 +34,8 @@ func _ev_race(tr, vehicles, ev: Dictionary, car_id: String) -> Array:
 	evs.setup(race)
 	return [race, a[1], a[2], evs]
 
+var _rev_min := 0.0 # la menor velocidad hacia adelante de los rivales en los primeros 5 s (negativa = marcha atrás)
+
 ## corre la física con el jugador manejado por un piloto automático que sigue el recorrido del evento
 func _drive(race, pol, evs, me, pts: PackedVector2Array, pace: float, secs: float) -> void:
 	var drv := PoliceDriver.new()
@@ -51,6 +53,10 @@ func _drive(race, pol, evs, me, pts: PackedVector2Array, pace: float, secs: floa
 			race.sim_t += 1.0 / 120.0
 		pol.update(1.0 / 30.0)
 		evs.update(1.0 / 30.0)
+		if evs.state == "run" and evs.t < 5.0: # al largar ningún rival va marcha atrás (reporte del dueño, 14/10/2026)
+			for r in evs.rivals:
+				var cp = r["car"].phys
+				_rev_min = minf(_rev_min, cp.vx * sin(cp.yaw) + cp.vz * cos(cp.yaw))
 		if OS.has_environment("EV_DBG") and i % 150 == 0 and evs.state == "run":
 			var pr: Array = evs._project(Vector2(me.phys.px, me.phys.pz), evs._pi)
 			print("   t=%.0f arc=%.0f off=%.1f v=%.0f km/h pi=%d" % [evs.t, evs.arc, float(pr[2]), sqrt(me.phys.vx * me.phys.vx + me.phys.vz * me.phys.vz) * 3.6, evs._pi])
@@ -114,6 +120,7 @@ func _run() -> void:
 	var got: Array = race.profile.earned
 	print("     sprint %s: %d m, premio %s · %s" % [sprint["id"], int(sprint["len"]), str(got), evs._banner.text.replace("\n", " | ")])
 	_check(not got.is_empty() and str(got[0][1]) == "owev", "terminó el sprint con premio (%s)" % str(got))
+	_check(_rev_min > -0.5, "al largar ningún rival va marcha atrás (menor velocidad hacia adelante %.1f m/s)" % _rev_min)
 	var won1: bool = int(evs._rec(str(sprint["id"])).get("wins", 0)) > 0
 	print("     ganó: %s · ritmo de los rivales ahora %.2f" % [str(won1), float(evs._rec(str(sprint["id"])).get("pace", 0.0))])
 	race.queue_free()

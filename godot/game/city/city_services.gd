@@ -13,8 +13,10 @@ const CityToll := preload("res://game/city/city_toll.gd")
 const CityPolice := preload("res://game/city/city_police.gd")
 const CityEvents := preload("res://game/city/city_events.gd")
 const CitySectors := preload("res://game/city/city_sectors.gd")
+const CityReach := preload("res://game/city/city_reach.gd")
 
 var race # race.gd
+var reach # CityReach
 
 func setup(p_race) -> void:
 	race = p_race
@@ -39,6 +41,8 @@ func setup(p_race) -> void:
 	race.police.setup(race)
 	race.ow_events = CityEvents.new() # carreras para descubrir en el mundo abierto (docs/CARRERAS_MUNDO_ABIERTO.md)
 	race.ow_events.setup(race)
+	reach = CityReach.new() # ciudades y pueblos alcanzados manejando: después se puede aparecer ahí (docs/POLICIA.md)
+	reach.setup(race)
 
 func update(dt: float) -> void:
 	race.shops.update(dt)
@@ -57,3 +61,5 @@ func update(dt: float) -> void:
 		race.police.update(dt)
 	if race.ow_events != null:
 		race.ow_events.update(dt)
+	if reach != null:
+		reach.update(dt)

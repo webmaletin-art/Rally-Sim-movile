@@ -164,6 +164,12 @@ func _run() -> void:
 	me.driver = drv
 	_sim(race, pol, 1.0)
 	_check(pol.state == "armed" and pol.units.size() >= 2, "al acercarse se arma el control (%s, %d patrulleros)" % [pol.state, pol.units.size()])
+	var in_lane := 0
+	for u in pol.units: # controlan desde la orilla: ninguno sobre la calzada (pedido del dueño, 14/10/2026)
+		var up := Vector2(u["car"].phys.px, u["car"].phys.pz) - (ck["p"] as Vector2)
+		if absf(up.x * dir.y - up.y * dir.x) < float(ck["hw"]) - 0.3:
+			in_lane += 1
+	_check(in_lane == 0, "los patrulleros esperan en la banquina, no en la calzada (%d en la calzada)" % in_lane)
 	var st := {"chased": false, "arrested": false, "t": 0.0}
 	_sim(race, pol, 40.0, func() -> void:
 		if pol.state == "chase":

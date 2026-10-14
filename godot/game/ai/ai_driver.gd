@@ -176,18 +176,22 @@ func _point_ahead(dist: float, ln: float) -> Vector3:
 
 ## Devuelve Vector3(acelerador, freno, volante); también deja hb y nitro
 func update(ph: VehiclePhysics, h: float) -> Vector3:
-	time += h
 	var V = p.V
 	var N: int = track.n
 	var hw: float = track.half_width
 	hb = false
 	nitro = false
 	if not enabled:
+		# (en la cuenta regresiva el reloj no corre: si corría, al largar ya «llevaba» segundos y un auto que patinaba o estaba encajonado
+		# en la grilla se creía trabado y tiraba marcha atrás apenas empezaba la carrera — reporte del dueño, 14/10/2026)
+		time = 0.0
+		stuck_t = 0.0
 		throttle = 0.0
 		brake = 0.0
 		hb = true
 		steer = 0.0
 		return Vector3(0, 0, 0)
+	time += h
 	_locate()
 	var spd := sqrt(p.vx * p.vx + p.vz * p.vz)
 	# velocidad objetivo: mirar un poco adelante según la velocidad
@@ -300,7 +304,7 @@ func update(ph: VehiclePhysics, h: float) -> Vector3:
 			throttle *= 0.6
 	nitro = V.nitroCap > 0.0 and err > 6.0 and absf(steer) < 0.2 and p.nitro > V.nitroCap * 0.3
 	# recuperación
-	if time > 2.0 and spd < 1.5 and throttle > 0.3:
+	if time > 4.0 and spd < 1.5 and throttle > 0.3:
 		stuck_t += h
 	else:
 		stuck_t = maxf(0.0, stuck_t - h * 2.0)

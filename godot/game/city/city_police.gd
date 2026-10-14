@@ -188,20 +188,13 @@ func _arm(c: int, me) -> void:
 	var lat := Vector2(toward.y, -toward.x)
 	var n := wanted()
 	var hw := float(ck["hw"])
-	var gap_side := 1.0 if (int(ck["ei"]) % 2) == 0 else -1.0 # de qué lado queda el hueco (por la banquina)
+	var first_side := 1.0 if (int(ck["ei"]) % 2) == 0 else -1.0
 	for k in n:
-		var q: Vector2
-		var yaw: float
-		if k < 2:
-			# barrera: dos patrulleros atravesados en la calzada; queda un hueco angosto por la banquina de un lado
-			var off := (-0.55 if k == 0 else 0.2) * hw * gap_side
-			q = ck["p"] + toward * (float(k) * 3.0) + lat * off
-			yaw = atan2(toward.x, toward.y) + PI * 0.5 * (1.0 if k == 0 else -1.0) + 0.25
-		else:
-			# los demás, en la banquina después de la barrera, listos para salir detrás
-			var side := -gap_side if k % 2 == 0 else gap_side
-			q = ck["p"] + toward * (18.0 + 12.0 * float(k - 2)) + lat * side * (hw + 2.4)
-			yaw = atan2(toward.x, toward.y) + side * 0.3
+		# todos controlan desde la orilla (pedido del dueño, 14/10/2026: «desde la orilla de la ruta, no en el medio»): estacionados en las dos
+		# banquinas, uno de cada lado y escalonados, con la trompa apuntando un poco hacia la ruta para salir enseguida detrás del que pasa
+		var side := first_side if k % 2 == 0 else -first_side
+		var q: Vector2 = ck["p"] + toward * (float(k / 2) * 16.0 + (0.0 if k % 2 == 0 else 7.0)) + lat * side * (hw + 2.2)
+		var yaw := atan2(toward.x, toward.y) - side * 0.45
 		_spawn(q, yaw, ROLES[k % ROLES.size()])
 	CrashLog.mark("policia", "control armado · %d patrulleros · nivel %d" % [n, heat])
 	if fwd.dot(toward) < -0.5:

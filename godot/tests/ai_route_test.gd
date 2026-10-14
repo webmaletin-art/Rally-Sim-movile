@@ -35,10 +35,19 @@ func _init() -> void:
 		var t := 0.0
 		var lap_t := -1.0
 		var h := 1.0 / 120.0
+		# cuenta regresiva de 3 s (la IA apagada, como en la carrera): al largar ninguno tira marcha atrás (reporte del dueño, 14/10/2026)
+		drv.enabled = false
+		for k in 360:
+			var c0: Vector3 = drv.update(ph, h)
+			ph.step(h, c0.x, c0.y, c0.z, true, false)
+		drv.enabled = true
+		var rev_min := 0.0
 		while t < 420.0:
 			var c: Vector3 = drv.update(ph, h)
 			ph.step(h, c.x, c.y, c.z, false, drv.nitro)
 			t += h
+			if t < 6.0:
+				rev_min = minf(rev_min, ph.vx * sin(ph.yaw) + ph.vz * cos(ph.yaw))
 			var a: float = pv.arc_pos(ph.px, ph.pz)
 			var da: float = a - prev
 			if da < -track.length * 0.5:
@@ -53,7 +62,9 @@ func _init() -> void:
 			if lap_t < 0.0 and dist >= track.length:
 				lap_t = t
 				break
-		var good: bool = lap_t > 0.0 and drv.respawns <= 1 and max_lat < track.half_width + track.shoulder + 3.0
+		var good: bool = lap_t > 0.0 and drv.respawns <= 1 and max_lat < track.half_width + track.shoulder + 3.0 and rev_min > -0.5
+		if rev_min <= -0.5:
+			print("FALLA %s %s: al largar fue marcha atrás (%.1f m/s)" % [cs[0], cs[2], rev_min])
 		if not good:
 			fail = true
 		print("%s %-12s %-8s vuelta de %.0f m en %s · máx. desvío %.1f m (camino ±%.1f) · pasos fuera del camino %d · reapariciones %d · vel. media %.0f km/h" % [

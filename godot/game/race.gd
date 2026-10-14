@@ -2964,6 +2964,7 @@ func _process(dt: float) -> void:
 ## Migas para el registro de diagnóstico (diag/crash_log.gd): cada segundo mientras se maneja, velocidad, marcha, acelerador y memoria;
 ## al acelerar a fondo desde parado, una línea extra. Si el juego se cierra de golpe, la última línea dice qué estaba pasando.
 var _dg_t := 0.0
+var _dg_w := 0
 var _dg_gas := false
 func _diag_tick(dt: float) -> void:
 	if cars.is_empty() or paused:
@@ -2978,6 +2979,13 @@ func _diag_tick(dt: float) -> void:
 		return
 	_dg_t = 0.0
 	CrashLog.mark("auto", "%d km/h · %d rpm · %dª · gas %.1f · %s" % [int(sqrt(p.vx * p.vx + p.vz * p.vz) * 3.6), int(p.rpm), int(p.gear), controls.gas if controls != null else 0.0, CrashLog.mem_line()])
+	# en el mundo abierto (el único lugar donde se cierra, según el dueño): qué se está armando, cada 5 s
+	_dg_w += 1
+	if _dg_w >= 5 and track != null and track.get("world_node") != null and track.world_node.has_method("stats"):
+		_dg_w = 0
+		var ws: Dictionary = track.world_node.stats()
+		CrashLog.mark("mundo", "pos %d,%d · cuadras %d (armadas %d) · %dk triángulos · autos %d · llamadas %d · primitivas %dk" % [int(p.px), int(p.pz), int(ws["chunks"]), int(ws["built"]), int(ws["tris"]) / 1000, cars.size(),
+			int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)), int(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)) / 1000])
 
 ## Resolución automática del mundo 3D: baja si el teléfono no llega y sube de a poco si le sobra
 var _ar_t := 0.0
