@@ -316,6 +316,8 @@ func _quick() -> void:
 	else:
 		for k in _maps():
 			if str(_maps()[k].get("kind", "")) == "route" and not _maps()[k].get("hidden", false) and not _maps()[k].get("trench", false):
+				if str(k).begins_with("prueba_") and not Release.dev(m.profile):
+					continue # mapas de prueba del editor (Prueba 01…06): fuera de la versión final; los usan las pruebas automáticas y el modo desarrollador
 				route_maps.append(k)
 		route_maps.append("paperRace") # selva de papel: ruta y tierra, angosta y tupida
 		route_maps.append("drift") # la plaza de drift

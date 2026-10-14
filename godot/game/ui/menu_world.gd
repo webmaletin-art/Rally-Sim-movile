@@ -178,53 +178,105 @@ func online_home() -> void:
 		return
 	_online_hub()
 
-## El hub del mundo online: quién sos, cómo está la conexión, cuánta gente hay y el botón de entrar
+## El hub del mundo online (rediseño 14/10/2026): tarjeta del piloto con el estado de la conexión, el botón grande para entrar al mundo, accesos a lo que se maneja
+## desde el menú (regalo diario, rankings, cuenta, dónde aparecer) y un resumen de lo que hay adentro del mundo (en la pausa: chat, jugadores y amigos, mercado, reportes).
+## Sólo se muestra lo que anda: nada de botones de adorno. La conexión se consulta sin trabar la pantalla; si no hay, se puede entrar igual o reintentar.
 func _online_hub() -> void:
 	var nick := str(m.profile.d.get("name", "Piloto"))
-	var card := Kit.panel(12, Kit.PANEL2)
+	# ── tarjeta del piloto
+	var card := Kit.panel(14, Kit.PANEL2)
 	m.body.add_child(card)
-	var cv := Kit.vbox(4)
+	var cv := Kit.vbox(6)
 	card.add_child(cv)
-	var head := Kit.hbox(8)
+	var head := Kit.hbox(10)
 	cv.add_child(head)
-	var nl := Kit.label("👤 " + nick, 26, Kit.GOLD)
-	nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(nl)
-	head.add_child(Kit.button(tr("CAMBIAR"), func() -> void:
-		m.sfx.play("click")
-		m.go("nick"), false, 14, Vector2(100, 38)))
+	var av := Kit.label(nick.substr(0, 1).to_upper(), 30, Color(0.05, 0.06, 0.08), HORIZONTAL_ALIGNMENT_CENTER)
+	av.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	av.custom_minimum_size = Vector2(54, 54)
+	av.add_theme_stylebox_override("normal", Kit.box(Kit.ACCENT, 27, Color(1, 1, 1, 0.6), 2, 0))
+	head.add_child(av)
+	var nv := Kit.vbox(0)
+	nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(nv)
+	var nl := Kit.label(nick, 24, Kit.TEXT)
+	nl.clip_text = true
+	nl.custom_minimum_size.x = 40
+	nv.add_child(nl)
 	var cid: String = m.profile.current_id()
 	var cm: Dictionary = CarBuild.catalog()["cars"].get(cid, {})
-	cv.add_child(Kit.label("🚗 %s %s" % [str(cm.get("brand", "")), str(cm.get("model", ""))], 15, Kit.TEXT))
-	cv.add_child(Kit.label("🏙 " + tr("MUNDO ABIERTO") + " · Dream City", 15, Kit.MUTED))
-	var st_l := Kit.label("● " + tr("Conectando…"), 15, Kit.MUTED)
-	cv.add_child(st_l)
-	var pl_l := Kit.label("", 15, Kit.MUTED)
-	cv.add_child(pl_l)
-	var wal_l := Kit.label("💰 " + tr("Créditos online") + ": …", 15, Kit.GOLD)
+	var car_l := Kit.label("%s %s" % [str(cm.get("brand", "")), str(cm.get("model", ""))], 14, Kit.MUTED)
+	car_l.clip_text = true
+	car_l.custom_minimum_size.x = 40
+	nv.add_child(car_l)
+	head.add_child(Kit.button(tr("NOMBRE"), func() -> void:
+		m.sfx.play("click")
+		m.go("nick"), false, 13, Vector2(90, 36)))
+	var pills := Kit.hbox(8)
+	cv.add_child(pills)
+	var st_l := Kit.label("● " + tr("Conectando…"), 14, Kit.MUTED)
+	st_l.add_theme_stylebox_override("normal", Kit.box(Color(0, 0, 0, 0.25), 12, Color(1, 1, 1, 0.15), 1, 6))
+	pills.add_child(st_l)
+	var pl_l := Kit.label("", 14, Kit.MUTED)
+	pl_l.clip_text = true
+	pl_l.custom_minimum_size.x = 40
+	pl_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pills.add_child(pl_l)
+	var wal_l := Kit.label("💰 " + tr("Créditos online") + ": …", 16, Kit.GOLD)
 	cv.add_child(wal_l)
-	m.body.add_child(m.menu_button("🌍 " + tr("ENTRAR AL MUNDO"), tr("elegí dónde aparecer"), func() -> void:
+	# ── entrar
+	m.body.add_child(m.menu_button(tr("ENTRAR AL MUNDO ONLINE"), tr("Dream City y la región · elegí dónde aparecer"), func() -> void:
 		m.sfx.play("click")
 		m.world_online = true
-		m.go("spawn"), true))
-	var gift_b := Kit.button("🎁 " + tr("REGALO DIARIO ONLINE"), func() -> void:
-		m.sfx.play("click")
-		var gr: Dictionary = await m.app.eco.daily()
-		if not is_instance_valid(wal_l):
-			return
-		if bool(gr["ok"]):
-			m.sfx.play("buy")
-			m.toast(tr("¡Regalo del día! +%s créditos online") % Kit.fmt_cr(float(gr["gift"])))
-			wal_l.text = "💰 %s: %s" % [tr("Créditos online"), Kit.fmt_cr(float(m.app.eco.credits))]
-		else:
-			m.toast(tr(str(gr["text"]))), false, 16, Vector2(0, 46))
-	gift_b.visible = false
-	m.body.add_child(gift_b)
-	_online_options()
-	# billetera online (la guarda el servidor, aparte de los créditos offline)
+		m.go("spawn"), true, true, 22))
+	# ── accesos (sólo lo que anda desde el menú)
+	var g := Kit.grid(2, 8, 8)
+	m.body.add_child(g)
+	var gift: Button = m.tile("bag", tr("REGALO DIARIO"), tr("cargando…"), func() -> void: pass, false, 64.0)
+	gift.disabled = true
+	g.add_child(gift)
+	var on_r: bool = m.profile.setting("onlineScores") == true
+	g.add_child(m.tile("trophy", tr("RANKINGS"), ("☑ " + tr("participás")) if on_r else ("☐ " + tr("no participás")), func() -> void:
+		m.profile.set_setting("onlineScores", not on_r)
+		m.go("online", null, false), false, 64.0))
+	var mail := str(m.app.online.email)
+	g.add_child(m.tile("gear", tr("CUENTA"), mail if mail != "" else tr("tu correo"), func() -> void: m.go("account"), false, 64.0))
+	g.add_child(m.tile("world", tr("DÓNDE APARECER"), tr("estacionamientos y pueblos"), func() -> void:
+		m.world_online = true
+		m.go("spawn"), false, 64.0))
+	# ── lo que hay adentro del mundo
+	var inside := Kit.panel(10, Kit.PANEL2)
+	m.body.add_child(inside)
+	var iv := Kit.vbox(3)
+	inside.add_child(iv)
+	iv.add_child(Kit.label(tr("ADENTRO DEL MUNDO · en la pausa"), 14, Kit.ACCENT))
+	for t in ["💬 " + tr("Chat mundial y mensajes privados"), "👥 " + tr("Jugadores conectados y amigos"), "🚗 " + tr("Mercado de autos entre jugadores"), "🛡 " + tr("Reportes y bloqueos (protegen el chat)"), "🚨 " + tr("Controles policiales en las rutas")]:
+		iv.add_child(Kit.label(t, 14, Kit.TEXT))
+	if Release.dev(m.profile):
+		var res := Kit.wrap("", 13, Kit.GREEN, 300)
+		m.body.add_child(Kit.button("🛠 Probar conexión con Supabase", func() -> void:
+			res.text = tr("Probando…")
+			var r0: Dictionary = await m.app.online.ping()
+			res.text = str(r0["text"]), false, 15, Vector2(0, 44)))
+		m.body.add_child(res)
+	# billetera online (la guarda el servidor, aparte de los créditos sin conexión) y regalo diario
 	if await m.app.enter_online() and is_instance_valid(wal_l):
 		wal_l.text = "💰 %s: %s" % [tr("Créditos online"), Kit.fmt_cr(float(m.app.eco.credits))]
-		gift_b.visible = true
+		gift.disabled = false
+		_tile_sub(gift, tr("cobrar el de hoy"))
+		gift.pressed.connect(func() -> void:
+			m.sfx.play("click")
+			var gr: Dictionary = await m.app.eco.daily()
+			if not is_instance_valid(wal_l):
+				return
+			if bool(gr["ok"]):
+				m.sfx.play("buy")
+				m.toast(tr("¡Regalo del día! +%s créditos online") % Kit.fmt_cr(float(gr["gift"])))
+				wal_l.text = "💰 %s: %s" % [tr("Créditos online"), Kit.fmt_cr(float(m.app.eco.credits))]
+			else:
+				m.toast(tr(str(gr["text"]))))
+	elif is_instance_valid(gift):
+		_tile_sub(gift, tr("sin conexión"))
+		wal_l.text = "💰 %s: %s" % [tr("Créditos online"), tr("sin conexión")]
 	# estado de la conexión y jugadores (sin trabar la pantalla)
 	var on: Node = m.app.online
 	var r: Dictionary = await on.call_fn("presence_list", {"p_limit": 60})
@@ -243,8 +295,24 @@ func _online_hub() -> void:
 				fr += 1
 		pl_l.text = "👥 %s · ⭐ %s" % [tr("%d jugadores online") % n, tr("%d amigos") % fr]
 	else:
-		st_l.text = "● " + tr("Sin conexión con el servidor: se puede entrar igual, sin chat ni jugadores.")
+		st_l.text = "● " + tr("Sin conexión")
 		st_l.add_theme_color_override("font_color", Kit.RED)
+		pl_l.text = tr("se puede entrar igual, sin chat ni jugadores")
+		cv.add_child(Kit.button("↻ " + tr("REINTENTAR"), func() -> void:
+			m.sfx.play("click")
+			m.go("online", null, false), false, 14, Vector2(0, 40)))
+
+## Cambia la línea chica de un mosaico del menú (m.tile: ícono, nombre, línea chica)
+func _tile_sub(t: Button, txt: String) -> void:
+	var labels: Array = []
+	var stack: Array = [t]
+	while not stack.is_empty():
+		var n: Node = stack.pop_front()
+		if n is Label:
+			labels.append(n)
+		stack.append_array(n.get_children())
+	if labels.size() >= 2:
+		(labels[labels.size() - 1] as Label).text = txt
 
 ## Apodo del jugador (se muestra en la lista de jugadores, el chat, los amigos, los reportes y el mercado)
 func nick_screen() -> void:

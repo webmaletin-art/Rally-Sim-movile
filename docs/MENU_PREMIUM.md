@@ -26,3 +26,11 @@ Logo, auto elegido (categoría + PI), botón grande SEGUIR CARRERA (o AVENTURA s
 
 ## Salir del mundo abierto (arreglo)
 Con la RESOLUCIÓN DE FRAME activa (perfil calibrado), al salir de la carrera las capas 2D se liberaban todavía redirigidas a la superficie interna y el menú nuevo quedaba negro. Ahora `Race.release_frame()` las devuelve a la ventana antes de liberar la carrera (`app.gd`).
+
+## Reorganización del 14/10/2026 (pedido del dueño)
+- **Inicio**: arriba, los dos accesos principales grandes: **AVENTURA** y **MODO ONLINE** (cerrado: «próximamente»). Abajo: CARRERA (copas; si hay un evento abierto, «▶ seguir»), **CARRERA RÁPIDA**, GARAJE, TALLER, TIENDA, LOGROS, COMPRAS.
+- **Carrera rápida** (`menu.gd → _quick_hub`, pantalla `quickhub`): la zona de práctica: PISTAS Y MAPAS (la Carrera rápida de siempre), MUNDO ABIERTO (manejar libre), TRAVESÍA X, RUTAS y MAPAS FANTASÍA. Las carreras rápidas pagan como siempre.
+- Los mapas de prueba del editor (`prueba_01…06` en `custom_maps/`) ya no salen en Carrera rápida (sólo con el modo desarrollador); los archivos quedan porque los usan `custom_route_test` y `map_v3_test`. Quedan los mapas del dueño «Mapa 490» y «Mapa 900».
+- **Modo online** (`menu_world.gd → _online_hub`): tarjeta del piloto (inicial, nombre, auto, estado de la conexión, jugadores y amigos, créditos online), botón grande ENTRAR AL MUNDO ONLINE, mosaicos REGALO DIARIO, RANKINGS (participar sí/no), CUENTA y DÓNDE APARECER,
+  y un recuadro con lo que hay en la pausa dentro del mundo (chat, jugadores y amigos, mercado, reportes y bloqueos, controles policiales). Sin conexión: «● Sin conexión», se puede entrar igual y hay REINTENTAR. Sólo aparecen funciones que andan.
+

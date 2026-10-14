@@ -61,6 +61,17 @@ func _run() -> void:
 		await _frames()
 		check(menu.get("screen") == "workshop" and int(garage.ws_tab) == k, "riel: la pestaña %d del taller abre el taller en esa pestaña" % k)
 		check(chrome.bottom == null and chrome.rail != null, "taller %d: sin carrusel, con riel compacto" % k)
+	# Carrera rápida: la pantalla que agrupa la práctica (pistas, mundo abierto, Travesía X, Rutas, fantasía)
+	menu.call("go", "quickhub")
+	await _frames()
+	var qh_tiles := 0
+	var st3: Array = [menu.get("body")]
+	while not st3.is_empty():
+		var n3: Node = st3.pop_back()
+		if n3 is Label and str((n3 as Label).text) in ["PISTAS Y MAPAS", "MUNDO ABIERTO", "TRAVESÍA X", "RUTAS", "MAPAS FANTASÍA"]:
+			qh_tiles += 1
+		st3.append_array(n3.get_children())
+	check(menu.get("screen") == "quickhub" and qh_tiles == 5, "Carrera rápida agrupa pistas, mundo abierto, Travesía X, Rutas y fantasía (%d)" % qh_tiles)
 	# taller → Pintura: interior, volante y diseños exclusivos (cosméticos que se compran)
 	for tgt in ["interior", "steer", "body"]:
 		garage.ws_tab = 3

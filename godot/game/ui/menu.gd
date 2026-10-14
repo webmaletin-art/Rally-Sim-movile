@@ -507,6 +507,7 @@ func go(name: String, arg = null, push := true) -> void:
 			career.quick["fantasy"] = false
 			career.quick["travesia"] = true
 			career.build("quick", arg)
+		"quickhub": _quick_hub()
 		"career", "events", "event", "quick", "fantasy": career.build(name, arg)
 		"garage", "dealer", "workshop", "tune", "paint", "shop": garage.build(name, arg)
 		"about", "privacy", "terms", "credits": about.build(name, arg)
@@ -657,7 +658,7 @@ func set_title(t: String) -> void:
 	title_l.text = t
 
 ## Botón grande de menú
-func menu_button(text: String, sub: String, cb: Callable, accent := false, enabled := true) -> Button:
+func menu_button(text: String, sub: String, cb: Callable, accent := false, enabled := true, tsize := 24) -> Button:
 	var b := Kit.button("", Callable(), accent, 22, Vector2(0, 66))
 	b.disabled = not enabled
 	var v := Kit.vbox(0)
@@ -665,9 +666,15 @@ func menu_button(text: String, sub: String, cb: Callable, accent := false, enabl
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	var col := Color(0.05, 0.06, 0.08) if accent else (Kit.TEXT if enabled else Kit.MUTED)
-	v.add_child(Kit.label(text, 24, col, HORIZONTAL_ALIGNMENT_CENTER))
+	var tl := Kit.label(text, tsize, col, HORIZONTAL_ALIGNMENT_CENTER)
+	tl.clip_text = true
+	tl.custom_minimum_size.x = 40
+	v.add_child(tl)
 	if sub != "":
-		v.add_child(Kit.label(sub, 15, col.darkened(0.15) if accent else Kit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		var sl := Kit.label(sub, 15 if tsize >= 24 else 13, col.darkened(0.15) if accent else Kit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		sl.clip_text = true
+		sl.custom_minimum_size.x = 40
+		v.add_child(sl)
 	b.add_child(v)
 	b.pressed.connect(func() -> void:
 		if Kit.scroll_moved:
@@ -709,6 +716,31 @@ func tile(icon: String, text: String, sub: String, cb: Callable, accent := false
 		cb.call())
 	return b
 
+## Carrera rápida: la zona de práctica y del contenido suelto (pistas, mapas, mundo abierto libre, Travesía X, Rutas y mapas fantasía). No es la progresión:
+## eso es la Aventura, la Carrera (copas) y el Modo online. Las carreras rápidas siguen pagando como siempre.
+func _quick_hub() -> void:
+	set_title("CARRERA RÁPIDA")
+	var g := Kit.grid(2, 8, 8)
+	body.add_child(g)
+	var items := [
+		["bolt", "PISTAS Y MAPAS", "circuitos, rutas, picada, drift y la Ruta de los Sueños", func() -> void:
+			career.quick["fantasy"] = false
+			career.quick["travesia"] = false
+			go("quick")],
+		["world", "MUNDO ABIERTO", "Dream City y la región: manejar libre", func() -> void:
+			world_online = false
+			go("spawn")],
+		["road", "TRAVESÍA X", "convoy off-road de 20 km", func() -> void:
+			career.quick["fantasy"] = false
+			career.quick["travesia"] = true
+			go("quick")],
+		["road", "RUTAS", "1.664 km · circular o persecución", func(): go("rutas")],
+		["star", "MAPAS FANTASÍA", "Vórtice, Marte, la Luna y Júpiter", func(): go("fantasy")],
+	]
+	for it in items:
+		g.add_child(tile(str(it[0]), str(it[1]), str(it[2]), it[3], false, 78.0))
+	body.add_child(Kit.wrap(tr("Práctica y contenido suelto: pagan como siempre. Las carreras del mundo abierto se descubren manejando por Dream City y la región."), 13, Kit.MUTED, 300))
+
 func _home() -> void:
 	title_l.text = ""
 	chrome.build_corner()
@@ -747,36 +779,29 @@ func _home() -> void:
 		adv_sub = "🏆 completada"
 	elif ast["started"] == true:
 		adv_sub = "etapa %d/%d" % [mini(int(ast["stage"]) + 1, AdvRoute.STAGES.size()), AdvRoute.STAGES.size()]
+	# lo principal: AVENTURA y MODO ONLINE (pedido del dueño, 14/10/2026); la Carrera queda en su sección y Carrera rápida agrupa la práctica
 	var next_ev := _next_event()
-	if not next_ev.is_empty():
-		body.add_child(menu_button("▶ SEGUIR CARRERA", str(next_ev["name"]), func(): go("event", next_ev["id"]), true))
-	else:
-		body.add_child(menu_button("🌄 AVENTURA", "La Ruta de los Sueños · " + adv_sub, func(): go("adventure"), true))
+	var top := Kit.hbox(8)
+	body.add_child(top)
+	var advb := menu_button("AVENTURA", adv_sub, func(): go("adventure"), true, true, 20)
+	advb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(advb)
+	var on_open := Release.online_open(profile)
+	var obn := menu_button("MODO ONLINE", "con otros jugadores" if on_open else "próximamente", func(): go("online"), on_open, true, 20)
+	obn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(obn)
 	var g := Kit.grid(3, 8, 8)
 	body.add_child(g)
 	var tiles: Array = []
-	if not next_ev.is_empty():
-		tiles.append(["mountain", "AVENTURA", adv_sub, func(): go("adventure"), false])
-	tiles.append(["road", "TRAVESÍA X", "convoy off-road", func() -> void:
-		career.quick["fantasy"] = false
-		career.quick["travesia"] = true
-		go("quick"), false])
-	tiles.append(["road", "RUTAS", "circular · persecución", func(): go("rutas"), false])
-	tiles.append(["world", "MUNDO ABIERTO", "Dream City", func() -> void:
-		world_online = false
-		go("spawn"), false])
-	tiles.append(["trophy", "CARRERA", "%d ⭐" % profile.stars(), func(): go("career"), false])
-	tiles.append(["bolt", "RÁPIDA", "pista y rivales", func():
-		career.quick["fantasy"] = false
-		career.quick["travesia"] = false
-		go("quick"), false])
-	tiles.append(["star", "FANTASÍA", "mapas de ensueño", func(): go("fantasy"), false])
+	tiles.append(["trophy", "CARRERA", ("▶ " + str(next_ev["name"])) if not next_ev.is_empty() else "%d ⭐" % profile.stars(), func(): go("event", next_ev["id"]) if not next_ev.is_empty() else go("career"), false])
+	tiles.append(["bolt", "CARRERA RÁPIDA", "pistas · mundo abierto · rutas", func(): go("quickhub"), false])
 	tiles.append(["car", "GARAJE", "tus autos", func(): go("garage"), false])
 	tiles.append(["wrench", "TALLER", "piezas · pintura", func(): go("workshop", 0), false])
 	tiles.append(["cart", "TIENDA", "comprá autos", func(): go("dealer"), false])
 	tiles.append(["flag", "LOGROS", ("%d para cobrar" % Rewards.ach_ready(profile)) if Rewards.ach_ready(profile) > 0 else "objetivos", func(): go("goals"), false])
-	tiles.append([("globe" if Release.online_open(profile) else "lock"), "MODO ONLINE", "próximamente" if not Release.online_open(profile) else "mundo abierto", func(): go("online"), false])
 	tiles.append(["bag", "COMPRAS", "juego completo · monedas", func(): go("iap"), false])
+	if not next_ev.is_empty():
+		tiles.append(["star", "COPAS", "%d ⭐" % profile.stars(), func(): go("career"), false])
 	for tl in tiles:
 		g.add_child(tile(str(tl[0]).replace("globe", "world"), str(tl[1]), str(tl[2]), tl[3], bool(tl[4]), 64.0))
 	# ajustes y datos: botones angostos con ícono
