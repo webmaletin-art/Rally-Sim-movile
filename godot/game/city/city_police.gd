@@ -12,6 +12,8 @@ const CityGps := preload("res://game/city/city_gps.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CrashLog := preload("res://game/diag/crash_log.gd")
 const Sectors := preload("res://game/region/sectors.gd")
+const CarBuild := preload("res://game/data/car_build.gd")
+const Profile := preload("res://game/data/profile.gd")
 
 const VID := "police"
 ## Patrullero según el nivel (1 a 4 en el cartel = heat 0 a 3). Para sumar modelos nuevos de policía (pedido del dueño, 15/10/2026: «voy a subir más
@@ -39,6 +41,14 @@ const FINE_LEVEL := 1500
 const STATION := Vector2(70.0, 60.0) # comisaría de Dream City (cerca de la plaza; se usa la calle más cercana)
 const PROP_ID := 960000 # círculos sólidos de los patrulleros estacionados en la comisaría
 const ROLES := ["ram", "block", "side", "ram", "block"]
+## 15/10/2026, pedido del dueño (policía del online «compartida e inteligente»): aviso antes del control, se puede pasar despacio, con 1–2 jugadores juntos te siguen
+## sólo un par de km y con grupos son implacables; 2 patrulleros por jugador «fuerte» (1 por los demás). Cada teléfono maneja a SUS patrulleros y los muestra a
+## los demás por Realtime (police_net.gd): todos ven a los mismos.
+const SLOW_KMH := 60.0 # online: pasar el control más despacio que esto te deja seguir (salvo un grupo); sin conexión, como siempre
+const GROUP_R := 1500.0 # jugadores a menos de esto cuentan como «juntos»
+const GROUP_N := 3 # desde tantos jugadores juntos la policía es implacable
+const LENIENT_M := 2500.0 # online, 1–2 jugadores: abandonan la persecución después de ~2,5 km
+const STRONG_PI := 620 # auto «fuerte» (índice de rendimiento): 2 patrulleros; los demás, 1
 
 var race
 var track
@@ -73,6 +83,12 @@ var siren: AudioStreamPlayer3D
 var _hud: CanvasLayer
 var _hud_l: Label
 var _hud_bar: ProgressBar
+var online := false
+var group := 1 # jugadores juntos (uno mismo incluido)
+var nearby_fn: Callable # online: posiciones (Vector2) de los otros jugadores conocidos (remote_cars.positions)
+var _group_t := 0.0
+var chase_m := 0.0 # metros recorridos en esta persecución
+var _strong := -1
 
 func setup(p_race) -> void:
 	race = p_race
@@ -87,6 +103,7 @@ func setup(p_race) -> void:
 	for n in region.nodes:
 		if int(n[3]) in SETTLE_KINDS:
 			_settle.append(Vector2(float(n[1]), float(n[2])))
+	online = race.cfg.get("online", false) == true
 	station_pose = track.nearest_road_pose(STATION, 0.0)
 	_build_station()
 	_build_hud()
@@ -137,6 +154,7 @@ func update(dt: float) -> void:
 		_hud_update()
 		return
 	_heat(dt, p)
+	_group_count(dt, p)
 	for k in cool.keys():
 		cool[k] = float(cool[k]) - dt
 		if float(cool[k]) <= 0.0:
@@ -152,7 +170,10 @@ func update(dt: float) -> void:
 			if d > DISARM_R:
 				_clear()
 			elif d < TRIGGER_R:
-				_start_chase(me)
+				if online and sqrt(me.vx * me.vx + me.vz * me.vz) * 3.6 < SLOW_KMH and not implacable():
+					_let_pass()
+				else:
+					_start_chase(me)
 		"chase":
 			_chase(dt, p, me)
 	_lights()
@@ -175,7 +196,48 @@ func _heat(dt: float, p: Vector2) -> void:
 	heat = mini(visited.size(), 3)
 
 func wanted() -> int:
+	if online:
+		var per := 2 if strong() else 1
+		if implacable():
+			return clampi(per + 1 + heat, 2, 5)
+		return per
 	return clampi(2 + heat, 2, 5)
+
+## ¿El auto del jugador es «fuerte»? (índice de rendimiento de su auto con sus mejoras)
+func strong() -> bool:
+	if _strong < 0:
+		_strong = 1
+		var vid := str(race.cfg.get("car", ""))
+		if race.vehicles.has(vid):
+			var st: Variant = race.cfg.get("state")
+			if not (st is Dictionary):
+				st = Profile.new_car_state(vid)
+			var pi := int(CarBuild.perf_of(CarBuild.build_params(race.vehicles[vid], st))["pi"])
+			_strong = 1 if pi >= STRONG_PI else 0
+	return _strong == 1
+
+## Online con un grupo (3 o más jugadores juntos): la policía no abandona, manda más patrulleros y no deja pasar a nadie despacio
+func implacable() -> bool:
+	return online and group >= GROUP_N
+
+func _group_count(dt: float, p: Vector2) -> void:
+	_group_t -= dt
+	if _group_t > 0.0:
+		return
+	_group_t = 1.0
+	var n := 1
+	if online and nearby_fn.is_valid():
+		for q in nearby_fn.call():
+			if (q as Vector2).distance_to(p) < GROUP_R:
+				n += 1
+	group = n
+
+## Pasó despacio por el control (y no es un grupo): lo dejan seguir
+func _let_pass() -> void:
+	cool[cp] = COOLDOWN
+	_toast(Tr.t("👮 Pasaste despacio por el control: la policía te deja seguir"))
+	CrashLog.mark("policia", "control pasado despacio")
+	_clear()
 
 ## El modelo de patrullero que sale ahora (por nivel; alterna entre los del mismo nivel)
 func _vid() -> String:
@@ -266,6 +328,7 @@ func _start_chase(me) -> void:
 	_spawn_t = 0.0
 	_icpt_t = 2.0
 	stats["chases"] += 1
+	chase_m = 0.0
 	for u in units:
 		u["drv"].target = me
 		u["drv"].mode = "chase"
@@ -277,6 +340,11 @@ func _chase(dt: float, p: Vector2, me) -> void:
 	chase_t += dt
 	_spawn_t += dt
 	var sp := sqrt(me.vx * me.vx + me.vz * me.vz)
+	chase_m += sp * dt
+	if online and not implacable() and chase_m > LENIENT_M:
+		_toast(Tr.t("😮‍💨 La policía abandona: a los que andan solos los siguen un par de km"))
+		_escaped()
+		return
 	var dmin := 1e9
 	var near := 0
 	for u in units.duplicate():
@@ -524,7 +592,8 @@ func _hud_update() -> void:
 			_hud.visible = true
 			_hud_bar.visible = false
 			_hud_l.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
-			_hud_l.text = Tr.t("⚠ CONTROL POLICIAL ADELANTE · %d m") % int(Vector2(race.cars[0].phys.px, race.cars[0].phys.pz).distance_to(checkpoints[cp]["p"]))
+			_hud_l.text = Tr.t("⚠ CONTROL POLICIAL ADELANTE · %d m") % int(Vector2(race.cars[0].phys.px, race.cars[0].phys.pz).distance_to(checkpoints[cp]["p"])) \
+				+ ("" if not online else "\n" + (Tr.t("¡Vienen en grupo: la policía no deja pasar a nadie!") if implacable() else Tr.t("Pasá a menos de %d km/h o te persiguen") % int(SLOW_KMH)))
 		"chase":
 			_hud.visible = true
 			_hud_bar.visible = true

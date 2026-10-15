@@ -98,6 +98,15 @@ func _process(dt: float) -> void:
 			_snap.wheel_omega = PackedFloat64Array([w, w, w, w])
 			vis.sync_from(_snap, dt)
 
+## Dónde están los otros jugadores conocidos (para la policía: cuántos andan juntos)
+func positions() -> Array:
+	var out: Array = []
+	for id in cars:
+		var c: Dictionary = cars[id]
+		if bool(c.get("has", false)):
+			out.append(c["pos"])
+	return out
+
 ## Posición en vivo (Realtime, varias veces por segundo): sólo para los autos que la consulta periódica ya conoce (de ahí salen el nombre y el modelo).
 ## Mientras llegan datos en vivo, la consulta periódica no pisa la posición.
 func apply_live(id: String, st: Dictionary) -> void:

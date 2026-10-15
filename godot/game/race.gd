@@ -17,6 +17,7 @@ const NetDriver := preload("res://game/net/net_driver.gd")
 const OnlineSocial := preload("res://game/online/online_social.gd")
 const CityDriver := preload("res://game/ai/city_driver.gd")
 const RemoteCars := preload("res://game/online/remote_cars.gd")
+const PoliceNet := preload("res://game/online/police_net.gd")
 const WorldSync := preload("res://game/online/world_sync.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityClock := preload("res://game/city/city_clock.gd")
@@ -1378,12 +1379,17 @@ func _start_session() -> void:
 					var rc := RemoteCars.new() # los autos de los otros jugadores
 					rc.setup(self, social, track.city)
 					add_child(rc)
+					if police != null:
+						police.nearby_fn = rc.positions # la policía cuenta cuántos andan juntos (con grupos es implacable)
 					if Release.REALTIME and online != null and online.is_account():
 						rtsync = WorldSync.new() # posiciones en vivo por Realtime; el servidor sigue dando nombres y modelos (presence_list_v)
 						add_child(rtsync)
 						rtsync.setup(online)
 						rtsync.car_state.connect(rc.apply_live)
 						rtsync.car_left.connect(rc.live_gone)
+						var pnet := PoliceNet.new() # los patrulleros de cada uno, a la vista de todos (sólo durante persecuciones con otros cerca)
+						add_child(pnet)
+						pnet.setup(self, rtsync)
 			life = CityLife.new() # la vida del mundo (estacionados, tránsito, peatones, audio ambiente): ver city/city_life.gd
 			life.setup(self)
 			if social != null and social.active:
