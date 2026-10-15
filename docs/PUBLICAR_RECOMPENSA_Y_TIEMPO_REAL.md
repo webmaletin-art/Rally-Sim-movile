@@ -5,7 +5,7 @@ Migraciones:
 - `20261019000000_bounty_event_ranking_flags.sql`: el interruptor `app_flags` y el ranking.
 - `20261020000000_world_events.sql`: el gestor de eventos.
 
-Se aplican con el flujo «Supabase · aplicar migraciones». Qué es y cómo se juega: `docs/ONLINE_POR_EVENTOS.md`.
+Las dos ya están aplicadas (15/10/2026 17:28 UTC, flujo «Supabase · aplicar migraciones» n.º 32). Qué es y cómo se juega: `docs/ONLINE_POR_EVENTOS.md`.
 
 ## 1. El online hoy: por eventos (sin tiempo real)
 Cada jugador juega en su mundo: no se encuentran, no hay chat ni «quién está conectado». El servidor se usa sólo para:

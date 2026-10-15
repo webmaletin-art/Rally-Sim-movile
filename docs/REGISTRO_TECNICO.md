@@ -27,7 +27,9 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
   (arreglo de la tabla `bounty_cfg`), y `public._bounty_cfg('notice_min')` se leía como conversión a ese tipo, no como la función. No se aplicó nada (la
   migración es repetible). Arreglo: la función pasa a llamarse `_bounty_conf`; lo mismo en 20261020 (`_wev_cfg` → `_wev_conf`). `pglast` sólo revisa la
   sintaxis, no estos choques de nombres: no nombrar funciones `_<tabla>`.
-- **Resultado:** PENDIENTE DE APK y de aplicar las migraciones 20261019 y 20261020.
+- **Migraciones 20261019 y 20261020 APLICADAS:** 15/10/2026 17:28 UTC, flujo n.º 32, sin errores (la autoprueba de 20261020 programó los primeros eventos;
+  si hubiera fallado, se deshacía todo).
+- **Resultado:** servidor listo; cliente PENDIENTE DE APK (probar en el teléfono).
 
 ## 15/10/2026 (13) · Online «por datos» (sin tiempo real), recompensa global con un solo ganador, ranking
 - **Pedido del dueño:** «hasta pagar Supabase Pro, nada de tiempo real ni de encontrarse: el servidor para la cuenta, la plata, los autos, los eventos y el ranking;
