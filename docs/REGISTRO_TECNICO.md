@@ -5,6 +5,15 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 15/10/2026 (2) · La calibración se cierra en las dos versiones (4.5.1 y 4.7.2) al bajar la resolución → frame reducido APAGADO
+- **Reporte del dueño (captura de «OPTIMIZANDO RENDIMIENTO…»):** «las 2 versiones se cierran acá: baja las resoluciones y se cierran las 2 APK». Es lo mismo que en el otro teléfono.
+- **Evidencia junta:** (1) los 3 cierres en carrera del 14/10 tenían el frame reducido activo (el error `child_order_changed` sólo aparece con él); (2) la calibración se cierra justo al activar/cambiar ese frame, en dos teléfonos y **con los dos motores** (no es la versión de Godot); (3) en la PC (Mesa) la calibración completa pasa por 4 niveles de frame sin cerrarse (`tests/_calib_run.gd`, herramienta nueva que corre la calibración real). Conclusión: el disparador es el frame reducido (una SubViewport 2D que redibuja todo, con la SubViewport 3D adentro) en el driver del teléfono. La línea exacta del motor/driver la dará la lápida.
+- **Cambio:** `ui/frame_res.gd` → `FrameRes.set_enabled(false)` por defecto: `set_level()` siempre deja NATIVA y no se redirige ninguna capa; `race._frame_level()` devuelve 0; Opciones → Gráficos ya no muestra «Resolución de frame»; el 📊 de desarrollo la puede volver a encender para medir. La calibración y el perfil siguen igual pero lo que baja es la **ESCALA 3D** (el mundo 3D a 80/67/50/40 %; el HUD queda nítido). La calibración muestra esa resolución y anota cada escalón en el registro (`[calib] escalón … · frame · escala 3D · sombras · texturas · partículas · árboles`).
+- **Pruebas:** `frame_res_test` (+ caso «apagado»), `autotune_test`, `scripts_parse_test` OK; calibración real en la PC de punta a punta con el frame en 0 en todos los escalones.
+- **Resultado:** PENDIENTE DE APK. **Siguiente paso:** abrir el juego (baja el contenido nuevo solo), dejar terminar la calibración y jugar Aurelia / Quarry / drift. Si se cierra igual: «COPIAR REGISTRO» → las líneas `[lápida]` y la última `[calib]` dicen dónde.
+
+---
+
 ## 15/10/2026 · Migración de los volantes aplicada y modo online ABIERTO (autorización del dueño)
 - **Pedido del dueño:** «aplicá la migración y abrí el online, te autorizo todo hasta que ande bien el juego».
 - **Migración:** flujo «Supabase · aplicar migraciones» n.º 23 (a mano, 15/10/2026 01:38 UTC): aplicó `20261016000000_cosmetics_volantes_pro.sql` sin errores; la lista final muestra las 13 migraciones en el servidor (local = remoto).

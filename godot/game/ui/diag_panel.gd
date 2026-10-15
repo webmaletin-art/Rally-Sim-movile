@@ -422,6 +422,7 @@ func _set_frame(i: int) -> void:
 	if frame_rig.level == i:
 		return
 	var before := _frame_text(frame_rig.level)
+	FrameRes.set_enabled(true) # (herramienta de desarrollo: elegir un nivel a mano vuelve a encender el frame reducido para medirlo)
 	frame_rig.set_level(i)
 	_changed("RESOLUCIÓN DE FRAME: %s → %s" % [before, _frame_text(i)])
 

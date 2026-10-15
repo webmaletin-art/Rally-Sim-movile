@@ -10,6 +10,16 @@ extends Node
 ## [porcentaje, 100, nombre]: tamaño = pantalla × porcentaje (en 2400×1080: 2400×1080 · 1992×896 · 1608×724 · 1200×540 · 960×432). Se calcula siempre sobre la pantalla real y conserva su relación de aspecto
 const LEVELS := [[100, 100, "NATIVA"], [83, 100, "ALTA"], [67, 100, "MEDIA"], [50, 100, "BAJA"], [40, 100, "MUY BAJA"]]
 
+## APAGADA desde el 15/10/2026 (docs/REGISTRO_TECNICO.md → 15/10): en el Z2356 (Mali-G57) y en otro teléfono el juego se cerraba con un error nativo
+## justo cuando la calibración activaba o cambiaba este frame, con Godot 4.5.1 y con 4.7.2, y los 3 cierres en carrera también lo tenían activo; en la PC
+## no falla. Mientras esté apagada set_level() siempre deja NATIVA (la SubViewport no se usa) y el rendimiento lo da la ESCALA 3D. Para volver a probarla:
+## FrameRes.set_enabled(true) (lo hace el 📊 de desarrollo al elegir un nivel a mano y las pruebas).
+static var _enabled := false
+static func set_enabled(v: bool) -> void:
+	_enabled = v
+static func is_enabled() -> bool:
+	return _enabled
+
 var level := 0
 var sub: SubViewport
 var show_layer: CanvasLayer
@@ -67,7 +77,7 @@ func actual_size() -> Vector2i:
 	return screen_size()
 
 func set_level(i: int) -> void:
-	i = clampi(i, 0, LEVELS.size() - 1)
+	i = clampi(i, 0, LEVELS.size() - 1) if _enabled else 0
 	if i == level:
 		return
 	level = i

@@ -7,7 +7,7 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 - 🚧📱 El juego se cierra de golpe con **ERROR NATIVO (SIGSEGV)** según Android, no por memoria: en el mundo abierto, en carrera rápida (Quarry) y en drift (registros r180 del 14/10). **Causa NO confirmada** (`docs/REGISTRO_TECNICO.md` → 15/10).
 - ✅ Corregido (15/10): las capas del frame reducido (`ui/frame_res.gd`) ya no salen del árbol apuntando a la SubViewport: desaparece el error `child_order_changed` y un SIGSEGV que se reproducía en la PC (no está probado que sea el del teléfono). Antes: carrera entre hilos en la región (`RegionData._cum`, 14/10).
 - ✅ El registro trae la **lápida** de Android del último cierre nativo (`game/diag/tombstone.gd`): hilo, biblioteca (motor o driver), dirección y logcat del instante. 📱 Falta el primer registro con `[lápida]`.
-- 🧪📱 Experimento sin código si se sigue cerrando: «Resolución de frame» = 100 % (apaga el frame reducido).
+- ✅📱 **Frame reducido apagado** (15/10 tarde): la calibración se cerraba al activarlo en dos teléfonos y con los dos motores. Ahora sólo baja la ESCALA 3D; la opción «Resolución de frame» no se muestra.
 - ✅📱 Descarga del APK liviano (13/0 = tiempo agotado: había un tope de 30 s para TODA la descarga): sin tope, vigilante de trabas, sigue con Range, reintenta solo. **Hay que reinstalar el APK.**
 - 🔎 Motor: evaluado Godot 4.7.2 (ver `docs/MIGRACION_GODOT.md` → «Evaluación 15/10/2026»); 4.5.1 sigue en `main`.
 - ✅ «COPIAR REGISTRO» en Acerca de y en Opciones → Sonido.

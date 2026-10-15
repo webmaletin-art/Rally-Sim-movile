@@ -5,6 +5,7 @@ extends RefCounted
 const Kit := preload("res://game/ui/ui_kit.gd")
 const Lens := preload("res://game/fx/lens.gd")
 const Autotune := preload("res://game/autotune.gd")
+const FrameRes := preload("res://game/ui/frame_res.gd")
 const CrashLog := preload("res://game/diag/crash_log.gd")
 
 signal changed(key: String)
@@ -121,6 +122,8 @@ func options_page(body: VBoxContainer, cat = null) -> void:
 	for o in OPTION_LIST:
 		if o[0] != cat:
 			continue
+		if o[1] == "frameRes" and not FrameRes.is_enabled():
+			continue # (frame reducido apagado: ver frame_res.gd)
 		var key2: String = o[1]
 		var vals: Array = o[3]
 		var labels: Array = o[4]
