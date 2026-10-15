@@ -49,6 +49,13 @@ const GROUP_R := 1500.0 # jugadores a menos de esto cuentan como «juntos»
 const GROUP_N := 3 # desde tantos jugadores juntos la policía es implacable
 const LENIENT_M := 2500.0 # online, 1–2 jugadores: abandonan la persecución después de ~2,5 km
 const STRONG_PI := 620 # auto «fuerte» (índice de rendimiento): 2 patrulleros; los demás, 1
+## Desmadre (15/10/2026, pedido del dueño: «que la policía le siga a un jugador que ande muy loco por el centro: choca muchas paredes, rompe muchas farolas»):
+## cada choque fuerte contra una pared o un auto, cada objeto roto y andar muy rápido por la ciudad llenan un medidor (`rage`, 0–1) que se vacía solo si te
+## portás bien. Avisa a la mitad y al 80 %; lleno, la policía arranca una cacería donde estés (como el evento «Huida»). En el modo Fugitivo (city_modes.gd) se
+## llena el doble de rápido y además solo, así la cacería llega igual.
+const RAGE_CITY_R := 3600.0 # la ciudad (hasta la circunvalación): ahí la velocidad cuenta
+const RAGE_KMH := 110.0
+const RAGE_DECAY := 1.0 / 75.0 # se vacía en 75 s manejando tranquilo
 
 var race
 var track
@@ -89,6 +96,13 @@ var nearby_fn: Callable # online: posiciones (Vector2) de los otros jugadores co
 var _group_t := 0.0
 var chase_m := 0.0 # metros recorridos en esta persecución
 var _strong := -1
+var rage := 0.0 # desmadre (0–1)
+var fugitive := false # modo Fugitivo (city_modes.gd)
+var fugitive_level := 0 # sube con cada escape del modo Fugitivo
+var _rage_quiet := 0.0
+var _rage_t := 0.0
+var _broken_n := -1
+var _warned := 0
 
 func setup(p_race) -> void:
 	race = p_race
@@ -155,6 +169,7 @@ func update(dt: float) -> void:
 		return
 	_heat(dt, p)
 	_group_count(dt, p)
+	_rage(dt, p, me)
 	for k in cool.keys():
 		cool[k] = float(cool[k]) - dt
 		if float(cool[k]) <= 0.0:
@@ -215,6 +230,60 @@ func strong() -> bool:
 			var pi := int(CarBuild.perf_of(CarBuild.build_params(race.vehicles[vid], st))["pi"])
 			_strong = 1 if pi >= STRONG_PI else 0
 	return _strong == 1
+
+# ───────────────────────── desmadre ─────────────────────────
+## Un choque contra una pared (velocidad del golpe, m/s): race.gd lo avisa
+func on_wall(v: float) -> void:
+	if v > 5.0:
+		rage_add(clampf((v - 5.0) / 25.0, 0.04, 0.3))
+
+## Un choque contra otro auto (velocidad del golpe, m/s)
+func on_car_hit(v: float) -> void:
+	if v > 3.0:
+		rage_add(clampf(v / 30.0, 0.03, 0.2))
+
+func rage_add(x: float) -> void:
+	if not enabled or state == "chase":
+		return
+	rage = minf(1.2, rage + x * (2.0 if fugitive else 1.0))
+	_rage_quiet = 0.0
+
+func _rage(dt: float, p: Vector2, me) -> void:
+	if state == "chase" or _phase != "":
+		return
+	var kmh := sqrt(me.vx * me.vx + me.vz * me.vz) * 3.6
+	_rage_quiet += dt
+	_rage_t -= dt
+	if _rage_t <= 0.0:
+		_rage_t = 0.25
+		var br = track.get("broken")
+		if br is Dictionary:
+			var n := (br as Dictionary).size()
+			if _broken_n >= 0 and n > _broken_n:
+				rage_add(0.12 * float(mini(n - _broken_n, 4))) # farolas, carteles, semáforos rotos
+			_broken_n = n
+	if p.length() < RAGE_CITY_R and kmh > RAGE_KMH:
+		rage += dt * (kmh - RAGE_KMH) / 600.0 * (2.0 if fugitive else 1.0) # a 170 km/h por la ciudad: lleno en 10 s
+		_rage_quiet = 0.0
+	if fugitive:
+		rage += dt / 90.0 # en el modo Fugitivo la cacería llega igual
+	if _rage_quiet > 4.0:
+		rage = maxf(0.0, rage - dt * RAGE_DECAY * (0.4 if fugitive else 1.0))
+	if rage < 0.4:
+		_warned = 0
+	elif rage >= 0.5 and _warned == 0:
+		_warned = 1
+		_toast(Tr.t("👮 La policía te está mirando: bajá un cambio"))
+	elif rage >= 0.8 and _warned == 1:
+		_warned = 2
+		_toast(Tr.t("👮 ¡Último aviso! Un choque más y te persiguen"))
+	if rage >= 1.0 and not suspended:
+		rage = 0.0
+		_warned = 0
+		var lvl := clampi(heat + (1 if p.length() < RAGE_CITY_R else 0) + fugitive_level, 0, 3)
+		event_chase(me, lvl)
+		_toast(Tr.t("🚨 ¡Te vieron haciendo lío! La policía te está cazando"))
+		CrashLog.mark("policia", "cacería por desmadre · nivel %d" % lvl)
 
 ## Online con un grupo (3 o más jugadores juntos): la policía no abandona, manda más patrulleros y no deja pasar a nadie despacio
 func implacable() -> bool:
@@ -428,6 +497,7 @@ func event_chase(me, level: int) -> void:
 
 func _escaped() -> void:
 	stats["escapes"] += 1
+	rage = 0.0
 	cool[cp] = COOLDOWN
 	_toast(Tr.t("😎 ¡Los perdiste! La policía abandona la persecución"))
 	CrashLog.mark("policia", "escape · %.0f s" % chase_t)
@@ -472,6 +542,7 @@ func _to_station() -> void:
 	visited.clear()
 	heat = 0
 	bust = 0.0
+	rage = 0.0
 	if not station_pose.is_empty():
 		var w = track.world_node
 		if w != null and w.has_method("warm"):
@@ -602,7 +673,13 @@ func _hud_update() -> void:
 			var esc := "" if lose_t <= 0.5 else ("  ·  " + Tr.t("escapando %d/%d s") % [int(lose_t), int(ESCAPE_T)])
 			_hud_l.text = Tr.t("🚨 PERSECUCIÓN · %d 🚓 · nivel %d") % [units.size(), heat + 1] + esc
 		_:
-			_hud.visible = false
+			# desmadre: la barra aparece cuando la policía ya te está mirando
+			_hud.visible = rage > 0.3
+			if _hud.visible:
+				_hud_bar.visible = true
+				_hud_bar.value = minf(rage, 1.0)
+				_hud_l.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3) if rage < 0.8 else Color(1.0, 0.45, 0.35))
+				_hud_l.text = Tr.t("👮 LA POLICÍA TE ESTÁ MIRANDO")
 
 func _toast(t: String) -> void:
 	if race.race_hud != null:

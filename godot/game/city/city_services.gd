@@ -14,6 +14,7 @@ const CityPolice := preload("res://game/city/city_police.gd")
 const CityEvents := preload("res://game/city/city_events.gd")
 const CitySectors := preload("res://game/city/city_sectors.gd")
 const CityReach := preload("res://game/city/city_reach.gd")
+const CityModes := preload("res://game/city/city_modes.gd")
 
 var race # race.gd
 var reach # CityReach
@@ -43,6 +44,8 @@ func setup(p_race) -> void:
 	race.ow_events.setup(race)
 	reach = CityReach.new() # ciudades y pueblos alcanzados manejando: después se puede aparecer ahí (docs/POLICIA.md)
 	reach.setup(race)
+	race.modes = CityModes.new() # modos contra la IA: Fugitivo y Caza recompensas (docs/MODOS_MUNDO_ABIERTO.md)
+	race.modes.setup(race)
 
 func update(dt: float) -> void:
 	race.shops.update(dt)
@@ -63,3 +66,5 @@ func update(dt: float) -> void:
 		race.ow_events.update(dt)
 	if reach != null:
 		reach.update(dt)
+	if race.modes != null:
+		race.modes.update(dt)

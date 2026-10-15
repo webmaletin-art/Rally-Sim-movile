@@ -30,6 +30,7 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 
 ## Policía
 - ✅📱 Controles policiales en las 176 rutas largas entre ciudades (patrulleros en la banquina), persecución, interceptor de frente, arresto, multa y comisaría de Dream City (`docs/POLICIA.md`). Probado en la computadora; falta sentirlo en el teléfono.
+- ✅📱 (15/10) Desmadre (choques, objetos rotos y velocidad en la ciudad llaman a la policía) y modos FUGITIVO y CAZA RECOMPENSAS desde la pausa (`docs/MODOS_MUNDO_ABIERTO.md`).
 - ✅📱 (15/10) Online: 2 patrulleros por jugador fuerte, implacable con grupos de 3+, aviso y paso despacio para 1–2 jugadores, y los patrulleros de cada uno a la vista de todos (`online/police_net.gd`). Falta probar con 2 teléfonos.
 
 ## Vehículos

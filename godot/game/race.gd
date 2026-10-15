@@ -320,6 +320,11 @@ func _ready() -> void:
 		race_hud.resume_pressed.connect(_toggle_pause)
 		race_hud.restart_pressed.connect(_restart)
 		race_hud.back_to_road_pressed.connect(_back_to_road)
+		race_hud.modes_fn = func() -> Array: return modes.pause_buttons() if modes != null else []
+		race_hud.mode_pressed.connect(func(m: String) -> void:
+			_toggle_pause() # se cierra la pausa y arranca (o termina) el modo
+			if modes != null:
+				modes.toggle(m))
 		race_hud.quit_pressed.connect(_quit)
 		race_hud.camera_pressed.connect(_next_camera)
 		race_hud.cine_pressed.connect(_toggle_cine)
@@ -1230,6 +1235,8 @@ func _rebuild_cars() -> void:
 		police.forget() # los patrulleros son autos de la lista: se rehacen sólo los de la parrilla
 	if ow_events != null:
 		ow_events.forget()
+	if modes != null:
+		modes.forget()
 	if fx != null:
 		fx.reset()
 	for c in cars:
@@ -1890,6 +1897,7 @@ var acts # CityActivities: radares, contrarreloj panorámica y encargos
 var tolls # CityToll: peajes de las rutas
 var city_drift # CityDrift: la Plaza de Drift al final de la Ruta 60
 var police # CityPolice: controles policiales y persecuciones en las rutas de la región
+var modes # CityModes: modos Fugitivo y Caza recompensas (pausa del mundo abierto)
 var ow_events # CityEvents: carreras para descubrir en el mundo abierto
 var sectors # CitySectors: barreras de obra de los sectores cerrados
 var life # CityLife: conecta la vida del mundo con Dream City (city/city_life.gd)
@@ -2797,6 +2805,8 @@ func _step_physics(dt: float) -> void:
 					city_drift.on_wall(c.wall_hit)
 				if adv != null:
 					adv.on_hit(c.wall_hit, "wall")
+				if police != null:
+					police.on_wall(c.wall_hit) # desmadre: chocar paredes llama a la policía
 			c.wall_hit = 0.0
 	if tprops != null and not (track as RouteTrack).water.is_empty():
 		for c in cars: # el agua del vado frena (y mucho si se entra rápido)
@@ -2898,6 +2908,8 @@ func _resolve_collisions() -> void:
 				pl_impact = maxf(pl_impact, hit * 0.7)
 				if adv != null:
 					adv.on_hit(hit, "car")
+				if police != null:
+					police.on_car_hit(hit)
 
 func _circle_hit(pa, pb, ka: float, kb: float) -> float:
 	var La: float = pa.V.wheelBase + 1.5

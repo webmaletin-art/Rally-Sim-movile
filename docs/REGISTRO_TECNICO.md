@@ -5,6 +5,14 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 15/10/2026 (12) · Volante «girado», desmadre con la policía, modos Fugitivo y Caza recompensas
+- **Volante (reporte del dueño: «se giró sobre su eje vertical, la izquierda más adelante»):** el volante estaba derecho (mira al piloto); la cámara de casco miraba 4,3° (0,075 rad) hacia la ventanilla y con la lente ancha el aro se veía girado. **Cambio:** `cockpit.camera_local` mira derecho al frente (sigue girando con el volante y el derrape). Comparado en capturas antes/después.
+- **Desmadre** (`city/city_police.gd`, `race.gd`): choques fuertes, objetos rotos y velocidad en la ciudad llenan un medidor; lleno → cacería policial donde estés. Detalle: `docs/MODOS_MUNDO_ABIERTO.md`.
+- **Modos** (`city/city_modes.gd` nuevo, `city_services.gd`, `ui/race_hud.gd` pausa, `ui/city_hud.gd` `set_dest(…, quiet)`): FUGITIVO (cada escape paga, la racha sube el nivel) y CAZA RECOMPENSAS (pegado 30 s a un auto de la IA que huye → es tuyo). Sólo sin conexión.
+- **Servidor:** migración `20261018000000_bounty_car.sql` (`give_car` motivo «bounty»: sin premium/aventura/especiales, ≤ $150.000, 1 cada 20 h). Sintaxis revisada con `pglast`; no se levantó el Postgres local (pedido del dueño).
+- **Pruebas:** `city_modes_test` (nueva, en el CI: 22 comprobaciones), `police_test`, `police_online_test`, `scripts_parse_test`; capturas de la pausa con los botones y de la caza en el juego real.
+- **Resultado:** PENDIENTE DE APK.
+
 ## 15/10/2026 (11) · Tanda de pendientes del dueño: peatones, lluvia bajo techo, faros, capó, policía online, fotos
 - **Pedidos (anotados antes):** gente sólo en plazas (chicos jugando, paseando, cercadas) y algunos en el concesionario limpiando autos; que no llueva adentro (estacionamiento); faros que «alumbran poco y salen debajo/detrás del auto»; capó «arrugado» desde la cámara interior; policía online compartida e inteligente; fotos Full HD de cada mejora; rutas mal unidas / pasto en caminos / puentes. El dueño pidió NO correr más pruebas online ni levantar servidores: no se corrieron.
 - **Peatones** (`world/ambient_peds.gd`, `city/city_layout.gd`, `city/city_props.gd`): las veredas quedan sin gente (`SIDEWALKS = false`, el código queda); en la Plaza Aurora 20 paseantes (r 25–33 m) y 14 chicos (más bajos, corren de un lado a otro, r 16–24 m) adentro de una **reja baja nueva** (`PFENCE`, 36 tramos de 6 m, 4 entradas frente a las avenidas de 45°); dos personas «lavando» frente a la vidriera de cada concesionario (8). Siguen siendo deterministas (todos ven a la misma gente) y dependen de la hora y la lluvia. Prueba: `ambient_peds_test` (reescrita: nadie en veredas ni asfalto, chicos, lavadores).

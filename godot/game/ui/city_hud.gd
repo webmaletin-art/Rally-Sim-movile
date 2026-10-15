@@ -372,12 +372,12 @@ func _pick(p: Vector2) -> void:
 		set_dest(w, Tr.t("el punto elegido"))
 	_set_big(false)
 
-func set_dest(p: Vector2, nm: String) -> void:
+func set_dest(p: Vector2, nm: String, quiet := false) -> void:
 	dest = p
 	has_dest = true
 	route_name = nm
 	_reroute()
-	if _toast_cb.is_valid():
+	if _toast_cb.is_valid() and not quiet: # (quiet: un destino que se mueve, como el auto de la Caza recompensas)
 		_toast_cb.call(Tr.t("📍 GPS: %s") % nm)
 
 func clear_dest() -> void:

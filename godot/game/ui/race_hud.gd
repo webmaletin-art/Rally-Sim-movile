@@ -13,6 +13,8 @@ const OnlinePanel := preload("res://game/ui/online_panel.gd")
 signal resume_pressed
 signal restart_pressed
 signal back_to_road_pressed
+signal mode_pressed(mode: String) # modos del mundo abierto (city_modes.gd)
+var modes_fn: Callable # [[texto, modo]] de los modos que se pueden prender acá
 signal quit_pressed
 signal tests_pressed
 signal camera_pressed
@@ -421,6 +423,10 @@ func _fill_pause() -> void:
 		var road_b := Kit.button("📍  VOLVER A LA CALLE", func(): back_to_road_pressed.emit(), false, 19, sz)
 		road_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		pause_col.add_child(road_b)
+	if city_hud != null and modes_fn.is_valid(): # modos contra la IA: Fugitivo y Caza recompensas
+		var mb: Array = modes_fn.call()
+		if mb.size() >= 2:
+			pair.call(Kit.button(str(mb[0][0]), func(): mode_pressed.emit(str(mb[0][1])), false, 19, sz), Kit.button(str(mb[1][0]), func(): mode_pressed.emit(str(mb[1][1])), false, 19, sz))
 	var ed_b := Kit.button("🕹  MODIFICAR CONTROLES", func(): edit_controls_pressed.emit(), false, 19, sz)
 	ed_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	pause_col.add_child(ed_b)
