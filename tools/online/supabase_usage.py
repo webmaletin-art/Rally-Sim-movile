@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 TOKEN = os.environ.get("SUPABASE_ACCESS_TOKEN", "")
 REF = os.environ.get("SUPABASE_PROJECT_ID", "")
-HOURS = float(sys.argv[1]) if len(sys.argv) > 1 else 24.0
+HOURS = min(float(sys.argv[1]) if len(sys.argv) > 1 else 24.0, 23.9) # (el API acepta como mucho 24 h por consulta)
 API = "https://api.supabase.com/v1/projects/%s" % REF
 
 def get(path, params=None):
@@ -28,83 +28,86 @@ END = datetime.now(timezone.utc)
 START = END - timedelta(hours=HOURS)
 
 def logs(sql, start=None, end=None):
-    r = get("/analytics/endpoints/logs.all", {"sql": sql, "iso_timestamp_start": (start or START).isoformat(), "iso_timestamp_end": (end or END).isoformat()})
+    """Registros del proyecto (desde 2026: GET …/analytics/endpoints/logs, SQL de ClickHouse sobre una sola tabla «logs»; máx. 24 h por consulta)."""
+    time.sleep(3.0)  # (el API frena con 429 si se le pide muy seguido)
+    r = get("/analytics/endpoints/logs", {"sql": sql, "iso_timestamp_start": (start or START).isoformat(), "iso_timestamp_end": (end or END).isoformat()})
     if isinstance(r, dict) and r.get("error"):
         return {"error": r["error"]}
     return r.get("result", r) if isinstance(r, dict) else r
-
-def logs_by_hour(sql):
-    """El API de registros acota cada consulta: se pide hora por hora y se junta."""
-    out, errs = [], []
-    t = START
-    while t < END:
-        t2 = min(t + timedelta(hours=1), END)
-        r = logs(sql, t, t2)
-        if isinstance(r, dict) and r.get("error"):
-            errs.append(str(r["error"]))
-        elif isinstance(r, list):
-            out.extend(r)
-        t = t2
-        time.sleep(0.4)
-    return out, errs[:3]
-
-REQ = "from edge_logs as t cross join unnest(t.metadata) as m cross join unnest(m.request) as r"
-Q = {
-    # cuántas llamadas por función o ruta (rpc = funciones del juego; auth; realtime; storage)
-    "by_path": "select r.path as path, r.method as method, count(*) as n %s group by path, method order by n desc limit 80" % REQ,
-    # por minuto: llamadas totales y a funciones
-    "by_minute": "select format_timestamp('%%Y-%%m-%%d %%H:%%M', timestamp_trunc(t.timestamp, minute)) as minute, count(*) as n, countif(r.path like '/rest/v1/rpc/%%') as rpc %s group by minute order by minute" % REQ,
-    # bytes que bajan (content-length de la respuesta) por ruta
-    "bytes": ("select r.path as path, count(*) as n, sum(safe_cast(h.content_length as int64)) as bytes from edge_logs as t cross join unnest(t.metadata) as m "
-              "cross join unnest(m.request) as r cross join unnest(m.response) as resp cross join unnest(resp.headers) as h group by path order by bytes desc limit 60"),
-    # jugadores distintos por minuto (sólo la cuenta, sin ids)
-    "users_by_minute": ("select format_timestamp('%Y-%m-%d %H:%M', timestamp_trunc(t.timestamp, minute)) as minute, count(distinct p.subject) as users, count(*) as n "
-                        "from edge_logs as t cross join unnest(t.metadata) as m cross join unnest(m.request) as r cross join unnest(r.sb) as sb "
-                        "cross join unnest(sb.jwt) as j cross join unnest(j.authorization) as a cross join unnest(a.payload) as p group by minute order by minute"),
-    # Realtime: qué pasa por minuto (conexiones, uniones a canales, errores) — los registros no traen el texto de los mensajes
-    "realtime_by_minute": "select format_timestamp('%Y-%m-%d %H:%M', timestamp_trunc(t.timestamp, minute)) as minute, count(*) as n from realtime_logs as t group by minute order by minute",
-    "realtime_kinds": "select substr(t.event_message, 1, 70) as msg, count(*) as n from realtime_logs as t group by msg order by n desc limit 40",
-}
 
 out = {"desde": START.isoformat(), "hasta": END.isoformat(), "horas": HOURS}
 if not TOKEN or not REF:
     print("Faltan SUPABASE_ACCESS_TOKEN / SUPABASE_PROJECT_ID")
     sys.exit(1)
-for k, sql in Q.items():
-    rows, errs = logs_by_hour(sql)
-    out[k] = rows
-    if errs:
-        out[k + "_errores"] = errs
+
+# 1) qué fuentes hay y cómo se llama la columna de la fuente (la documentación dice «source» y el aviso de cambio «source_name»)
+SRC = None
+for col in ["source_name", "source"]:
+    r = logs("select %s as src, count() as n from logs group by src order by n desc" % col)
+    if isinstance(r, list):
+        SRC = col
+        out["sources"] = r
+        break
+    out.setdefault("sources_errores", []).append(r.get("error"))
+if SRC is None:
+    print(json.dumps(out, indent=1, default=str))
+    sys.exit(0)
+
+# 2) los nombres de los campos de cada fuente (sólo los NOMBRES, no los valores)
+keys = {}
+for src in ["edge_logs", "realtime_logs", "postgres_logs"]:
+    r = logs("select arrayJoin(mapKeys(log_attributes)) as k, count() as n from logs where %s = '%s' group by k order by n desc limit 200" % (SRC, src))
+    keys[src] = [x.get("k") for x in r] if isinstance(r, list) else r
+out["keys"] = keys
+
+def pick(src, *want):
+    ks = keys.get(src) if isinstance(keys.get(src), list) else []
+    for w in want:
+        for k in ks:
+            if k == w:
+                return k
+    for w in want:
+        for k in ks:
+            if w in k:
+                return k
+    return None
+
+E = "%s = 'edge_logs'" % SRC
+path = pick("edge_logs", "request.path", "path")
+meth = pick("edge_logs", "request.method", "method")
+clen = pick("edge_logs", "response.headers.content_length", "content_length")
+subj = pick("edge_logs", "request.sb.jwt.authorization.payload.subject", "payload.subject", "subject")
+out["campos"] = {"path": path, "method": meth, "bytes": clen, "user": subj}
+A = lambda k: "log_attributes['%s']" % k
+if path:
+    out["by_path"] = logs("select %s as path, count() as n%s from logs where %s group by path order by n desc limit 80" % (
+        A(path), (", sum(toInt64OrZero(%s)) as bytes" % A(clen)) if clen else "", E))
+    out["by_minute"] = logs("select formatDateTime(toStartOfMinute(timestamp), '%%Y-%%m-%%d %%H:%%i') as minute, count() as n, countIf(startsWith(%s, '/rest/v1/rpc/')) as rpc%s%s "
+                            "from logs where %s group by minute order by minute" % (A(path), (", sum(toInt64OrZero(%s)) as bytes" % A(clen)) if clen else "",
+                            (", uniqExact(%s) as users" % A(subj)) if subj else "", E))
+    if subj:  # llamadas por jugador y por función (cuenta, sin ids: se numeran)
+        rows = logs("select %s as u, %s as path, count() as n from logs where %s and startsWith(%s, '/rest/v1/rpc/') group by u, path order by n desc limit 400" % (A(subj), A(path), E, A(path)))
+        if isinstance(rows, list):
+            alias = {}
+            for x in rows:
+                x["u"] = "jugador %d" % alias.setdefault(x.get("u"), len(alias) + 1)
+        out["by_user_path"] = rows
+R = "%s = 'realtime_logs'" % SRC
+out["realtime_by_minute"] = logs("select formatDateTime(toStartOfMinute(timestamp), '%%Y-%%m-%%d %%H:%%i') as minute, count() as n from logs where %s group by minute order by minute" % R)
+out["realtime_kinds"] = logs("select substring(event_message, 1, 70) as msg, count() as n from logs where %s group by msg order by n desc limit 40" % R)
+
 # los totales que guarda Supabase (por día)
 for ep in ["usage.api-counts", "usage.api-requests-count"]:
     out[ep] = get("/analytics/endpoints/" + ep, {"interval": "1day"})
 
-# juntar lo que vino hora por hora (las agrupaciones se repiten)
-def merge(rows, key, nums):
-    acc = {}
-    for r in rows:
-        kk = tuple(r.get(x) for x in key)
-        a = acc.setdefault(kk, {x: r.get(x) for x in key})
-        for nm in nums:
-            a[nm] = (a.get(nm) or 0) + int(r.get(nm) or 0)
-    return sorted(acc.values(), key=lambda a: -(a.get(nums[0]) or 0))
-out["by_path"] = merge(out["by_path"], ["path", "method"], ["n"])
-out["bytes"] = merge(out["bytes"], ["path"], ["bytes", "n"])
-out["realtime_kinds"] = merge(out["realtime_kinds"], ["msg"], ["n"])
-
 json.dump(out, open("usage.json", "w"), indent=1, default=str)
 print("== Ventana %s → %s (%.0f h)" % (START.strftime("%d/%m %H:%M"), END.strftime("%d/%m %H:%M"), HOURS))
-for k in ["by_path", "bytes", "realtime_kinds"]:
+for k, v in out.items():
+    if k in ("desde", "hasta", "horas"):
+        continue
     print("\n== %s" % k)
-    for r in out[k][:60]:
-        print("  " + json.dumps(r, default=str, ensure_ascii=False))
-for k in ["by_minute", "users_by_minute", "realtime_by_minute"]:
-    rows = out[k]
-    print("\n== %s (%d minutos con actividad)" % (k, len(rows)))
-    for r in rows:
-        print("  " + json.dumps(r, default=str, ensure_ascii=False))
-for k in out:
-    if k.endswith("_errores"):
-        print("\n!! %s: %s" % (k, out[k]))
-for ep in ["usage.api-counts", "usage.api-requests-count"]:
-    print("\n== %s\n  %s" % (ep, json.dumps(out[ep], default=str)[:3000]))
+    if isinstance(v, list):
+        for r in v[:500]:
+            print("  " + json.dumps(r, default=str, ensure_ascii=False))
+    else:
+        print("  " + json.dumps(v, default=str, ensure_ascii=False)[:4000])
