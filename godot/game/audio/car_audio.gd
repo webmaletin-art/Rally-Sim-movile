@@ -10,6 +10,7 @@ extends Node
 ##  · flutter del turbo, petardeos, golpes: muestras de un disparo
 ## Niveles: los ruidos de fondo están grabados a RMS 0,10, así que un volumen de 1,0 es −20 dBFS y 0,1 es −40 dBFS.
 
+const WavLoop := preload("res://game/audio/wav_loop.gd")
 const CarSnapshot := preload("res://game/car/car_snapshot.gd")
 const VehicleParams := preload("res://game/physics/vehicle_params.gd")
 const DIR := "res://game/audio/samples/"
@@ -205,9 +206,7 @@ func _make_bus(bus_name: String) -> int:
 func _load_wav(sample: String, looped: bool) -> AudioStreamWAV:
 	var w: AudioStreamWAV = (load(DIR + sample + ".wav") as AudioStreamWAV).duplicate()
 	if looped:
-		w.loop_mode = AudioStreamWAV.LOOP_FORWARD
-		w.loop_begin = 0
-		w.loop_end = int(consts[sample]["n"])
+		WavLoop.make(w, int(consts[sample]["n"])) # (bucle que no lee fuera de los datos: ver wav_loop.gd)
 	return w
 
 func _voice(vname: String, bus: String, random_start := true, sample := "") -> void:

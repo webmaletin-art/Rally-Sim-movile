@@ -261,11 +261,12 @@ func _sub(h: float, thr_in: float, brk_in: float, steer_in: float, handbrake: bo
 	var thr := thr_in
 	var brk := brk_in
 	var spd := sqrt(vx * vx + vz * vz)
-	# caja automática: frenando parado pasa a reversa
+	# caja automática: frenando parado pasa a reversa (NO con el freno de mano puesto: así se tiene quieto al auto en la cuenta regresiva y antes
+	# entraba reversa y el freno pasaba a ser acelerador → el auto se iba marcha atrás solo al largar, en todas las carreras; reporte del dueño, 15/10/2026)
 	if not manual:
 		if gear == 0:
 			gear = 1
-		if gear > 0 and brk > 0.5 and thr < 0.05 and spd < 0.6 and vLong < 0.4:
+		if gear > 0 and brk > 0.5 and thr < 0.05 and spd < 0.6 and vLong < 0.4 and not handbrake:
 			revT += h
 			if revT > 0.35:
 				gear = -1

@@ -5,6 +5,7 @@ extends RefCounted
 ## Cuantos más pueblos y ciudades cruzás desde que saliste de Dream City, más patrulleros (2 → 5) y más rápidos.
 ## Es un servicio de la ciudad (city_services.gd): setup(race) / update(dt). Los patrulleros son autos de verdad (race.add_ai_car) con police_driver.gd.
 
+const WavLoop := preload("res://game/audio/wav_loop.gd")
 const PoliceDriver := preload("res://game/ai/police_driver.gd")
 const WorldGps := preload("res://game/city/world_gps.gd")
 const CityGps := preload("res://game/city/city_gps.gd")
@@ -438,10 +439,7 @@ func _siren_on() -> void:
 	var st: Variant = load("res://game/audio/samples/siren.wav")
 	if not (st is AudioStreamWAV):
 		return
-	var w: AudioStreamWAV = st
-	w.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	w.loop_begin = 0
-	w.loop_end = w.data.size() / 2
+	var w: AudioStreamWAV = WavLoop.make((st as AudioStreamWAV).duplicate(), (st as AudioStreamWAV).data.size() / 2) # (copia: no se toca el recurso compartido; bucle seguro, ver wav_loop.gd)
 	siren = AudioStreamPlayer3D.new()
 	siren.stream = w
 	siren.unit_size = 14.0
