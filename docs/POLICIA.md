@@ -27,6 +27,15 @@ cortan, te chocan y se te cruzan adelante; si te agarran pagás la multa y apare
   Al llegar sale «🏙 ¡Llegaste a …! · ya podés aparecer acá desde el menú» y queda en el perfil (ajuste `reached`). En «¿DÓNDE APARECER?» los que faltan se ven grises con 🔒 en el mapa y no se pueden elegir
   (en modo desarrollador están todos). Dream City siempre está habilitada. Prueba: `tests/city_reach_test.gd`.
 
+## Online (15/10/2026, pedido del dueño: «compartida e inteligente, sin sobrecargar el servidor»)
+- **Cuántos patrulleros:** 2 por jugador con auto «fuerte» (índice de rendimiento ≥ 620: GT, Veltor, Moust, policía…), 1 por los demás. Cada teléfono maneja a SUS patrulleros (los que lo persiguen a él).
+- **Grupo** = jugadores a menos de 1,5 km (con las posiciones de `remote_cars.positions()`). Con **3 o más juntos** la policía es **implacable**: +1 patrullero por jugador y por nivel (tope 5), no deja pasar despacio y no abandona por distancia.
+- **Solo o de a dos:** el cartel avisa antes del control («⚠ CONTROL POLICIAL ADELANTE · N m · Pasá a menos de 60 km/h o te persiguen»); si pasás a menos de 60 km/h te dejan seguir; si te persiguen, abandonan después de ~2,5 km.
+- **Todos ven a los mismos patrulleros:** `game/online/police_net.gd` manda, por el mismo canal de Realtime de las posiciones (celda de 2 km), el evento «p» con los patrulleros propios (x, z, rumbo, km/h; ~80 bytes con 2) **2 veces por segundo, sólo durante una persecución y sólo si hay otro jugador en la celda**. Los demás los dibujan con balizas y movimiento suave (`remote_motion.gd`); un mensaje vacío al terminar los borra. No es autoritativo y no hay choques compartidos (como los autos de los otros jugadores).
+- **Choques:** los patrulleros encierran y empujan (roles ram/block/side); el auto no tiene daño fuera de la Aventura, así que sólo te sacan del camino.
+- Sin conexión todo sigue como antes (2 + nivel, sin paso despacio).
+- Prueba: `tests/police_online_test.gd` (reglas, mensajes y fantasmas; sin red). **Falta probar con 2 teléfonos.**
+
 ## Pruebas
 `tests/police_test.gd` (en la compilación): 176 controles, ninguno en Dream City ni en pueblos, la comisaría sobre una calle; un auto llega al control → se arma → al pasar empieza la persecución
 → los patrulleros esperan en la banquina (ninguno en la calzada) → parado lo arrestan (8,3 s) → paga $2.000 y aparece en la comisaría; un **Veltor Max Pro GTR manejado por la IA a fondo**

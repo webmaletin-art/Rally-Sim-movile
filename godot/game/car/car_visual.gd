@@ -335,6 +335,11 @@ static var _decal_rows: Dictionary = {}
 static var _nums: Texture2D
 static var _num_rows: Dictionary = {}
 var race_number := "77" # número de competición del patrón 13 (paint["number"])
+const INSIDE_MARK := "	ROUGHNESS = mix(mix(0.55, rough, pm), 0.06, gm);\n"
+const INSIDE_SMOOTH := """	vec3 up_v = normalize((VIEW_MATRIX * (MODEL_MATRIX * vec4(0.0, 1.0, 0.0, 0.0))).xyz);
+	NORMAL = normalize(mix(NORMAL, up_v, 0.85 * top * (1.0 - gm)));
+	ROUGHNESS = max(ROUGHNESS, mix(0.55, ROUGHNESS, gm));
+"""
 const LIVERY_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
@@ -610,7 +615,9 @@ static func _paint_material(pattern: int, paint: Color, accent: Color, finish: S
 		_livery_shader = Shader.new()
 		_livery_shader.code = LIVERY_SHADER
 		_livery_shader_in = Shader.new()
-		_livery_shader_in.code = LIVERY_SHADER.replace("render_mode cull_disabled;", "render_mode cull_back;")
+		# vista interior: el capó se ve a un metro y las ondulaciones finas de la malla (modelos sin reducir) brillaban como chapa arrugada (dueño, 15/10/2026):
+		# las caras de arriba toman la normal «vertical» del auto (casi sin ondas) y el brillo es más suave
+		_livery_shader_in.code = LIVERY_SHADER.replace("render_mode cull_disabled;", "render_mode cull_back;").replace(INSIDE_MARK, INSIDE_MARK + INSIDE_SMOOTH)
 		# vidrios translúcidos (la tripulación se ve desde afuera): sólo el vidrio lleva transparencia, el resto de la carrocería queda opaca
 		_livery_shader_clear = Shader.new()
 		_livery_shader_clear.code = LIVERY_SHADER.replace("render_mode cull_disabled;", "render_mode cull_disabled, blend_mix, depth_draw_always;").replace("ALBEDO = mix(base, vec3(0.02, 0.03, 0.045), gm);", "ALBEDO = mix(base, vec3(0.02, 0.03, 0.045), gm);\n\tALPHA = 1.0 - gm * 0.8;")

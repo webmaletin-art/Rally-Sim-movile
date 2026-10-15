@@ -8,12 +8,14 @@
 ##  settings  ajustes del perfil que se pisan (calidad, árboles, sombras…)
 ##  cfg     configuración de la carrera (como la arma el menú) · car, paint  → el auto del jugador
 ##  shots   lista de tomas: {name, cam, fov, sim, tp, pilots, env, wait, hide_car}
-##    cam  {"orbit": {a, r, h, lh}}  cámara a ángulo `a` (0 = adelante del auto mirándolo, 180 = atrás), radio r, altura h y punto mirado a lh de altura
+##    cam  {"game": true}  la cámara del juego tal cual (la del perfil: settings.camera)
+##         {"orbit": {a, r, h, lh}}  cámara a ángulo `a` (0 = adelante del auto mirándolo, 180 = atrás), radio r, altura h y punto mirado a lh de altura
 ##         {"rel": [der, alto, adel], "look": [der, alto, adel]}  relativa al auto
 ##         {"abs": [x, y, z], "look": [x, y, z]}  absoluta
 ##         "roll" (grados) inclina el horizonte
 ##    sim  segundos que corre la simulación antes de la toma (el jugador maneja solo)
-##    tp   {"frac": 0..1, "lat": m}  pone al jugador en esa fracción de la ruta
+##    tp   {"frac": 0..1, "lat": m}  pone al jugador en esa fracción de la ruta · {"x", "z", "yaw"} en una posición absoluta (ciudad y región)
+##    police  nivel 0–3: arranca una persecución policial (como el evento «Huida»)
 ##    pilots [{clip, t, at: [der, adel], face: "car"|"cam"|grados, h}]  pilotos de pie con un gesto de Mixamo
 ##    orbit con "n": una vuelta de n cuadros (a0 → a1) en una sola toma (cuadro a cuadro)
 extends SceneTree
@@ -301,6 +303,19 @@ func _frames(n: int) -> void:
 		await process_frame
 
 func _teleport(tp: Dictionary) -> void:
+	if mode == "world" and tp.has("x"):
+		# en cualquier mundo (ciudad, región): a una posición absoluta {x, z, yaw (grados, 0 = hacia +z)}
+		var x := float(tp["x"])
+		var z := float(tp["z"])
+		var w: Variant = track.get("world_node")
+		if w != null and (w as Object).has_method("warm"):
+			w.warm(Vector3(x, 0.0, z))
+		var pc = race.cars[0]
+		pc.place(x, z, deg_to_rad(float(tp.get("yaw", 0.0))))
+		pc.restart_history(race.sim_t)
+		if race.has_method("on_teleport"):
+			race.on_teleport()
+		return
 	if mode != "world" or not (track is RouteTrack):
 		return
 	var n: int = track.n
@@ -345,6 +360,8 @@ func _apply_env(e: Dictionary) -> void:
 		race.env.fog_light_color = Color(str(e["fog_color"]))
 	if e.has("ambient") and race.env != null:
 		race.env.ambient_light_energy = float(e["ambient"])
+	if e.has("wx") and race.get("clock") != null and race.clock.has_method("set_manual_weather"):
+		race.clock.set_manual_weather(str(e["wx"])) # clima del mundo abierto: "rain", "storm", "fog"…
 
 func _save(name: String) -> void:
 	await RenderingServer.frame_post_draw
@@ -373,6 +390,9 @@ func _shot(s: Dictionary) -> void:
 		_teleport(s["tp"])
 	if s.has("env"):
 		_apply_env(s["env"])
+	if s.has("police") and mode == "world" and race.get("police") != null:
+		# persecución policial ya armada (como el evento «Huida»): {"police": nivel 0–3}
+		race.police.event_chase(race.cars[0].phys, int(s["police"]))
 	if s.has("pilots"):
 		goal = _cam_goal(s) # (para los que miran a la cámara)
 		_set_crew(s["pilots"])
@@ -395,6 +415,13 @@ func _shot(s: Dictionary) -> void:
 			guard += 1
 			await process_frame
 	var cam_spec: Dictionary = s.get("cam", {})
+	if bool(cam_spec.get("game", false)):
+		# la cámara del juego tal cual (la del perfil: settings.camera, p. ej. 6 = interior), sin moverla
+		goal = {}
+		follow = {}
+		await _frames(int(s.get("wait", 4)))
+		await _save(name)
+		return
 	var orbit: Dictionary = cam_spec.get("orbit", {})
 	if orbit.has("n"):
 		var n := int(orbit["n"])
