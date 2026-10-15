@@ -31,7 +31,16 @@ func _init(track: TrackBase, params: VehicleParams, player: bool, lo: bool, pain
 	visual.setup(params, lo, paint, rim, finish)
 	snap.reset_to(0.0, phys)
 
+## Antes de mover un auto desde afuera hay que esperar a que terminen los hilos de la física de este cuadro (la física corre en paralelo con
+## el resto del cuadro: race._step_physics). Sin esto, la calibración, la policía, los portones, los eventos y la aventura reescribían el auto
+## mientras un hilo lo calculaba (15/10/2026: sospechoso de los cierres nativos). Lo arma la carrera con set_sync_hook().
+static var _sync_hook := Callable()
+static func set_sync_hook(cb: Callable) -> void:
+	_sync_hook = cb
+
 func place(x: float, z: float, yaw: float) -> void:
+	if _sync_hook.is_valid():
+		_sync_hook.call()
 	phys.reset(x, z, yaw)
 	snap.reset_to(0.0, phys)
 
