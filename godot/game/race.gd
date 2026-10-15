@@ -3092,6 +3092,8 @@ func _frame(dt: float) -> void:
 	for c in cars:
 		c.snap.sample(render_t)
 		c.update_visual(0.0 if paused else dt)
+	if clock != null:
+		clock.place_beam() # los faros, después de mover el auto (si no, a velocidad quedaban un cuadro atrás)
 	if not paused:
 		_update_fx(dt)
 	var p = cars[0].snap

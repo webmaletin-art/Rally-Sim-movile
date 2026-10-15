@@ -166,7 +166,7 @@ func _apply() -> void:
 		race.track.world_node.set_night(night)
 	if _beam != null:
 		_beam.visible = night > 0.08
-		_beam_mat.set_shader_parameter("k", clampf(night * 0.55, 0.0, 0.55))
+		_beam_mat.set_shader_parameter("k", clampf(night * 0.9, 0.0, 0.85)) # (antes 0,55: «alumbran poco»)
 
 ## Clima del mundo (Etapa 17) sobre la hora del día: nubes (menos sol, cielo gris), niebla (se acorta la vista), lluvia (gotas, calle mojada y menos agarre)
 func _apply_weather() -> void:
@@ -205,6 +205,11 @@ func _apply_weather() -> void:
 			race.audio.tgt["rain"] = 0.05 + 0.07 * clampf(float(wx["rain"]), 0.0, 1.0) # la lluvia suena más fuerte cuanto más llueve (la muestra está a RMS 0,10: 0,12 = −38 dBFS; antes era un siseo de −23 dBFS)
 
 # ───────────── faros: un haz plano aditivo sobre el piso, delante del auto ─────────────
+# 15/10/2026 (dueño: «los faros alumbran poco y salen debajo o detrás del auto»): el haz nacía a 2,2 m del centro de TODOS los autos (en los largos, debajo
+# del capó; el charco empezaba a 1,5 m, debajo del auto) y se acomodaba antes de que el auto se moviera en el cuadro (a 100 km/h quedaba ~1 m atrasado).
+# Ahora el haz se arma desde el paragolpes (z = 0 del haz = la trompa de cada auto), es más largo (42 m), más ancho y más fuerte, y race.gd lo
+# acomoda (place_beam) DESPUÉS de mover los autos.
+const BEAM_N := 8 # alturas del piso cada 6 m (0 … 42 m)
 func _build_beam() -> void:
 	var v := PackedVector3Array()
 	var c := PackedColorArray()
@@ -213,39 +218,39 @@ func _build_beam() -> void:
 	for side_v in [-0.7, 0.7]:
 		var side: float = side_v
 		for layer in 2:
-			var w0 := 0.40 if layer == 0 else 0.22 # medio ancho cerca del faro
-			var w1 := 3.6 if layer == 0 else 1.5 # medio ancho a 28 m
-			var zf := 28.0 if layer == 0 else 20.0
-			var ow := side * (2.2 if layer == 0 else 1.5) # el haz se abre un poco hacia afuera
-			var a_n := 0.55 if layer == 0 else 0.85
-			var near_a := Vector3(side - w0, 0.0, 2.2)
-			var near_b := Vector3(side + w0, 0.0, 2.2)
+			var w0 := 0.45 if layer == 0 else 0.25 # medio ancho cerca del faro
+			var w1 := 5.2 if layer == 0 else 2.2 # medio ancho al final
+			var zf := 42.0 if layer == 0 else 30.0
+			var ow := side * (2.8 if layer == 0 else 1.6) # el haz se abre un poco hacia afuera
+			var a_n := 0.75 if layer == 0 else 0.8
+			var near_a := Vector3(side - w0, 0.0, 0.15)
+			var near_b := Vector3(side + w0, 0.0, 0.15)
 			var mid_a := Vector3(side + ow * 0.35 - (w0 + (w1 - w0) * 0.4), 0.0, zf * 0.42)
 			var mid_b := Vector3(side + ow * 0.35 + (w0 + (w1 - w0) * 0.4), 0.0, zf * 0.42)
 			var far_a := Vector3(side + ow - w1, 0.0, zf)
 			var far_b := Vector3(side + ow + w1, 0.0, zf)
-			var cn := Color(1, 0.96, 0.82, a_n * 0.5 if layer == 0 else a_n)
-			var cm := Color(1, 0.96, 0.82, a_n * 0.36)
-			var cf := Color(1, 0.96, 0.82, 0.0)
+			var cn := Color(1, 0.96, 0.84, a_n * 0.55 if layer == 0 else a_n)
+			var cm := Color(1, 0.96, 0.84, a_n * 0.45)
+			var cf := Color(1, 0.96, 0.84, 0.0)
 			# bordes de afuera transparentes: el haz se difumina hacia los costados
-			var cn_e := Color(1, 0.96, 0.82, 0.0)
-			var cm_e := Color(1, 0.96, 0.82, 0.0)
+			var cn_e := Color(1, 0.96, 0.84, 0.0)
+			var cm_e := Color(1, 0.96, 0.84, 0.0)
 			v.append_array(PackedVector3Array([near_a, near_b, (mid_a + mid_b) * 0.5, near_a, (mid_a + mid_b) * 0.5, mid_a, near_b, mid_b, (mid_a + mid_b) * 0.5,
 				mid_a, (mid_a + mid_b) * 0.5, (far_a + far_b) * 0.5, mid_a, (far_a + far_b) * 0.5, far_a, mid_b, far_b, (far_a + far_b) * 0.5,
 				(mid_a + mid_b) * 0.5, mid_b, (far_a + far_b) * 0.5]))
 			c.append_array(PackedColorArray([cn, cn, cm, cn_e, cm, cm_e, cn_e, cm_e, cm,
 				cm_e, cm, cf, cm_e, cf, cf, cm_e, cf, cf,
 				cm, cm_e, cf]))
-	# charco delante del auto (la luz que cae sobre el piso justo adelante de los faros)
+	# charco delante del paragolpes (la luz que cae sobre el piso justo adelante de los faros): de 0,5 a 7,5 m
 	for k in 12:
 		var a0 := TAU * float(k) / 12.0
 		var a1 := TAU * float(k + 1) / 12.0
-		v.append(Vector3(0.0, 0.0, 4.5))
-		v.append(Vector3(cos(a0) * 3.4, 0.0, 4.5 + sin(a0) * 3.0))
-		v.append(Vector3(cos(a1) * 3.4, 0.0, 4.5 + sin(a1) * 3.0))
-		c.append(Color(1, 0.95, 0.8, 0.30))
-		c.append(Color(1, 0.95, 0.8, 0.0))
-		c.append(Color(1, 0.95, 0.8, 0.0))
+		v.append(Vector3(0.0, 0.0, 4.0))
+		v.append(Vector3(cos(a0) * 3.6, 0.0, 4.0 + sin(a0) * 3.5))
+		v.append(Vector3(cos(a1) * 3.6, 0.0, 4.0 + sin(a1) * 3.5))
+		c.append(Color(1, 0.95, 0.82, 0.38))
+		c.append(Color(1, 0.95, 0.82, 0.0))
+		c.append(Color(1, 0.95, 0.82, 0.0))
 	var m := ArrayMesh.new()
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)
@@ -254,14 +259,14 @@ func _build_beam() -> void:
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	_beam_mat = ShaderMaterial.new()
 	var sh := Shader.new()
-	# el haz se apoya en el terreno: la altura del piso a 0, 6, 12… 30 m adelante llega por uniforme y el vértice se sube o baja (antes quedaba plano y se metía bajo el asfalto en las subidas)
+	# el haz se apoya en el terreno: la altura del piso a 0, 6, 12… 42 m adelante llega por uniforme y el vértice se sube o baja (antes quedaba plano y se metía bajo el asfalto en las subidas)
 	sh.code = """shader_type spatial;
 render_mode unshaded, blend_add, cull_disabled, depth_draw_never;
-uniform float hs[6];
+uniform float hs[8];
 uniform float k = 1.0;
 varying vec4 vc;
 void vertex() {
-	float zf = clamp(VERTEX.z / 6.0, 0.0, 4.999);
+	float zf = clamp(VERTEX.z / 6.0, 0.0, 6.999);
 	int i = int(zf);
 	VERTEX.y += mix(hs[i], hs[i + 1], zf - float(i)) + 0.12;
 	vc = COLOR;
@@ -272,7 +277,9 @@ void fragment() {
 }
 """
 	_beam_mat.shader = sh
-	_beam_mat.set_shader_parameter("hs", PackedFloat32Array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
+	var z0 := PackedFloat32Array()
+	z0.resize(BEAM_N)
+	_beam_mat.set_shader_parameter("hs", z0)
 	m.surface_set_material(0, _beam_mat)
 	_beam = MeshInstance3D.new()
 	_beam.mesh = m
@@ -283,15 +290,30 @@ void fragment() {
 
 var _beam_t := 0.0
 
+## Dónde está la trompa del auto del jugador: [posición en el piso (x, y del piso, z), rumbo, distancia del centro al paragolpes]
+func _beam_origin() -> Array:
+	var vis: Node3D = race.cars[0].visual
+	if vis == null:
+		return []
+	var gy: float = (vis.get("blob") as Node3D).global_position.y
+	var yaw: float = vis.basis.get_euler(EULER_ORDER_YXZ).y
+	var V = race.cars[0].phys.V
+	var front: float = float(V.wheelBase) * (1.0 - float(V.weightFront)) + 0.9 # eje delantero + voladizo
+	var fw := Vector2(sin(yaw), cos(yaw))
+	return [Vector3(vis.position.x + fw.x * front, gy, vis.position.z + fw.y * front), yaw]
+
+## race.gd lo llama después de mover los autos en el cuadro (así el haz no queda atrás del auto a velocidad)
+func place_beam() -> void:
+	if _beam == null or not _beam.visible or race.cars.is_empty():
+		return
+	var o := _beam_origin()
+	if o.is_empty():
+		return
+	_beam.global_transform = Transform3D(Basis(Vector3.UP, float(o[1])), o[0])
+
 func _update_beam(dt: float) -> void:
 	if _beam == null or not _beam.visible or race.cars.is_empty():
 		return
-	var vis: Node3D = race.cars[0].visual
-	if vis == null:
-		return
-	var gy: float = (vis.get("blob") as Node3D).global_position.y
-	var yaw: float = vis.basis.get_euler(EULER_ORDER_YXZ).y
-	_beam.global_transform = Transform3D(Basis(Vector3.UP, yaw), Vector3(vis.position.x, gy, vis.position.z))
 	_beam_t -= dt
 	if _beam_t > 0.0:
 		return
@@ -299,13 +321,17 @@ func _update_beam(dt: float) -> void:
 	var city = race.track.city if race.track != null else null
 	if city == null:
 		return
-	var fw := Vector2(sin(yaw), cos(yaw))
+	var o := _beam_origin()
+	if o.is_empty():
+		return
+	var p0: Vector3 = o[0]
+	var fw := Vector2(sin(float(o[1])), cos(float(o[1])))
 	var hs := PackedFloat32Array()
-	for k in 6:
-		var px: float = vis.position.x + fw.x * 6.0 * float(k)
-		var pz: float = vis.position.z + fw.y * 6.0 * float(k)
+	for k in BEAM_N:
+		var px: float = p0.x + fw.x * 6.0 * float(k)
+		var pz: float = p0.z + fw.y * 6.0 * float(k)
 		var pr: PackedFloat64Array = city.probe(px, pz)
 		var gh: float = float(pr[4]) if float(pr[0]) >= -1.0 else city.height(px, pz)
-		hs.append(clampf(gh - gy, -3.0, 4.0))
+		hs.append(clampf(gh - p0.y, -3.0, 4.0))
 	hs[0] = 0.0
 	_beam_mat.set_shader_parameter("hs", hs)
