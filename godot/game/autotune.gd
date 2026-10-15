@@ -282,10 +282,46 @@ static func info_lines(profile: RefCounted) -> Array:
 	return out
 
 ## Línea para el jugador (Opciones → Gráficos): qué perfil se calibró en este teléfono
+# ───────────────────────── elección a mano (15/10/2026) ─────────────────────────
+## Pedido del dueño: la calibración automática se cerraba en dos teléfonos (al armar el centro de Dream City, con Godot 4.5.1 y 4.7.2) → «que el ajuste
+## sea manual: una pantalla que me deje elegir baja, normal, alta y ultra». Cada calidad son los mismos ajustes «auto…» que usaba el perfil calibrado,
+## así que el juego y Opciones → Gráficos los leen igual (y queda en «Automática» con esa calidad). La calibración vieja queda en el código, sin uso.
+const PRESETS := [
+	{"n": "BAJA", "d": "Más rendimiento: mundo 3D al 50 %, sin sombras, pocos árboles", "autoRes": 0.50, "autoTex": "low", "autoParticles": 4, "autoTrees": 1500, "autoShadows": false, "autoTier": 0},
+	{"n": "NORMAL", "d": "Equilibrada: mundo 3D al 67 %, texturas medias", "autoRes": 0.67, "autoTex": "mid", "autoParticles": 7, "autoTrees": 3000, "autoShadows": false, "autoTier": 1},
+	{"n": "ALTA", "d": "Más detalle: mundo 3D al 80 %, sombras y texturas altas", "autoRes": 0.80, "autoTex": "high", "autoParticles": 10, "autoTrees": 4500, "autoShadows": true, "autoTier": 2},
+	{"n": "ULTRA", "d": "Máxima calidad: mundo 3D al 100 %, todo al máximo (para teléfonos potentes)", "autoRes": 1.00, "autoTex": "high", "autoParticles": 10, "autoTrees": 6000, "autoShadows": true, "autoTier": 2},
+]
+
+## La calidad sugerida para este teléfono (según la GPU; es sólo una marca en la pantalla de elección)
+static func suggested_preset() -> int:
+	return clampi(device_tier(), 0, 2)
+
+## Guarda la calidad elegida a mano: queda en «Automática» con esos ajustes y no se vuelve a preguntar (salvo «ELEGIR CALIDAD GRÁFICA» en Opciones)
+static func save_preset(profile: RefCounted, i: int) -> void:
+	i = clampi(i, 0, PRESETS.size() - 1)
+	var P: Dictionary = PRESETS[i]
+	var st: Dictionary = profile.d["settings"]
+	for k in P:
+		if k != "n" and k != "d":
+			st[k] = P[k]
+	st["autoFrame"] = 0
+	reset_to_auto(profile)
+	var win := Vector2i(DisplayServer.window_get_size())
+	var k3: float = float(P["autoRes"])
+	st["gfx"] = {"locked": true, "manual": true, "version": VERSION, "sig": device_sig(), "device": device_info(), "profile": str(P["n"]), "preset": i,
+		"frame_level": 0, "frame_pct": 100, "frame_px": [win.x, win.y], "scale3d": k3, "world_px": [int(float(win.x) * k3), int(float(win.y) * k3)],
+		"date": Time.get_datetime_string_from_system()}
+	st["autotuned"] = true
+	profile.save()
+
 static func player_summary(profile: RefCounted) -> String:
 	var g = profile.setting("gfx")
 	if not (g is Dictionary) or (g as Dictionary).is_empty():
 		return ""
 	var gd: Dictionary = g
+	if gd.get("manual") == true:
+		var wp: Array = gd.get("world_px", [0, 0])
+		return "Calidad elegida: %s · mundo 3D a %d×%d" % [str(gd.get("profile", "?")), int(wp[0]), int(wp[1])]
 	var px: Array = gd.get("frame_px", [0, 0])
 	return "Perfil calibrado: %s · imagen a %d×%d (%d%%)" % [str(gd.get("profile", "?")), int(px[0]), int(px[1]), int(gd.get("frame_pct", 100))]

@@ -5,6 +5,15 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 15/10/2026 (3) · La calibración se sigue cerrando (antes de bajar nada) → elección MANUAL de la calidad (BAJA / NORMAL / ALTA / ULTRA)
+- **Reporte del dueño (captura):** con r186/r187 las dos versiones se cierran igual en «OPTIMIZANDO RENDIMIENTO…»; la captura muestra «Resolución: detectando…» y el reloj en 0:01.50. **Corrección del diagnóstico anterior:** el cierre es ANTES del primer escalón, en `calibration._setup()` (a los 1,5 s de cargar: arma de golpe el centro de Dream City con `world_node.warm()`, ubica el auto, fija clima y hora) → el frame reducido NO era el disparador de la calibración (sigue apagado: no hace falta para jugar). La causa exacta la tiene que dar la lápida.
+- **Pedido del dueño:** «solucioná esto o si no hay forma, que el ajuste sea manual: una pantalla que me deje elegir baja, normal, alta y ultra».
+- **Cambio:** `autotune.gd` → `PRESETS` (BAJA 50 % / NORMAL 67 % / ALTA 80 % con sombras / ULTRA 100 %), `save_preset()`, `suggested_preset()` (según la GPU); `calib_ui.pick()` (pantalla nueva con las 4 y la sugerida marcada); `menu.request_calibration()` ya no corre la carrera de calibración: muestra la elección (la primera vez y desde Opciones → Gráficos → «ELEGIR CALIDAD GRÁFICA»). Queda en «Automática» con esos ajustes y cada opción se sigue pudiendo cambiar a mano. La calibración automática queda en el código, sin uso. Textos en 5 idiomas (b65).
+- **Pruebas:** `autotune_test` (+ las 4 calidades: se guardan, quedan en Automática, frame 100 %, no se vuelve a preguntar), `scripts_parse_test`, `language_test`; la pantalla se abrió en la PC con el menú real (`tests/_pick_shot.gd`): elegir NORMAL guarda el perfil y no vuelve a preguntar.
+- **Resultado:** PENDIENTE DE APK. Si el juego se cierra al entrar a Dream City (el mismo armado del centro): «COPIAR REGISTRO» → líneas `[lápida]`.
+
+---
+
 ## 15/10/2026 (2) · La calibración se cierra en las dos versiones (4.5.1 y 4.7.2) al bajar la resolución → frame reducido APAGADO
 - **Reporte del dueño (captura de «OPTIMIZANDO RENDIMIENTO…»):** «las 2 versiones se cierran acá: baja las resoluciones y se cierran las 2 APK». Es lo mismo que en el otro teléfono.
 - **Evidencia junta:** (1) los 3 cierres en carrera del 14/10 tenían el frame reducido activo (el error `child_order_changed` sólo aparece con él); (2) la calibración se cierra justo al activar/cambiar ese frame, en dos teléfonos y **con los dos motores** (no es la versión de Godot); (3) en la PC (Mesa) la calibración completa pasa por 4 niveles de frame sin cerrarse (`tests/_calib_run.gd`, herramienta nueva que corre la calibración real). Conclusión: el disparador es el frame reducido (una SubViewport 2D que redibuja todo, con la SubViewport 3D adentro) en el driver del teléfono. La línea exacta del motor/driver la dará la lápida.
