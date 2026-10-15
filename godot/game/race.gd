@@ -208,6 +208,7 @@ func player_view():
 	return v
 
 func _ready() -> void:
+	Car.set_sync_hook(sync_physics) # mover un auto desde afuera espera a los hilos de la física (car.gd → place)
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--shot="):
 			shot_path = a.substr(7)
@@ -2027,6 +2028,7 @@ func on_teleport() -> void:
 	_ug_base = _ug_base # (la luz cambia sola con la posición)
 
 func _exit_tree() -> void:
+	Car.set_sync_hook(Callable())
 	CrashLog.mark("carrera", "salida · " + CrashLog.mem_line())
 	if rec != null and rec.active:
 		rec.stop() # el video queda cerrado y reproducible aunque se salga grabando
@@ -2729,6 +2731,11 @@ var batch_t0 := 0.0
 var render_t := 0.0
 var smooth_dt := 0.016
 var phys_wait_us := 0
+
+## Para Car.place() y otros cambios hechos desde afuera de la física: espera los hilos de este cuadro (sólo desde el hilo principal)
+func sync_physics() -> void:
+	if OS.get_thread_caller_id() == OS.get_main_thread_id():
+		_finish_physics()
 
 func _finish_physics() -> void:
 	if phys_task != -1:
