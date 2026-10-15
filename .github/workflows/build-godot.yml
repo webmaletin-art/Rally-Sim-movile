@@ -6,9 +6,12 @@ name: Build Godot APK
 #    se publican en la release "godot-content-4.5" (una por versión del motor); el APK liviano los descarga solo. cars.pck solo se vuelve a bajar si cambia (su versión es su hash).
 #  · (el APK «completo» con todo adentro ya no se arma: pesaría más de 600 MB)
 # Cada vez que se actualiza el contenido, el APK liviano NO hay que reinstalarlo: al abrir baja lo nuevo.
+# RAMA EXPERIMENTAL exp/godot-4.7.2 (15/10/2026): mismo juego que main con el motor Godot 4.7.2, para comparar los cierres en el teléfono.
+# Publica en releases APARTE («godot-content-4.7» y «godot-apk-4.7-prueba») y la app se instala aparte («Dream Racing 4.7 PRUEBA»,
+# com.gskorp.rallygodot.prueba47): no pisa el APK ni el contenido de main. NO fusionar a main sin los resultados del teléfono (docs/MIGRACION_GODOT.md).
 on:
   push:
-    branches: [main]
+    branches: [exp/godot-4.7.2]
     paths:
       - 'godot/**'
       - '.github/workflows/build-godot.yml'
@@ -18,10 +21,10 @@ permissions:
   contents: write
 
 env:
-  GODOT_VERSION: 4.5.1
+  GODOT_VERSION: 4.7.2
   # El contenido (content.pck + cars.pck) lo tiene que armar la MISMA versión del motor que corre el APK (los paquetes cambian de formato entre versiones): una release por versión (menor) del motor.
   # El APK liviano arma el nombre solo (bootstrap/boot.gd, Engine.get_version_info()); los APK viejos (4.4) siguen leyendo «godot-content», que ya no se actualiza.
-  CONTENT_TAG: godot-content-4.5
+  CONTENT_TAG: godot-content-4.7
 
 jobs:
   # Las pruebas corren en paralelo y NO frenan la compilación del APK (si fallan, el job queda en rojo y se mira el log).
@@ -140,7 +143,7 @@ jobs:
       - name: Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools build-tools;35.0.1 platforms;android-35'
+          packages: 'platform-tools build-tools;36.1.0 platforms;android-36'
 
       - name: Instalar Godot y plantillas de exportación
         run: |
@@ -160,7 +163,7 @@ jobs:
       - name: Configurar Godot (SDK de Android y firma)
         run: |
           mkdir -p $HOME/.config/godot
-          cat > $HOME/.config/godot/editor_settings-4.5.tres <<EOF
+          cat > $HOME/.config/godot/editor_settings-4.7.tres <<EOF
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
@@ -170,7 +173,7 @@ jobs:
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
           EOF
-          cat $HOME/.config/godot/editor_settings-4.5.tres
+          cat $HOME/.config/godot/editor_settings-4.7.tres
 
       - name: Importar recursos
         working-directory: godot
@@ -275,15 +278,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view godot-apk >/dev/null 2>&1 || gh release create godot-apk \
-            --title "APK de Dream Racing (para instalar)" \
-            --notes "Instalá DreamRacing-liviano.apk (baja el juego solo al abrirse; la primera vez baja también los autos, unos 500 MB)." \
+          gh release view godot-apk-4.7-prueba >/dev/null 2>&1 || gh release create godot-apk-4.7-prueba \
+            --title "PRUEBA: Dream Racing con Godot 4.7.2 (se instala aparte)" \
+            --notes "Versión de prueba del motor 4.7.2 para comparar los cierres. Se instala APARTE del juego normal (Dream Racing 4.7 PRUEBA): no lo borra. La primera vez baja el juego y los autos (unos 600 MB)." \
             --prerelease
-          cp build/gskorp-light.apk build/DreamRacing-liviano.apk
-          gh release upload godot-apk build/DreamRacing-liviano.apk --clobber
+          cp build/gskorp-light.apk build/DreamRacing-4.7-PRUEBA.apk
+          gh release upload godot-apk-4.7-prueba build/DreamRacing-4.7-PRUEBA.apk --clobber
 
       - name: Subir APK liviano
         uses: actions/upload-artifact@v4
         with:
-          name: gskorp-godot-LIVIANO-apk
+          name: gskorp-godot-LIVIANO-4.7-PRUEBA-apk
           path: build/gskorp-light.apk
