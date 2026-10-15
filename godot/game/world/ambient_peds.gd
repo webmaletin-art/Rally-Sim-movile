@@ -1,5 +1,5 @@
 extends "res://game/world/world_life_system.gd"
-## Peatones ambientales 2.5D (Etapa 21): figuras de papel (tarjetas que miran a la cámara) que caminan por las veredas de las calles de la ciudad.
+## Peatones ambientales 2.5D (Etapa 21): figuras de papel (tarjetas que miran a la cámara). Desde el 15/10/2026 sólo en la Plaza Aurora y en los concesionarios (ver SIDEWALKS).
 ## DETERMINISTAS y sin estado: cada tramo de vereda (SLOT m) tiene a lo sumo un peatón que va y viene entre dos puntos; si existe, su color, velocidad y fase salen de WORLD_SEED + calle + tramo,
 ## y dónde está en este instante es una función PURA de la hora del mundo (ida y vuelta). Todos los jugadores ven a la misma gente en el mismo lugar.
 ## Cuántos hay depende de la hora (poca gente de madrugada, más a la mañana, al mediodía y a la tarde) y del clima (con lluvia casi nadie, y los que hay llevan paraguas).
@@ -19,6 +19,14 @@ const FILL := 0.55 # fracción de tramos con peatón a la hora de más gente
 const SHOW_R := 120.0 # más lejos que esto no se dibuja
 const H := 1.75 # alto de la figura (m)
 const W := 0.9
+## 15/10/2026, pedido del dueño: «sacar a la gente de las calles; que anden sólo en las plazas (chicos jugando, gente paseando) y algunos en el concesionario
+## limpiando los autos». Las veredas quedan sin peatones (SIDEWALKS = false deja el código por si se quiere volver); la gente está en la Plaza Aurora (adentro
+## del cerco, sin autos) y frente a la vidriera de cada concesionario.
+const SIDEWALKS := false
+const PLAZA_C := Vector2.ZERO
+const PLAZA_WALKERS := 16
+const PLAZA_KIDS := 12
+const KID_SCALE := 0.62
 
 var layout: RefCounted
 var graph: RefCounted
@@ -40,6 +48,7 @@ var _hit: Dictionary = {} # key → segundos que le quedan tirado
 var _scare: Dictionary = {} # key → 0..1 cuánto se hizo atrás
 var _hour_i := -1
 var _present_now: Dictionary = {}
+var _special: Array = [] # gente de la plaza y de los concesionarios (se arma una vez)
 
 func _init() -> void:
 	system_id = "peds"
@@ -104,6 +113,14 @@ func slots_in_sector(cell: Vector2i) -> Array:
 	var out: Array = []
 	var sd := seed_v()
 	var cs: float = graph.CELL
+	if _special.is_empty():
+		_special = special_slots()
+	for sp in _special:
+		var a0: Vector3 = sp["a"]
+		if Vector2i(int(floor(a0.x / cs)), int(floor(a0.z / cs))) == cell:
+			out.append(sp)
+	if not SIDEWALKS:
+		return out
 	for li in graph.lanes_in_cell(cell):
 		var L: Dictionary = graph.lanes[li]
 		var rd: Dictionary = layout.roads[int(L["road"])]
@@ -133,6 +150,54 @@ func slots_in_sector(cell: Vector2i) -> Array:
 				"hue": float((k2 >> 8) & 0xFFF) / 4096.0, "var": (k2 >> 20) % 8})
 	return out
 
+## La gente de la plaza y de los concesionarios: [{a, b, len, key, phase, v, hue, var, scale, boost}] (determinista: la misma para todos)
+func special_slots() -> Array:
+	var out: Array = []
+	var sd := seed_v()
+	var y0 := 0.16
+	var hf := func(q: Vector2) -> float: return (float(layout.height(q.x, q.y)) if layout != null and layout.has_method("height") else 0.0) + y0
+	# paseantes: van y vienen por los senderos entre los árboles (r 25–33) y el cerco
+	for i in PLAZA_WALKERS:
+		var k := WorldSeed.hash_ints(sd, 9001, i, 0, 0)
+		var m := WorldSeed.mix32(k)
+		var r := 25.0 + float(m & 0xFF) / 255.0 * 8.0
+		var th := TAU * float(i) / float(PLAZA_WALKERS) + float((m >> 8) & 0xFF) / 255.0 * 0.3
+		var dth := 0.55 + float((m >> 16) & 0xFF) / 255.0 * 0.6
+		var qa := PLAZA_C + Vector2(cos(th), sin(th)) * r
+		var qb := PLAZA_C + Vector2(cos(th + dth), sin(th + dth)) * r
+		out.append(_slot(qa, qb, hf, k, 0.7 + float((m >> 24) & 0xFF) / 255.0 * 0.4, 1.0, 1.8))
+	# chicos jugando: corren de un lado a otro en el pasto, entre los canteros (r 16–24)
+	for i in PLAZA_KIDS:
+		var k := WorldSeed.hash_ints(sd, 9002, i, 0, 0)
+		var m := WorldSeed.mix32(k)
+		var r := 16.0 + float(m & 0xFF) / 255.0 * 8.0
+		var th := TAU * float(i) / float(PLAZA_KIDS) + 0.2
+		var qa := PLAZA_C + Vector2(cos(th), sin(th)) * r
+		var dd := Vector2(cos(th + 1.3), sin(th + 1.3)) * (4.0 + float((m >> 8) & 0xFF) / 255.0 * 4.0)
+		out.append(_slot(qa, qa + dd, hf, k, 1.8 + float((m >> 16) & 0xFF) / 255.0 * 0.9, KID_SCALE, 1.8))
+	# concesionarios: dos personas lavando los autos frente a la vidriera (van y vienen poquito, a cada lado del portón)
+	if layout != null:
+		var di := 0
+		for poi in layout.pois:
+			if str((poi as Dictionary).get("kind", "")) != "dealer" or not (poi as Dictionary).has("door"):
+				continue
+			var door: Vector2 = poi["door"]
+			var nr: Vector2 = (poi["dir"] as Vector2).normalized()
+			var tn := Vector2(nr.y, -nr.x)
+			for side in [-1.0, 1.0]:
+				var k := WorldSeed.hash_ints(sd, 9003, di, int(side), 0)
+				var c := door - nr * 1.4 + tn * float(side) * 7.0
+				out.append(_slot(c - tn * 1.1, c + tn * 1.1, hf, k, 0.35, 1.0, 3.0))
+			di += 1
+	return out
+
+func _slot(qa: Vector2, qb: Vector2, hf: Callable, key: int, v: float, scale: float, boost: float) -> Dictionary:
+	var a := Vector3(qa.x, float(hf.call(qa)), qa.y)
+	var b := Vector3(qb.x, float(hf.call(qb)), qb.y)
+	var k2 := WorldSeed.mix32(key)
+	return {"a": a, "b": b, "len": a.distance_to(b), "key": key, "phase": float((k2 >> 3) & 0xFFFF) / 32768.0, "v": v,
+		"hue": float((k2 >> 8) & 0xFFF) / 4096.0, "var": (k2 >> 20) % 8, "scale": scale, "boost": boost}
+
 func logical_hash() -> int:
 	var h := 29
 	var secs: Array = []
@@ -142,7 +207,7 @@ func logical_hash() -> int:
 	var dens := _density_now()
 	for s in secs:
 		for p in slots_in_sector(s):
-			if present(int(p["key"]), dens):
+			if present(int(p["key"]), minf(1.0, dens * float(p.get("boost", 1.0)))):
 				h = WorldSeed.combine(h, int(p["key"]))
 	return h
 
@@ -212,7 +277,7 @@ func update(dt: float) -> void:
 	var cand: Array = []
 	var pl3 := Vector3(pl.x, 0.0, pl.y)
 	for p in _pool:
-		if not present(int(p["key"]), dens):
+		if not present(int(p["key"]), minf(1.0, dens * float(p.get("boost", 1.0)))): # (en la plaza y en el concesionario hay más gente que en una vereda)
 			continue
 		var u := along(float(p["phase"]), float(p["v"]), float(p["len"]), t)
 		var pos: Vector3 = (p["a"] as Vector3).lerp(p["b"] as Vector3, u)
@@ -254,8 +319,8 @@ func update(dt: float) -> void:
 				pos.z += aw.y
 		var hd := heading(float(p["phase"]), float(p["v"]), float(p["len"]), t)
 		var dir: Vector3 = ((p["b"] as Vector3) - (p["a"] as Vector3)) * hd
-		var hs := 0.93 + float((int(p["key"]) >> 9) & 15) / 15.0 * 0.14
-		var xf := Transform3D(Basis(Vector3.UP, atan2(dir.x, dir.z)) * Basis.from_scale(Vector3(1.0, hs, 1.0)), pos) # el eje Z del instante es el rumbo: el shader decide hacia qué lado de la pantalla mira
+		var hs := (0.93 + float((int(p["key"]) >> 9) & 15) / 15.0 * 0.14) * float(p.get("scale", 1.0)) # (los chicos, más bajos)
+		var xf := Transform3D(Basis(Vector3.UP, atan2(dir.x, dir.z)) * Basis.from_scale(Vector3(float(p.get("scale", 1.0)), hs, 1.0)), pos) # el eje Z del instante es el rumbo: el shader decide hacia qué lado de la pantalla mira
 		_mm.set_instance_transform(i, xf)
 		var col := Color.from_hsv(float(p["hue"]), 0.55, 0.85)
 		col.a = (float(int(p["var"])) + 0.5) / 8.0

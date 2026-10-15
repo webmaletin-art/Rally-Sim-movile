@@ -1,4 +1,5 @@
-## Peatones ambientales (Etapa 21): deterministas (misma semilla → misma gente), más gente de día que de noche y menos con lluvia, caminan por la vereda (no por la calzada),
+## Peatones ambientales (Etapa 21): deterministas (misma semilla → misma gente), más gente de día que de noche y menos con lluvia; desde el 15/10/2026 sólo en la
+## Plaza Aurora (adentro de la reja: paseantes y chicos) y frente a los concesionarios (lavando autos), ninguno en las veredas,
 ## su posición es función pura de la hora, respetan el tope del perfil y se libera todo al apagar. Sin red.
 ## Uso: godot --headless --path godot --script res://tests/ambient_peds_test.gd
 extends SceneTree
@@ -56,37 +57,59 @@ func _initialize() -> void:
 	var a := _mk(city, "MEDIUM", root, 424242)
 	var wl: RefCounted = a[0]
 	var pd: RefCounted = a[1]
-	var spot := Vector2(300.0, 40.0)
+	var spot := Vector2(20.0, 0.0) # la Plaza Aurora
 	wl.clock.set_reference(960.0 * 0.5, 1.0, false) # mediodía del mundo
 	wl.clock.frozen = true
 	wl.update(0.1, spot)
 	pd.update(0.1)
 	var st: Dictionary = pd.stats()
 	print("     ", st)
-	check(int(st["pool"]) > 10, "hay tramos de vereda con peatones alrededor (%d)" % int(st["pool"]))
+	check(int(st["pool"]) > 10, "hay gente en la plaza (%d)" % int(st["pool"]))
 	check(int(st["shown"]) > 0 and int(st["shown"]) <= 32, "se dibujan algunos y respeta el tope MEDIUM (32): %d" % int(st["shown"]))
-	# están sobre la vereda: entre el borde de la calzada y el de la vereda
-	var on_walk := 0
-	var total := 0
-	var g: RefCounted = city.traffic()
+	# sólo en la plaza (adentro de la reja, sin autos) o frente a un concesionario: ninguno en las veredas
+	var dealers: Array = []
+	for poi in city.pois:
+		if str(poi.get("kind", "")) == "dealer" and poi.has("door"):
+			dealers.append(poi["door"])
+	var in_plaza := 0
+	var at_dealer := 0
+	var elsewhere := 0
+	var kids := 0
 	for cell in wl.sectors.active:
 		for p in pd.slots_in_sector(cell):
-			var pos: Vector3 = (p["a"] as Vector3).lerp(p["b"] as Vector3, 0.5)
-			var nl: Dictionary = g.nearest_lane(Vector2(pos.x, pos.z), 20.0)
-			if nl.is_empty():
-				continue
-			var rd: Dictionary = city.roads[int(g.lanes[int(nl["lane"])]["road"])]
-			var pts: PackedVector3Array = rd["pts"]
-			var best := 1e9
-			for i in pts.size() - 1:
-				var a2 := Vector2(pts[i].x, pts[i].z)
-				var b2 := Vector2(pts[i + 1].x, pts[i + 1].z)
-				var cp2 := Geometry2D.get_closest_point_to_segment(Vector2(pos.x, pos.z), a2, b2)
-				best = minf(best, cp2.distance_to(Vector2(pos.x, pos.z)))
-			total += 1
-			if best >= float(rd["hw"]) - 0.2 and best <= float(rd["hw"]) + float(rd["sw"]) + 0.2:
-				on_walk += 1
-	check(total > 0 and float(on_walk) / float(total) > 0.9, "los peatones están en la vereda, no en el medio de la calle (%d de %d)" % [on_walk, total])
+			for q in [p["a"], p["b"]]:
+				var q2 := Vector2((q as Vector3).x, (q as Vector3).z)
+				if q2.length() < 37.5:
+					in_plaza += 1
+				else:
+					var near_d := false
+					for d in dealers:
+						if q2.distance_to(d) < 12.0:
+							near_d = true
+					if near_d:
+						at_dealer += 1
+					else:
+						elsewhere += 1
+			if float(p.get("scale", 1.0)) < 0.9:
+				kids += 1
+	check(elsewhere == 0 and in_plaza > 20, "la gente está adentro de la plaza (%d puntas) y no en las veredas (%d afuera)" % [in_plaza, elsewhere])
+	check(kids >= 6, "hay chicos jugando en la plaza (%d)" % kids)
+	var sp: Array = pd.special_slots()
+	var wash := 0
+	for p in sp:
+		var a3: Vector3 = p["a"]
+		for d in dealers:
+			if Vector2(a3.x, a3.z).distance_to(d) < 12.0:
+				wash += 1
+				break
+	check(dealers.size() > 0 and wash == dealers.size() * 2, "dos personas lavando autos en cada concesionario (%d en %d)" % [wash, dealers.size()])
+	var crosses := 0
+	for p in sp:
+		for q in [p["a"], p["b"], (p["a"] as Vector3).lerp(p["b"], 0.5)]:
+			var pr: PackedFloat64Array = city.probe((q as Vector3).x, (q as Vector3).z)
+			if float(pr[6]) >= 0.0 and float(pr[1]) <= float(pr[5]):
+				crosses += 1
+	check(crosses == 0, "nadie camina sobre el asfalto (%d puntos)" % crosses)
 	var h1: int = pd.logical_hash()
 	var b := _mk(city, "MEDIUM", root, 424242)
 	b[0].clock.set_reference(960.0 * 0.5, 1.0, false)

@@ -43,7 +43,7 @@ var diag := {"trees": true, "buildings": true, "veg": true, "decor": true, "asph
 var _diag_base_todo: Array = [] # cuadras cuya malla base (terreno + calles) falta rearmar tras un cambio de asfalto / tierra / terreno
 var _diag_todo: Array = [] # cuadras que faltan rearmar tras un cambio de interruptor (unas pocas por cuadro)
 const DIAG_VEG := [CityProps.FLOWERS, CityProps.BUSH, CityProps.GRASS]
-const DIAG_DECOR := [CityProps.LAMP, CityProps.LIGHT, CityProps.BOLLARD, CityProps.FENCE, CityProps.STOP, CityProps.CURVE, CityProps.LIMIT]
+const DIAG_DECOR := [CityProps.LAMP, CityProps.LIGHT, CityProps.BOLLARD, CityProps.FENCE, CityProps.PFENCE, CityProps.STOP, CityProps.CURVE, CityProps.LIMIT]
 
 class Soup:
 	var v := PackedVector3Array()

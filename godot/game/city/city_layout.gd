@@ -1523,7 +1523,7 @@ func _add_prop(t: int, x: float, z: float, to_road: Vector2, y_over := NAN) -> v
 	var pr := probe(x, z)
 	if pr[6] >= 0.0 and float(pr[1]) <= float(pr[5]) + 0.2:
 		return
-	if t == 13:
+	if t == 13 or t == 18:
 		# el alambrado es un tramo de 6 m: ni los alambres pueden cruzar una calle (cruzaba la entrada del Estacionamiento Central, reporte del dueño 14/10/2026)
 		for f in [-3.4, -1.7, 1.7, 3.4]:
 			var qx: float = x + to_road.x * float(f)
@@ -1621,6 +1621,17 @@ func _place_props() -> void:
 		if i % 2 == 0:
 			_add_prop(8, cos(a + 0.2) * 22.0, sin(a + 0.2) * 22.0, Vector2(0, 1))
 			_add_prop(9, cos(a + 0.1) * 36.0, sin(a + 0.1) * 36.0, Vector2(0, 1))
+	# reja baja alrededor de la plaza (15/10/2026: la gente y los chicos están adentro, los autos afuera), con cuatro entradas frente a las avenidas de 45°, 135°, 225° y 315°
+	var fr := 38.4
+	var nseg := int(floor(TAU * fr / 6.0))
+	for i in nseg:
+		var a0 := TAU * (float(i) - 0.5) / float(nseg)
+		var a1 := TAU * (float(i) + 0.5) / float(nseg)
+		if absf(wrapf(a0 + (a1 - a0) * 0.5, 0.0, PI * 0.5) - PI * 0.25) < 0.05:
+			continue # entrada
+		var q0 := Vector2(cos(a0), sin(a0)) * fr
+		var q1 := Vector2(cos(a1), sin(a1)) * fr
+		_add_prop(18, q0.x, q0.y, (q1 - q0).normalized())
 	# gasolineras: surtidores, columnas del techo, poste de precios y bloques que cierran el kiosco (nada de esto se rompe)
 	_lot_props = true
 	for st in stations:

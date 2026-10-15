@@ -3,8 +3,8 @@ extends RefCounted
 ## todos los de una cuadra se juntan en una sola malla (una llamada de dibujo) y se rearma cuando uno se rompe: el objeto queda tirado en el piso.
 ## Espacio local del objeto: +y arriba y +z hacia la calle (hacia donde apunta el brazo de la farola o del semáforo).
 
-enum { LAMP, TREE, LIGHT, BOLLARD, MONUMENT, PILLAR, PARKED, FLOWERS, BUSH, GRASS, RTREE, PUMP, BLOCK, FENCE, STOP, CURVE, LIMIT, GUARD }
-const RADIUS := [0.30, 0.45, 0.30, 0.20, 3.6, 1.0, 1.5, 0.0, 0.0, 0.0, 0.0, 0.9, 3.0, 0.0, 0.25, 0.25, 0.25, 1.25] # 0 = decoración: no choca ni se rompe
+enum { LAMP, TREE, LIGHT, BOLLARD, MONUMENT, PILLAR, PARKED, FLOWERS, BUSH, GRASS, RTREE, PUMP, BLOCK, FENCE, STOP, CURVE, LIMIT, GUARD, PFENCE }
+const RADIUS := [0.30, 0.45, 0.30, 0.20, 3.6, 1.0, 1.5, 0.0, 0.0, 0.0, 0.0, 0.9, 3.0, 0.0, 0.25, 0.25, 0.25, 1.25, 0.0] # 0 = decoración: no choca ni se rompe
 const PieceBatch := preload("res://game/city/piece_batch.gd")
 const STREET_TREES := ["tree_birch", "tree_tree", "tree_sassafras", "tree_quaking_aspen", "sc_acacia", "tree_weeping_willow", "abedul", "sc_cypress"]
 const ROAD_TREES := ["alamo", "pino", "sc_pine", "tree_tree", "tree_birch", "tree_lombardy_poplar", "sc_cypress", "tree_sassafras", "arbol_hoja_ancha", "tree_quaking_aspen"]
@@ -231,6 +231,14 @@ static func emit(kind: int, x: float, y: float, z: float, yaw: float, seed_v: fl
 			box(v, c, xf, Vector3(0, 0.65, 0), Vector3(0.14, 1.3, 0.14), Color(0.52, 0.42, 0.30))
 			box(v, c, xf, Vector3(0, 0.55, 3.0), Vector3(0.03, 0.03, 6.0), Color(0.62, 0.64, 0.68))
 			box(v, c, xf, Vector3(0, 0.95, 3.0), Vector3(0.03, 0.03, 6.0), Color(0.62, 0.64, 0.68))
+		PFENCE:
+			# reja baja de plaza (15/10/2026): poste, dos caños y barrotes de hierro verde oscuro hasta el poste siguiente (6 m más adelante, en +z)
+			var iron := Color(0.13, 0.24, 0.17)
+			box(v, c, xf, Vector3(0, 0.6, 0), Vector3(0.12, 1.2, 0.12), iron.darkened(0.2))
+			box(v, c, xf, Vector3(0, 1.02, 3.0), Vector3(0.05, 0.05, 6.0), iron)
+			box(v, c, xf, Vector3(0, 0.18, 3.0), Vector3(0.05, 0.05, 6.0), iron)
+			for bk in 9:
+				box(v, c, xf, Vector3(0, 0.6, 0.6 * float(bk + 1)), Vector3(0.025, 0.84, 0.025), iron)
 		GUARD:
 			# guardarrail: tramo de 4 m a lo largo de la calle (+z local = rumbo de la calle): dos postes, la baranda ondulada (dos fajas) y un reflector
 			var gsteel := Color(0.72, 0.74, 0.77)
