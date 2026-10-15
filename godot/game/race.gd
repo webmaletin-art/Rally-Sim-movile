@@ -1303,8 +1303,6 @@ func _rebuild_cars() -> void:
 			cockpit.position = Vector3(0, -Vp.comHeight + Vp.rideOffset, 0)
 			car.visual.add_child(cockpit)
 			cockpit.set_engine(Vp.maxRpm, Vp.shiftUpRpm, Vp.nitroCap)
-			if not Vp.gears.is_empty(): # máxima del velocímetro del tablero: la velocidad al corte en la última marcha
-				cockpit.set_speedo_max(Vp.maxRpm / 60.0 * TAU * Vp.wheelRadius / maxf(float(Vp.gears[Vp.gears.size() - 1]) * Vp.finalDrive, 0.1) * 3.6)
 			cockpit.raining = weather_name == "lluvia"
 			weather.set_cabin(cockpit) # la lluvia y la nieve no caen adentro del habitáculo
 			cockpit.set_inside(false, false)
@@ -2187,9 +2185,10 @@ func _make_result() -> Dictionary:
 		r["standings"].append({"name": session.names[id], "time": session.finish_time[id] if session.finished[id] else -1.0, "player": id == 0, "color": rival_info[id]["color"].to_html(false)})
 	return r
 
-## Opción «Ver pilotos desde afuera»: los pilotos del auto del jugador se ven con las cámaras de afuera (vidrios translúcidos). Apagada por defecto.
+## (Quitada el 14/10/2026 por pedido del dueño: «al hacer los vidrios transparentes borra parte del auto y en algunos autos los pilotos se veían mal sentados».
+## Los pilotos se ven sólo con las cámaras de adentro y los vidrios del auto quedan oscuros. Queda la función para no tocar el resto del flujo.)
 func _crew_out_enabled() -> bool:
-	return (profile != null and profile.setting("crewOut") == true) or OS.get_cmdline_user_args().has("--crewout")
+	return false
 
 ## Calidad (baja/media/alta/automática), texturas y volúmenes elegidos en Opciones
 func _apply_quality_settings() -> void:

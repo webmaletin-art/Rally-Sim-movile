@@ -1,6 +1,6 @@
 extends SceneTree
 ## Vista previa del habitáculo de un auto.
-## uso: -- id salida.png modo [yaw pitch dist]   modo: onboard | rear | out (afuera, sin carrocería) | outbody (afuera, con carrocería y capó de adentro)
+## uso: -- id salida.png modo [yaw pitch dist]   modo: onboard | rear | out (afuera, sin carrocería) | outbody (afuera, con carrocería y capó de adentro) | wheel | wheelside (volante y manos de cerca)
 const VehicleParams := preload("res://game/physics/vehicle_params.gd")
 const CarVisual := preload("res://game/car/car_visual.gd")
 const Cockpit := preload("res://game/car/cockpit.gd")
@@ -58,8 +58,8 @@ func _init() -> void:
 		snap.wheel_s[i] = rest
 	vis.sync_from(snap, 0.0)
 	var mode := str(a[2])
-	var inside := mode == "onboard" or mode == "rear" or mode == "out" or mode == "outbody" or mode == "ghost"
-	vis.set_inside(mode == "onboard" or mode == "rear" or mode == "outbody")
+	var inside := mode == "onboard" or mode == "rear" or mode == "out" or mode == "outbody" or mode == "ghost" or mode.begins_with("wheel")
+	vis.set_inside(mode == "onboard" or mode == "rear" or mode == "outbody" or mode.begins_with("wheel"))
 	if mode == "out":
 		vis.body.visible = false
 	if mode == "ghost":
@@ -84,6 +84,13 @@ func _init() -> void:
 		cam.fov = float(cl["hfov"]) * 0.58 # (aprox. vertical)
 		cam.global_position = ck.global_transform * (cl["pos"] as Vector3)
 		cam.look_at(ck.global_transform * (cl["look"] as Vector3))
+	elif mode == "wheel" or mode == "wheelside": # el volante y las manos de cerca: desde los ojos del piloto, o de costado (del lado del acompañante)
+		var wc: Vector3 = ck.get("wheel_c")
+		var eyep: Vector3 = ck.get("eye")
+		var cp := eyep.lerp(wc, 0.30) if mode == "wheel" else wc + Vector3(-0.55, 0.12, -0.05)
+		cam.fov = 62.0
+		cam.global_position = ck.global_transform * cp
+		cam.look_at(ck.global_transform * wc)
 	else:
 		var yaw := deg_to_rad(float(a[3]) if a.size() > 3 else 60.0)
 		var pit := deg_to_rad(float(a[4]) if a.size() > 4 else 15.0)

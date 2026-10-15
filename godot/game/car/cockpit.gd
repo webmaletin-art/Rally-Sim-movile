@@ -441,7 +441,6 @@ func _b_dash() -> void:
 	_mesh_node(stalk, _mats["trim"], Vector3(0, -0.05, 0.0), Basis.IDENTITY, dome)
 	_build_display(Vector3(0, 0, -0.0258), Vector3(0, 0, -1), tilt)
 	set_disp_off(disp_off)
-	_b_speedo()
 	if model_ok:
 		return # (el modelo ya trae su panel central, las salidas de aire y la guantera)
 	# panel central de llaves (inclinado hacia el piloto) y salidas de aire
@@ -492,94 +491,6 @@ func _b_dash_model() -> void:
 	# el bajo del tablero: un faldón oscuro hasta el piso (el modelo es más bajo que un tablero de verdad; así no queda un hueco)
 	if top - hy > floor_y + 0.05:
 		_box(Vector3(2.0 * hw * 0.98, top - hy - floor_y, 0.03), Vector3(0, (top - hy + floor_y) * 0.5, dz0 + dz * 0.35), "trim")
-
-## Velocímetro de aguja sobre el tablero (pedido del dueño: «agregá el velocímetro en el tablero, bien lindo, hay espacio; dejá el digital del centro»):
-## esfera redonda con números cada 20/40 km/h hasta la máxima del auto, aro de metal, aguja naranja que brilla. Está entre el volante y el centro, mirando al piloto.
-var speedo_needle: Node3D
-var speedo_face: SpeedFace
-var speedo_vp: SubViewport
-var _speedo_max := 240.0
-func _b_speedo() -> void:
-	var root := Node3D.new()
-	var pos := Vector3(xD * 0.38, cowl_y - 0.075, dz0 + 0.035)
-	root.position = pos
-	root.basis = _face(pos, eye + Vector3(0, -0.05, 0))
-	interior.add_child(root)
-	var r := 0.068
-	var ring := CylinderMesh.new()
-	ring.top_radius = r + 0.009
-	ring.bottom_radius = r + 0.011
-	ring.height = 0.022
-	ring.radial_segments = 36
-	_mesh_node(ring, _m("metal", Color.WHITE), Vector3(0, 0, -0.008), Basis(Vector3.RIGHT, PI / 2.0), root)
-	speedo_vp = SubViewport.new()
-	speedo_vp.size = Vector2i(256, 256)
-	speedo_vp.transparent_bg = false
-	speedo_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
-	add_child(speedo_vp)
-	speedo_face = SpeedFace.new()
-	speedo_face.size = Vector2(256, 256)
-	speedo_face.vmax = _speedo_max
-	speedo_vp.add_child(speedo_face)
-	var qm := QuadMesh.new()
-	qm.size = Vector2(r * 2.0, r * 2.0)
-	var fm := StandardMaterial3D.new()
-	fm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	fm.albedo_texture = speedo_vp.get_texture()
-	_mesh_node(qm, fm, Vector3(0, 0, 0.0045), Basis.IDENTITY, root)
-	speedo_needle = Node3D.new()
-	speedo_needle.position = Vector3(0, 0, 0.006)
-	root.add_child(speedo_needle)
-	var nb := BoxMesh.new()
-	nb.size = Vector3(0.0032, r * 0.86, 0.0012)
-	var nm := StandardMaterial3D.new()
-	nm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	nm.albedo_color = Color(1.0, 0.38, 0.06)
-	_mesh_node(nb, nm, Vector3(0, r * 0.36, 0), Basis.IDENTITY, speedo_needle)
-	var hub := CylinderMesh.new()
-	hub.top_radius = 0.008
-	hub.bottom_radius = 0.008
-	hub.height = 0.004
-	hub.radial_segments = 14
-	_mesh_node(hub, _mats["trim"], Vector3(0, 0, 0.001), Basis(Vector3.RIGHT, PI / 2.0), speedo_needle)
-	speedo_needle.rotation.z = deg_to_rad(SpeedFace.A0)
-
-## Máxima del velocímetro (km/h): la arma race.gd con la velocidad máxima del auto
-func set_speedo_max(vmax_kmh: float) -> void:
-	_speedo_max = clampf(ceil(vmax_kmh * 1.08 / 40.0) * 40.0, 160.0, 400.0)
-	if speedo_face != null:
-		speedo_face.vmax = _speedo_max
-		speedo_face.queue_redraw()
-		speedo_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
-
-## Esfera del velocímetro (se dibuja una vez en un SubViewport): de −135° a +135°, rayas cada 10 km/h, números cada 20 (o 40 si la máxima es alta)
-class SpeedFace extends Control:
-	const A0 := 135.0 # (la aguja: rotation.z en grados; 0 km/h a la izquierda abajo y gira en sentido horario)
-	var vmax := 240.0
-
-	func _draw() -> void:
-		var font := ThemeDB.fallback_font
-		var c := size * 0.5
-		var R := size.x * 0.5
-		draw_circle(c, R, Color(0.03, 0.035, 0.045))
-		draw_arc(c, R - 3.0, 0.0, TAU, 64, Color(0.25, 0.27, 0.3), 3.0, true)
-		var step_n := 20.0 if vmax <= 280.0 else 40.0
-		var red_from := vmax * 0.85
-		var v := 0.0
-		while v <= vmax + 0.01:
-			var a := deg_to_rad(-225.0 + 270.0 * v / vmax) # (en pantalla: y hacia abajo)
-			var dir := Vector2(cos(a), sin(a))
-			var major := is_zero_approx(fmod(v, step_n))
-			var col := Color(1.0, 0.35, 0.15) if v >= red_from else Color(0.92, 0.93, 0.95)
-			draw_line(c + dir * (R - (22.0 if major else 14.0)), c + dir * (R - 7.0), col, 4.0 if major else 2.0, true)
-			if major:
-				var txt := str(int(v))
-				var fs := 22
-				var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-				draw_string(font, c + dir * (R - 44.0) + Vector2(-tw * 0.5, fs * 0.35), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
-			v += step_n * 0.5
-		draw_string(font, c + Vector2(-22, 52), "km/h", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.7, 0.72, 0.76))
-		draw_string(font, c + Vector2(-34, -40), "DREAM", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(1.0, 0.45, 0.1))
 
 func _b_console() -> void:
 	var fl := floor_y - seat_dy # (el lote se corre seat_dy: el pie de la consola queda en el piso)
@@ -1525,11 +1436,6 @@ func update_cabin(dt: float, p: CarSnapshot, in_handbrake: bool, time: float) ->
 			drops_mat.set_shader_parameter("wet", rain_wet)
 			drops_mat.set_shader_parameter("phase", ph)
 			drops_mat.set_shader_parameter("wipe_on", 1.0 if raining else 0.0)
-	# velocímetro del tablero
-	if speedo_needle != null:
-		var kmh := absf(p.vLong) * 3.6
-		var ang := deg_to_rad(SpeedFace.A0 - 270.0 * clampf(kmh / _speedo_max, 0.0, 1.0))
-		speedo_needle.rotation.z = lerp_angle(speedo_needle.rotation.z, ang, clampf(dt * 14.0, 0.0, 1.0))
 	# tacómetro de atrás del volante: aguja y luces de cambio
 	if cluster_needle != null:
 		var fr := clampf(p.rpm / _max_rpm, 0.0, 1.0)

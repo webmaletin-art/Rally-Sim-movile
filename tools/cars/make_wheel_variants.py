@@ -10,12 +10,14 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
 DIR = os.path.join(ROOT, 'godot', 'game', 'models', 'cabin')
 SRC = os.path.join(DIR, 'volante_pro_0.png')
 # id: (cuero, costura, marca)  — colores 0..1
+# id: (cuero, costura, marca, cuánto se tiñe el cuero 0..1). El cuero se tiñe sólo en parte (queda la textura original: el centro no se ve de plástico de color);
+# costuras y marcas van con el color pleno (es lo que da el carácter, como en un volante de competición de verdad)
 VARS = {
-    'azul': ((0.10, 0.14, 0.30), (0.20, 0.50, 1.00), (0.95, 0.95, 0.95)),
-    'rojo': ((0.42, 0.05, 0.06), (0.92, 0.90, 0.86), (1.00, 0.82, 0.10)),
-    'blanco': ((0.86, 0.85, 0.82), (0.85, 0.08, 0.10), (0.10, 0.31, 0.88)),
-    'oro': ((0.08, 0.08, 0.09), (0.86, 0.66, 0.22), (0.92, 0.74, 0.28)),
-    'verde': ((0.06, 0.20, 0.11), (0.55, 0.95, 0.20), (0.95, 0.95, 0.95)),
+    'azul': ((0.10, 0.16, 0.36), (0.20, 0.50, 1.00), (0.95, 0.95, 0.95), 0.55),
+    'rojo': ((0.46, 0.05, 0.06), (0.92, 0.90, 0.86), (1.00, 0.82, 0.10), 0.55),
+    'blanco': ((0.86, 0.85, 0.82), (0.85, 0.08, 0.10), (0.10, 0.31, 0.88), 0.70),
+    'oro': ((0.08, 0.08, 0.09), (0.86, 0.66, 0.22), (0.92, 0.74, 0.28), 0.0),
+    'verde': ((0.06, 0.22, 0.11), (0.55, 0.95, 0.20), (0.95, 0.95, 0.95), 0.55),
 }
 
 def hsv(a):
@@ -34,10 +36,11 @@ def main():
     mark = (s > 0.45) & (h > 35) & (h < 75) & (v > 0.4)
     leather = (~stitch) & (~mark) & (s < 0.35) & (v < 0.22)
     base_v = float(np.median(v[leather])) or 0.1
-    for vid, (lc, sc, mc) in VARS.items():
+    for vid, (lc, sc, mc, kl) in VARS.items():
         out = img.copy()
         shade_l = np.clip(v / base_v, 0.35, 1.8)[..., None]
-        out = np.where(leather[..., None], np.clip(np.array(lc) * shade_l, 0, 1), out)
+        tint = np.clip(np.array(lc) * shade_l, 0, 1)
+        out = np.where(leather[..., None], img * (1.0 - kl) + tint * kl, out)
         out = np.where(stitch[..., None], np.clip(np.array(sc) * np.clip(v / 0.55, 0.5, 1.3)[..., None], 0, 1), out)
         out = np.where(mark[..., None], np.clip(np.array(mc) * np.clip(v / 0.85, 0.6, 1.15)[..., None], 0, 1), out)
         Image.fromarray((out * 255).astype(np.uint8)).save(os.path.join(DIR, 'volante_pro_%s.png' % vid))

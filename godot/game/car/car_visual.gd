@@ -180,7 +180,9 @@ func set_inside(v: bool) -> void:
 		body.visible = not v
 		return
 	body.visible = true
-	if v and shell_in == null and not lo and not _paint_args.is_empty():
+	# desde adentro se ve el capó de la carrocería COMPLETA (la de afuera, con los materiales de adentro). Antes se usaba la reducida (_lo, la de los rivales):
+	# desde la cabina el capó se veía deforme y por sus agujeros se veía la calle (reporte del dueño con el Bisonte, 14/10/2026). CAB_LO_SHELL=1 vuelve a la de antes.
+	if v and shell_in == null and not lo and not _paint_args.is_empty() and OS.has_environment("CAB_LO_SHELL"):
 		_make_inside_shell()
 	var use_in := v and shell_in != null
 	for c in body.get_children():
