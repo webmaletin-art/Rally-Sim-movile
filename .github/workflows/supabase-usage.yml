@@ -1,0 +1,37 @@
+name: Supabase · uso y costos
+
+# SÓLO LECTURA. Resume el uso del proyecto de Supabase (llamadas por función y por minuto, bytes, jugadores distintos, Realtime, tamaño de la base)
+# para calcular los costos del modo online (docs/COSTOS_ONLINE.md). No imprime correos, ids ni IPs. En el plan gratis los registros duran 1 día.
+# Se corre a mano: Actions → «Supabase · uso y costos» → Run workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      horas:
+        description: "Horas hacia atrás (máx. 24 en el plan gratis)"
+        default: "24"
+
+jobs:
+  usage:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Registros (Management API)
+        run: python3 tools/online/supabase_usage.py "${{ github.event.inputs.horas || '24' }}"
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Tamaño de la base y de las tablas
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD" >/dev/null
+          supabase inspect db db-stats --linked || true
+          supabase inspect db table-stats --linked || supabase inspect db table-sizes --linked || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: supabase-usage
+          path: usage.json
+          retention-days: 7
