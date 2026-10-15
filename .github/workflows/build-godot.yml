@@ -123,6 +123,7 @@ jobs:
           timeout -k 5 600 godot --headless --script res://tests/world_ambient_test.gd
           timeout -k 5 600 godot --headless --script res://tests/audio_levels_test.gd
           timeout -k 5 600 godot --headless --script res://tests/ambient_peds_test.gd
+          timeout -k 5 600 godot --headless --script res://tests/rain_cover_test.gd
           timeout -k 5 600 godot --headless --script res://tests/world_budget_test.gd
           timeout -k 5 900 godot --headless --script res://tests/travesia_test.gd -- --km=10.5
           timeout -k 5 600 godot --headless --script res://tests/travesia_test.gd -- --from=18.5 --km=4

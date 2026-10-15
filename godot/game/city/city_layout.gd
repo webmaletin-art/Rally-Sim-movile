@@ -1415,6 +1415,39 @@ func _place_garage() -> void:
 		spawns.append([p5.x, p5.z, 0.0])
 		spawn_names.append("Estacionamiento Central")
 
+## Los lugares con techo (para la lluvia: Weather.set_covers): las tres salas del estacionamiento, las rampas y los túneles (círculos a lo largo del eje) y el techo
+## de cada gasolinera. Cada uno: [x, z, y del techo, y del piso, ux, uz, medio ancho, medio fondo (< 0 = círculo)].
+func rain_covers() -> Array:
+	var out: Array = []
+	for h in halls:
+		var c: Vector2 = h["pos"]
+		out.append([c.x, c.y, float(h["y"]) + float(h["h"]), float(h["y"]) - 1.0, 1.0, 0.0, float(h["r"]) + 0.5, -1.0])
+	for rd in roads:
+		if str(rd["kind"]) != "tunnel":
+			continue
+		# rectángulos de hasta 16 m a lo largo del eje (pocos: el shader mira sólo los 16 techos más cercanos)
+		var pts: PackedVector3Array = rd["pts"]
+		var hz := float(rd["hw"]) + 1.0
+		var i0 := 0
+		while i0 < pts.size() - 1:
+			var i1 := i0 + 1
+			while i1 < pts.size() - 1 and Vector2(pts[i1 + 1].x - pts[i0].x, pts[i1 + 1].z - pts[i0].z).length() <= 16.0:
+				i1 += 1
+			var p0 := Vector2(pts[i0].x, pts[i0].z)
+			var p1 := Vector2(pts[i1].x, pts[i1].z)
+			var ln := maxf(p0.distance_to(p1), 0.1)
+			var u := (p1 - p0) / ln
+			var c := (p0 + p1) * 0.5
+			out.append([c.x, c.y, maxf(pts[i0].y, pts[i1].y) + 6.5, minf(pts[i0].y, pts[i1].y) - 1.5, u.x, u.y, ln * 0.5 + hz * 0.5, hz])
+			i0 = i1
+	for st in stations:
+		var kd: Dictionary = STATION_KINDS[str(st["kind"])]
+		var c: Vector2 = st["center"]
+		var nr: Vector2 = (st["dir"] as Vector2).normalized()
+		var y := height(c.x, c.y)
+		out.append([c.x, c.y, y + 4.95, y - 1.0, nr.y, -nr.x, float(kd["canopy"][0]) * 0.5, float(kd["canopy"][1]) * 0.5])
+	return out
+
 func _garage_road(rname: String, hw: float, kind: String, plan: PackedVector3Array) -> void:
 	var cum := PackedFloat32Array()
 	var acc := 0.0

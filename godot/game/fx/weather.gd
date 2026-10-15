@@ -36,6 +36,9 @@ var _splash: GPUParticles3D
 var _snow: GPUParticles3D
 var _drop_mats: Array[ShaderMaterial] = [] # gotas y copos: no se dibujan adentro del habitáculo del auto del jugador
 var _cabin: Node3D # el habitáculo (Cockpit) del auto del jugador
+var _covers: Array = [] # lugares con techo: [x, z, y techo, y piso, ux, uz, medio ancho, medio fondo (< 0 = círculo)] (ver set_covers)
+var _cov_t := 0.0
+var _cov_n := -1
 var _road_col := Color(1, 1, 1)
 var _ground_col := Color(1, 1, 1)
 
@@ -114,15 +117,9 @@ func _build_rain() -> void:
 	var sq := QuadMesh.new()
 	sq.size = Vector2(0.5, 0.5)
 	sq.orientation = PlaneMesh.FACE_Y
-	var sm := StandardMaterial3D.new()
-	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	sm.albedo_texture = _rain_tex("splash.png")
-	sm.vertex_color_use_as_albedo = true
-	sm.disable_receive_shadows = true
-	sm.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
-	sm.distance_fade_min_distance = 30.0
-	sm.distance_fade_max_distance = 12.0
+	var sm := _drop_material(_rain_tex("splash.png"), false) # (el mismo material de las gotas: tampoco salpica debajo de un techo)
+	sm.set_shader_parameter("fade_near", 12.0)
+	sm.set_shader_parameter("fade_far", 30.0)
 	sq.material = sm
 	_splash.draw_pass_1 = sq
 	var sp := ParticleProcessMaterial.new()
@@ -201,6 +198,47 @@ func _update_cabin() -> void:
 		sm.set_shader_parameter("cab_a", a)
 		sm.set_shader_parameter("cab_b", b)
 
+## Los lugares con techo del mundo (estacionamiento, rampas, túneles, gasolineras): ahí no llueve ni salpica (15/10/2026, «llueve adentro del estacionamiento»).
+## Cada uno: [x, z, y del techo, y del piso, ux, uz, medio ancho, medio fondo] (medio fondo < 0 = círculo de radio «medio ancho»; ux, uz = eje del ancho).
+func set_covers(list: Array) -> void:
+	_covers = list
+	_cov_t = 0.0
+	_cov_n = -1
+
+const COV_MAX := 16
+const COV_R := 70.0 # sólo los techos cerca de la cámara (las gotas caen a menos de 30 m)
+
+func _update_covers(dt: float) -> void:
+	_cov_t -= dt
+	if _cov_t > 0.0 or cam == null:
+		return
+	_cov_t = 0.3
+	var near: Array = []
+	if not _covers.is_empty() and (_rain.emitting or _snow.emitting or _splash.emitting):
+		var cp := cam.global_position
+		for c in _covers:
+			var d := Vector2(float(c[0]) - cp.x, float(c[1]) - cp.z).length() - maxf(float(c[6]), float(c[7]))
+			if d < COV_R:
+				near.append([d, c])
+		near.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) < float(y[0]))
+		if near.size() > COV_MAX:
+			near.resize(COV_MAX)
+	if near.is_empty() and _cov_n == 0:
+		return
+	var a := PackedVector4Array()
+	var b := PackedVector4Array()
+	a.resize(COV_MAX)
+	b.resize(COV_MAX)
+	for i in near.size():
+		var c: Array = near[i][1]
+		a[i] = Vector4(float(c[0]), float(c[1]), float(c[2]), float(c[3]))
+		b[i] = Vector4(float(c[4]), float(c[5]), float(c[6]), float(c[7]))
+	_cov_n = near.size()
+	for sm in _drop_mats:
+		sm.set_shader_parameter("cov0", a)
+		sm.set_shader_parameter("cov1", b)
+		sm.set_shader_parameter("cov_n", _cov_n)
+
 func _curve(pts: Array) -> CurveTexture:
 	var c := Curve.new()
 	for p in pts:
@@ -274,6 +312,7 @@ func _process(dt: float) -> void:
 		wet = move_toward(wet, wet_target, dt * 0.12) # se moja/seca de a poco
 		_apply_wet()
 	_update_cabin()
+	_update_covers(dt)
 	# la lluvia acompaña a la cámara
 	if cam != null:
 		_rain.global_position = cam.global_position + Vector3(0, 13.0, 0)

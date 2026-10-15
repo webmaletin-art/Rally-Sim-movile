@@ -367,6 +367,7 @@ func _ready() -> void:
 		_dream_atmosphere()
 	if track is CityTrack:
 		_city_atmosphere()
+		weather.set_covers((track as CityTrack).city.rain_covers()) # no llueve adentro del estacionamiento, los túneles ni bajo el techo de las gasolineras
 	if track is NetTrack:
 		_net_atmosphere()
 	audio = CarAudio.new()
