@@ -19,6 +19,7 @@ const CarBuild := preload("res://game/data/car_build.gd")
 const Profile := preload("res://game/data/profile.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CrashLog := preload("res://game/diag/crash_log.gd")
+const Cosmetics := preload("res://game/data/cosmetics.gd")
 
 # escapes de la policía (siempre)
 const ESC_BASE := 1500
@@ -63,10 +64,14 @@ var targets: Array = [] # [{ev, slot, car, drv, vid, name, hold, run, trace, sla
 var _map_t := 0.0
 var _gps_t := 0.0
 # fuga
-var _esc_run := -1
-var _esc_ev := -1
+var _esc_runs := {} # evento de fuga → intento (pueden correr varias a la vez: una persecución cuenta para todas)
 var _esc_start := 0.0
 var _esc_wait := false
+var _esc_end_pending := 0 # la persecución terminó mientras se pedían los intentos: 1 escapó, -1 lo agarraron
+
+var _drift: Dictionary = {} # desafío de drift en curso: {ev, run, t, base}
+var _drift_rearm := true # hay que salir de la plaza para empezar otro intento
+var _drift_busy := false
 # contrarreloj
 var _reach: Dictionary = {} # {ev, town, pos, start, yaw, limit, run, t, marker}
 var _reach_stop := 0.0
@@ -241,7 +246,7 @@ func _event_tick(e: Dictionary, dt: float, now: float) -> String:
 	if now < st:
 		if a == 0 and st - now < 1800.0:
 			_announced[id] = 1
-			_big(Tr.t("📅 %s\nEmpieza en %d min · %s") % [Tr.t(str(e["title"])), maxi(1, int((st - now) / 60.0)), _reward_text(e)], 5.0)
+			_big(Tr.t("📅 %s\nEmpieza en %d min · %s") % [Tr.t(str(e["title"])), maxi(1, int((st - now) / 60.0)), reward_text(e)], 5.0)
 		elif a == 1 and st - now < 60.0:
 			_announced[id] = 2
 			_toast(Tr.t("📅 «%s» empieza en 1 minuto") % Tr.t(str(e["title"])))
@@ -249,10 +254,12 @@ func _event_tick(e: Dictionary, dt: float, now: float) -> String:
 	if now >= en:
 		if kind == "bounty":
 			_bounty_end(id, Tr.t("💨 Se fueron los autos de la cacería"))
+		elif kind == "drift" and not _drift.is_empty() and int(_drift["ev"]) == id:
+			_drift_finish(e) # se termina la sesión que estaba en juego (el servidor da 2 min de gracia)
 		return ""
 	if a < 3 and kind != "bounty":
 		_announced[id] = 3
-		_big(Tr.t("📅 EN VIVO: %s\n%s\n%s") % [Tr.t(str(e["title"])), Tr.t(str(e.get("descr", ""))), _reward_text(e)], 6.0)
+		_big(Tr.t("📅 EN VIVO: %s\n%s\n%s") % [Tr.t(str(e["title"])), Tr.t(str(e.get("descr", ""))), reward_text(e)], 6.0)
 	match kind:
 		"bounty":
 			return _bounty_tick(e, dt, now)
@@ -262,20 +269,48 @@ func _event_tick(e: Dictionary, dt: float, now: float) -> String:
 			return _reach_tick(e, dt, now)
 		"record":
 			return _record_line(e, now)
+		"drift":
+			return _drift_tick(e, dt, now)
 	return ""
 
-static func _reward_text(e: Dictionary) -> String:
+static func reward_text(e: Dictionary) -> String:
 	var r: Dictionary = e.get("reward", {})
-	if r.has("rent"):
-		return Tr.t("premio: el %s por %d días") % [_car_name(str(r["rent"])), int(r.get("days", 1))]
-	if r.has("car"):
-		return Tr.t("premio: el auto que atrapes")
 	if r.has("top"):
 		var tp: Array = r["top"]
-		return Tr.t("premios: $%d · $%d · $%d") % [int(tp[0]), int(tp[1]) if tp.size() > 1 else 0, int(tp[2]) if tp.size() > 2 else 0]
+		var parts: Array = []
+		for k in mini(3, tp.size()):
+			parts.append("%dº %s" % [k + 1, prize_text(tp[k])])
+		return Tr.t("premios: %s") % " · ".join(parts)
+	if r.has("car") and not (r["car"] is String):
+		return Tr.t("premio: el auto que atrapes")
+	var t := prize_text(r)
+	return (Tr.t("premio: %s") % t) if t != "" else ""
+
+## Un premio: un número (créditos) o {credits, voucher, car, rent+days, skin, tires}
+static func prize_text(p: Variant) -> String:
+	if p is int or p is float:
+		return "$%d" % int(p)
+	if not (p is Dictionary):
+		return ""
+	var r: Dictionary = p
+	var out: Array = []
+	if r.get("car") is String:
+		out.append(_car_name(str(r["car"])))
+	if r.has("rent"):
+		out.append(Tr.t("el %s por %d días") % [_car_name(str(r["rent"])), int(r.get("days", 1))])
 	if r.has("credits"):
-		return Tr.t("premio: $%d") % int(r["credits"])
-	return ""
+		out.append("$%d" % int(r["credits"]))
+	if r.has("voucher"):
+		out.append(Tr.t("$%d de vale de taller") % int(r["voucher"]))
+	if r.has("skin"):
+		out.append(Tr.t("el diseño %s") % _skin_name(str(r["skin"])))
+	if r.has("tires"):
+		out.append(Tr.t("gomas %s para todos tus autos") % str(CarBuild.tire(str(r["tires"])).get("n", r["tires"])))
+	return " + ".join(out)
+
+static func _skin_name(id: String) -> String:
+	var it: Dictionary = Cosmetics.item(id)
+	return str(it.get("n", id)) if not it.is_empty() else id
 
 # ───────────────────────── cacería ─────────────────────────
 ## Dónde se suelta cada auto: el mismo lugar para todos (semilla del servidor + número de auto): el frente de uno de los locales de Dream City
@@ -492,6 +527,7 @@ func _claim(tg: Dictionary) -> void:
 		stats["caught"] += 1
 		stats["won"] += 1
 		tg["mine"] = true
+		_after_ok("bounty")
 		var rw: Dictionary = d.get("reward", {})
 		if bool(rw.get("dup", false)):
 			_big(Tr.t("🏆 ¡LO ATRAPASTE!\nYa tenías el %s: + $%d") % [str(tg["name"]), int(rw.get("credits", 0))], 6.0)
@@ -533,55 +569,75 @@ func _bounty_end(ev_id: int, msg: String) -> void:
 		_big(msg, 4.0)
 
 # ───────────────────────── fuga ─────────────────────────
-func _escape_ev() -> Dictionary:
+func _escape_evs() -> Array:
 	var now := now_server()
+	var out: Array = []
 	for e in events:
 		if str(e.get("kind", "")) == "escape" and phase_of(e, now) == "live" and not bool(e.get("done", false)):
 			var att := int(e.get("attempts", 0))
 			if att <= 0 or int(e.get("used", 0)) < att:
-				return e
-	return {}
+				out.append(e)
+	return out
 
+## Empieza una persecución: un intento en cada fuga en vivo (la misma persecución cuenta para todas)
 func _escape_event_begin() -> void:
-	if not _online_ok() or _esc_wait or _esc_run >= 0:
+	if not _online_ok() or _esc_wait or not _esc_runs.is_empty():
 		return
-	var e := _escape_ev()
-	if e.is_empty():
+	var evs := _escape_evs()
+	if evs.is_empty():
 		return
 	_esc_wait = true
-	_esc_ev = int(e["id"])
+	_esc_end_pending = 0
 	_esc_start = Time.get_ticks_msec() / 1000.0
 	var on = race.get("online")
-	var r: Dictionary = await on.call_fn("event_start", {"p_id": int(e["id"]), "p_slot": 0})
+	var need := 0.0
+	for e in evs:
+		var r: Dictionary = await on.call_fn("event_start", {"p_id": int(e["id"]), "p_slot": 0})
+		var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
+		if r.get("ok", false) and bool(d.get("ok", false)):
+			_esc_runs[int(e["id"])] = int(d["run"])
+			e["used"] = int(e.get("used", 0)) + 1
+			var n := float((e.get("params", {}) as Dictionary).get("chase_s", 600))
+			need = n if need <= 0.0 else minf(need, n)
 	_esc_wait = false
-	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
-	if r.get("ok", false) and bool(d.get("ok", false)):
-		_esc_run = int(d["run"])
-		e["used"] = int(e.get("used", 0)) + 1
-		_toast(Tr.t("⏱ «%s»: ¡aguantá %d min y escapá!") % [Tr.t(str(e["title"])), int(float((e.get("params", {}) as Dictionary).get("chase_s", 600)) / 60.0)])
+	if not _esc_runs.is_empty():
+		_toast(Tr.t("⏱ Fuga en juego: ¡aguantá %d min y escapá!") % int(need / 60.0))
+	if _esc_end_pending != 0:
+		_escape_event_end(_esc_end_pending > 0)
 
 func _escape_event_end(escaped: bool) -> void:
-	if _esc_run < 0:
+	if _esc_wait:
+		_esc_end_pending = 1 if escaped else -1
 		return
-	var run := _esc_run
-	_esc_run = -1
+	if _esc_runs.is_empty():
+		return
+	var runs := _esc_runs
+	_esc_runs = {}
 	var held := Time.get_ticks_msec() / 1000.0 - _esc_start
-	var e := _find(events, _esc_ev)
-	var need := float((e.get("params", {}) as Dictionary).get("chase_s", 600)) if not e.is_empty() else 600.0
-	var ok := escaped and held >= need
 	var on = race.get("online")
-	var r: Dictionary = await on.call_fn("event_finish", {"p_run": run, "p_ok": ok, "p_value": snappedf(held, 0.1), "p_trace": null, "p_name": str(race.profile.d.get("name", "Piloto"))})
-	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
-	if ok and r.get("ok", false) and bool(d.get("won", false)):
-		stats["won"] += 1
-		_big(Tr.t("🏆 ¡FUGA CUMPLIDA!\n%s") % _got_text(d.get("reward", {})), 6.0)
+	var short := 0.0
+	var won_any := false
+	for ev_id in runs:
+		var e := _find(events, int(ev_id))
+		var need := float((e.get("params", {}) as Dictionary).get("chase_s", 600)) if not e.is_empty() else 600.0
+		var ok := escaped and held >= need
+		var r: Dictionary = await on.call_fn("event_finish", {"p_run": int(runs[ev_id]), "p_ok": ok, "p_value": snappedf(held, 0.1), "p_trace": null, "p_name": str(race.profile.d.get("name", "Piloto"))})
+		var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
+		if ok and r.get("ok", false) and bool(d.get("won", false)):
+			stats["won"] += 1
+			won_any = true
+			_big(Tr.t("🏆 ¡FUGA CUMPLIDA!\n%s") % got_text(d.get("reward", {})), 6.0)
+			if not e.is_empty():
+				e["done"] = true
+			_after_ok("escape")
+		elif ok:
+			_big("😞 " + str(d.get("reason", r.get("error", Tr.t("sin conexión")))), 4.0)
+		elif escaped:
+			short = need if short <= 0.0 else minf(short, need)
+	if won_any:
 		_sync_account()
-		if not e.is_empty():
-			e["done"] = true
-	elif ok:
-		_big("😞 " + str(d.get("reason", r.get("error", Tr.t("sin conexión")))), 4.0)
-	elif escaped:
-		_toast(Tr.t("⏱ Aguantaste %d:%02d · hacían falta %d:%02d") % [int(held) / 60, int(held) % 60, int(need) / 60, int(need) % 60])
+	elif short > 0.0:
+		_toast(Tr.t("⏱ Aguantaste %d:%02d · hacían falta %d:%02d") % [int(held) / 60, int(held) % 60, int(short) / 60, int(short) % 60])
 
 func _escape_line(e: Dictionary, now: float) -> String:
 	if bool(e.get("done", false)):
@@ -589,7 +645,7 @@ func _escape_line(e: Dictionary, now: float) -> String:
 	var need := float((e.get("params", {}) as Dictionary).get("chase_s", 600))
 	var att := int(e.get("attempts", 0))
 	var left := (Tr.t(" · %d intentos") % maxi(0, att - int(e.get("used", 0)))) if att > 0 else ""
-	if _esc_run >= 0 and int(e["id"]) == _esc_ev:
+	if _esc_runs.has(int(e["id"])):
 		var held := Time.get_ticks_msec() / 1000.0 - _esc_start
 		return Tr.t("⏱ FUGA %d:%02d / %d:%02d — ¡no te dejes agarrar!") % [int(held) / 60, int(held) % 60, int(need) / 60, int(need) % 60]
 	var rem := maxf(0.0, float(e.get("ends", now)) - now)
@@ -688,7 +744,8 @@ func _reach_finish(ok: bool, t: float) -> void:
 	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
 	if ok and r.get("ok", false) and bool(d.get("won", false)):
 		stats["won"] += 1
-		_big(Tr.t("🏆 ¡LLEGASTE A TIEMPO! %d:%02d\n%s") % [int(t) / 60, int(t) % 60, _got_text(d.get("reward", {}))], 6.0)
+		_after_ok("reach")
+		_big(Tr.t("🏆 ¡LLEGASTE A TIEMPO! %d:%02d\n%s") % [int(t) / 60, int(t) % 60, got_text(d.get("reward", {}))], 6.0)
 		_sync_account()
 		var e := _find(events, int(_reach.get("ev", -1)))
 		if not e.is_empty():
@@ -738,6 +795,95 @@ func _reach_clear() -> void:
 		(mk as Node).queue_free()
 	_reach = {}
 
+# ───────────────────────── desafío de drift ─────────────────────────
+## En la Plaza de Drift (city_drift.gd hace la cuenta de siempre): al entrar con el desafío en vivo arranca una sesión de run_s segundos;
+## lo que sumás en ese tiempo va al servidor (vale tu mejor intento). Para otro intento hay que salir y volver a entrar.
+func _drift_tick(e: Dictionary, dt: float, _now: float) -> String:
+	var cd = race.get("city_drift")
+	if cd == null or not bool(cd.active):
+		return ""
+	var run_s := float((e.get("params", {}) as Dictionary).get("run_s", 90))
+	if not _drift.is_empty() and int(_drift["ev"]) == int(e["id"]):
+		_drift["t"] = float(_drift["t"]) + dt
+		var pts := drift_points(cd)
+		if float(_drift["t"]) >= run_s:
+			_drift_finish(e)
+		return Tr.t("🌀 DESAFÍO DE DRIFT %d s · %d pts") % [int(ceil(maxf(0.0, run_s - float(_drift.get("t", run_s))))), int(pts)]
+	if not bool(cd.inside):
+		_drift_rearm = true
+	elif _drift_rearm and not _drift_busy and _drift.is_empty():
+		var att := int(e.get("attempts", 0))
+		if att <= 0 or int(e.get("used", 0)) < att:
+			_drift_rearm = false
+			_drift_begin(e, cd)
+	var b: Variant = e.get("best")
+	var rk := ("  ·  " + Tr.t("vas %dº") % int(e["rank"])) if e.get("rank") != null else ""
+	return Tr.t("🌀 %s · tu mejor: %s%s · Plaza de Drift (Ruta 60)") % [Tr.t(str(e["title"])), str(int(float(b))) if b != null else "—", rk]
+
+## Puntos de la sesión: lo que se cobró desde que empezó más el derrape que está en curso
+func drift_points(cd) -> float:
+	if _drift.is_empty():
+		return 0.0
+	return maxf(0.0, float(cd.total) + float(cd.cur) - float(_drift["base"]))
+
+func _drift_begin(e: Dictionary, cd) -> void:
+	_drift_busy = true
+	var on = race.get("online")
+	var r: Dictionary = await on.call_fn("event_start", {"p_id": int(e["id"]), "p_slot": 0})
+	_drift_busy = false
+	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
+	if r.get("ok", false) and bool(d.get("ok", false)):
+		e["used"] = int(e.get("used", 0)) + 1
+		_drift = {"ev": int(e["id"]), "run": int(d["run"]), "t": 0.0, "base": float(cd.total) + float(cd.cur)}
+		_big(Tr.t("🌀 DESAFÍO DE DRIFT\n%d segundos: ¡sumá todo lo que puedas!") % int(float((e.get("params", {}) as Dictionary).get("run_s", 90))), 3.0)
+	elif r.get("ok", false):
+		_toast("🌀 " + str(d.get("reason", "")))
+
+func _drift_finish(e: Dictionary) -> void:
+	if _drift.is_empty():
+		return
+	var cd = race.get("city_drift")
+	if cd != null and float(cd.cur) > 0.0:
+		cd._bank() # el derrape que estaba en curso cuenta
+	var pts := floorf(drift_points(cd)) if cd != null else 0.0
+	var run := int(_drift["run"])
+	_drift = {}
+	var on = race.get("online")
+	var r: Dictionary = await on.call_fn("event_finish", {"p_run": run, "p_ok": pts > 0.0, "p_value": pts, "p_trace": null, "p_name": str(race.profile.d.get("name", "Piloto"))})
+	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
+	if pts > 0.0 and bool(d.get("saved", false)):
+		if e.get("best") == null or pts > float(e["best"]):
+			e["best"] = pts
+		e["rank"] = int(d.get("rank", 0))
+		_big(Tr.t("🌀 %d puntos · vas %dº en «%s»") % [int(pts), int(d.get("rank", 0)), Tr.t(str(e.get("title", "")))], 4.5)
+		_after_ok("drift")
+	elif pts > 0.0:
+		_big("😞 " + str(d.get("reason", r.get("error", Tr.t("sin conexión")))), 4.0)
+	else:
+		_toast(Tr.t("🌀 Sin puntos esta vez: salí y volvé a entrar para otro intento"))
+
+# ───────────────────────── temporada ─────────────────────────
+## Algo que se cumplió en un evento: si hay temporada en vivo, suma (el servidor lleva la cuenta)
+func _after_ok(_kind: String) -> void:
+	var now := now_server()
+	for e in events:
+		if str(e.get("kind", "")) == "season" and phase_of(e, now) == "live":
+			_toast(Tr.t("🏅 ¡Suma para la %s!") % Tr.t(str(e["title"])))
+			_poll_t = minf(_poll_t, 3.0)
+			return
+
+## Tu lugar en un evento de tabla: temporada (puntos), drift (mejor puntaje), carrera de la semana (mejor tiempo)
+static func standing_text(e: Dictionary) -> String:
+	var k := str(e.get("kind", ""))
+	var rk := (" · " + Tr.t("vas %dº de %d") % [int(e["rank"]), int(e.get("players", 0))]) if e.get("rank") != null else ""
+	if k == "season":
+		return " · " + Tr.t("tus puntos: %d") % (int(e["pts"]) if e.get("pts") != null else 0) + rk
+	if k == "drift" and e.get("best") != null:
+		return " · " + Tr.t("tu mejor: %d pts") % int(float(e["best"])) + rk
+	if k == "record" and e.get("best") != null:
+		return " · " + Tr.t("tu mejor: %s") % _fmt(float(e["best"])) + rk
+	return ""
+
 # ───────────────────────── carrera de la semana ─────────────────────────
 func _record_line(e: Dictionary, _now: float) -> String:
 	if weekly.is_empty() or int(weekly["ev"]) != int(e["id"]):
@@ -765,6 +911,7 @@ func on_ow_finish(id: String, ok: bool, secs: float) -> void:
 	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
 	if ok and bool(d.get("saved", false)):
 		_toast(Tr.t("🏆 Carrera de la semana: vas %dº") % int(d.get("rank", 0)))
+		_after_ok("record")
 		_poll_t = 1.0
 
 func is_weekly(id: String) -> bool:
@@ -783,15 +930,15 @@ func _show_board() -> void:
 		if en < now:
 			continue
 		var when := Tr.t("en vivo · termina en %s") % _dur(en - now) if st <= now else Tr.t("empieza en %s") % _dur(st - now)
-		lines.append("%s %s — %s · %s" % [_kind_icon(str(e.get("kind", ""))), Tr.t(str(e["title"])), when, _reward_text(e)])
+		lines.append("%s %s — %s · %s%s" % [kind_icon(str(e.get("kind", ""))), Tr.t(str(e["title"])), when, reward_text(e), standing_text(e)])
 	if lines.size() == 1:
 		lines.append(Tr.t("Ahora no hay eventos: vuelve a mirar en un rato"))
 		_poll_t = 0.0
 	lines.append(Tr.t("⏳ Tiempo real (jugador contra jugador): próximamente"))
 	_big("\n".join(lines.slice(0, 7)), 7.0)
 
-static func _kind_icon(k: String) -> String:
-	return {"bounty": "🎯", "escape": "🚨", "reach": "🏁", "record": "🏆"}.get(k, "📅")
+static func kind_icon(k: String) -> String:
+	return {"bounty": "🎯", "escape": "🚨", "reach": "🏁", "record": "🏆", "drift": "🌀", "season": "🏅"}.get(k, "📅")
 
 static func _dur(s: float) -> String:
 	var n := int(s)
@@ -800,17 +947,24 @@ static func _dur(s: float) -> String:
 static func _fmt(secs: float) -> String:
 	return "%d:%04.1f" % [int(secs / 60.0), fmod(secs, 60.0)]
 
-static func _got_text(rw: Variant) -> String:
+## Lo que el servidor dice que diste: {credits, voucher, car, dup, rent, until, had, skin, skin_cars, tires, tires_cars}
+static func got_text(rw: Variant) -> String:
 	if not (rw is Dictionary):
 		return ""
 	var r: Dictionary = rw
 	var out: Array = []
-	if r.has("credits") and int(r["credits"]) > 0:
-		out.append("+ $%d" % int(r["credits"]))
-	if r.has("rent") and not bool(r.get("had", false)):
-		out.append(Tr.t("el %s es tuyo hasta el %s") % [_car_name(str(r["rent"])), Time.get_date_string_from_unix_time(int(r.get("until", 0)))])
 	if r.has("car") and not bool(r.get("dup", false)):
 		out.append(Tr.t("el %s es tuyo") % _car_name(str(r["car"])))
+	if r.has("credits") and int(r["credits"]) > 0:
+		out.append("+ $%d" % int(r["credits"]))
+	if r.has("voucher") and int(r["voucher"]) > 0:
+		out.append(Tr.t("🔧 + $%d de vale de taller") % int(r["voucher"]))
+	if r.has("rent") and not bool(r.get("had", false)):
+		out.append(Tr.t("el %s es tuyo hasta el %s") % [_car_name(str(r["rent"])), Time.get_date_string_from_unix_time(int(r.get("until", 0)))])
+	if r.has("skin"):
+		out.append(Tr.t("el diseño %s en %d autos") % [_skin_name(str(r["skin"])), int(r.get("skin_cars", 0))])
+	if r.has("tires"):
+		out.append(Tr.t("gomas %s en %d autos") % [str(CarBuild.tire(str(r["tires"])).get("n", r["tires"])), int(r.get("tires_cars", 0))])
 	return " · ".join(out)
 
 func _sync_account() -> void:

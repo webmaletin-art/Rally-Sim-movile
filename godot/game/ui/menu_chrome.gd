@@ -206,6 +206,8 @@ func refresh_stats() -> void:
 		return
 	var p: RefCounted = m.profile
 	money_l.text = Kit.fmt_cr(float(p.credits))
+	if p.has_method("voucher") and int(p.voucher()) > 0:
+		money_l.text += "  🔧" + Kit.fmt_cr(float(p.voucher())) # vale de taller (premio de eventos)
 	var lvl := int(p.d["level"])
 	lvl_l.text = "Nv %d" % lvl
 	var need: int = int(p.xp_for_level(lvl))

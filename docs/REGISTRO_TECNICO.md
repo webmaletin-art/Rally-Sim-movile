@@ -5,6 +5,26 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 15/10/2026 (15) · Temporada semanal, desafío de drift, vale de taller; resumen del juego
+- **Pedido del dueño:** «un resumen de cómo quedó el juego, su lógica, cómo funciona el online, cómo se gana y por qué jugarían»; «eventos de una semana tipo
+  temporada para ganarse un súper deportivo, una skin, 50.000 pesos en reparaciones/mejoras; eventos de drift: el mayor puntaje en un tiempo limitado se lleva
+  una mejora de drifting o un vehículo».
+- **Servidor** (`20261021000000_seasons_drift_vouchers.sql`): tipos `drift` y `season`; `_wev_grant` con `voucher`, `skin` (diseño en todos los autos), `tires`
+  (gomas en todos los autos) y `car` puntual; premios por puesto con objetos (`top`); `_wev_season_rows` (cada evento cumplido en la semana suma `pts[tipo]`,
+  ganarlo suma otra vez), `_wev_rank`, `_wev_close` (paga por puesto carrera, drift y temporada), `_wev_json` (`pts`, `rank`, `players`, mejor de drift),
+  `event_start` (la temporada no se juega sola), `event_finish` (drift: sesión de `run_s` y ≤ `cap_rate` pts/s), `event_board` (los tres tipos).
+  Vale de taller: columna `account_econ.voucher`, `_acct_json` lo devuelve y `_acct_one` pasa a ser un envoltorio de la de siempre (renombrada `_acct_one_base`)
+  que pone el vale delante de los créditos en las compras del taller y en el gasto «tune/repair». Plantillas `temporada`, `drift_finde`, `fuga_vale`;
+  `max_open` 4 → 5. Autoprueba al aplicar. Sintaxis con `pglast`, sin choques de nombres `_<tabla>`.
+- **Cliente:** `city_modes.gd` (desafío de drift con `race.city_drift`, temporada `_after_ok`, varias fugas con una persecución, textos públicos
+  `reward_text`/`prize_text`/`got_text`/`standing_text`/`kind_icon`), `profile.gd` (`voucher`, `can_shop`, `_take_shop` en mejoras, gomas, cambio de gomas,
+  piezas y «tune»), `cosmetics.gd` (diseños con vale), `online_profile.gd` (sin vale en el online), `account_econ.gd` (reconcile del vale),
+  `menu_chrome.gd` (vale en la barra), `menu_garage.gd` (el reglaje mira créditos + vale), `menu_world.gd` (EVENTOS EN VIVO con premios por puesto y tu lugar).
+- **Docs:** `docs/COMO_FUNCIONA_EL_JUEGO.md` (nuevo: resumen para el dueño), `ONLINE_POR_EVENTOS.md`, `PUBLICAR_RECOMPENSA_Y_TIEMPO_REAL.md`, `MODOS_MUNDO_ABIERTO.md`.
+- **Pruebas:** `city_modes_test` (33 OK: dos fugas a la vez, drift, textos), `account_econ_test` (vale), `scripts_parse_test`, `release_test`, `language_test`,
+  `ow_events_test`, `police_test`, `spawn_menu_test`. Sin red.
+- **Resultado:** PENDIENTE DE APK y de aplicar la migración 20261021.
+
 ## 15/10/2026 (14) · Online de EVENTOS DE CLASIFICACIÓN: el servidor como gestor de eventos y premios
 - **Pedido del dueño:** «hasta Supabase Pro (1/11), el juego es de eventos de clasificación: cada uno en su mapa contra la IA, sus registros al servidor. No modos en
   la pausa: eventos del mundo que manda el servidor (cacería de las 22 con 3 autos; fuga de 10 min → auto de policía 3 días; llegar a una ciudad con 3 intentos →

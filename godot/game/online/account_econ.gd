@@ -374,10 +374,12 @@ static func reconcile(d: Dictionary, state: Dictionary, pending: Array) -> Dicti
 	var p_tires := {}
 	var p_parts := {}
 	var delta := 0
+	var p_vch := 0 # lo que puso el vale de taller en las compras que todavía no se mandaron
 	var p_daily := false
 	for ev in pending:
 		var e: Dictionary = ev
 		delta += int(e.get("d", 0))
+		p_vch += int(e.get("v", 0))
 		var car := str(e.get("car", ""))
 		match str(e.get("t", "")):
 			"buy_car", "give_car":
@@ -392,6 +394,8 @@ static func reconcile(d: Dictionary, state: Dictionary, pending: Array) -> Dicti
 				p_daily = true
 	# créditos
 	d["credits"] = maxi(0, int(state.get("credits", 0)) + delta)
+	# vale de taller (premios de eventos): sólo lo da el servidor
+	d["voucher"] = maxi(0, int(state.get("voucher", 0)) - p_vch)
 	rep["credits_after"] = int(d["credits"])
 	# autos
 	if not (d.get("owned") is Dictionary):

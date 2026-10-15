@@ -30,9 +30,12 @@ así que no se gasta nada de Realtime: el plan gratis alcanza para la base de da
 | 🚨 Fuga de 5 minutos | cada 12 h aprox., dura 6 h | Aguantar 5 minutos y escaparse | $12.000 |
 | 🏁 **Contrarreloj entre ciudades** | una vez por día, todo el día | Frenar en el círculo de la salida de Dream City y llegar a la ciudad marcada antes del tiempo. 3 intentos. | $20.000 |
 | 🏆 **Carrera de la semana** | 7 días | Una de las carreras del mapa, marcada con 🏆: tu mejor tiempo de la semana va a la tabla | $25.000 · $12.000 · $6.000 a los 3 primeros |
+| 🏅 **Temporada de la semana** | 7 días, una atrás de otra | Cada evento cumplido en la semana suma puntos (ganarlo, el doble) | 1.º el **Veltor Max Pro GTR** · 2.º diseño Oro para todos tus autos + $50.000 de vale de taller · 3.º a 5.º $25.000 de vale |
+| 🌀 **Desafío de drift** | 3 días | En la Plaza de Drift: 90 s para hacer la mayor cantidad de puntos (vale el mejor intento) | 1.º el **KAIRÓS KL5** · 2.º y 3.º gomas de drift para todos tus autos + vale de taller |
+| 🚨 Fuga por el vale | 24 h | Aguantar 8 minutos y escaparse (una persecución cuenta para todas las fugas a la vez) | $50.000 de **vale de taller** |
 
 Premios justos: nada de millones. Los autos se ganan sólo en la cacería (uno por auto) y los alquileres duran unos días.
-Hay como mucho 4 eventos abiertos a la vez (en curso más los que vienen). Todo se configura sin APK nuevo (ver la guía).
+Hay como mucho 5 eventos abiertos a la vez (en curso más los que vienen; la temporada ocupa uno). El **vale de taller** es un saldo que sólo se gasta en el taller (mejoras, gomas, piezas, diseños y reglajes) y se usa solo, antes que los créditos. Todo se configura sin APK nuevo (ver la guía).
 
 ## Lo que pasa siempre (con o sin eventos)
 - **La policía y el desmadre:** chocar paredes y autos, romper farolas y correr por la ciudad llena un medidor. La policía avisa a la mitad y al 80 %; lleno, te persigue.

@@ -2,6 +2,7 @@ extends RefCounted
 ## Pantallas de entrada al MUNDO ABIERTO y al MODO ONLINE del menú (Etapa 23: antes estaban dentro de menu.gd): elegir dónde aparecer, hub online (apodo, conexión, créditos y regalo diario),
 ## apodo del jugador, cuenta/rankings y las pantallas «pronto». `m` es el menú (menu.gd): usa su cuerpo, sonidos, avisos y perfil.
 
+const CityModes := preload("res://game/city/city_modes.gd")
 const Kit := preload("res://game/ui/ui_kit.gd")
 const Sectors := preload("res://game/region/sectors.gd")
 const CityReach := preload("res://game/city/city_reach.gd")
@@ -378,19 +379,16 @@ func bounty_screen() -> void:
 		pnl.add_child(v)
 		var st := int(e.get("starts", 0))
 		var en := int(e.get("ends", 0))
-		var icon: String = {"bounty": "🎯", "escape": "🚨", "reach": "🏁", "record": "🏆"}.get(str(e.get("kind", "")), "📅")
+		var icon: String = CityModes.kind_icon(str(e.get("kind", "")))
 		var when := (tr("EN VIVO · termina en %s") % _dur(en - now)) if st <= now else (tr("empieza en %s") % _dur(st - now))
 		v.add_child(Kit.label("%s %s" % [icon, tr(str(e.get("title", "")))], 18, Kit.ACCENT if st <= now else Kit.TEXT))
 		v.add_child(Kit.label(when, 14, Kit.GREEN if st <= now else Kit.GOLD))
 		v.add_child(Kit.wrap(tr(str(e.get("descr", ""))), 14, Kit.TEXT, 300))
 		var info: Array = []
-		var rw: Dictionary = e.get("reward", {})
-		if rw.has("credits"):
-			info.append(tr("premio: $%d") % int(rw["credits"]))
-		if rw.has("rent"):
-			info.append(tr("premio: el %s por %d días") % [_car_name(str(rw["rent"])), int(rw.get("days", 1))])
-		if rw.has("top"):
-			info.append(tr("premios a los 3 primeros"))
+		info.append(CityModes.reward_text(e))
+		var stand := CityModes.standing_text(e)
+		if stand != "":
+			info.append(stand.trim_prefix(" · "))
 		if str(e.get("kind", "")) == "bounty":
 			var names: Array = []
 			for c in ((e.get("params", {}) as Dictionary).get("cars", []) as Array):

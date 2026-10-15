@@ -116,6 +116,11 @@ func select(id: String) -> void:
 
 ## Gasta créditos. `kind` (nafta, peaje, pintura…) es sólo para el registro de la cuenta del servidor
 func spend(n: int, kind := "misc") -> bool:
+	if kind in SHOP_KINDS:
+		if not _take_shop(n, {"t": "spend", "amount": n, "kind": kind}):
+			return false
+		save()
+		return true
 	if not _take(n):
 		return false
 	if acct != null and n > 0:
@@ -128,6 +133,31 @@ func _take(n: int) -> bool:
 	if credits < n:
 		return false
 	d["credits"] = credits - n
+	return true
+
+## Gastos sueltos que también se pagan con el vale de taller (reglajes; el servidor usa la misma lista)
+const SHOP_KINDS := ["tune", "repair"]
+
+## Vale de taller (premio de los eventos del servidor): un saldo aparte que sólo se gasta en el taller (mejoras, gomas, piezas, diseños y reglajes).
+## Lo maneja el servidor (account_econ.voucher); acá se descuenta al instante y se corrige al sincronizar.
+func voucher() -> int:
+	return int(d.get("voucher", 0))
+
+## ¿Alcanza para una compra del taller? (créditos + vale)
+func can_shop(n: int) -> bool:
+	return credits + voucher() >= n
+
+## Como _take, pero primero usa el vale. Anota el evento `e` de la cuenta con lo que se pagó en créditos (y en «v» lo que puso el vale, para el perfil)
+func _take_shop(n: int, e: Dictionary) -> bool:
+	var v := mini(voucher(), maxi(0, n))
+	if credits < n - v:
+		return false
+	d["voucher"] = voucher() - v
+	d["credits"] = credits - (n - v)
+	if acct != null and n > 0:
+		if v > 0:
+			e["v"] = v
+		acct.log_event(e, -(n - v))
 	return true
 
 ## Premio en créditos. `kind` y `ref` (qué carrera, qué logro) le sirven al servidor para no pagar dos veces lo mismo y para poner topes
@@ -174,10 +204,8 @@ func buy_upgrade(id: String, cat: String, level: int) -> bool:
 	var key := "%s:%d" % [cat, level]
 	if not car_d["owned"].has(key):
 		var cost := int(u["levels"][level].get("cost", 0))
-		if not _take(cost):
+		if not _take_shop(cost, {"t": "buy_upgrade", "car": id, "cat": cat, "level": level}):
 			return false
-		if acct != null and cost > 0:
-			acct.log_event({"t": "buy_upgrade", "car": id, "cat": cat, "level": level}, -cost)
 		car_d["owned"][key] = 1
 	car_d["upg"][cat] = level
 	save()
@@ -195,10 +223,8 @@ func buy_tires(id: String, tid: String) -> bool:
 	var car_d: Dictionary = d["owned"][id]
 	var t := CarBuild.tire(tid)
 	if not (car_d["tiresOwned"] as Array).has(tid):
-		if not _take(int(t["cost"])):
+		if not _take_shop(int(t["cost"]), {"t": "buy_tires", "car": id, "tire": tid}):
 			return false
-		if acct != null and int(t["cost"]) > 0:
-			acct.log_event({"t": "buy_tires", "car": id, "tire": tid}, -int(t["cost"]))
 		car_d["tiresOwned"].append(tid)
 	car_d["tires"] = tid
 	save()
@@ -221,10 +247,8 @@ func replace_tires(id: String) -> int:
 	var rep: Variant = d.get("worldRep")
 	var rk := WorldProgress.rank_for(float((rep as Dictionary).get("pts", 0.0))) if rep is Dictionary else 0
 	var cost := int(round(float(TireWear.replace_cost(float(CarBuild.tire(t).get("cost", 0)))) * WorldProgress.tire_price_k(rk)))
-	if not _take(cost):
+	if not _take_shop(cost, {"t": "replace_tires", "car": id, "tire": t, "cost": cost}):
 		return -1
-	if acct != null:
-		acct.log_event({"t": "replace_tires", "car": id, "tire": t, "cost": cost}, -cost)
 	var tw: Dictionary = car_d.get("tireWear", {})
 	tw[t] = 0.0
 	car_d["tireWear"] = tw
@@ -243,10 +267,8 @@ func buy_part(id: String, part_id: String, vehicles: Dictionary) -> Dictionary:
 	var own: Array = car_d.get("partsOwned", [])
 	if not own.has(part_id):
 		var price := int(PartCatalog.part(part_id).get("price", 0))
-		if not _take(price):
+		if not _take_shop(price, {"t": "buy_part", "car": id, "part": part_id}):
 			return {"ok": false, "reason": "no alcanza el dinero"}
-		if acct != null and price > 0:
-			acct.log_event({"t": "buy_part", "car": id, "part": part_id}, -price)
 		own.append(part_id)
 		car_d["partsOwned"] = own
 	var r := VehicleCustomization.install(car_d, id, part_id, ctx["V"], ctx["meta"])

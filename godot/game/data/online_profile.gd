@@ -206,6 +206,13 @@ func _take(n: int) -> bool:
 	d["credits"] = credits - n
 	return true
 
+## Las compras del taller del perfil base pasan por acá: en el online no hay vale de taller (es de la cuenta del perfil offline)
+func _take_shop(n: int, _e: Dictionary) -> bool:
+	return _take(n)
+
+func voucher() -> int:
+	return 0
+
 ## (sin guardar, como antes: el espejo se manda al servidor al guardar las compras)
 func spend(n: int, _kind := "misc") -> bool:
 	return _take(n)

@@ -749,7 +749,7 @@ func _draft_update_bar(id: String, st: Dictionary) -> void:
 	var fee := _fee(id, st)
 	draft_lbl.text = (Tr.t("Sin cambios") if fee == 0 else Tr.t("Cambios sin aplicar · el mecánico cobra %s") % Kit.fmt_cr(float(fee)))
 	if draft_apply != null and is_instance_valid(draft_apply):
-		draft_apply.disabled = fee == 0 or m.profile.credits < fee
+		draft_apply.disabled = fee == 0 or not m.profile.can_shop(fee)
 		draft_apply.text = (Tr.t("✔ APLICAR") + " " + Kit.fmt_cr(float(fee))) if fee > 0 else Tr.t("✔ APLICAR")
 
 ## Barra del borrador: cuánto cuesta y APLICAR / DESCARTAR; y a probarlo gratis en una pista

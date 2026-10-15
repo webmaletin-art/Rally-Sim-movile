@@ -416,6 +416,19 @@ func _run() -> void:
 	check(int(dd["credits"]) == maxi(0, 100 + 50 - 18000), "reconcile: saldo = servidor + lo que todavía no se mandó (nunca negativo)")
 	check((dd["owned"] as Dictionary).has("hatch") and not (dd["owned"] as Dictionary).has("torito"), "reconcile: una compra que espera no inventa el auto (se arma con el estado del servidor)")
 	check(rep2["removed"] is Array, "reconcile devuelve el informe")
+	# ───── vale de taller (premio de eventos): saldo aparte para el taller ─────
+	AccountEcon.reconcile(dd, {"credits": 100, "voucher": 30000, "cars": {"hatch": {"owned": [], "tires": ["street"], "parts": []}}, "iap": {}, "streak": 0, "daily": ""}, [{"t": "buy_upgrade", "car": "hatch", "cat": "engine", "level": 1, "d": 0, "v": 5000, "id": "c"}])
+	check(int(dd.get("voucher", -1)) == 25000, "reconcile: el vale es el del servidor menos lo que usaron las compras que esperan (%d)" % int(dd.get("voucher", -1)))
+	var pv := Profile.new()
+	pv.d = Profile.default_profile()
+	pv.d["credits"] = 1000
+	pv.d["voucher"] = 5000
+	check(pv.can_shop(6000) and not pv.can_shop(6001), "con vale: alcanza para el taller con créditos + vale")
+	check(pv._take_shop(5500, {}) and pv.voucher() == 0 and pv.credits == 500, "una compra del taller usa primero el vale y después los créditos")
+	check(not pv._take_shop(600, {}) and pv.credits == 500, "sin vale ni créditos suficientes no se compra")
+	pv.d["voucher"] = 2000
+	check(pv.spend(300, "fuel") and pv.voucher() == 2000 and pv.credits == 200, "la nafta no se paga con el vale")
+	check(pv.spend(1500, "tune") and pv.voucher() == 500 and pv.credits == 200, "el reglaje sí se paga con el vale")
 
 	# ───── los textos legales dicen lo mismo que el código ─────
 	var src := FileAccess.get_file_as_string("res://game/ui/menu_about.gd")

@@ -29,6 +29,7 @@ class FakeRace:
 	var ow_events = null
 	var modes = null
 	var online = null
+	var city_drift = null
 	func add_ai_car(vid: String, x: float, z: float, yaw: float, driver: RefCounted, paint := Color.WHITE, mods := {}):
 		var su: Dictionary = CarBuild.build_params(vehicles[vid], Profile.new_car_state(vid), AiCars.ASSISTS)
 		for k in mods:
@@ -69,6 +70,17 @@ class FakeProfile:
 	func save() -> void:
 		pass
 
+## La Plaza de Drift, reducida a lo que mira el desafío (city_drift.gd hace la cuenta de verdad)
+class FakeDrift:
+	extends RefCounted
+	var active := true
+	var inside := false
+	var total := 0.0
+	var cur := 0.0
+	func _bank() -> void:
+		total += cur
+		cur = 0.0
+
 ## El servidor de eventos, en memoria (las mismas respuestas que events_current / event_start / event_finish)
 class FakeOnline:
 	extends Node
@@ -94,7 +106,7 @@ class FakeOnline:
 				finishes.append(args)
 				if not bool(args["p_ok"]):
 					return {"ok": true, "data": {"ok": true, "won": false}}
-				return {"ok": true, "data": {"ok": true, "won": true, "reward": {"credits": 20000}}}
+				return {"ok": true, "data": {"ok": true, "won": true, "saved": true, "rank": 1, "reward": {"credits": 20000}}}
 		return {"ok": false, "data": null, "error": "?"}
 
 var fail := false
@@ -250,13 +262,14 @@ func _run() -> void:
 	race.online = srv
 	md = race.modes
 	var esc := {"id": 61, "kind": "escape", "title": "Fuga", "descr": "", "params": {"chase_s": 2}, "reward": {"rent": "police", "days": 3}, "starts": now - 10, "ends": now + 3600, "attempts": 5, "seed": 1, "used": 0, "done": false, "winners": []}
-	srv.state["events"] = [esc]
+	var esc2 := {"id": 62, "kind": "escape", "title": "Fuga por el vale", "descr": "", "params": {"chase_s": 900}, "reward": {"voucher": 50000}, "starts": now - 10, "ends": now + 3600, "attempts": 3, "seed": 2, "used": 0, "done": false, "winners": []}
+	srv.state["events"] = [esc, esc2]
 	md._poll_t = 0.0
 	pol = race.police
 	_sim(race, 0.3)
 	pol.rage = 1.0
 	_sim(race, 0.5)
-	_check(str(pol.state) == "chase" and srv.starts.size() == 1 and int(srv.starts[0]["p_id"]) == 61, "empieza la persecución: se anota un intento de la fuga")
+	_check(str(pol.state) == "chase" and srv.starts.size() == 2 and int(srv.starts[0]["p_id"]) == 61 and int(srv.starts[1]["p_id"]) == 62, "empieza la persecución: se anota un intento en cada fuga en vivo (2)")
 	var t0 := Time.get_ticks_msec()
 	while Time.get_ticks_msec() - t0 < 2300:
 		OS.delay_msec(50)
@@ -265,8 +278,10 @@ func _run() -> void:
 		u["drv"].mode = "parked"
 	pol.lose_t = CityPolice.ESCAPE_T
 	_sim(race, 0.5)
-	var last: Dictionary = srv.finishes[srv.finishes.size() - 1]
-	_check(int(last["p_run"]) == srv.next_run and bool(last["p_ok"]) and float(last["p_value"]) >= 2.0, "aguantó %.1f s y escapó: fuga cumplida" % float(last["p_value"]))
+	var last: Dictionary = srv.finishes[srv.finishes.size() - 2]
+	_check(int(last["p_run"]) == srv.next_run - 1 and bool(last["p_ok"]) and float(last["p_value"]) >= 2.0, "aguantó %.1f s y escapó: fuga cumplida" % float(last["p_value"]))
+	last = srv.finishes[srv.finishes.size() - 1]
+	_check(int(last["p_run"]) == srv.next_run and not bool(last["p_ok"]), "la fuga de 15 min no se cumplió con la misma persecución")
 	# contrarreloj a una ciudad
 	var rc := {"id": 71, "kind": "reach", "title": "Contrarreloj", "descr": "", "params": {"speed": 24, "time_max": 1500}, "reward": {"credits": 20000}, "starts": now - 10, "ends": now + 3600, "attempts": 3, "seed": 5, "used": 0, "done": false, "winners": []}
 	srv.state["events"] = [rc]
@@ -294,6 +309,35 @@ func _run() -> void:
 	_sim(race, 0.5)
 	last = srv.finishes[srv.finishes.size() - 1]
 	_check(bool(last["p_ok"]) and float(last["p_value"]) > 1.0, "llegó a tiempo (%.1f s): lo reclama" % float(last["p_value"]))
+	# desafío de drift: al entrar a la plaza arranca la sesión; lo que suma va al servidor
+	var fd := FakeDrift.new()
+	race.city_drift = fd
+	var dr := {"id": 81, "kind": "drift", "title": "Desafío de drift", "descr": "", "params": {"run_s": 1, "cap_rate": 1500}, "reward": {"top": [{"car": "kl5"}, {"tires": "drift", "voucher": 20000}]}, "starts": now - 10, "ends": now + 3600, "attempts": 0, "seed": 3, "used": 0, "done": false, "winners": []}
+	srv.state["events"] = [dr]
+	md._poll_t = 0.0
+	_sim(race, 0.3)
+	var n0 := srv.starts.size()
+	fd.inside = true
+	_sim(race, 0.3)
+	_check(srv.starts.size() == n0 + 1 and int(srv.starts[n0]["p_id"]) == 81 and not md._drift.is_empty(), "entró a la Plaza de Drift con el desafío en vivo: empieza la sesión")
+	fd.total += 4000.0
+	fd.cur = 500.0
+	_sim(race, 1.2)
+	last = srv.finishes[srv.finishes.size() - 1]
+	_check(md._drift.is_empty() and bool(last["p_ok"]) and is_equal_approx(float(last["p_value"]), 4500.0), "terminó el tiempo: manda %d puntos (con el derrape en curso)" % int(float(last["p_value"])))
+	_sim(race, 0.5)
+	_check(srv.starts.size() == n0 + 1, "para otro intento hay que salir y volver a entrar")
+	fd.inside = false
+	_sim(race, 0.2)
+	fd.inside = true
+	_sim(race, 0.3)
+	_check(srv.starts.size() == n0 + 2, "salió y volvió: otro intento")
+	# textos de los premios y de la temporada
+	var rt := CityModes.reward_text(dr)
+	_check("1º" in rt and "KL5" in rt and "drift" in rt.to_lower(), "premios por puesto: %s" % rt)
+	_check("vale de taller" in CityModes.prize_text({"voucher": 50000}) and "Oro" in CityModes.got_text({"skin": "st_oro", "skin_cars": 3}), "vale de taller y diseño en los textos")
+	var stx := CityModes.standing_text({"kind": "season", "pts": 340, "rank": 2, "players": 12})
+	_check("340" in stx and "2º" in stx, "temporada: tus puntos y tu puesto (%s)" % stx)
 	race.queue_free()
 	print("RESULTADO: ", "FALLA" if fail else "TODO OK")
 	quit(1 if fail else 0)

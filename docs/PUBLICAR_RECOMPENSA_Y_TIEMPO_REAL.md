@@ -4,6 +4,7 @@ Todo se maneja desde el panel de Supabase (supabase.com → tu proyecto). Para n
 Migraciones:
 - `20261019000000_bounty_event_ranking_flags.sql`: el interruptor `app_flags` y el ranking.
 - `20261020000000_world_events.sql`: el gestor de eventos.
+- `20261021000000_seasons_drift_vouchers.sql`: temporada, desafío de drift, vale de taller, diseños y gomas como premio.
 
 Las dos ya están aplicadas (15/10/2026 17:28 UTC, flujo «Supabase · aplicar migraciones» n.º 32). Qué es y cómo se juega: `docs/ONLINE_POR_EVENTOS.md`.
 
@@ -29,11 +30,11 @@ y pone a su hora las de hora fija. Los avisa con anticipación, cuenta los inten
 ### Plantillas (Table Editor → `wev_templates`)
 | columna | qué es |
 |---|---|
-| `kind` | `bounty` (cazarrecompensas) · `escape` (fuga) · `reach` (contrarreloj a una ciudad) · `record` (carrera de la semana) |
+| `kind` | `bounty` (cazarrecompensas) · `escape` (fuga) · `reach` (contrarreloj a una ciudad) · `record` (carrera de la semana) · `drift` (desafío de drift en la Plaza de Drift) · `season` (temporada: suma puntos de todos los demás) |
 | `title` / `descr` | lo que lee el jugador |
 | `weight` | más alto = sale más seguido |
-| `params` | bounty: `{"n": autos a la vez, "pool": [autos posibles], "hold_s": 60, "map_s": 45}` · escape: `{"chase_s": 600}` · reach: `{"speed": 24, "time_max": 1800}` (tiempo = distancia × 1,25 / speed) · record: `{}` |
-| `reward` | `{"credits": 20000}` · `{"car": true}` (el auto atrapado) · `{"rent": "police", "days": 3}` (alquilado) · `{"top": [25000, 12000, 6000]}` (3 primeros) |
+| `params` | bounty: `{"n": autos a la vez, "pool": [autos posibles], "hold_s": 60, "map_s": 45}` · escape: `{"chase_s": 600}` · reach: `{"speed": 24, "time_max": 1800}` (tiempo = distancia × 1,25 / speed) · record: `{}` · drift: `{"run_s": 90, "cap_rate": 1500}` (segundos de la sesión y tope de puntos por segundo) · season: `{"pts": {"bounty": 100, "escape": 40, "reach": 30, "record": 25, "drift": 25}}` (puntos por evento cumplido; ganarlo suma otra vez) |
+| `reward` | `{"credits": 20000}` · `{"voucher": 50000}` (vale de taller) · `{"skin": "st_oro"}` (un diseño para todos los autos) · `{"tires": "drift"}` (gomas para todos los autos) · `{"car": "veltor_gtr"}` (un auto puntual) · `{"car": true}` (el auto atrapado en la cacería) · `{"rent": "police", "days": 3}` (alquilado) · se pueden juntar: `{"skin": "st_oro", "voucher": 50000}` · `{"top": [ … ]}` (por puesto, en carrera, drift y temporada): cada puesto es un número (créditos) o un premio como los de arriba, p. ej. `{"top": [{"car": "veltor_gtr"}, {"voucher": 50000}, 25000]}` |
 | `duration_min` | cuánto dura abierto |
 | `attempts` | intentos por jugador (0 = sin límite) |
 | `max_winners` | cupo de ganadores (0 = todos los que cumplan; en la cacería, uno por auto) |
@@ -42,12 +43,13 @@ y pone a su hora las de hora fija. Los avisa con anticipación, cuenta los inten
 | `hours_utc` | horas fijas en UTC (Argentina = UTC − 3: las 22 h son `{1}`); vacío = a cualquier hora |
 | `enabled` | apagarla sin borrarla |
 
-Las de fábrica son `caza_22`, `caza_tarde`, `fuga_10` (Interceptor por 3 días), `fuga_5`, `llegada` y `carrera_semana`. Para agregar otra, copiá una fila y cambiá el `id`.
+Las de fábrica son `caza_22`, `caza_tarde`, `fuga_10` (Interceptor por 3 días), `fuga_5`, `llegada`, `carrera_semana`, `temporada` (Veltor GTR al 1.º),
+`drift_finde` (KL5 al 1.º) y `fuga_vale` ($50.000 de vale de taller). Para agregar otra, copiá una fila y cambiá el `id`.
 Ideas: «fuga de 15 min → STRIX por 2 días»; una cacería de un solo auto muy caro el sábado a las 21 (`hours_utc` = `{0}`).
 
 ### Configuración general (Table Editor → `wev_cfg`)
 - `auto`: el servidor programa solo (true/false).
-- `max_open`: eventos a la vez.
+- `max_open`: eventos a la vez (5: la temporada ocupa uno siempre).
 - `bounty_cooldown_d`: días entre dos autos de cacería del mismo jugador.
 
 ### Programar uno a mano (para un anuncio)
@@ -60,6 +62,10 @@ select public.event_admin_schedule('fuga_10', '2026-10-18 21:00:00-03'::timestam
 - Ver los programados y los que ya pasaron: `wev_events`.
 - Cancelar uno que todavía no empezó: borrar su fila.
 - Ganadores: `wev_winners`. Intentos: `wev_runs`.
+
+### Vale de taller
+Saldo aparte (`account_econ.voucher`) que sólo se gasta en el taller: mejoras, gomas, piezas, diseños y reglajes. El juego y el servidor lo usan primero,
+antes que los créditos. Para regalar vale a mano: `update public.account_econ set voucher = voucher + 50000 where user_id = '…';`
 
 ### Autos alquilados
 Un premio `rent` pone el auto en la cuenta con fecha de vencimiento (`until` dentro de `account_econ.cars`). El servidor lo borra solo al vencer y el juego lo saca del
