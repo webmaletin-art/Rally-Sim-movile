@@ -123,14 +123,14 @@ func _init() -> void:
 	check(Autotune.pending(old), "perfil de una versión anterior: se puede recalibrar")
 	check(Autotune.info_lines(p).size() >= 8, "el diagnóstico puede mostrar el perfil (%d líneas)" % Autotune.info_lines(p).size())
 
-	# elección a mano (15/10/2026): BAJA / NORMAL / ALTA / ULTRA
-	check(Autotune.PRESETS.size() == 4 and str(Autotune.PRESETS[0]["n"]) == "BAJA" and str(Autotune.PRESETS[3]["n"]) == "ULTRA", "4 calidades para elegir: BAJA, NORMAL, ALTA, ULTRA")
+	# elección (15/10/2026, 2.ª versión): 60 FPS / BAJA / NORMAL / ALTA / ULTRA
+	check(Autotune.PRESETS.size() == 5 and str(Autotune.PRESETS[0]["n"]) == "60 FPS" and str(Autotune.PRESETS[1]["n"]) == "BAJA" and str(Autotune.PRESETS[4]["n"]) == "ULTRA", "5 calidades para elegir: 60 FPS, BAJA, NORMAL, ALTA, ULTRA")
 	var last_r := 0.0
 	var mono2 := true
 	for P in Autotune.PRESETS:
 		mono2 = mono2 and float(P["autoRes"]) >= last_r and int(P["autoTrees"]) >= 0
 		last_r = float(P["autoRes"])
-	check(mono2 and float(Autotune.PRESETS[3]["autoRes"]) == 1.0, "de BAJA a ULTRA la escala 3D sube (ULTRA = 100 %)")
+	check(mono2 and float(Autotune.PRESETS[4]["autoRes"]) == 1.0, "de 60 FPS a ULTRA la escala 3D sube (ULTRA = 100 %)")
 	for i in Autotune.PRESETS.size():
 		var pm := Stub.new()
 		check(Autotune.pending(pm), "sin elegir: se pregunta")
@@ -139,19 +139,55 @@ func _init() -> void:
 		check(not Autotune.pending(pm) and bool(gm["manual"]) and str(gm["profile"]) == str(Autotune.PRESETS[i]["n"]) and float(pm.setting("autoRes")) == float(Autotune.PRESETS[i]["autoRes"])
 			and int(pm.setting("autoFrame")) == 0 and str(pm.setting("gfxMode")) == "auto" and Autotune.player_summary(pm).contains(str(Autotune.PRESETS[i]["n"])),
 			"elegir %s: se guarda, queda en Automática con escala 3D %.2f, frame 100 %% y no se vuelve a preguntar" % [str(gm["profile"]), float(pm.setting("autoRes"))])
-	check(Autotune.suggested_preset() >= 0 and Autotune.suggested_preset() <= 2, "hay una calidad sugerida para este equipo (%d)" % Autotune.suggested_preset())
-	# optimización automática nueva: mide las calidades (ALTA → ULTRA o NORMAL → BAJA) y recomienda la más alta fluida
-	var cases := [[{2: 58.0, 3: 50.0}, 3, [2, 3]], [{2: 58.0, 3: 30.0}, 2, [2, 3]], [{2: 35.0, 1: 50.0}, 1, [2, 1]], [{2: 30.0, 1: 33.0, 0: 41.0}, 0, [2, 1, 0]], [{2: 20.0, 1: 22.0, 0: 25.0}, 0, [2, 1, 0]]]
+	check(Autotune.suggested_preset() >= 1 and Autotune.suggested_preset() <= 3, "hay una calidad sugerida para este equipo (%d)" % Autotune.suggested_preset())
+	# la búsqueda: [FPS por calidad (la 60 FPS: una lista, una por medición), recomendada, orden de las mediciones]
+	var cases := [
+		[{3: 58.0, 4: 50.0}, 4, [3, 4]], # ULTRA corre a 50: recomendada ULTRA; ALTA ya da 58 → la 60 FPS no se mide
+		[{3: 58.0, 4: 30.0}, 3, [3, 4]],
+		[{3: 35.0, 2: 50.0, 0: [61.0]}, 2, [3, 2, 0]],
+		[{3: 30.0, 2: 33.0, 1: 41.0, 0: [62.0]}, 1, [3, 2, 1, 0]],
+		[{3: 20.0, 2: 22.0, 1: 25.0, 0: [40.0, 52.0, 58.0]}, 0, [3, 2, 1, 0, 0, 0], false], # ninguna llega a 40: recomendada la 60 FPS, que se baja una vez más y después apaga el tránsito
+		[{3: 20.0, 2: 20.0, 1: 20.0, 0: [20.0, 58.0]}, 0, [3, 2, 1, 0, 0], false], # el límite es el procesador: bajar píxeles no sirve → sin tránsito
+		[{3: 30.0, 2: 33.0, 1: 41.0, 0: [50.0, 58.0]}, 1, [3, 2, 1, 0, 0], true], # bajando la escala llega: el tránsito queda
+	]
 	for cs in cases:
 		var ps = Autotune.PresetSearch.new(60.0)
 		var order: Array = []
+		var n0 := 0
 		var r: int = ps.next()
-		while r >= 0:
+		var k0: Array = []
+		while r >= 0 and order.size() < 8:
 			order.append(r)
-			var fps: float = float((cs[0] as Dictionary).get(r, 10.0))
+			var v: Variant = (cs[0] as Dictionary).get(r, 10.0)
+			var fps: float = float((v as Array)[mini(n0, (v as Array).size() - 1)]) if v is Array else float(v)
+			if r == 0:
+				n0 += 1
+				k0.append(ps.k60)
 			ps.report(r, {"avg": fps, "low": fps * 0.8, "n": 100})
 			r = ps.next()
-		check(order == cs[2] and ps.recommended() == int(cs[1]), "medición %s → mide %s y recomienda %s" % [str(cs[0]), str(order), str(Autotune.PRESETS[ps.recommended()]["n"])])
+		check(order == cs[2] and ps.recommended() == int(cs[1]), "medición %s → mide %s y recomienda %s (60 FPS a escala %.2f)" % [str(cs[0]), str(order), str(Autotune.PRESETS[ps.recommended()]["n"]), ps.k60])
+		var k_ok := true
+		for k in k0:
+			k_ok = k_ok and float(k) >= Autotune.K60_MIN - 0.001 and float(k) <= Autotune.K60_MAX + 0.001
+		for j in range(1, k0.size()):
+			k_ok = k_ok and float(k0[j]) <= float(k0[j - 1])
+		if (cs as Array).size() > 3:
+			k_ok = k_ok and ps.life60 == bool(cs[3])
+		check(k_ok, "la escala de la 60 FPS queda entre %.2f y %.2f y baja si no llegó (%s; tránsito %s)" % [Autotune.K60_MIN, Autotune.K60_MAX, str(k0), str(ps.life60)])
+		var res: Dictionary = ps.result()
+		var est_ok := true
+		for i in Autotune.PRESETS.size():
+			est_ok = est_ok and float(res["est"][i]) > 0.0 and (ps.probes.has(i) or float(res["est"][i]) <= 60.0) # (lo estimado nunca pasa del objetivo)
+		check(est_ok and Autotune.preset_info(res).size() == 5, "todas las calidades muestran FPS (medidos o estimados): %s" % str(Autotune.preset_info(res)))
+	check(Autotune.preset_order(3) == [3, 0, 1, 2, 4] and Autotune.preset_order(0) == [0, 1, 2, 3, 4], "primero la recomendada, después la 60 FPS y después las demás")
+	var pm3 := Stub.new()
+	Autotune.save_preset(pm3, 0, {"rec": 0, "probes": {0: {"avg": 58.0, "low": 50.0}}, "target": 60.0, "k60": 0.31, "est": {0: 58.0}})
+	check(is_equal_approx(float(pm3.setting("autoRes")), 0.31) and str(pm3.setting("autoTex")) == "low" and pm3.setting("autoShadows") == false, "elegir 60 FPS guarda la escala 3D que calculó la medición (0.31) y todo al mínimo")
+	var pm4 := Stub.new()
+	Autotune.save_preset(pm4, 0, {"rec": 0, "probes": {}, "target": 60.0, "k60": 0.25, "life60": false})
+	check(pm4.setting("worldLife") == false, "la 60 FPS de un teléfono limitado por el procesador apaga la vida del mundo")
+	Autotune.save_preset(pm4, 3, {"rec": 0, "probes": {}, "target": 60.0, "k60": 0.25, "life60": false})
+	check(pm4.setting("worldLife") == true, "y al elegir otra calidad vuelve")
 	var pm2 := Stub.new()
 	Autotune.save_preset(pm2, 1, {"rec": 2, "probes": {2: {"avg": 50.0, "low": 40.0}}, "target": 60.0})
 	check(int(pm2.setting("gfx")["auto"]["rec"]) == 2 and float(pm2.setting("gfx")["auto"]["probes"]["2"]["avg"]) == 50.0, "se guarda lo medido (recomendada y FPS) aunque se elija otra")

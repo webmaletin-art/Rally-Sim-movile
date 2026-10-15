@@ -14,6 +14,9 @@ const CrashLog := preload("res://game/diag/crash_log.gd")
 const Sectors := preload("res://game/region/sectors.gd")
 
 const VID := "police"
+## Patrullero según el nivel (1 a 4 en el cartel = heat 0 a 3). Para sumar modelos nuevos de policía (pedido del dueño, 15/10/2026: «voy a subir más
+## tipos de autos de la policía así cambia con los niveles»): agregar su id en el nivel que corresponda; si el auto no está cargado, sale el de siempre.
+const BY_LEVEL := [["police"], ["police"], ["police"], ["police"]]
 const CLASSES := [1, 2, 3] # autopista, ruta, provincial (RegionData.CLS_NAMES)
 const SETTLE_KINDS := [3, 4] # ciudad, pueblo (RegionData.KIND_NAMES)
 const MIN_LEN := 2500.0 # sólo los tramos largos tienen control
@@ -174,8 +177,14 @@ func _heat(dt: float, p: Vector2) -> void:
 func wanted() -> int:
 	return clampi(2 + heat, 2, 5)
 
-func _mods() -> Dictionary:
-	var v: Dictionary = race.vehicles[VID]
+## El modelo de patrullero que sale ahora (por nivel; alterna entre los del mismo nivel)
+func _vid() -> String:
+	var opts: Array = BY_LEVEL[clampi(heat, 0, BY_LEVEL.size() - 1)]
+	var id := str(opts[units.size() % opts.size()]) if not opts.is_empty() else VID
+	return id if race.vehicles.has(id) else VID
+
+func _mods(vid := VID) -> Dictionary:
+	var v: Dictionary = race.vehicles[vid]
 	return {"mu": float(v["mu"]) * (1.2 + 0.03 * float(heat)), "powerScale": 1.12 + 0.06 * float(heat)} # agarran más que cualquier auto: es la policía
 
 ## Patrulleros estacionados en la banquina del control, mirando hacia donde va el jugador (para salir detrás de él)
@@ -205,9 +214,10 @@ func _spawn(q: Vector2, yaw: float, role: String) -> void:
 	var drv := PoliceDriver.new()
 	drv.role = role
 	drv.side = 1.0 if units.size() % 2 == 0 else -1.0
-	var mods := _mods()
+	var vid := _vid()
+	var mods := _mods(vid)
 	drv.grip = float(mods["mu"]) * 0.9 # (lo que de verdad da en una curva, con el auto cargado)
-	var car = race.add_ai_car(VID, q.x, q.y, yaw, drv, Color(0.95, 0.95, 0.95), mods)
+	var car = race.add_ai_car(vid, q.x, q.y, yaw, drv, Color(0.95, 0.95, 0.95), mods)
 	if car == null:
 		return
 	units.append({"car": car, "drv": drv, "lights": _add_lights(car.visual)})

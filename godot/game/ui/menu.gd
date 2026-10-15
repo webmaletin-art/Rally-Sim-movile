@@ -375,16 +375,14 @@ func offer_auto_tune() -> void:
 func request_calibration(back: String) -> void:
 	var g = profile.setting("gfx")
 	var auto: Dictionary = (g as Dictionary).get("auto", {}) if g is Dictionary else {}
-	var info := {}
-	for k in (auto.get("probes", {}) as Dictionary):
-		info[int(k)] = "%s: %d FPS" % [tr("medido"), int(round(float(auto["probes"][k]["avg"])))]
+	var info := Autotune.preset_info(auto)
 	var rec := int(auto.get("rec", Autotune.suggested_preset()))
-	CalibUi.pick(root, Autotune.PRESETS, rec, func(i: int) -> void:
+	CalibUi.pick(root, Autotune.presets_for(auto), rec, func(i: int) -> void:
 		Autotune.save_preset(profile, i, auto)
 		sfx.play("click")
 		toast(tr("Calidad gráfica: %s") % tr(str((Autotune.PRESETS[i] as Dictionary)["n"])))
 		if back.begins_with("options:"):
-			go("options", back.substr(8)), info, not auto.is_empty(), func() -> void: app.start_calibration(back))
+			go("options", back.substr(8)), info, not auto.is_empty(), func() -> void: app.start_calibration(back), Autotune.preset_order(rec))
 
 func toast(t: String) -> void:
 	toast_l.text = t

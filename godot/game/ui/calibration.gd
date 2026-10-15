@@ -14,7 +14,7 @@ const CrashLog := preload("res://game/diag/crash_log.gd")
 var race: Node
 var back := "home"
 var target := 60.0
-var searcher: RefCounted # Autotune.PresetSearch (desde el 15/10/2026 mide las 4 calidades BAJA/NORMAL/ALTA/ULTRA)
+var searcher: RefCounted # Autotune.PresetSearch (15/10/2026: mide ALTA → ULTRA o NORMAL → BAJA y después busca la escala de la opción 60 FPS)
 var layer: CanvasLayer
 var ui := {}
 var state := "load"
@@ -55,7 +55,7 @@ func _process(dt: float) -> void:
 		"measure":
 			_t += dt
 			_times.append(dt) # los tirones también cuentan: son parte de lo que se siente
-			(ui["bar"] as ProgressBar).value = clampf((float(_n_probe) - 1.0 + _t / Autotune.MEASURE_S) / 3.0, 0.0, 1.0)
+			(ui["bar"] as ProgressBar).value = clampf((float(_n_probe) - 1.0 + _t / Autotune.MEASURE_S) / 4.0, 0.0, 1.0) # (3 a 5 mediciones)
 			if _t >= Autotune.MEASURE_S:
 				var st := Autotune.stats(_times)
 				searcher.report(_rung, st)
@@ -91,39 +91,44 @@ func _start_probe(r: int) -> void:
 	_n_probe += 1
 	_t = 0.0
 	state = "settle"
-	var P: Dictionary = Autotune.PRESETS[r]
+	var P: Dictionary = searcher.preset(r) # (la 60 FPS con la escala 3D que calculó la búsqueda)
 	var st: Dictionary = race.profile.d["settings"]
 	for k in P:
 		if k != "n" and k != "d":
 			st[k] = P[k]
 	st["autoFrame"] = 0
+	if not _kept.has("worldLife"):
+		_kept["worldLife"] = st.get("worldLife", true)
+	st["worldLife"] = searcher.life60 if r == 0 else _kept["worldLife"] # (la 60 FPS puede apagar el tránsito si el límite es el procesador)
 	race._apply_quality_settings() # partículas, texturas, sombras y ESCALA 3D (los mismos ajustes de siempre)
+	if race.get("life") != null:
+		race.life.apply_setting("quality") # tránsito y peatones según la calidad (LOW / MEDIUM / HIGH)
+		race.life.apply_setting("worldLife")
 	if race.track is CityTrack:
 		race._set_city_view(Autotune.view_k_for(int(P["autoTier"])))
 	var fp: Vector2i = _res_of(r)
 	(ui["res"] as Label).text = "%s %d×%d" % [CalibUi.Tr.t("Resolución:"), fp.x, fp.y]
-	CrashLog.mark("calib", "%s · %d×%d · escala 3D %.2f · sombras %s · texturas %s · partículas %d · árboles %d" % [str(P["n"]), fp.x, fp.y,
-		float(P["autoRes"]), str(P["autoShadows"]), str(P["autoTex"]), int(P["autoParticles"]), int(P["autoTrees"])])
+	CrashLog.mark("calib", "%s · %d×%d · escala 3D %.2f · sombras %s · texturas %s · partículas %d · árboles %d · vida %s" % [str(P["n"]), fp.x, fp.y,
+		float(P["autoRes"]), str(P["autoShadows"]), str(P["autoTex"]), int(P["autoParticles"]), int(P["autoTrees"]), str(st["worldLife"])])
 	(ui["perf"] as Label).text = CalibUi.Tr.t("Rendimiento: calibrando...")
 	(ui["quality"] as Label).text = "%s %s" % [CalibUi.Tr.t("Calidad visual:"), CalibUi.Tr.t(str(P["n"]))]
 
 ## Terminó de medir: la pantalla de elección con la recomendada marcada y los FPS de lo medido; lo que elija el jugador queda guardado
 func _finish() -> void:
 	state = "done"
-	var rec: int = searcher.recommended()
-	var info := {}
-	for i in searcher.probes:
-		var m: Dictionary = searcher.probes[i]
-		info[int(i)] = "%s: %d FPS" % [CalibUi.Tr.t("medido"), int(round(float(m["avg"])))]
-	result = {"rec": rec, "probes": searcher.probes, "target": target}
-	CrashLog.mark("calib", "recomendada %s · %s" % [str(Autotune.PRESETS[rec]["n"]), str(info)])
+	if _kept.has("worldLife"):
+		race.profile.d["settings"]["worldLife"] = _kept["worldLife"] # (lo que se elija decide; la 60 FPS lo apaga al guardarse si hizo falta)
+	result = searcher.result()
+	var rec: int = int(result["rec"])
+	var info := Autotune.preset_info(result)
+	CrashLog.mark("calib", "recomendada %s · 60 FPS a escala %.2f · %s" % [str(Autotune.PRESETS[rec]["n"]), float(result["k60"]), str(info)])
 	(ui["root"] as Control).queue_free()
-	CalibUi.pick(layer, Autotune.PRESETS, rec, func(i: int) -> void:
+	CalibUi.pick(layer, Autotune.presets_for(result), rec, func(i: int) -> void:
 		Autotune.save_preset(race.profile, i, result)
-		race.exit_requested.emit(back), info, true)
+		race.exit_requested.emit(back), info, true, Callable(), Autotune.preset_order(rec))
 
 ## Resolución del mundo 3D de la calidad r (pantalla × escala 3D)
 func _res_of(r: int) -> Vector2i:
-	var k := float(Autotune.PRESETS[r]["autoRes"])
+	var k: float = searcher.res_of(r)
 	var scr := Vector2(DisplayServer.window_get_size())
 	return Vector2i(int(round(scr.x * k)), int(round(scr.y * k)))

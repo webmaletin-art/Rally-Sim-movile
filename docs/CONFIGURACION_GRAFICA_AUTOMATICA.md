@@ -2,6 +2,14 @@
 
 Objetivo: **la mayor calidad visual que el teléfono pueda sostener de forma estable (~60 FPS)**, elegida UNA vez y dejada fija. No hay resolución dinámica ni adaptación por FPS durante la partida.
 
+## Versión actual (15/10/2026, 2.ª versión, `Autotune.VERSION = 3`)
+Lo de abajo de esta sección es la historia (la escalera de 8 perfiles quedó en el código sin uso). Hoy:
+- **5 calidades** (`Autotune.PRESETS`): **60 FPS** (escala 3D calculada entre 0,25 y 0,50, texturas bajas, 2/10 partículas, 600 árboles, sin sombras y, si hace falta, sin tránsito ni peatones), BAJA (0,50), NORMAL (0,67), ALTA (0,80), ULTRA (1,00).
+- **Medición** (`Autotune.PresetSearch`, en el centro de Dream City): ALTA → si da ≥ 40 FPS, ULTRA; si no, NORMAL → BAJA. Después la **60 FPS**: con lo más bajo medido calcula la escala que daría 60 (los FPS suben como baja la cantidad de píxeles) y la mide; si no llega, baja la escala una vez más, y si bajar píxeles no sirvió (el límite es el procesador) apaga la vida del mundo y mide otra vez. Entre 3 y 7 mediciones (~25 a 55 s).
+- **Recomendada** = la calidad más alta que corre a **≥ 40 FPS** sin tirones (el 5 % peor ≥ 24); si ninguna llega, la 60 FPS. La pantalla muestra primero la recomendada, después la 60 FPS y después las demás; cada una con «medido: N FPS» o «≈ N FPS (estimado)» (estimado desde la medición más parecida por cantidad de píxeles, nunca más que el objetivo).
+- Lo medido queda en `gfx.auto` (`rec`, `probes`, `est`, `k60`, `life60`); Opciones → Gráficos → «ELEGIR CALIDAD GRÁFICA» lo vuelve a mostrar y tiene «MEDIR AUTOMÁTICAMENTE».
+- Prueba: `tests/autotune_test.gd` (8 búsquedas simuladas) y la calibración real en la PC con `tests/_calib_run.gd`.
+
 ## Flujo
 - **Primer arranque** (después del aviso legal / cuenta, al llegar al menú principal): aviso «⚙️ CONFIGURACIÓN AUTOMÁTICA» → **CONTINUAR** → calibración («⚙️ OPTIMIZANDO RENDIMIENTO…») → «✓ CONFIGURACIÓN COMPLETADA» → **JUGAR** (guarda el perfil y vuelve al menú).
 - **Arranques siguientes**: se carga el perfil guardado y se aplica; no se calibra.

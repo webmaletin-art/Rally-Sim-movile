@@ -5,6 +5,15 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 15/10/2026 (9) · Optimización automática más potente: opción 60 FPS y recomendada ≥ 40 FPS
+- **Pedido del dueño:** «primero la recomendada, que corra a más de 40 FPS; también una opción de 60 FPS que reduzca todo hasta correr a 60 aunque se vea pixelado; después las demás con sus FPS (normal 30, alta 20…). Entre 40 y 60 vamos a estar».
+- **Cambio:** `autotune.gd` (5 calidades, búsqueda nueva, `presets_for`, `preset_info`, `preset_order`, `VERSION` 3 → todos miden una vez), `calibration.gd` (aplica la escala calculada y la vida del mundo de la 60 FPS), `calib_ui.gd` (orden), `menu.gd`. Detalle en `docs/CONFIGURACION_GRAFICA_AUTOMATICA.md` → «Versión actual».
+- **Pruebas:** `autotune_test` (62 comprobaciones), calibración real en la PC (`_calib_run.gd`: 6 mediciones, terminó en la 60 FPS sin tránsito; la PC del contenedor está topeada a 20 FPS, así que sus números no sirven para el teléfono).
+- **Resultado:** PENDIENTE DE APK (¿qué recomienda en el Z2356?, ¿la 60 FPS llega a 60?, ¿cuánto tarda?).
+- **Además:** policía con modelo de patrullero por nivel (`city_police.gd` → `BY_LEVEL`, hoy todos «police»), listo para sumar los autos nuevos del dueño.
+
+---
+
 ## 15/10/2026 (8) · Online: compras que «volvían», concesionarios nuevos y garaje online
 - **Reporte del dueño:** «compré autos y una camioneta y el modo online no me deja elegirlos, tengo que volver a comprarlos»; «compraba, se descontaba y al rato volvía y me decía que ese no era el lugar para realizar eso, pero me dio una camioneta».
 - **Causa (confirmada en el código y con la prueba):** (1) la compra SÍ se cobraba en el servidor; justo después el cliente veía una diferencia de pintura entre su espejo y el auto recién comprado y mandaba `online_set_paint` desde el concesionario → el servidor contestaba «este trabajo no se hace en ese local» → el cliente volvía a pedir el saldo real (de ahí el «volvía»). (2) Los 3 concesionarios nuevos (Rally & 4x4, Clásicos, Motorsport) no estaban en `online_cat_shops` y `online_buy_vehicle` sólo aceptaba `'dealer'`. (3) No había garaje online en el menú y los autos de la cuenta (juego sin conexión) no pasaban al online. (4) Al entrar al online se elegía el auto del juego sin conexión si el online también lo tenía.

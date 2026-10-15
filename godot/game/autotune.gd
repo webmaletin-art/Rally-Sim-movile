@@ -8,8 +8,9 @@ extends RefCounted
 ## Lo que el jugador eligió a mano (Opciones → Gráficos → Manual) no se toca.
 
 const FrameRes := preload("res://game/ui/frame_res.gd")
+const Tr := preload("res://game/i18n/tr.gd")
 
-const VERSION := 2 # sube cuando una actualización grande justifique volver a calibrar (2: optimización automática por calidades, 15/10/2026)
+const VERSION := 3 # sube cuando una actualización grande justifique volver a calibrar (2: optimización automática por calidades; 3: + opción 60 FPS y recomendada ≥ 40 FPS, 15/10/2026)
 const TARGET_FPS := 60.0
 const SETTLE_S := 2.5 # lo que sigue a cada cambio no cuenta (se rearman cuadras, compila el shader…)
 const MEASURE_S := 5.0
@@ -287,56 +288,160 @@ static func info_lines(profile: RefCounted) -> Array:
 ## sea manual: una pantalla que me deje elegir baja, normal, alta y ultra». Cada calidad son los mismos ajustes «auto…» que usaba el perfil calibrado,
 ## así que el juego y Opciones → Gráficos los leen igual (y queda en «Automática» con esa calidad). La calibración vieja queda en el código, sin uso.
 const PRESETS := [
+	{"n": "60 FPS", "d": "Máxima fluidez: baja todo (resolución del mundo 3D, sombras, árboles, partículas y, si hace falta, el tránsito) hasta correr a 60 FPS. Se ve más pixelado.", "autoRes": 0.40, "autoTex": "low", "autoParticles": 2, "autoTrees": 600, "autoShadows": false, "autoTier": 0},
 	{"n": "BAJA", "d": "Más rendimiento: mundo 3D al 50 %, sin sombras, pocos árboles", "autoRes": 0.50, "autoTex": "low", "autoParticles": 4, "autoTrees": 1500, "autoShadows": false, "autoTier": 0},
 	{"n": "NORMAL", "d": "Equilibrada: mundo 3D al 67 %, texturas medias", "autoRes": 0.67, "autoTex": "mid", "autoParticles": 7, "autoTrees": 3000, "autoShadows": false, "autoTier": 1},
 	{"n": "ALTA", "d": "Más detalle: mundo 3D al 80 %, sombras y texturas altas", "autoRes": 0.80, "autoTex": "high", "autoParticles": 10, "autoTrees": 4500, "autoShadows": true, "autoTier": 2},
 	{"n": "ULTRA", "d": "Máxima calidad: mundo 3D al 100 %, todo al máximo (para teléfonos potentes)", "autoRes": 1.00, "autoTex": "high", "autoParticles": 10, "autoTrees": 6000, "autoShadows": true, "autoTier": 2},
 ]
+const P60 := 0 # la opción «60 FPS» (su escala 3D la calcula la medición: PresetSearch.k60)
+const K60_MIN := 0.25 # por debajo de esto ya no se distingue nada
+const K60_MAX := 0.50
 
-## Optimización automática NUEVA (15/10/2026, pedido del dueño: «volver a la optimización automática según el teléfono»): mide en Dream City las
-## calidades (no la escalera vieja de 8 escalones) y recomienda la más alta que corre FLUIDA; después el jugador elige en la misma pantalla.
-## Fluida = promedio ≥ FLUID_AVG × objetivo y sin tirones frecuentes (95 % de los cuadros ≥ FLUID_LOW × objetivo). Con 60 Hz: 45 FPS de promedio, 30 de piso.
-const FLUID_AVG := 0.75
+## Optimización automática (15/10/2026, 2.ª versión, pedido del dueño: «tiene que ser más potente: primero la recomendada, que corra a más de 40 FPS;
+## también una opción de 60 FPS que reduzca todo hasta correr a 60 aunque se vea pixelado; después las otras con sus FPS. Entre 40 y 60 vamos a estar»).
+## Recomendada = la calidad más alta que da ≥ REC_FPS de promedio sin tirones (el 5 % peor ≥ 60 % de eso). Con pantallas de menos de 60 Hz se escala.
+const REC_FPS := 40.0
+const FLUID_AVG := 0.75 # (la versión anterior: la usan pruebas y diagnósticos viejos)
 const FLUID_LOW := 0.5
 
 static func is_fluid(m: Dictionary, target: float) -> bool:
 	return float(m.get("avg", 0.0)) >= FLUID_AVG * target and float(m.get("low", 0.0)) >= FLUID_LOW * target
 
-## Búsqueda sobre las 4 calidades (0 BAJA … 3 ULTRA), 3 mediciones como mucho: ALTA → (fluida) ULTRA / (no) NORMAL → (no) BAJA.
+## Búsqueda: ALTA → (≥ 40) ULTRA / (no) NORMAL → (no) BAJA; después la opción 60 FPS: con lo más bajo medido se calcula la escala 3D que daría
+## 60 (los FPS suben como baja la cantidad de píxeles) y se mide; si no llega, se baja una vez más (tope K60_MIN), y si bajar píxeles no sirve
+## (el límite es el procesador) se apaga la vida del mundo (tránsito y peatones). 7 mediciones como mucho (~55 s; lo normal, 3 a 5).
 class PresetSearch extends RefCounted:
 	var target := 60.0
-	var probes := {} # calidad -> {avg, low, n}
-	var _queue: Array = [2]
+	var probes := {} # calidad -> {avg, low, n} (la 60 FPS guarda su última medición)
+	var k60 := 0.40
+	var n60 := 0
+	var life60 := true # la 60 FPS con tránsito y peatones; si bajar la resolución no alcanza (el límite es el procesador), se apagan
+	var _base := 0.0 # los FPS de la medición anterior de la 60 FPS (o de lo más bajo medido)
+	var _queue: Array = [3]
 	func _init(p_target: float) -> void:
 		target = p_target
-	func fluid(m: Dictionary) -> bool: # (igual que Autotune.is_fluid)
-		return float(m.get("avg", 0.0)) >= 0.75 * target and float(m.get("low", 0.0)) >= 0.5 * target
+	func rec_min() -> float:
+		return minf(40.0, target * 0.67)
+	func ok(m: Dictionary) -> bool: # corre a ≥ 40 FPS sin tirones
+		return float(m.get("avg", 0.0)) >= rec_min() and float(m.get("low", 0.0)) >= rec_min() * 0.6
+	func fluid(m: Dictionary) -> bool: # (compatibilidad)
+		return ok(m)
 	func next() -> int:
 		return int(_queue.pop_front()) if not _queue.is_empty() else -1
+	func res_of(i: int) -> float:
+		return k60 if i == 0 else float(PRESETS[i]["autoRes"])
+	func preset(i: int) -> Dictionary:
+		var P: Dictionary = (PRESETS[i] as Dictionary).duplicate()
+		P["autoRes"] = res_of(i)
+		return P
 	func report(i: int, m: Dictionary) -> void:
 		probes[i] = m
-		var ok := fluid(m)
-		if i == 2:
-			_queue = [3] if ok else [1]
-		elif i == 1 and not ok:
+		var avg := float(m.get("avg", 0.0))
+		if i == 3:
+			_queue = [4] if ok(m) else [2]
+		elif i == 2 and not ok(m):
+			_queue = [1]
+		elif i == 0:
+			var base := _base
+			_base = avg
+			if avg >= 0.93 * target or n60 >= 3:
+				return
+			if life60 and (avg < base * 1.1 or k60 <= K60_MIN + 0.01 or n60 >= 2): # bajar píxeles casi no sirvió: el límite es el procesador
+				life60 = false
+			elif k60 > K60_MIN + 0.01:
+				k60 = clampf(k60 * sqrt(maxf(avg, 1.0) / (0.95 * target)), K60_MIN, k60 - 0.05)
+			else:
+				return
+			n60 += 1
 			_queue = [0]
-	## La recomendada: la más alta medida que fue fluida; si ninguna, BAJA
+			return
+		if _queue.is_empty(): # terminó la parte de las calidades: la opción 60 FPS
+			var lo := 4
+			for j in probes:
+				if int(j) > 0:
+					lo = mini(lo, int(j))
+			var lm: Dictionary = probes[lo]
+			var la := float(lm.get("avg", 0.0))
+			var kl := float(PRESETS[lo]["autoRes"])
+			if la >= 0.95 * target:
+				k60 = clampf(kl, K60_MIN, K60_MAX) # ya corre a 60 con más calidad: la 60 FPS no hace falta medirla ni bajarla de más
+				return
+			k60 = clampf(kl * sqrt(maxf(la, 1.0) / (0.95 * target)), K60_MIN, K60_MAX)
+			_base = la
+			n60 = 1
+			_queue = [0]
+	## La recomendada: la más alta que corre a ≥ 40 FPS; si ninguna llega, la 60 FPS (la más fluida)
 	func recommended() -> int:
 		var best := 0
 		for i in probes:
-			if fluid(probes[i]) and int(i) > best:
+			if int(i) > 0 and ok(probes[i]) and int(i) > best:
 				best = int(i)
 		return best
+	## FPS de cada calidad: lo medido, o estimado desde la medición más parecida (por cantidad de píxeles; nunca más que el objetivo)
+	func estimate(i: int) -> float:
+		if probes.has(i):
+			return float(probes[i]["avg"])
+		var bj := -1
+		for j in probes:
+			if bj < 0 or absf(res_of(int(j)) - res_of(i)) < absf(res_of(bj) - res_of(i)):
+				bj = int(j)
+		if bj < 0:
+			return 0.0
+		var r := res_of(bj) / res_of(i)
+		return minf(float(probes[bj]["avg"]) * r * r, target)
+	func result() -> Dictionary:
+		var est := {}
+		for i in PRESETS.size():
+			est[i] = estimate(i)
+		return {"rec": recommended(), "probes": probes, "target": target, "k60": k60, "life60": life60, "est": est}
+
+## Las calidades con la escala 3D de la opción 60 FPS que calculó la medición (si hubo)
+static func presets_for(measured: Dictionary) -> Array:
+	var out: Array = []
+	for P in PRESETS:
+		out.append((P as Dictionary).duplicate())
+	if measured.has("k60"):
+		out[P60]["autoRes"] = clampf(float(measured["k60"]), K60_MIN, K60_MAX)
+	return out
+
+## Texto de FPS de cada calidad para la pantalla de elección: «medido: 52 FPS» o «≈ 45 FPS (estimado)»
+static func preset_info(measured: Dictionary) -> Dictionary:
+	var info := {}
+	var pr: Dictionary = measured.get("probes", {})
+	var est: Dictionary = measured.get("est", {})
+	for i in PRESETS.size():
+		if pr.has(i) or pr.has(str(i)):
+			var m: Dictionary = pr[i] if pr.has(i) else pr[str(i)]
+			info[i] = "%s: %d FPS" % [Tr.t("medido"), int(round(float(m["avg"])))]
+		elif est.has(i) or est.has(str(i)):
+			info[i] = "≈ %d FPS (%s)" % [int(round(float(est[i] if est.has(i) else est[str(i)]))), Tr.t("estimado")]
+	return info
+
+## Orden de la pantalla: primero la recomendada, después la 60 FPS y después las demás de menor a mayor
+static func preset_order(rec: int) -> Array:
+	var o: Array = [rec]
+	if rec != P60:
+		o.append(P60)
+	for i in PRESETS.size():
+		if not o.has(i):
+			o.append(i)
+	return o
 
 ## La calidad sugerida para este teléfono (según la GPU; es sólo una marca en la pantalla de elección)
 static func suggested_preset() -> int:
-	return clampi(device_tier(), 0, 2)
+	return clampi(device_tier() + 1, 1, 3) # (BAJA, NORMAL o ALTA según la GPU)
 
 ## Guarda la calidad elegida a mano: queda en «Automática» con esos ajustes y no se vuelve a preguntar (salvo «ELEGIR CALIDAD GRÁFICA» en Opciones)
 static func save_preset(profile: RefCounted, i: int, measured := {}) -> void:
 	i = clampi(i, 0, PRESETS.size() - 1)
-	var P: Dictionary = PRESETS[i]
+	var P: Dictionary = presets_for(measured)[i]
 	var st: Dictionary = profile.d["settings"]
+	var g0: Variant = st.get("gfx", {})
+	if i == P60 and measured.get("life60", true) == false:
+		st["worldLife"] = false # la 60 FPS de un teléfono que no llega por el procesador: sin tránsito ni peatones (se ve en Opciones → Gráficos)
+	elif g0 is Dictionary and bool((g0 as Dictionary).get("lifeOff", false)):
+		st["worldLife"] = true # dejó la 60 FPS: vuelve la vida del mundo
 	for k in P:
 		if k != "n" and k != "d":
 			st[k] = P[k]
@@ -346,13 +451,20 @@ static func save_preset(profile: RefCounted, i: int, measured := {}) -> void:
 	var k3: float = float(P["autoRes"])
 	st["gfx"] = {"locked": true, "manual": true, "version": VERSION, "sig": device_sig(), "device": device_info(), "profile": str(P["n"]), "preset": i,
 		"frame_level": 0, "frame_pct": 100, "frame_px": [win.x, win.y], "scale3d": k3, "world_px": [int(float(win.x) * k3), int(float(win.y) * k3)],
-		"date": Time.get_datetime_string_from_system()}
+		"date": Time.get_datetime_string_from_system(), "lifeOff": i == P60 and measured.get("life60", true) == false}
 	if not measured.is_empty(): # (lo que midió la optimización automática: la recomendada y los FPS de cada calidad probada)
 		var pr := {}
 		for k in (measured.get("probes", {}) as Dictionary):
 			var m: Dictionary = measured["probes"][k]
 			pr[str(k)] = {"avg": snappedf(float(m["avg"]), 0.1), "low": snappedf(float(m["low"]), 0.1)}
-		st["gfx"]["auto"] = {"rec": int(measured.get("rec", i)), "probes": pr, "target": float(measured.get("target", TARGET_FPS))}
+		var es := {}
+		for k in (measured.get("est", {}) as Dictionary):
+			es[str(k)] = snappedf(float(measured["est"][k]), 0.1)
+		st["gfx"]["auto"] = {"rec": int(measured.get("rec", i)), "probes": pr, "target": float(measured.get("target", TARGET_FPS)), "est": es}
+		if measured.has("k60"):
+			st["gfx"]["auto"]["k60"] = snappedf(float(measured["k60"]), 0.01)
+		if measured.has("life60"):
+			st["gfx"]["auto"]["life60"] = bool(measured["life60"])
 	st["autotuned"] = true
 	profile.save()
 
