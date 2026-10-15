@@ -2,7 +2,7 @@
 
 Ya está todo **cableado** en el repositorio: base de datos (tablas, seguridad y funciones), cliente del juego, compilación con tus claves y prueba de conexión.
 Lo único que falta son **tus claves**, que se cargan una vez en GitHub. Nada de esto se activa hasta que lo hagas.
-**Desde octubre de 2026 la cuenta con correo es obligatoria para jugar** y los créditos, los autos y las compras viven en el servidor: ver `docs/CUENTA_Y_ECONOMIA.md` (migración `20261014000000_account_economy.sql` y función de borde `verify-purchase`). El modo online multijugador (mundo, chat, mercado, tiempo real) sigue **cerrado** (`Release.ONLINE_OPEN := false`) hasta que el dueño diga: ver «Lista para abrir el online» más abajo.
+**Desde octubre de 2026 la cuenta con correo es obligatoria para jugar** y los créditos, los autos y las compras viven en el servidor: ver `docs/CUENTA_Y_ECONOMIA.md` (migración `20261014000000_account_economy.sql` y función de borde `verify-purchase`). **El modo online multijugador (mundo, chat, mercado, tiempo real) está ABIERTO desde el 15/10/2026** por autorización expresa del dueño (`Release.ONLINE_OPEN := true`, `Release.REALTIME := true`; contenido r184+). Pendiente del dueño: «Allow public access» = OFF en Realtime, Seguridad de los datos en Play y la prueba con 2 teléfonos (ver «Cómo encenderlo»).
 
 ## Qué hay en el repositorio
 | Qué | Dónde |

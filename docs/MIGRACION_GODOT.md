@@ -69,3 +69,25 @@ Cuando esté en la Play Store, los modelos de autos nuevos pueden ir en `content
 - Interior: tacómetro con luces de cambio detrás del volante, miradas con vida (`car/gaze.gd`), capó con toma de aire y pasadores, espejos con reflejo, red en el triángulo de la ventana.
 - Sala 3D: la tripulación camina alrededor del auto (pasos con cinemática inversa) y hace gestos.
 - El acelerómetro necesita la APK nueva: los sensores vienen desactivados por defecto en Godot 4.4 y se activan en `project.godot` (`input_devices/sensors`).
+
+## Evaluación 15/10/2026: ¿actualizar el motor por los cierres nativos? (prompt maestro del dueño)
+Fuentes oficiales consultadas el 15/10/2026: `godotengine.org/blog/release` (lista de versiones), notas de 4.5.2 y 4.7.2, `developer.android.com/google/play/requirements/target-sdk`, y el código fuente de cada versión (`platform/android/java/app/config.gradle`, `scene/main/canvas_layer.cpp`, `scene/main/http_request.cpp`).
+
+| | **4.5.1** (actual, 15/10/2025) | **4.5.2** (19/3/2026) | **4.6.3** (20/5/2026) | **4.7.2** (18/8/2026, la estable más nueva) |
+|---|---|---|---|---|
+| Rama mantenida | no (4.7 es la actual) | no | no (terminó con 4.7.1) | **sí** |
+| `targetSdk` / `compileSdk` por defecto | 35 / 35 | 35 / 35 | **36 / 36** | **36 / 36** |
+| build-tools · NDK | 35.0.0 · r28 | 35.0.1 · r28 | 36.1.0 · r29 | 36.1.0 · r29 |
+| Java | 17 | 17 | 17 | 17 |
+| Arreglos que nos tocan | — | ANR al cerrar (hilo de render), cuelgue de Adreno 5xx en Vulkan (no usamos Vulkan); nada de Mali ni de viewports | — (no revisado uno por uno) | ninguno nombrado de Android/Mali/OpenGL en las notas de 4.7.2 |
+| Fallo de `CanvasLayer.custom_viewport` (ver REGISTRO 15/10) | sí | sí | sí | **sí (mismo código)**: lo arregla el juego, no el motor |
+| HTTPRequest | deja el archivo a medio bajar | igual | — | **borra el archivo a medio bajar** al fallar (la descarga por tramos anda con las dos) |
+
+**Google Play:** desde el 31/08/2026 las apps nuevas y las actualizaciones tienen que apuntar a **Android 16 (API 36)** (prórroga posible hasta el 1/11/2026). Nuestro AAB **ya apunta a 36 con 4.5.1** (`build-aab.yml` sube `compileSdk` a 36 y el preset «Google Play (AAB)» tiene `target_sdk=36`), así que Play **no obliga** a cambiar de motor hoy; pero 4.5 no está pensado para la 36 (Godot recién la adopta en 4.6) y los cambios de comportamiento de Android 16 (pantalla de borde a borde obligatoria, gesto de volver) sólo los cubre oficialmente 4.6+. El APK liviano (fuera de Play) usa 35 y no le afecta. Formato: AAB con páginas de 16 KB y paquete install-time (sin cambios), sólo arm64 (+ armeabi-v7a en el AAB).
+
+**Probado acá con Godot 4.7.2 (el mismo commit que `main`):** importa el proyecto entero sin errores (sólo 8 avisos «load-time scene» de glTF, iguales a 4.5.1); la batería de GitHub completa (74 pruebas, ~45 min) **pasa entera** con 4.7.2: la única falla fue `boot_download_test`, que destapó que 4.7 borra el archivo a medio bajar (corregido con la descarga por tramos: ahora pasa con los dos motores); en GitHub la rama experimental (r183) **compiló el APK con las plantillas 4.7.2 y publicó el contenido** (`godot-content-4.7`, versión r183-374ecfa); una captura de la cabina sale igual con los dos motores. **No probado:** el teléfono (Mali-G57), el audio real, el tacto, la exportación Android con las plantillas 4.7.2 (la arma GitHub en la rama experimental).
+
+**Recomendación:** **4.7.2**, como experimento controlado y SIN fusionar todavía: es la única rama mantenida, trae la API 36 de fábrica y el proyecto pasa las pruebas sin cambios de código. 4.5.2 sería el paso más corto pero no arregla nada nuestro (ni Mali ni OpenGL ni viewports) y sigue en API 35. 4.6.3 ya no recibe arreglos. **Actualizar el motor no es la solución probada de los cierres**: primero hace falta la lápida (ver REGISTRO 15/10); si la lápida apunta al driver o al motor, la versión 4.7.2 se compara en el mismo teléfono.
+
+**Rama experimental `exp/godot-4.7.2`** (no tocar `main` hasta tener resultados): igual a `main` + `GODOT_VERSION: 4.7.2`, `config/features` «4.7», SDK 36.1.0, y se publica APARTE: contenido en la release `godot-content-4.7`, APK en `godot-apk-4.7-prueba` (`DreamRacing-4.7-PRUEBA.apk`), y la app se instala AL LADO de la normal («Dream Racing 4.7 PRUEBA», `com.gskorp.rallygodot.prueba47`; su perfil, su cuenta iniciada y su descarga son aparte). **Punto de retorno:** `main` no cambió de motor; el último commit de `main` antes de la rama es `15c3ae2`.
+**Comparar en el mismo teléfono** (con «Mostrar FPS» y «COPIAR REGISTRO» después de cada cierre): inicio y menú, drift, carrera rápida en Quarry, Aurelia/Dream City, transiciones (entrar y salir 5 veces seguidas), audio, controles, física; anotar FPS, cierres y la lápida. **Para fusionar:** que en varias sesiones no se cierre (o se cierre menos con evidencia), que no haya regresiones visibles, y revertir en la rama los nombres «PRUEBA» (paquete, nombre, release del APK y disparador del flujo) antes de pasarla a `main`.

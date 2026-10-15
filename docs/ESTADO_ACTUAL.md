@@ -29,10 +29,10 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 ## Vehículos
 - ✅ 26 autos con textura propia (`docs/AUTOS.md`).
 - ✅📱 DRP Interceptor y STRIX Vandal RS en el catálogo (28). Monoplaza DR-1 especial bloqueado (`Release.SPECIAL_OPEN`). ⛔ Moto: falta física de dos ruedas.
-- ✅📱 18 diseños de pintura, 8 interiores y 6 volantes comprables (Volante Pro 3D del dueño) en el taller → Pintura (`docs/PERSONALIZACION.md`). ✅ Migración `20261015000000_catalog_28_cosmetics.sql` aplicada (14/10/2026 20:26 UTC). 📱 Falta probar una compra con la cuenta.
+- ✅📱 18 diseños de pintura, 8 interiores y 6 volantes comprables (Volante Pro 3D del dueño) en el taller → Pintura (`docs/PERSONALIZACION.md`). ✅ Migraciones `20261015000000_catalog_28_cosmetics.sql` (14/10 20:26 UTC) y `20261016000000_cosmetics_volantes_pro.sql` (15/10 01:38 UTC) aplicadas. 📱 Falta probar una compra con la cuenta.
 
 ## Online
-- ✅ Cuenta obligatoria, economía en el servidor, Realtime preparado. Cerrado en la versión pública (`Release.ONLINE_OPEN := false`); con el modo desarrollador se abre y conecta dos jugadores (con lag, según el dueño, 14/10).
+- ✅📱 **Abierto desde el 15/10/2026** (autorización del dueño): `Release.ONLINE_OPEN` y `Release.REALTIME` en true. Cuenta obligatoria y economía en el servidor; todas las migraciones aplicadas. 📱 Falta la prueba con 2 teléfonos y, en el panel de Supabase, «Allow public access» = OFF en Realtime.
 
 ## Compilación
 - ✅ Cada push a `main` arma el APK liviano + `content.pck` + `cars.pck` (release `godot-content-4.5`). `cars.pck` sólo se vuelve a bajar si cambian los autos.
