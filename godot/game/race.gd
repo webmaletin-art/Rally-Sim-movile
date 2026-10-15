@@ -1298,7 +1298,6 @@ func _rebuild_cars() -> void:
 			var trim := {}
 			if cfg.get("state") is Dictionary and cfg.has("car"): # interior y volante comprados (data/cosmetics.gd)
 				trim = {"interior": Cosmetics.interior_of(str(cfg["car"]), cfg["state"]), "steer": Cosmetics.wheel_of(str(cfg["car"]), cfg["state"])}
-			Cockpit.dash_style = str(profile.setting("cabDash")) if profile != null else "modelo" # (Opciones → Gráficos → Tablero de la cabina)
 			cockpit = Cockpit.new(str(su["visual_type"]), paint, su["rim"], trim)
 			cockpit.crew_out = _crew_out_enabled()
 			car.visual.set_clear_glass(cockpit.crew_out)

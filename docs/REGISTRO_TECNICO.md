@@ -5,6 +5,14 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 15/10/2026 (6) · Interior: sólo el tablero clásico
+- **Pedido del dueño:** «vamos a usar sólo el interior clásico, el PNG se ve feo y el 3D también; luego mejoramos ese interior aparte, es liviano y optimizado».
+- **Cambio:** `cockpit.gd` arma siempre el tablero clásico (se borraron `_b_dash_model`, `_b_dash_image`, la opción «Tablero de la cabina», `cabDash` del perfil, `models/cabin/tablero_rally.glb` + su textura, `tablero_imagen.png` y `cabin_dash_test`). Las herramientas `tools/cars/build_cabin_dash.py` y `build_dash_image.py` quedan por si se retoma. Se mantienen el Volante Pro 3D y la pantallita digital.
+- **Pruebas:** `scripts_parse_test`, `cabin_shake_test`, `cosmetics_test` OK.
+- **Resultado:** PENDIENTE DE APK.
+
+---
+
 ## 15/10/2026 (5) · Migración de `main` a Godot 4.7.2
 - **Decisión del dueño** tras probar la rama experimental en el Z2356: pasar ahora y no con el juego ya publicado. Ventajas verificadas: rama mantenida, API 36 de fábrica (la exige Play desde el 31/08/2026), NDK r29/build-tools 36, parches de PCK por diferencias (4.6+, para usar después). Sin ventajas de rendimiento anunciadas para Compatibility.
 - **Cambio:** `build-godot.yml`, `build-aab.yml`, `project.godot` (ver `docs/MIGRACION_GODOT.md`). Local: el proyecto importa con 4.7.2 sin errores; las 74 pruebas ya habían pasado con 4.7.2 (15/10).

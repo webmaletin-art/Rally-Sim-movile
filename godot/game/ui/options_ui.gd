@@ -55,7 +55,6 @@ const OPTION_LIST := [
 	["graficos", "frameRes", "Resolución de frame (todo el cuadro, HUD incluido)", ["auto", 0, 1, 2, 3, 4], ["Automática", "100%", "83%", "67%", "50%", "40%"]],
 	["graficos", "quality", "Calidad general", ["auto", "low", "mid", "high"], ["Automática", "Baja", "Media", "Alta"]],
 	["graficos", "res", "Resolución del 3D", [0, 0.35, 0.5, 0.7, 1.0], ["Automática", "35%", "50%", "70%", "100%"]],
-	["graficos", "cabDash", "Tablero de la cabina (cámaras de adentro; se ve en la próxima carrera)", ["modelo", "imagen", "clasico"], ["3D (modelo)", "Imagen (más liviano)", "Clásico"]],
 	["graficos", "showFps", "Mostrar FPS (cuadros por segundo)", [false, true], ["No", "Sí"]],
 	["graficos", "worldLife", "Vida del mundo (tráfico y ambiente; apagala si el teléfono anda lento)", [true, false], ["Sí", "No"]],
 	["graficos", "worldWeather", "Clima del mundo (nubes, niebla y lluvia según la hora; en Dream City)", [true, false], ["Sí", "No"]],

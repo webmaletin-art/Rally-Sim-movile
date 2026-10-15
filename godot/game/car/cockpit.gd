@@ -414,34 +414,16 @@ func _bez(a: Vector2, c: Vector2, b: Vector2, n := 5) -> Array:
 		out.append(a.lerp(c, t).lerp(c.lerp(b, t), t))
 	return out
 
-## Tablero de la cabina (Opciones → Gráficos → «Tablero de la cabina»; pedido del dueño del 15/10/2026: comparar los tres):
-##  · "modelo": el tablero 3D del dueño (models/cabin/tablero_rally.glb, 47 mil triángulos);
-##  · "imagen": la foto del tablero del dueño sin fondo (models/cabin/tablero_imagen.png) en UN plano con transparencia: lo más liviano;
-##  · "clasico": el de siempre (armado con cajas). Las cabinas abiertas (buggy) usan siempre el clásico.
-## La arma race.gd antes de crear la cabina (CAB_DASH=… la fuerza en las pruebas; CAB_OLD_DASH = clásico).
-static var dash_style := "modelo"
-const DASH_IMG := "res://game/models/cabin/tablero_imagen.png"
-
+## Tablero de la cabina: el clásico (armado con cajas, liviano). El 15/10/2026 el dueño comparó el 3D (su InteriorRally.glb) y uno de imagen (PNG)
+## y eligió quedarse con éste («el PNG se ve feo y el 3D también; después mejoramos este, que es liviano y optimizado»): se borraron los otros dos.
 func _b_dash() -> void:
-	var style := dash_style
-	if OS.has_environment("CAB_DASH"):
-		style = OS.get_environment("CAB_DASH")
-	if OS.has_environment("CAB_OLD_DASH"):
-		style = "clasico"
-	var model_ok := style == "modelo" and not open_cab and ResourceLoader.exists(DASH_MODEL)
-	var img_ok := style == "imagen" and not open_cab and ResourceLoader.exists(DASH_IMG)
-	if model_ok:
-		_b_dash_model()
-	elif img_ok:
-		_b_dash_image()
-	else:
-		# tablero macizo con la cara y la tapa redondeadas, cortafuegos y piso; debajo queda el hueco de las piernas
-		var pts: Array = [Vector2(dz0, eY - 0.80), Vector2(dz0, eY - 0.52)]
-		pts.append_array(_bez(Vector2(dz0, eY - 0.52), Vector2(dz0 - 0.005, eY - 0.34), Vector2(dz0 + 0.07, eY - 0.315), 5))
-		pts.append_array(_bez(Vector2(dz0 + 0.07, eY - 0.315), Vector2(dz0 + 0.20, eY - 0.29), Vector2(cz - 0.14, cowl_y - 0.02), 5))
-		pts.append_array(_bez(Vector2(cz - 0.14, cowl_y - 0.02), Vector2(cz - 0.06, cowl_y + 0.035), Vector2(fw, cowl_y + 0.012), 4))
-		pts.append_array([Vector2(fw, floor_y), Vector2(fw - 0.10, floor_y), Vector2(fw - 0.30, eY - 0.80)])
-		_add_mesh(_extrude(PackedVector2Array(pts), -hw, hw), Transform3D.IDENTITY, "dash")
+	# tablero macizo con la cara y la tapa redondeadas, cortafuegos y piso; debajo queda el hueco de las piernas
+	var pts: Array = [Vector2(dz0, eY - 0.80), Vector2(dz0, eY - 0.52)]
+	pts.append_array(_bez(Vector2(dz0, eY - 0.52), Vector2(dz0 - 0.005, eY - 0.34), Vector2(dz0 + 0.07, eY - 0.315), 5))
+	pts.append_array(_bez(Vector2(dz0 + 0.07, eY - 0.315), Vector2(dz0 + 0.20, eY - 0.29), Vector2(cz - 0.14, cowl_y - 0.02), 5))
+	pts.append_array(_bez(Vector2(cz - 0.14, cowl_y - 0.02), Vector2(cz - 0.06, cowl_y + 0.035), Vector2(fw, cowl_y + 0.012), 4))
+	pts.append_array([Vector2(fw, floor_y), Vector2(fw - 0.10, floor_y), Vector2(fw - 0.30, eY - 0.80)])
+	_add_mesh(_extrude(PackedVector2Array(pts), -hw, hw), Transform3D.IDENTITY, "dash")
 	# pantallita de marchas y velocidad (como la de la versión HTML): chica, sobre el tablero cerca del centro, girada hacia el piloto
 	dome = Node3D.new()
 	interior.add_child(dome)
@@ -456,8 +438,6 @@ func _b_dash() -> void:
 	_mesh_node(stalk, _mats["trim"], Vector3(0, -0.05, 0.0), Basis.IDENTITY, dome)
 	_build_display(Vector3(0, 0, -0.0258), Vector3(0, 0, -1), tilt)
 	set_disp_off(disp_off)
-	if model_ok or img_ok:
-		return # (el modelo y la imagen ya traen su panel central, las salidas de aire y la guantera)
 	# panel central de llaves (inclinado hacia el piloto) y salidas de aire
 	var pc := Vector3(-0.02, eY - 0.42, dz0 - 0.005)
 	_box(Vector3(0.34, 0.15, 0.02), pc, "trim", _face(pc, pc + Vector3(0, 0.15, -1)))
@@ -475,72 +455,6 @@ func _b_dash() -> void:
 	var rc := Vector3(-0.42, eY - 0.30, dz0 + 0.10)
 	_box(Vector3(0.20, 0.10, 0.10), rc, "trim", _face(rc, rc + Vector3(0.15, 0.2, -1)))
 	_label("DREAM", Vector3(-0.66, eY - 0.29, dz0 + 0.095), Basis(Vector3.UP, PI) * Basis(Vector3.RIGHT, -0.5), 0.028, Color(0.9, 0.9, 0.92, 0.9))
-
-## Tablero 3D del dueño (tools/cars/build_cabin_dash.py: recortado a tablero + consola, normalizado a 1 × 1 × 1, la cara hacia el piloto en z = 0).
-## Se estira a cada habitáculo: de puerta a puerta (ancho), de la cara del tablero al parabrisas (fondo) y a lo alto en la misma proporción que esos dos
-## (el modelo es bajo y ancho: estirarlo hasta el piso ovalaba los relojes); la tapa queda a la altura del parabrisas de cada auto. Nada asoma afuera:
-## el ancho es el del habitáculo y se sacaron del modelo los parantes, el marco del parabrisas, las puertas y los espejos.
-const DASH_MODEL := "res://game/models/cabin/tablero_rally.glb"
-const DASH_SRC := Vector3(0.81, 0.215, 0.29) # medidas del tablero recortado en el modelo original (para escalar parejo)
-var dash_node: Node3D
-func _b_dash_model() -> void:
-	var ps: PackedScene = load(DASH_MODEL)
-	dash_node = ps.instantiate() as Node3D
-	var wx := 2.0 * hw * 0.985
-	var dz := maxf(fw - dz0, 0.3)
-	var k := 0.5 * (wx / DASH_SRC.x + dz / DASH_SRC.z) # escala «real» promedio
-	var hy := clampf(DASH_SRC.y * k, 0.30, cowl_y + 0.012 - floor_y)
-	var top := cowl_y + 0.012
-	dash_node.transform = Transform3D(Basis.from_scale(Vector3(wx, hy, dz)), Vector3(0, top - hy, dz0))
-	interior.add_child(dash_node)
-	for mi in dash_node.find_children("*", "MeshInstance3D", true, false):
-		var gi := mi as MeshInstance3D
-		gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		for si in gi.mesh.get_surface_count():
-			var m0 := gi.mesh.surface_get_material(si)
-			if m0 is StandardMaterial3D:
-				var m1 := (m0 as StandardMaterial3D).duplicate() as StandardMaterial3D
-				m1.metallic = 0.0 # (salía como cromo)
-				m1.roughness = 0.75
-				gi.set_surface_override_material(si, m1)
-	# el bajo del tablero: un faldón oscuro hasta el piso (el modelo es más bajo que un tablero de verdad; así no queda un hueco)
-	if top - hy > floor_y + 0.05:
-		_box(Vector3(2.0 * hw * 0.98, top - hy - floor_y, 0.03), Vector3(0, (top - hy + floor_y) * 0.5, dz0 + dz * 0.35), "trim")
-
-## Tablero de imagen: la foto (1024 × 461, tablero + consola, fondo quitado con tools/cars/build_dash_image.py) en un plano de puerta a puerta,
-## con la tapa arriba a la altura del parabrisas y un poco inclinado hacia atrás (como un tablero de verdad); la consola baja hasta el piso.
-## Arriba, de la tapa al parabrisas, una superficie oscura (si no, se vería el hueco detrás de la foto).
-var dash_img_node: MeshInstance3D
-func _b_dash_image() -> void:
-	var tex: Texture2D = load(DASH_IMG)
-	var wx := 2.0 * hw * 0.985
-	var hgt := wx * float(tex.get_height()) / float(tex.get_width())
-	var top := cowl_y + 0.012
-	var zt := dz0 + 0.5 * maxf(fw - dz0, 0.3) # la tapa de la foto, a mitad de camino al parabrisas
-	var t := Vector3(0, top, zt)
-	var b := Vector3(0, top - hgt * 0.94, zt - hgt * 0.34) # cara inclinada ~20° (como un tablero de verdad)
-	var up := (t - b).normalized()
-	var x_axis := Vector3(-wx, 0, 0) # (la derecha de la foto queda a la derecha del piloto, que mira hacia +z)
-	var y_axis := up * (t - b).length()
-	var z_axis := x_axis.normalized().cross(up)
-	var qm := QuadMesh.new()
-	qm.size = Vector2.ONE
-	var m := StandardMaterial3D.new()
-	m.albedo_texture = tex
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-	m.alpha_scissor_threshold = 0.5
-	m.roughness = 0.85
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
-	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
-	dash_img_node = MeshInstance3D.new()
-	dash_img_node.mesh = qm
-	dash_img_node.material_override = m
-	dash_img_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	dash_img_node.transform = Transform3D(Basis(x_axis, y_axis, z_axis), (t + b) * 0.5)
-	interior.add_child(dash_img_node)
-	# la tapa: de la foto al parabrisas
-	_m("dash_top", Color(0.075, 0.075, 0.08), 0.9)
-	_plane(2.0 * hw, maxf(fw - zt, 0.05), Vector3(0, top - 0.004, (fw + zt) * 0.5), "dash_top")
 
 func _b_console() -> void:
 	var fl := floor_y - seat_dy # (el lote se corre seat_dy: el pie de la consola queda en el piso)
