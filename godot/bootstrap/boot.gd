@@ -33,13 +33,16 @@ var _pi := 0 # paquete que se está bajando
 var _downloading := false
 ## Descarga (arreglo del 15/10/2026: «Falló la descarga (13/0)» con buen wifi). El 13 es RESULT_TIMEOUT: HTTPRequest.timeout es el tiempo TOTAL del pedido y
 ## estaba en 30 s también para bajar los paquetes (cientos de MB): sólo terminaba si bajaba a más de ~20 MB/s. Ahora: 30 s para el manifiesto, sin tope
-## total para los paquetes y un vigilante que corta si no llega NADA durante stall_s; si se corta, sigue desde donde quedó (Range) y reintenta solo.
+## total para los paquetes y un vigilante que corta si no llega NADA durante stall_s. Se baja POR TRAMOS de SEG bytes (Range) y cada tramo terminado se
+## pega al .tmp: si se corta, se pierde como mucho un tramo y se sigue desde ahí (Godot 4.7 borra el archivo a medio bajar al fallar: por eso tramos y no
+## «seguir el archivo»). Reintenta solo AUTO_TRIES veces antes de mostrar «Reintentar».
 var stall_s := 45.0 # (las pruebas lo achican con --stall=)
+var seg := 32 * 1048576 # tamaño de cada tramo (las pruebas lo achican con --seg=)
 const AUTO_TRIES := 4
 var _tries := 0
 var _stall := 0.0
 var _last_got := -1
-var _resume_from := 0 # bytes que ya estaban en el .tmp al pedir el resto
+var _resume_from := 0 # bytes que ya estaban en el .tmp al pedir este tramo
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -47,6 +50,8 @@ func _ready() -> void:
 			_manifest_url = a.substr(11) # para pruebas locales
 		elif a.begins_with("--stall="):
 			stall_s = float(a.substr(8))
+		elif a.begins_with("--seg="):
+			seg = int(a.substr(6))
 	_build_ui()
 	if ResourceLoader.exists(GAME_SCENE):
 		_start_game()
@@ -158,11 +163,10 @@ func _download() -> void:
 	var p: Dictionary = _packs[_pi]
 	var mb := float(p["size"]) / 1048576.0
 	_status.text = "Descargando %s (%.0f MB)…" % ["los autos" if str(p["name"]) == "cars" else "el juego", mb]
-	_bar.value = 0.0
 	_bar.visible = true
 	_retry.visible = false
 	var tmp := _pck_path(str(p["name"])) + ".tmp"
-	# lo que quedó de un intento anterior de ESTA versión: se pide sólo el resto (si es de otra versión, se empieza de cero)
+	# lo que quedó de un intento anterior de ESTA versión sirve (si es de otra versión, se empieza de cero)
 	var vtmp := tmp + ".ver"
 	if not FileAccess.file_exists(vtmp) or FileAccess.get_file_as_string(vtmp).strip_edges() != str(p["version"]):
 		DirAccess.remove_absolute(tmp)
@@ -170,15 +174,18 @@ func _download() -> void:
 		if vf != null:
 			vf.store_string(str(p["version"]))
 			vf.close()
+	var total := int(p["size"])
 	_resume_from = _file_size(tmp)
+	if total > 0 and _resume_from >= total:
+		_finish_pack() # ya está entero: se verifica
+		return
 	var headers := PackedStringArray()
-	if _resume_from > 0 and (float(p["size"]) <= 0.0 or float(_resume_from) < float(p["size"])):
-		headers.append("Range: bytes=%d-" % _resume_from)
-		_http.download_file = tmp + ".part"
+	if total > 0:
+		headers.append("Range: bytes=%d-%d" % [_resume_from, mini(_resume_from + seg, total) - 1])
 	else:
-		DirAccess.remove_absolute(tmp)
+		DirAccess.remove_absolute(tmp) # (sin tamaño en el manifiesto: de una sola vez)
 		_resume_from = 0
-		_http.download_file = tmp
+	_http.download_file = tmp + ".part"
 	_downloading = true
 	_stall = 0.0
 	_last_got = -1
@@ -226,26 +233,37 @@ func _on_download_done(result: int, code: int, _headers: PackedStringArray, _bod
 	if _http.request_completed.is_connected(_on_download_done):
 		_http.request_completed.disconnect(_on_download_done)
 	var p: Dictionary = _packs[_pi]
-	var path := _pck_path(str(p["name"]))
-	var tmp := path + ".tmp"
+	var tmp := _pck_path(str(p["name"])) + ".tmp"
 	var part := tmp + ".part"
+	var total := int(p["size"])
 	var ok := result == HTTPRequest.RESULT_SUCCESS and (code == 200 or code == 206)
-	if ok and _resume_from > 0:
-		if code == 206: # el resto: se pega al final de lo que ya había
-			ok = _append(tmp, part)
-		else: # el servidor mandó el archivo entero: reemplaza lo anterior
-			DirAccess.remove_absolute(tmp)
-			ok = DirAccess.rename_absolute(part, tmp) == OK
-	elif not ok and _resume_from > 0 and code == 206:
-		_append(tmp, part) # lo que llegó de este intento también sirve para el próximo
-	DirAccess.remove_absolute(part)
-	if result == HTTPRequest.RESULT_SUCCESS and code == 416: # «ya lo tenés entero»: se verifica abajo
-		ok = true
-	elif result == HTTPRequest.RESULT_SUCCESS and code >= 400: # una página de error no sirve para seguir
+	var whole := false
+	if ok and code == 206: # un tramo: se pega al final
+		ok = _append(tmp, part)
+	elif ok: # el servidor mandó el archivo entero (no entiende Range): reemplaza lo anterior
 		DirAccess.remove_absolute(tmp)
+		ok = DirAccess.rename_absolute(part, tmp) == OK
+		whole = true
+	DirAccess.remove_absolute(part)
+	if result == HTTPRequest.RESULT_SUCCESS and code == 416: # «ese tramo no existe»: lo que hay se verifica
+		_finish_pack()
+		return
+	if result == HTTPRequest.RESULT_SUCCESS and code >= 400:
+		DirAccess.remove_absolute(tmp) # (por las dudas: lo que hay puede no servir)
 	if not ok:
 		_fail_or_retry("Falló la descarga (%d/%d)" % [result, code])
 		return
+	_tries = 0 # llegó un tramo: los reintentos vuelven a contar desde cero
+	if not whole and total > 0 and _file_size(tmp) < total:
+		_download() # el tramo que sigue
+		return
+	_finish_pack()
+
+## El paquete está entero en el .tmp: se verifica (sha256), se guarda con su versión y se pasa al siguiente
+func _finish_pack() -> void:
+	var p: Dictionary = _packs[_pi]
+	var path := _pck_path(str(p["name"]))
+	var tmp := path + ".tmp"
 	var want := str(p["sha256"])
 	if want != "" and FileAccess.get_sha256(tmp) != want:
 		DirAccess.remove_absolute(tmp)

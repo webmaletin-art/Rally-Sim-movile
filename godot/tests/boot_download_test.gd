@@ -1,7 +1,8 @@
 ## Descarga del juego en el APK liviano (bootstrap/boot.gd), arreglo del 15/10/2026 («Falló la descarga (13/0)» con buen wifi en otro teléfono):
 ## el 13 es RESULT_TIMEOUT y el tope de 30 s era para TODA la descarga. Contra un servidor local (tests/tools/dl_server.py) que corta un paquete
-## a los 2 MB y deja otro trabado a los 3 MB, comprueba que el cliente: no corta por tiempo total, detecta la traba, sigue desde donde quedó
-## (Range) y termina con los dos paquetes íntegros (sha256), sin que el jugador toque «Reintentar».
+## en un tramo y deja otro trabado, comprueba que el cliente: baja por tramos (Range), no corta por tiempo total, detecta la traba, repite sólo el
+## tramo perdido y termina con los dos paquetes íntegros (sha256), sin que el jugador toque «Reintentar». Anda igual con Godot 4.5 y 4.7
+## (4.7 borra el archivo a medio bajar al fallar).
 ## Uso: godot --headless --path godot --script res://tests/boot_download_test.gd
 extends SceneTree
 
@@ -54,6 +55,7 @@ func _run() -> void:
 	var b := TestBoot.new()
 	b._manifest_url = "http://127.0.0.1:%d/manifest.json" % PORT
 	b.stall_s = 3.0
+	b.seg = 1048576 # tramos de 1 MB (en el juego, 32 MB)
 	root.add_child(b)
 	t0 = Time.get_ticks_msec()
 	var saw_retry := false
@@ -70,8 +72,9 @@ func _run() -> void:
 	_check(not b._retry.visible, "no hizo falta tocar «Reintentar»")
 	var lg := FileAccess.get_file_as_string("user://dltest/server.log")
 	print("     servidor: " + lg.strip_edges().replace("\n", " | "))
-	_check(lg.contains("content.pck pedido 2 desde 2097152"), "content.pck siguió desde los 2 MB (Range)")
-	_check(lg.contains("cars.pck pedido 2 desde 3145728"), "cars.pck: el vigilante cortó la traba y siguió desde los 3 MB")
+	_check(lg.contains("content.pck pedido 3 desde 2097152") and lg.contains("content.pck pedido 4 desde 2097152"), "content.pck: el tramo cortado se volvió a pedir desde los 2 MB (no desde cero)")
+	_check(lg.contains("cars.pck pedido 2 desde 1048576") and lg.contains("cars.pck pedido 3 desde 1048576"), "cars.pck: el vigilante cortó el tramo trabado y siguió desde 1 MB")
+	_check(lg.contains("content.pck pedido 7 desde 5242880") and not lg.contains("pedido 1 desde 0\ncontent.pck pedido 2 desde 0"), "baja por tramos de 1 MB (content: 6 tramos + 1 repetido)")
 	var ok_sha := FileAccess.file_exists("user://content.pck") and FileAccess.file_exists("user://cars.pck")
 	_check(ok_sha and FileAccess.get_file_as_string("user://content_version.txt") == "v1" and FileAccess.get_file_as_string("user://cars_version.txt") == "c1", "paquetes guardados con su versión")
 	_check(not FileAccess.file_exists("user://cars.pck.tmp") and not FileAccess.file_exists("user://cars.pck.tmp.part") and not FileAccess.file_exists("user://cars.pck.tmp.ver"), "no quedan restos de la descarga")

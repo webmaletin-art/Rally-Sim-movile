@@ -253,8 +253,9 @@ func _tombstone(e: Object) -> void:
 	if not (st is Object) or st == null:
 		write("[lápida] Android no guardó la lápida de este cierre")
 		return
-	if not (st as Object).has_method("readAllBytes") and int(OS.get_version().get_slice(".", 0)) < 13:
-		write("[lápida] (Android %s: hace falta Android 13 para leerla desde el juego)" % OS.get_version())
+	var sdk := int(OS.get_version().get_slice(".", 0)) # (en Android de fábrica Godot informa «nivel de API.compilación»: 33 = Android 13; las ROM modificadas dan otra cosa y se intenta igual)
+	if sdk >= 21 and sdk < 33:
+		write("[lápida] (API %s: hace falta Android 13 (API 33) para leerla desde el juego)" % OS.get_version().get_slice(".", 0))
 		return
 	var raw: Variant = st.call("readAllBytes")
 	st.call("close")

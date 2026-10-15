@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Servidor de prueba para tests/boot_download_test.gd: manifiesto + dos paquetes, con Range, y fallas a propósito.
-  · /content.pck: el 1.er pedido se corta a los 2 MB (cierra la conexión);
-  · /cars.pck: el 1.er pedido se traba a los 3 MB (no manda nada más: lo tiene que cortar el vigilante del cliente);
-  · los pedidos con «Range: bytes=N-» contestan 206 con el resto.
+  · /content.pck: el 3.er pedido se corta a la mitad (cierra la conexión);
+  · /cars.pck: el 2.º pedido se traba a la mitad (no manda nada más: lo tiene que cortar el vigilante del cliente);
+  · los pedidos con «Range: bytes=A-B» (o «A-») contestan 206 con ese tramo.
 Uso: python3 dl_server.py PUERTO DIRECTORIO  (crea los archivos y el manifest.json en DIRECTORIO)"""
 import hashlib, http.server, json, os, sys, time
 
@@ -42,25 +42,28 @@ class H(http.server.BaseHTTPRequestHandler):
             return
         hits[name] = hits.get(name, 0) + 1
         b = data[name]
-        start = 0
+        start, end = 0, len(b) - 1
         rng = self.headers.get("Range", "")
         if rng.startswith("bytes="):
-            start = int(rng[6:].split("-")[0])
+            a, _, z = rng[6:].partition("-")
+            start = int(a)
+            if z:
+                end = min(int(z), len(b) - 1)
         log.write("%s pedido %d desde %d\n" % (name, hits[name], start))
         log.flush()
-        body = b[start:]
-        self.send_response(206 if start else 200)
-        if start:
-            self.send_header("Content-Range", "bytes %d-%d/%d" % (start, len(b) - 1, len(b)))
+        body = b[start:end + 1]
+        self.send_response(206 if rng else 200)
+        if rng:
+            self.send_header("Content-Range", "bytes %d-%d/%d" % (start, end, len(b)))
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        if hits[name] == 1 and name == "content.pck":
-            self.wfile.write(body[:2 * 1024 * 1024])
+        if hits[name] == 3 and name == "content.pck":
+            self.wfile.write(body[:len(body) // 2])
             self.wfile.flush()
             self.close_connection = True
             return
-        if hits[name] == 1 and name == "cars.pck":
-            self.wfile.write(body[:3 * 1024 * 1024])
+        if hits[name] == 2 and name == "cars.pck":
+            self.wfile.write(body[:len(body) // 2])
             self.wfile.flush()
             time.sleep(30)  # trabado
             return
