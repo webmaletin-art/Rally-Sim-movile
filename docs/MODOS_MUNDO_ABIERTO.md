@@ -17,20 +17,25 @@ Sirven aunque el online no ande: son partidas contra la IA en Dream City y la re
 - El desmadre cuenta el doble, se vacía más lento y además sube solo (la cacería llega igual en ~90 s aunque manejes bien).
 - Cada escape paga `1.500 + 1.000 × nivel + 20 por segundo de persecución` (tope 300 s) y sube el nivel de la próxima (racha). Si te agarran, se corta la racha.
 
-## Modo CAZA RECOMPENSAS — `game/city/city_modes.gd`
-- Pausa → «🎯 CAZA RECOMPENSAS». Aparece un auto de la IA a 400–700 m (prefiere uno que no tengas), con 🎯 arriba y en el GPS/minimapa.
-- Huye por las calles: va lejos (1,2–3 km) y, si lo tenés a menos de 140 m, rehace el camino para el otro lado cada 3 s.
-- Hay que estar a menos de 22 m durante **30 s en total** (alejarse lo descuenta despacio). Se escapa si queda a más de 2,5 km 25 s seguidos o pasan 12 minutos.
-  Si te arresta la policía (desmadre), también se termina.
-- Premio: **el auto** (va al garaje) si no lo tenías y no ganaste otro en las últimas 24 h; si no, el 25 % de su precio en créditos.
-- Autos que pueden andar sueltos: los del catálogo hasta $150.000, nunca los premium (truck, gt3, hyper), el premio de la aventura (genesis) ni los especiales (police, f1, t1plus).
-- **Servidor:** el auto ganado se anota con `give_car` motivo `bounty`; la cuenta lo valida con las mismas reglas y además UNO cada 20 h por cuenta
-  (migración `supabase/migrations/20261018000000_bounty_car.sql`). Sin esa migración aplicada el servidor lo rechaza y el auto desaparece al sincronizar.
+## RECOMPENSA (evento del servidor, un solo ganador) — `game/city/city_modes.gd` · actualizado 15/10/2026 noche
+Pedido del dueño: «como un eclipse: todos lo esperan; aparece un rato en el mapa, hay que ir y pegarse; es muy difícil, la IA es súper inteligente y
+rápida; a la mitad de la barra se hace la boluda; casi nunca choca; gana UNO solo, el que se mantiene pegado lo que da el servidor (un minuto)».
+- El servidor programa la recompensa (`bounty_current`): el auto, la hora, `hold_s` (60 s), `map_s` (45 s) y una semilla. Es la misma para todos.
+- Diez minutos antes avisa; a la hora, el auto aparece en el frente de uno de los locales de Dream City (sale de la semilla: el mismo para todos) y se ve en
+  el mapa/GPS `map_s` segundos. El jugador queda anotado (`bounty_join`).
+- Pegado a menos de 20 m la barra se llena en verde (1 por segundo); lejos baja 0,35 por segundo. Completa → `bounty_claim` con el recorrido.
+- El que huye: potencia ×1,15, agarre ×1,12, ritmo 1,12, sin errores; rehace el camino para el otro lado cada 3 s si lo tenés a menos de 140 m; al 45 % y al
+  78 % de la barra afloja 3,5 s («se hace el boludo»).
+- Gana el PRIMERO: el servidor le pone el auto en la cuenta (o la mitad del precio si ya lo tenía). A los demás: «X se llevó el …» y el auto se va.
+- Pausa → «🎯 RECOMPENSA»: cuándo es la próxima y qué auto. Necesita conexión y cuenta.
+- El camino viejo (un auto por día con `give_car` «bounty») quedó cerrado en el servidor.
+- Cómo programarla, configurarla y revisar ganadores: `docs/PUBLICAR_RECOMPENSA_Y_TIEMPO_REAL.md`.
 
 ## Pruebas
-`tests/city_modes_test.gd` (en la compilación): reglas, el desmadre que arranca la cacería, Fugitivo (paga y sube el nivel), Caza (aparece, anda, pegado 30 s →
-el auto con motivo «bounty», se va; lejos 25 s → se escapa). La sintaxis de la migración se revisó con `pglast` (sin levantar la base, pedido del dueño).
+`tests/city_modes_test.gd` (en la compilación): reglas, el desmadre que arranca la cacería, Fugitivo (paga y sube el nivel) y la recompensa con un servidor falso
+en memoria (espera, se suelta donde dice la semilla, huye, pegado → reclamo con recorrido, gana; si la gana otro, se va). La sintaxis de las migraciones se
+revisó con `pglast` (sin levantar la base, pedido del dueño).
 
 ## Pendiente
-- Probar en el teléfono: ¿el desmadre es justo (ni muy fácil ni imposible)?, ¿el que huye maneja bien y se escapa a veces?, ¿30 s está bien o mejor 60?
+- Probar en el teléfono: ¿el desmadre es justo?, ¿el que huye es difícil pero no imposible?, ¿60 s está bien?, ¿se ve bien en el mapa los 45 s?
 - Textos sólo en español.

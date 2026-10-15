@@ -7,6 +7,7 @@ extends Node
 ## Todas las llamadas son «await» y devuelven {ok, code, data, error}.
 
 const CONFIG_PATH := "res://game/online/online_config.json"
+const Release := preload("res://game/data/release.gd")
 const SESSION_PATH := "user://online.json"
 
 var url := ""
@@ -295,6 +296,22 @@ func leaderboard(track: String, board: String, limit := 50) -> Dictionary:
 	if not is_account():
 		return {"ok": false, "code": 0, "data": null, "error": "sin sesión"} # los rankings también piden cuenta
 	return await call_fn("get_leaderboard", {"p_track": track, "p_board": board, "p_limit": limit})
+
+## Banderas del servidor (tabla app_flags): hoy sólo «pvp» = el mundo online en tiempo real habilitado. Sin conexión queda como estaba (apagado).
+func fetch_flags() -> Dictionary:
+	if not configured():
+		return {}
+	var r := await call_fn("app_flags", {}, false)
+	if r["ok"] and r["data"] is Dictionary:
+		Release.pvp_remote = bool((r["data"] as Dictionary).get("pvp", false))
+		return r["data"]
+	return {}
+
+## Récord del mundo abierto: board «owev» (id del evento, segundos) o «fugitive» (id «fugitivo», racha). Devuelve {saved, best, rank, top: {name, value}}
+func submit_record(board: String, id: String, value: float, car: String) -> Dictionary:
+	if not is_account():
+		return {"ok": false, "code": 0, "data": null, "error": "sin sesión"}
+	return await call_fn("submit_record", {"p_board": board, "p_id": id, "p_value": snappedf(value, 0.01), "p_car": car, "p_name": str(profile.d.get("name", "Piloto")) if profile != null else "Piloto"})
 
 ## Prueba de conexión (para el modo desarrollador): entra, pide un ranking y cuenta las filas
 func ping() -> Dictionary:

@@ -29,6 +29,16 @@ static func online_open(profile: RefCounted) -> bool:
 ## (docs/ONLINE_SUPABASE.md, «Tiempo real»); sólo tiene efecto con el modo online abierto, el mundo online y Supabase configurado. Encendido el 15/10/2026 (autorización del dueño).
 const REALTIME := true
 
+## JUGADOR CONTRA JUGADOR EN TIEMPO REAL (el mundo online compartido: encontrarse, chat, conectados). 15/10/2026, pedido del dueño: APAGADO hasta pagar
+## Supabase Pro; mientras tanto el online es «por datos» (cuenta, plata, autos, eventos, ranking y la recompensa). Se prende CON UN BOTÓN desde el servidor:
+## Supabase → Table Editor → app_flags → pvp = true (el juego lo lee al abrir el modo online; no hace falta un APK nuevo). PVP_FORCE = true lo prende sin el
+## servidor (sólo para pruebas). Ver docs/PUBLICAR_RECOMPENSA_Y_TIEMPO_REAL.md.
+const PVP_FORCE := false
+static var pvp_remote := false
+
+static func pvp_open(profile: RefCounted) -> bool:
+	return REALTIME and (PVP_FORCE or pvp_remote or dev(profile))
+
 ## CUENTA OBLIGATORIA: para jugar hay que iniciar sesión con un correo (también para jugar «sin conexión»). Los créditos, los autos y las compras viven en el SERVIDOR (Supabase, ver
 ## docs/CUENTA_Y_ECONOMIA.md): el juego le pregunta al servidor cuánto tenés y qué autos tiene la cuenta, y le manda cada premio y cada compra para que los valide; lo que diga el archivo
 ## del teléfono no vale (así no se pueden editar los créditos ni regalarse autos premium). Sin Supabase configurado en la compilación (o con el modo desarrollador en las compilaciones de

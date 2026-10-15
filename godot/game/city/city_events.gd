@@ -434,6 +434,9 @@ func _finish(ok: bool, why: String) -> void:
 	if reward > 0:
 		race.profile.earn(float(reward), "owev", id)
 		race.profile.add_xp(float(reward) * 0.2)
+	r["title"] = _title(cur) # (para la pantalla de ranking del menú)
+	if ok and typ != "huida" and typ != "persecucion":
+		_send_record(id, t)
 	race.profile.save()
 	_result = {"ok": ok, "won": won}
 	_show_banner("%s %s\n%s%s" % [cur["icon"], _title(cur), title, ("\n+ $%d" % reward) if reward > 0 else ""], 4.5)
@@ -441,6 +444,21 @@ func _finish(ok: bool, why: String) -> void:
 	_done_t = 3.0
 	_cool[id] = COOLDOWN
 	CrashLog.mark("evento", "fin %s · %s · $%d" % [id, "ok" if ok else why, reward])
+
+## Récord mundial (ranking por datos, 15/10/2026): se manda el tiempo y se avisa si es el mejor del mundo o cuál es el récord a batir
+func _send_record(id: String, secs: float) -> void:
+	var on = race.get("online")
+	if on == null or not on.has_method("enabled") or not on.enabled() or not on.has_method("submit_record"):
+		return
+	var res: Dictionary = await on.submit_record("owev", id, secs, str(race.cfg.get("car", "")))
+	if not res.get("ok", false) or not (res.get("data") is Dictionary):
+		return
+	var d: Dictionary = res["data"]
+	if int(d.get("rank", 0)) == 1 and bool(d.get("saved", false)):
+		_toast(Tr.t("🌍 ¡NUEVO RÉCORD MUNDIAL! %s") % _fmt(secs))
+	elif d.get("top") is Dictionary:
+		var tp: Dictionary = d["top"]
+		_toast(Tr.t("🌍 Récord mundial: %s de %s · vos sos %dº") % [_fmt(float(tp.get("value", 0))), str(tp.get("name", "")), int(d.get("rank", 0))])
 
 func _end() -> void:
 	for rv in rivals:

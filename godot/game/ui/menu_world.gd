@@ -16,7 +16,7 @@ var m # menu.gd
 
 
 func _start_city(spawn := 0) -> void:
-	var online_world: bool = m.world_online and m.app.online != null and m.app.online.is_account()
+	var online_world: bool = m.world_online and m.app.online != null and m.app.online.is_account() and Release.pvp_open(m.profile) # (sin tiempo real habilitado no se entra al mundo compartido)
 	var prof: RefCounted = m.profile
 	if online_world: # el mundo online usa los autos y los créditos del servidor (aparte del progreso offline)
 		m.toast(tr("Conectando con tu garaje online…"))
@@ -195,7 +195,186 @@ func online_home() -> void:
 	if m.profile.d.get("nickSet", false) != true:
 		m.go("nick", null, false)
 		return
+	var flags: Dictionary = await m.app.online.fetch_flags() # ¿el tiempo real está habilitado en el servidor? (app_flags.pvp)
+	if not is_instance_valid(m.body):
+		return
+	if not Release.pvp_open(m.profile):
+		_data_hub(not flags.is_empty())
+		return
 	_online_hub()
+
+## El online «por datos» (15/10/2026, pedido del dueño: «hasta poder pagar Supabase Pro, nada de tiempo real: cada uno juega en su mundo; el servidor sólo para la
+## cuenta, la plata, los autos, los eventos y el ranking»). El mundo compartido muestra un aviso de «próximamente»; se habilita desde el servidor (Release.pvp_open).
+func _data_hub(connected: bool) -> void:
+	var nick := str(m.profile.d.get("name", "Piloto"))
+	var card := Kit.panel(14, Kit.PANEL2)
+	m.body.add_child(card)
+	var cv := Kit.vbox(6)
+	card.add_child(cv)
+	var head := Kit.hbox(10)
+	cv.add_child(head)
+	var nl := Kit.label("👤 " + nick, 24, Kit.TEXT)
+	nl.clip_text = true
+	nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(nl)
+	head.add_child(Kit.button(tr("NOMBRE"), func() -> void:
+		m.sfx.play("click")
+		m.go("nick"), false, 13, Vector2(90, 36)))
+	var st_l := Kit.label("● " + (tr("Conectado") if connected else tr("Sin conexión")), 14, Kit.GREEN if connected else Kit.RED)
+	cv.add_child(st_l)
+	m.body.add_child(m.menu_button("🌐 " + tr("MUNDO ONLINE EN TIEMPO REAL"), tr("jugador contra jugador · próximamente"), func() -> void:
+		m.sfx.play("click")
+		m.go("pvp_soon"), true, true, 22))
+	var g := Kit.grid(2, 8, 8)
+	m.body.add_child(g)
+	g.add_child(m.tile("trophy", tr("RANKING"), tr("récords y ganadores"), func() -> void:
+		m.sfx.play("click")
+		m.go("ranking"), false, 64.0))
+	g.add_child(m.tile("star", tr("RECOMPENSA"), tr("un auto suelto: gana el primero"), func() -> void:
+		m.sfx.play("click")
+		m.go("bounty"), false, 64.0))
+	var on_r: bool = m.profile.setting("onlineScores") == true
+	g.add_child(m.tile("flag", tr("MIS RÉCORDS"), ("☑ " + tr("se mandan al ranking")) if on_r else ("☐ " + tr("no se mandan")), func() -> void:
+		m.profile.set_setting("onlineScores", not on_r)
+		m.go("online", null, false), false, 64.0))
+	var mail := str(m.app.online.email)
+	g.add_child(m.tile("gear", tr("CUENTA"), mail if mail != "" else tr("tu correo"), func() -> void: m.go("account"), false, 64.0))
+	var info := Kit.panel(10, Kit.PANEL2)
+	m.body.add_child(info)
+	var iv := Kit.vbox(3)
+	info.add_child(iv)
+	iv.add_child(Kit.label(tr("ONLINE POR AHORA · cada uno en su mundo"), 14, Kit.ACCENT))
+	for t in ["💰 " + tr("Tus créditos, autos y compras, guardados en el servidor"), "🏁 " + tr("Récords mundiales de las carreras del mundo abierto"), "🚨 " + tr("Ranking de la mejor racha del modo Fugitivo"), "🎯 " + tr("Recompensa: cada tanto se suelta un auto y se lo lleva el primero que lo atrape")]:
+		iv.add_child(Kit.label(t, 14, Kit.TEXT))
+	m.body.add_child(m.menu_button("🏙 " + tr("JUGAR EN DREAM CITY"), tr("carreras, Fugitivo y la recompensa"), func() -> void:
+		m.sfx.play("click")
+		m.world_online = false
+		m.go("spawn"), false))
+
+## Aviso: el mundo online en tiempo real todavía no está
+func pvp_soon() -> void:
+	m.set_title(tr("MUNDO ONLINE"))
+	m.body.add_child(Kit.label("🚧 " + tr("PRÓXIMAMENTE"), 34, Kit.ACCENT))
+	m.body.add_child(Kit.wrap(tr("La partida en tiempo real, jugador contra jugador, estará disponible próximamente. Se está trabajando en eso."), 18, Kit.TEXT, 300))
+	m.body.add_child(Kit.wrap(tr("Mientras tanto, cada uno juega en su mundo y compite por datos: récords de las carreras, la mejor racha del Fugitivo y la recompensa (el primero que atrapa el auto suelto se lo lleva)."), 15, Kit.MUTED, 300))
+	m.body.add_child(m.menu_button("🏆 " + tr("RANKING"), tr("récords y ganadores"), func() -> void: m.go("ranking"), true))
+	m.body.add_child(m.menu_button("🏙 " + tr("JUGAR EN DREAM CITY"), tr("sin conexión con otros jugadores"), func() -> void:
+		m.sfx.play("click")
+		m.world_online = false
+		m.go("spawn"), false))
+
+## Ranking (por datos): ganadores de la recompensa, mejor racha del Fugitivo y récords de las carreras del mundo abierto que corriste
+func ranking(arg = null) -> void:
+	m.set_title(tr("RANKING"))
+	var on: Node = m.app.online
+	if on == null or not on.is_account():
+		m.body.add_child(Kit.wrap(tr("Para ver el ranking iniciá sesión con tu cuenta."), 16, Kit.TEXT, 300))
+		return
+	var box := Kit.vbox(6)
+	m.body.add_child(box)
+	var sec := func(title: String) -> VBoxContainer:
+		var pnl := Kit.panel(10, Kit.PANEL2)
+		box.add_child(pnl)
+		var v := Kit.vbox(3)
+		pnl.add_child(v)
+		v.add_child(Kit.label(title, 16, Kit.ACCENT))
+		var w := Kit.label(tr("cargando…"), 14, Kit.MUTED)
+		v.add_child(w)
+		return v
+	var vb: VBoxContainer = sec.call("🎯 " + tr("GANADORES DE LA RECOMPENSA"))
+	var vf: VBoxContainer = sec.call("🚨 " + tr("FUGITIVO · mejor racha"))
+	var vr: VBoxContainer = sec.call("🏁 " + tr("CARRERAS DEL MUNDO ABIERTO"))
+	# las carreras del mundo abierto que el jugador ya corrió (con su mejor tiempo)
+	var mine: Array = []
+	var ow: Variant = m.profile.d.get("owEvents", {})
+	if ow is Dictionary:
+		for id in ow:
+			var rec: Variant = (ow as Dictionary)[id]
+			if rec is Dictionary and (rec as Dictionary).has("best"):
+				mine.append([str(id), str((rec as Dictionary).get("title", id)), float(rec["best"])])
+	mine.sort_custom(func(a: Array, b: Array) -> bool: return str(a[1]) < str(b[1]))
+	var sel := str(arg) if arg != null else (str(mine[0][0]) if not mine.is_empty() else "")
+	var rw: Dictionary = await on.call_fn("bounty_winners", {"p_limit": 8}, false)
+	if not is_instance_valid(vb):
+		return
+	_fill_rows(vb, rw.get("data") if rw["ok"] else null, func(e: Dictionary) -> String:
+		return "%s · %s · %s" % [str(e.get("name", "")), _car_name(str(e.get("car", ""))), Time.get_date_string_from_unix_time(int(e.get("at", 0)))], tr("Todavía nadie ganó una recompensa."))
+	var rf: Dictionary = await on.leaderboard("fugitivo", "fugitive", 10)
+	if not is_instance_valid(vf):
+		return
+	_fill_rows(vf, rf.get("data") if rf["ok"] else null, func(e: Dictionary) -> String:
+		return "%d. %s · %s %s" % [int(e.get("rank", 0)), str(e.get("name", "")), str(int(float(e.get("value", 0)))), tr("escapes")], tr("Todavía no hay rachas: jugá el modo Fugitivo (pausa del mundo abierto)."))
+	if mine.is_empty():
+		_fill_rows(vr, [], func(_e: Dictionary) -> String: return "", tr("Corré una carrera del mundo abierto para ver su récord mundial."))
+		return
+	var row := Kit.hbox(6)
+	for it in mine.slice(0, 12):
+		var b := Kit.button(str(it[1]), func() -> void: m.go("ranking", str(it[0]), false), str(it[0]) == sel, 12, Vector2(0, 34))
+		row.add_child(b)
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(0, 44)
+	sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.add_child(row)
+	vr.add_child(sc)
+	vr.move_child(sc, 1)
+	var rr: Dictionary = await on.leaderboard("ow:" + sel, "owev", 10)
+	if not is_instance_valid(vr):
+		return
+	_fill_rows(vr, rr.get("data") if rr["ok"] else null, func(e: Dictionary) -> String:
+		var v := float(e.get("value", 0))
+		return "%d. %s · %d:%04.1f · %s%s" % [int(e.get("rank", 0)), str(e.get("name", "")), int(v / 60.0), fmod(v, 60.0), _car_name(str(e.get("car", ""))), "  ★" if bool(e.get("is_me", false)) else ""], tr("Nadie mandó un tiempo todavía: ¡el primero sos vos!"))
+
+func _fill_rows(v: VBoxContainer, data: Variant, fmt: Callable, empty: String) -> void:
+	var w: Label = v.get_child(v.get_child_count() - 1) as Label # (el «cargando…»)
+	if w != null:
+		w.queue_free()
+	if not (data is Array):
+		v.add_child(Kit.label(tr("sin conexión"), 14, Kit.RED))
+		return
+	if (data as Array).is_empty():
+		v.add_child(Kit.wrap(empty, 14, Kit.MUTED, 300))
+		return
+	for e in (data as Array):
+		if e is Dictionary:
+			v.add_child(Kit.label(str(fmt.call(e)), 15, Kit.GOLD if bool((e as Dictionary).get("is_me", false)) else Kit.TEXT))
+
+static func _car_name(id: String) -> String:
+	var c: Dictionary = CarBuild.catalog()["cars"].get(id, {})
+	return ("%s %s" % [str(c.get("brand", "")), str(c.get("model", ""))]).strip_edges() if not c.is_empty() else id
+
+## La recompensa (evento del servidor): cuándo se suelta, qué auto, cuántos segundos pegado y quién ganó la última
+func bounty_screen() -> void:
+	m.set_title(tr("RECOMPENSA"))
+	m.body.add_child(Kit.wrap(tr("Cada tanto se suelta un auto en Dream City. Durante unos segundos se ve en el mapa dónde está: andá a buscarlo y pegate atrás. La barra se llena (en verde) mientras estés pegado; el PRIMERO que la completa se lo lleva. Es para los mejores: el que huye maneja muy bien."), 15, Kit.TEXT, 300))
+	var st := Kit.wrap(tr("cargando…"), 17, Kit.GOLD, 300)
+	m.body.add_child(st)
+	m.body.add_child(m.menu_button("🏙 " + tr("JUGAR EN DREAM CITY"), tr("la recompensa aparece en el mapa"), func() -> void:
+		m.sfx.play("click")
+		m.world_online = false
+		m.go("spawn"), true))
+	var on: Node = m.app.online
+	if on == null or not on.is_account():
+		st.text = tr("Para la recompensa hay que iniciar sesión con tu cuenta.")
+		return
+	var r: Dictionary = await on.call_fn("bounty_current", {})
+	if not is_instance_valid(st):
+		return
+	if not r["ok"] or not (r["data"] is Dictionary):
+		st.text = tr("Sin conexión con el servidor (o falta aplicar la migración de la recompensa).")
+		return
+	var d: Dictionary = r["data"]
+	var lines: Array = []
+	if d.get("next") is Dictionary:
+		var n: Dictionary = d["next"]
+		var now := int(n.get("now", 0))
+		var dt := int(n.get("starts", 0)) - now
+		var when := tr("¡SUELTO AHORA!") if dt <= 0 else (tr("en %d h %02d min") % [dt / 3600, (dt % 3600) / 60] if dt >= 3600 else tr("en %d min") % maxi(1, dt / 60))
+		lines.append("🎯 %s · %s" % [_car_name(str(n.get("car", ""))), when])
+		lines.append(tr("pegado %d s para ganarlo") % int(n.get("hold_s", 60)))
+	if d.get("last") is Dictionary:
+		var l: Dictionary = d["last"]
+		lines.append("🏆 " + tr("La última se la llevó %s (%s)") % [str(l.get("winner", "")), _car_name(str(l.get("car", "")))])
+	st.text = "\n".join(lines) if not lines.is_empty() else tr("No hay recompensas programadas por ahora.")
 
 ## El hub del mundo online (rediseño 14/10/2026): tarjeta del piloto con el estado de la conexión, el botón grande para entrar al mundo, accesos a lo que se maneja
 ## desde el menú (regalo diario, rankings, cuenta, dónde aparecer) y un resumen de lo que hay adentro del mundo (en la pausa: chat, jugadores y amigos, mercado, reportes).

@@ -5,6 +5,22 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 15/10/2026 (13) · Online «por datos» (sin tiempo real), recompensa global con un solo ganador, ranking
+- **Pedido del dueño:** «hasta pagar Supabase Pro, nada de tiempo real ni de encontrarse: el servidor para la cuenta, la plata, los autos, los eventos y el ranking;
+  al entrar al mundo online, un aviso de «próximamente»; habilitarlo con un botón». «La recompensa: aparece un rato en el mapa, gana uno solo, el que se pega lo que
+  dice el servidor (un minuto); la IA muy buena, se hace la boluda a mitad de barra». «Ranking: quién ganó la persecución, la recompensa, los récords de las carreras».
+- **Servidor** (`supabase/migrations/20261019000000_bounty_event_ranking_flags.sql`): `app_flags` (`pvp` = false) + `app_flags()`; recompensa: `bounty_cfg`, `bounty_events`,
+  `bounty_joins`, `bounty_claims`, `bounty_current` (programa sola la próxima), `bounty_join`, `bounty_claim` (el primero gana, le da el auto a la cuenta),
+  `bounty_winners`, `bounty_admin_schedule` (sólo desde el panel); cierra `give_car` «bounty»; ranking: tableros `owev` y `fugitive` en `scores`, `submit_record`,
+  `get_leaderboard` ordena la racha de mayor a menor. Sintaxis revisada con `pglast` (no se levantó la base).
+- **Cliente:** `release.gd` (`PVP_FORCE`, `pvp_remote`, `pvp_open`), `online.gd` (`fetch_flags`, `submit_record`), `menu_world.gd` (`_data_hub`, `pvp_soon`, `ranking`, `bounty_screen`;
+  `_start_city` no entra al mundo compartido sin `pvp_open`), `menu.gd` (rutas), `city_modes.gd` (recompensa del servidor en vez del «1 por día» local; récord del Fugitivo),
+  `city_events.gd` (récord mundial al terminar una carrera del mundo abierto; guarda el nombre para el ranking).
+- **Pruebas:** `city_modes_test` (reescrita: 23 comprobaciones, servidor falso en memoria), `scripts_parse_test`; capturas del aviso «PRÓXIMAMENTE». Sin pruebas con red.
+- **Guía:** `docs/PUBLICAR_RECOMPENSA_Y_TIEMPO_REAL.md` (programar y configurar la recompensa, revisar ganadores, habilitar el tiempo real con `app_flags.pvp`).
+- **Límite honesto:** el servidor no ve la persecución (cada uno en su mundo): protege con join + tiempo mínimo, un ganador por evento, uno cada 7 días por cuenta y el recorrido guardado.
+- **Resultado:** PENDIENTE DE APK y de aplicar la migración.
+
 ## 15/10/2026 (12) · Volante «girado», desmadre con la policía, modos Fugitivo y Caza recompensas
 - **Volante (reporte del dueño: «se giró sobre su eje vertical, la izquierda más adelante»):** el volante estaba derecho (mira al piloto); la cámara de casco miraba 4,3° (0,075 rad) hacia la ventanilla y con la lente ancha el aro se veía girado. **Cambio:** `cockpit.camera_local` mira derecho al frente (sigue girando con el volante y el derrape). Comparado en capturas antes/después.
 - **Desmadre** (`city/city_police.gd`, `race.gd`): choques fuertes, objetos rotos y velocidad en la ciudad llenan un medidor; lleno → cacería policial donde estés. Detalle: `docs/MODOS_MUNDO_ABIERTO.md`.

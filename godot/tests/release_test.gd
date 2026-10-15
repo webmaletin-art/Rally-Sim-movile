@@ -41,6 +41,13 @@ func _init() -> void:
 	# modo online abierto, herramientas técnicas sólo en desarrollo, tienda de monedas
 	check(Release.online_open(p) and Release.ONLINE_OPEN and Release.REALTIME, "el modo online está abierto con tiempo real (autorizado por el dueño el 15/10/2026)")
 	check(not (Release.store() and Release.tools()), "la versión de Play no trae herramientas técnicas (📊, RENDIMIENTO)")
+	# jugador contra jugador en tiempo real: apagado hasta que el servidor lo habilite (app_flags.pvp, pedido del dueño 15/10/2026)
+	q.d["settings"]["dev"] = false
+	Release.pvp_remote = false
+	check(not Release.PVP_FORCE and not Release.pvp_open(q), "el mundo online en tiempo real está apagado (online por datos)")
+	Release.pvp_remote = true
+	check(Release.pvp_open(q), "con la bandera del servidor (app_flags.pvp = true) se habilita sin APK nuevo")
+	Release.pvp_remote = false
 	var packs := 0
 	for id in Products.ORDER:
 		var pd: Dictionary = Products.PRODUCTS[id]
