@@ -23,6 +23,9 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 - **Docs:** `docs/COMO_FUNCIONA_EL_JUEGO.md` (nuevo: resumen para el dueño), `ONLINE_POR_EVENTOS.md`, `PUBLICAR_RECOMPENSA_Y_TIEMPO_REAL.md`, `MODOS_MUNDO_ABIERTO.md`.
 - **Pruebas:** `city_modes_test` (33 OK: dos fugas a la vez, drift, textos), `account_econ_test` (vale), `scripts_parse_test`, `release_test`, `language_test`,
   `ow_events_test`, `police_test`, `spawn_menu_test`. Sin red.
+- **Compilación r205 FALLÓ** (`cosmetics_test`: su perfil falso no tiene `_take_shop`): `Cosmetics.buy` ahora usa el vale sólo si el perfil lo tiene (si no, cobra como
+  antes). Además la prueba del vale de `account_econ_test` guardaba el perfil con vale en `user://profile.json` y otra prueba lo gastaba: ahora devuelve el archivo
+  como estaba. Pasan `cosmetics_test`, `dealer_variants_test`, `online_profile_test`, `tire_wear_test`, `account_econ_test`, `scripts_parse_test`.
 - **Migración 20261021 APLICADA:** 15/10/2026 17:45 UTC, flujo «Supabase · aplicar migraciones» n.º 34, sin errores (con la autoprueba).
 - **Resultado:** servidor listo; cliente PENDIENTE DE APK.
 

@@ -419,6 +419,9 @@ func _run() -> void:
 	# ───── vale de taller (premio de eventos): saldo aparte para el taller ─────
 	AccountEcon.reconcile(dd, {"credits": 100, "voucher": 30000, "cars": {"hatch": {"owned": [], "tires": ["street"], "parts": []}}, "iap": {}, "streak": 0, "daily": ""}, [{"t": "buy_upgrade", "car": "hatch", "cat": "engine", "level": 1, "d": 0, "v": 5000, "id": "c"}])
 	check(int(dd.get("voucher", -1)) == 25000, "reconcile: el vale es el del servidor menos lo que usaron las compras que esperan (%d)" % int(dd.get("voucher", -1)))
+	# (spend guarda el perfil: se devuelve el archivo como estaba para no dejarle vale a las otras pruebas)
+	var had_file := FileAccess.file_exists(Profile.PATH)
+	var keep := FileAccess.get_file_as_string(Profile.PATH) if had_file else ""
 	var pv := Profile.new()
 	pv.d = Profile.default_profile()
 	pv.d["credits"] = 1000
@@ -429,6 +432,12 @@ func _run() -> void:
 	pv.d["voucher"] = 2000
 	check(pv.spend(300, "fuel") and pv.voucher() == 2000 and pv.credits == 200, "la nafta no se paga con el vale")
 	check(pv.spend(1500, "tune") and pv.voucher() == 500 and pv.credits == 200, "el reglaje sí se paga con el vale")
+	if had_file:
+		var fk := FileAccess.open(Profile.PATH, FileAccess.WRITE)
+		fk.store_string(keep)
+		fk.close()
+	else:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(Profile.PATH))
 
 	# ───── los textos legales dicen lo mismo que el código ─────
 	var src := FileAccess.get_file_as_string("res://game/ui/menu_about.gd")

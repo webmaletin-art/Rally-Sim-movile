@@ -77,8 +77,14 @@ static func buy(profile, car_id: String, id: String) -> Dictionary:
 	if owns(st, id):
 		return {"ok": true, "dup": true}
 	var cost := int(it.get("price", 0))
-	if not profile._take_shop(cost, {"t": "buy_part", "car": car_id, "part": id}):
-		return {"ok": false, "reason": "no alcanza el dinero"}
+	if profile.has_method("_take_shop"):
+		if not profile._take_shop(cost, {"t": "buy_part", "car": car_id, "part": id}): # primero el vale de taller
+			return {"ok": false, "reason": "no alcanza el dinero"}
+	else:
+		if not profile._take(cost):
+			return {"ok": false, "reason": "no alcanza el dinero"}
+		if profile.acct != null and cost > 0:
+			profile.acct.log_event({"t": "buy_part", "car": car_id, "part": id}, -cost)
 	var own: Array = st.get("partsOwned", [])
 	own.append(id)
 	st["partsOwned"] = own
