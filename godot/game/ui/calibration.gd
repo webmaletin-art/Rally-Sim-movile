@@ -9,6 +9,7 @@ const CalibUi := preload("res://game/ui/calib_ui.gd")
 const DiagSpots := preload("res://game/city/diag_spots.gd")
 const CityTrack := preload("res://game/track/city_track.gd")
 const FrameRes := preload("res://game/ui/frame_res.gd")
+const CrashLog := preload("res://game/diag/crash_log.gd")
 
 var race: Node
 var back := "home"
@@ -97,8 +98,10 @@ func _start_probe(r: int) -> void:
 	race._apply_quality_settings() # partículas, texturas, sombras, ESCALA 3D del perfil y RESOLUCIÓN DE FRAME (todo por los mismos ajustes de siempre)
 	if race.track is CityTrack:
 		race._set_city_view(Autotune.view_k_for(int(s["autoTier"])))
-	var fp: Vector2i = race.frame_rig.size_of(int((Autotune.LADDER[r] as Array)[0]))
+	var fp: Vector2i = _res_of(r)
 	(ui["res"] as Label).text = "%s %d×%d" % [CalibUi.Tr.t("Resolución:"), fp.x, fp.y]
+	CrashLog.mark("calib", "escalón %d · %d×%d · frame %d · escala 3D %.2f · sombras %s · texturas %s · partículas %d · árboles %d" % [r, fp.x, fp.y, race.frame_rig.level if race.frame_rig != null else -1,
+		float(s["autoRes"]), str(s["autoShadows"]), str(s["autoTex"]), int(s["autoParticles"]), int(s["autoTrees"])])
 	(ui["perf"] as Label).text = CalibUi.Tr.t("Rendimiento: calibrando...")
 	(ui["quality"] as Label).text = "%s %s" % [CalibUi.Tr.t("Calidad visual:"), Autotune.rung_name(r)]
 
@@ -107,12 +110,22 @@ func _finish() -> void:
 	result = searcher.finish()
 	var r: int = int(result["rung"])
 	var L: Array = Autotune.LADDER[r]
-	var fp: Vector2i = race.frame_rig.size_of(int(L[0]))
+	var fp: Vector2i = _res_of(r)
 	(ui["root"] as Control).queue_free()
-	var summary := "%s: %s · %s %d×%d (%d%%)" % [CalibUi.Tr.t("Perfil"), Autotune.rung_name(r), CalibUi.Tr.t("imagen a"), fp.x, fp.y, int(round(FrameRes.fraction_of(int(L[0])) * 100.0))]
+	var pct := FrameRes.fraction_of(int(L[0])) if FrameRes.is_enabled() else Autotune.scale3d_for(int(L[0]))
+	var summary := "%s: %s · %s %d×%d (%d%%)" % [CalibUi.Tr.t("Perfil"), Autotune.rung_name(r), CalibUi.Tr.t("imagen a"), fp.x, fp.y, int(round(pct * 100.0))]
 	if not bool(result["stable"]):
 		summary += "\n" + CalibUi.Tr.t("Este dispositivo no llega a mantener 60 cuadros por segundo: se eligió la mejor configuración estable que logró.")
 	CalibUi.done(layer, summary, _play)
+
+## Resolución del escalón r: la del frame (si el frame reducido está encendido) o la del mundo 3D (pantalla × escala 3D), que es lo que baja con el frame apagado
+func _res_of(r: int) -> Vector2i:
+	var fi := int((Autotune.LADDER[r] as Array)[0])
+	if FrameRes.is_enabled():
+		return race.frame_rig.size_of(fi)
+	var k := Autotune.scale3d_for(fi)
+	var scr := Vector2(DisplayServer.window_get_size())
+	return Vector2i(int(round(scr.x * k)), int(round(scr.y * k)))
 
 func _play() -> void:
 	Autotune.save_result(race.profile, result, target) # aplica, guarda y deja FIJO el perfil (Automático)

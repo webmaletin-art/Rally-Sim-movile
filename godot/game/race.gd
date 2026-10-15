@@ -2346,6 +2346,8 @@ func _haptics(dt: float, p, impact: float) -> void:
 ## Nivel de RESOLUCIÓN DE FRAME (índice de FrameRes.LEVELS): el del perfil calibrado si está en «Automática», si no el que eligió el jugador
 func _frame_level() -> int:
 	var f = profile.setting("frameRes")
+	if not FrameRes.is_enabled():
+		return 0 # (frame reducido apagado: ver frame_res.gd)
 	return clampi(int(profile.setting("autoFrame")) if str(f) == "auto" else int(f), 0, FrameRes.LEVELS.size() - 1)
 
 ## Nivel de partículas 0–10 (polvo, humo de gomas, rocío, piedritas). En automático es el que el juego aprendió que aguanta el teléfono.

@@ -28,6 +28,7 @@ func _signal_errs() -> Array:
 	return errs.filter(func(e) -> bool: return str(e).contains("child_order_changed") or str(e).contains("nonexistent"))
 
 func _run() -> void:
+	FrameRes.set_enabled(true) # (apagado en el juego desde el 15/10/2026; acá se prueba el mecanismo)
 	var lg := _Catch.new()
 	lg.out = errs
 	OS.add_logger(lg)
@@ -94,6 +95,18 @@ func _run() -> void:
 	race2.queue_free()
 	await process_frame
 	_check(_signal_errs().is_empty(), "y la carrera se borra sin errores (%s)" % str(_signal_errs()))
+	# 5) apagado (como en el juego): cualquier nivel queda en NATIVA y no se redirige nada
+	FrameRes.set_enabled(false)
+	var race3 := Node.new()
+	app.add_child(race3)
+	var rig3: Node = FrameRes.new()
+	race3.add_child(rig3)
+	var hud3 := CanvasLayer.new()
+	race3.add_child(hud3)
+	rig3.set_level(3)
+	await process_frame
+	_check(int(rig3.level) == 0 and hud3.custom_viewport == null, "apagado: el nivel queda en NATIVA y las capas dibujan directo en la ventana")
+	race3.queue_free()
 	OS.remove_logger(lg)
 	print("RESULTADO: " + ("HAY FALLAS" if fail else "TODO OK"))
 	quit(1 if fail else 0)
