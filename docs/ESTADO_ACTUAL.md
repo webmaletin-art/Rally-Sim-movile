@@ -37,5 +37,7 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 ## Online
 - ✅📱 **Abierto desde el 15/10/2026** (autorización del dueño): `Release.ONLINE_OPEN` y `Release.REALTIME` en true. Cuenta obligatoria y economía en el servidor. Garaje online en el hub («MI GARAJE ONLINE») y compras en los 4 concesionarios (migración `20261017000000_online_garage_dealers.sql`, ver `docs/REGISTRO_TECNICO.md` → 15/10 (8)). 📱 Falta la prueba con 2 teléfonos y, en el panel de Supabase, «Allow public access» = OFF en Realtime.
 
+- 🧪📱 **Online fluido** en la rama `exp/online-fluido` (APK aparte «Dream Racing ONLINE PRUEBA»): interpolación con búfer, ritmos por distancia, sin fantasmas, línea de datos de red. Probado con clientes simulados (también con red tipo 4G); falta la prueba con dos teléfonos. NO fusionado a `main`.
+
 ## Compilación
 - ✅ Cada push a `main` arma el APK liviano + `content.pck` + `cars.pck` con **Godot 4.7.2** (release `godot-content-4.7`; desde el 15/10/2026, antes 4.5.1). `cars.pck` sólo se vuelve a bajar si cambian los autos.

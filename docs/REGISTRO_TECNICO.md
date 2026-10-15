@@ -5,6 +5,15 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 15/10/2026 (11) · Online fluido (rama experimental `exp/online-fluido`)
+- **Pedido del dueño:** prompt maestro «optimización del online, fluidez multijugador y costos» (autos remotos sin saltos ni fantasmas, costo medido, rama aparte y APK aparte, sin fusionar).
+- **Causas encontradas:** estimación con la hora de llegada (tirones y ~2 m de atraso en 4G), autos que esperaban la lista HTTP para aparecer, lista fallida que borraba a todos, fantasmas de hasta 45 s, quietos que titilaban (baja a los 5 s = lo que tardan en avisar), canal cerrado por el servidor que no se reabría, lista global cada 2 s. Detalle, tabla de mensajes y archivos: `docs/COSTOS_ONLINE.md` → «Online fluido».
+- **Cambio:** `net_tuning.gd` (nuevo), `remote_motion.gd` (búfer + Hermite + proyección al presente), `world_sync.gd` (hora del que manda, descarte de repetidos, ritmo por distancia, bajas por presencia), `realtime.gd`, `remote_cars.gd`, `online_social.gd`, `race.gd` (línea de datos de red), `mock_realtime.py` (--lag/--jitter); APK y contenido aparte (`build-godot.yml`, `export_presets.cfg`, `boot.gd` → `CHANNEL`).
+- **Pruebas:** `net_load_test` (nueva: 2/5/10/20 clientes con el protocolo real y red tipo 4G; mismo test contra `main` como «antes»), `remote_motion_test`, `realtime_test`, `remote_cars_test`, `online_profile_test`, `scripts_parse_test`, `language_test`, `boot_download_test`: todo OK. En red tipo 4G el error del auto remoto bajó de 2,13 m a 0,35 m (2 jugadores).
+- **Resultado:** PENDIENTE DE APK (dos teléfonos reales con la versión de prueba). Sin migraciones ni cambios en `main`.
+
+---
+
 ## 15/10/2026 (10) · Concesionarios: cada uno con su rubro y 4 versiones de cada auto
 - **Pedido del dueño:** «si voy a un concesionario no debe mostrar todos los autos, es según el concesionario»; «3 o 4 del mismo modelo con distintos ajustes y pinturas: con llamas más caro, con más caballos más caro, pintura premium más cara».
 - **Cambio:** `shops.gd`: el Concesionario Dream City ahora vende sólo autos de calle (12); Rally & 4x4, Clásicos y Motorsport ya tenían su lista (la TIENDA del menú sigue con todos). `game/data/dealer_variants.gd` (nuevo): cada auto en 4 versiones — DE FÁBRICA · SPORT (motor 1, susp./frenos 1, gomas, dos tonos) · PREPARADO (motor 2, turbo 1, caja 1, susp./frenos 2, pintura de competición) · LLAMAS (motor 3, turbo 2, caja 2, aligerado, susp./frenos 3, llamas); el diseño y las gomas cambian según el rubro (tierra: ripio y diseños de rally; Motorsport: slicks y carbono). Precio = auto + lo que cuestan esas piezas en el taller (p. ej. GT: $72.000 / 516 cv → LLAMAS $151.500 / 748 cv). Al comprar se hace cada compra de siempre, así la cuenta del servidor la valida igual. `menu_garage.gd`: fila de versiones en la tienda (la sala y los números muestran la versión). En el online, sólo la de fábrica (las mejoras se hacen en cada taller).

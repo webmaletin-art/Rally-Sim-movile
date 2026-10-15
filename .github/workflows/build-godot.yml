@@ -6,9 +6,12 @@ name: Build Godot APK
 #    se publican en la release "godot-content-4.7" (una por versión del motor); el APK liviano los descarga solo. cars.pck solo se vuelve a bajar si cambia (su versión es su hash).
 #  · (el APK «completo» con todo adentro ya no se arma: pesaría más de 600 MB)
 # Cada vez que se actualiza el contenido, el APK liviano NO hay que reinstalarlo: al abrir baja lo nuevo.
+# RAMA EXPERIMENTAL exp/online-fluido (15/10/2026): el online optimizado (interpolación, ritmos, celdas, diagnóstico de red; docs/COSTOS_ONLINE.md → «Online fluido»).
+# Publica APARTE: contenido en «godot-content-4.7-online» (los autos se reusan de «godot-content-4.7» si no cambiaron) y el APK en «godot-apk-online-prueba»;
+# la app se instala AL LADO de la normal («Dream Racing ONLINE PRUEBA», com.gskorp.rallygodot.online). No pisa el APK ni el contenido de main. NO fusionar a main sin autorización del dueño.
 on:
   push:
-    branches: [main]
+    branches: [exp/online-fluido]
     paths:
       - 'godot/**'
       - '.github/workflows/build-godot.yml'
@@ -21,7 +24,8 @@ env:
   GODOT_VERSION: 4.7.2 # (15/10/2026: 4.5.1 → 4.7.2, decisión del dueño; ver docs/MIGRACION_GODOT.md → «Evaluación 15/10/2026»)
   # El contenido (content.pck + cars.pck) lo tiene que armar la MISMA versión del motor que corre el APK (los paquetes cambian de formato entre versiones): una release por versión (menor) del motor.
   # El APK liviano arma el nombre solo (bootstrap/boot.gd, Engine.get_version_info()); los APK viejos (4.4) siguen leyendo «godot-content», que ya no se actualiza.
-  CONTENT_TAG: godot-content-4.7
+  CONTENT_TAG: godot-content-4.7-online
+  MAIN_CONTENT_TAG: godot-content-4.7 # (de ahí se reusa cars.pck si es la misma versión: no se suben ~600 MB otra vez)
 
 jobs:
   # Las pruebas corren en paralelo y NO frenan la compilación del APK (si fallan, el job queda en rojo y se mira el log).
@@ -108,6 +112,7 @@ jobs:
           timeout -k 5 600 godot --headless --script res://tests/remote_cars_test.gd
           timeout -k 5 600 godot --headless --script res://tests/remote_motion_test.gd
           timeout -k 5 600 godot --headless --script res://tests/realtime_test.gd
+          timeout -k 5 600 godot --headless --script res://tests/net_load_test.gd
           timeout -k 5 600 godot --headless --script res://tests/region_test.gd
           timeout -k 5 900 godot --headless --script res://tests/region_drive_test.gd
           timeout -k 5 900 godot --headless --script res://tests/open_world_access_test.gd
@@ -238,13 +243,19 @@ jobs:
           presets = hashlib.sha256(open('tools/export/split_presets.py', 'rb').read()).hexdigest()[:8]
           cars_ver = "%s-%s-%s" % (tree[:12], presets, os.environ.get('GODOT_VERSION', ''))
           cars = None
-          try:
-              old = json.load(urllib.request.urlopen(base + "manifest.json", timeout=30))
-              for q in old.get("packs", []):
-                  if q.get("name") == "cars" and q.get("version") == cars_ver:
-                      cars = q
-          except Exception as e:
-              print("sin manifiesto anterior:", e)
+          bases = [base]
+          if os.environ.get('MAIN_CONTENT_TAG'):
+              bases.insert(0, "https://github.com/%s/releases/download/%s/" % (repo, os.environ['MAIN_CONTENT_TAG']))
+          for b in bases:
+              if cars is not None:
+                  break
+              try:
+                  old = json.load(urllib.request.urlopen(b + "manifest.json", timeout=30))
+                  for q in old.get("packs", []):
+                      if q.get("name") == "cars" and q.get("version") == cars_ver:
+                          cars = q
+              except Exception as e:
+                  print("sin manifiesto anterior en", b, e)
           if cars is None:
               cars_sha = sha('build/cars.pck')
               cars = {"name": "cars", "version": cars_ver, "url": base + "cars.pck", "size": os.path.getsize('build/cars.pck'), "sha256": cars_sha}
@@ -277,15 +288,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view godot-apk >/dev/null 2>&1 || gh release create godot-apk \
-            --title "APK de Dream Racing (para instalar)" \
-            --notes "Instalá DreamRacing-liviano.apk (baja el juego solo al abrirse; la primera vez baja también los autos, unos 500 MB)." \
+          gh release view godot-apk-online-prueba >/dev/null 2>&1 || gh release create godot-apk-online-prueba \
+            --title "PRUEBA: Dream Racing con el online optimizado (se instala aparte)" \
+            --notes "Versión de prueba del multijugador (movimiento fluido de los otros autos, menos tráfico, datos de red en pantalla). Se instala APARTE del juego normal (Dream Racing ONLINE PRUEBA): no lo borra. La primera vez baja el juego y los autos (unos 600 MB). Probar con dos teléfonos con esta misma versión." \
             --prerelease
-          cp build/gskorp-light.apk build/DreamRacing-liviano.apk
-          gh release upload godot-apk build/DreamRacing-liviano.apk --clobber
+          cp build/gskorp-light.apk build/DreamRacing-ONLINE-PRUEBA.apk
+          gh release upload godot-apk-online-prueba build/DreamRacing-ONLINE-PRUEBA.apk --clobber
 
       - name: Subir APK liviano
         uses: actions/upload-artifact@v4
         with:
-          name: gskorp-godot-LIVIANO-apk
+          name: gskorp-godot-LIVIANO-ONLINE-PRUEBA-apk
           path: build/gskorp-light.apk
