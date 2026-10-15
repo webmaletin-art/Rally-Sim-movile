@@ -22,7 +22,7 @@ permissions:
   contents: write
 
 env:
-  GODOT_VERSION: 4.5.1
+  GODOT_VERSION: 4.7.2
 
 jobs:
   build:
@@ -38,7 +38,7 @@ jobs:
       - name: Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools build-tools;35.0.1 platforms;android-35 platforms;android-36'
+          packages: 'platform-tools build-tools;36.1.0 platforms;android-36'
 
       - name: Instalar Godot y plantillas de exportación
         run: |
@@ -113,7 +113,7 @@ jobs:
       - name: Configurar Godot (SDK de Android)
         run: |
           mkdir -p $HOME/.config/godot
-          cat > $HOME/.config/godot/editor_settings-4.5.tres <<EOF
+          cat > $HOME/.config/godot/editor_settings-4.7.tres <<EOF
           [gd_resource type="EditorSettings" format=3]
 
           [resource]

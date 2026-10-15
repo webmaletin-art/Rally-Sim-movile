@@ -38,4 +38,4 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 - ✅📱 **Abierto desde el 15/10/2026** (autorización del dueño): `Release.ONLINE_OPEN` y `Release.REALTIME` en true. Cuenta obligatoria y economía en el servidor; todas las migraciones aplicadas. 📱 Falta la prueba con 2 teléfonos y, en el panel de Supabase, «Allow public access» = OFF en Realtime.
 
 ## Compilación
-- ✅ Cada push a `main` arma el APK liviano + `content.pck` + `cars.pck` (release `godot-content-4.5`). `cars.pck` sólo se vuelve a bajar si cambian los autos.
+- ✅ Cada push a `main` arma el APK liviano + `content.pck` + `cars.pck` con **Godot 4.7.2** (release `godot-content-4.7`; desde el 15/10/2026, antes 4.5.1). `cars.pck` sólo se vuelve a bajar si cambian los autos.

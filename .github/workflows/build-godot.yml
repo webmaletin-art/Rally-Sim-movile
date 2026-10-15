@@ -3,7 +3,7 @@ name: Build Godot APK
 # Versión Godot de GSkorp Rally. Genera:
 #  · APK LIVIANO  (gskorp-light.apk): solo el motor + la pantalla de arranque. Al abrirlo baja el juego (content.pck).
 #  · content.pck (todo menos las carrocerías) + cars.pck (las carrocerías de los autos con textura, sin reducir, ~500 MB) + manifest.json:
-#    se publican en la release "godot-content-4.5" (una por versión del motor); el APK liviano los descarga solo. cars.pck solo se vuelve a bajar si cambia (su versión es su hash).
+#    se publican en la release "godot-content-4.7" (una por versión del motor); el APK liviano los descarga solo. cars.pck solo se vuelve a bajar si cambia (su versión es su hash).
 #  · (el APK «completo» con todo adentro ya no se arma: pesaría más de 600 MB)
 # Cada vez que se actualiza el contenido, el APK liviano NO hay que reinstalarlo: al abrir baja lo nuevo.
 on:
@@ -18,10 +18,10 @@ permissions:
   contents: write
 
 env:
-  GODOT_VERSION: 4.5.1
+  GODOT_VERSION: 4.7.2 # (15/10/2026: 4.5.1 → 4.7.2, decisión del dueño; ver docs/MIGRACION_GODOT.md → «Evaluación 15/10/2026»)
   # El contenido (content.pck + cars.pck) lo tiene que armar la MISMA versión del motor que corre el APK (los paquetes cambian de formato entre versiones): una release por versión (menor) del motor.
   # El APK liviano arma el nombre solo (bootstrap/boot.gd, Engine.get_version_info()); los APK viejos (4.4) siguen leyendo «godot-content», que ya no se actualiza.
-  CONTENT_TAG: godot-content-4.5
+  CONTENT_TAG: godot-content-4.7
 
 jobs:
   # Las pruebas corren en paralelo y NO frenan la compilación del APK (si fallan, el job queda en rojo y se mira el log).
@@ -142,7 +142,7 @@ jobs:
       - name: Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools build-tools;35.0.1 platforms;android-35'
+          packages: 'platform-tools build-tools;36.1.0 platforms;android-36'
 
       - name: Instalar Godot y plantillas de exportación
         run: |
@@ -162,7 +162,7 @@ jobs:
       - name: Configurar Godot (SDK de Android y firma)
         run: |
           mkdir -p $HOME/.config/godot
-          cat > $HOME/.config/godot/editor_settings-4.5.tres <<EOF
+          cat > $HOME/.config/godot/editor_settings-4.7.tres <<EOF
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
@@ -172,7 +172,7 @@ jobs:
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
           EOF
-          cat $HOME/.config/godot/editor_settings-4.5.tres
+          cat $HOME/.config/godot/editor_settings-4.7.tres
 
       - name: Importar recursos
         working-directory: godot

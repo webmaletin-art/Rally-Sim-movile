@@ -5,6 +5,13 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 15/10/2026 (5) · Migración de `main` a Godot 4.7.2
+- **Decisión del dueño** tras probar la rama experimental en el Z2356: pasar ahora y no con el juego ya publicado. Ventajas verificadas: rama mantenida, API 36 de fábrica (la exige Play desde el 31/08/2026), NDK r29/build-tools 36, parches de PCK por diferencias (4.6+, para usar después). Sin ventajas de rendimiento anunciadas para Compatibility.
+- **Cambio:** `build-godot.yml`, `build-aab.yml`, `project.godot` (ver `docs/MIGRACION_GODOT.md`). Local: el proyecto importa con 4.7.2 sin errores; las 74 pruebas ya habían pasado con 4.7.2 (15/10).
+- **Resultado:** PENDIENTE DE APK (reinstalar una vez). Retorno: `704a513`.
+
+---
+
 ## 15/10/2026 (4) · CAUSA CONFIRMADA de los cierres: bucles de sonido que leían fuera de los datos · y autos que largaban marcha atrás
 - **Evidencia (lápida del Z2356, contenido r188 / Godot 4.5.1, igual en r189 / 4.7.2, «en cualquier modo de juego»):** `SIGSEGV (11) · SEGV_ACCERR · dirección 0x6ff0ca8000 · hilo «AudioTrack»`; cuadros `libgodot_android.so +2ad01cc / +3227528 / +303dbd4 / +303b9d8 / +1114894` ← `libwilhelm.so audioTrack_handleMoreData_lockPlay` ← `libaudioclient.so AudioTrack::processAudioBuffer`. Con los símbolos oficiales de Godot 4.5.1 (`Godot_native_debug_symbols.4.5.1.stable.template_release.android.zip`, mismo build-id `51ca91226c11fafc`, `llvm-symbolizer`): `AudioStreamPlaybackWAV::decode_samples<short,false,false,false>` (audio_stream_wav.cpp:193 `final = p_src[pos]`) ← `_mix_internal` ← `AudioStreamPlaybackResampled::mix` ← `AudioServer::_mix_step` ← `AudioDriverOpenSL::_buffer_callback`.
 - **Causa (confirmada en el código del juego y del motor):** Godot reproduce un bucle hasta la muestra `loop_end` INCLUSIVE y no limita `loop_end` al largo de los datos (su importador lo deja en «muestras − 1»). `car_audio._load_wav`, `world_ambient` (2 lugares) y `city_police._siren_on` ponían `loop_end = muestras` → en cada vuelta de cada bucle (motor, rodado, viento, lluvia, ambiente, sirena) se leía UNA muestra después del final. Casi siempre esa memoria existe; si los datos terminaban justo en el borde de una página (dirección terminada en `000`), SIGSEGV. Por eso: al azar, en cualquier modo, con los dos motores, también quieto y con «audio simple», y no se veía en la PC. (Con eso se descartan como causa el frame reducido, la calibración y la memoria; esos cambios quedan porque igual corrigen defectos reales.)
