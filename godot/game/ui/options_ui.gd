@@ -146,7 +146,7 @@ func options_page(body: VBoxContainer, cat = null) -> void:
 		if summ != "":
 			body.add_child(Kit.wrap(summ, 13, Kit.GOLD, 300))
 		if reset_cb.is_valid(): # sólo en el menú principal (no en la pausa de una carrera)
-			body.add_child(Kit.button("🔄 " + tr("RECALIBRAR RENDIMIENTO"), func() -> void:
+			body.add_child(Kit.button("⚙ " + tr("ELEGIR CALIDAD GRÁFICA"), func() -> void:
 				sfx.play("click")
 				changed.emit("retune"), false, 15, Vector2(0, 50)))
 	if cat == "inclinacion":

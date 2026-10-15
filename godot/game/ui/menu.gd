@@ -367,8 +367,14 @@ func offer_calibration() -> void:
 	calib_prompted = true
 	request_calibration("home")
 
+## Desde el 15/10/2026 no se corre la calibración automática (se cerraba en dos teléfonos): se elige la calidad a mano (BAJA / NORMAL / ALTA / ULTRA)
 func request_calibration(back: String) -> void:
-	CalibUi.notice(root, func() -> void: app.start_calibration(back))
+	CalibUi.pick(root, Autotune.PRESETS, Autotune.suggested_preset(), func(i: int) -> void:
+		Autotune.save_preset(profile, i)
+		sfx.play("click")
+		toast(tr("Calidad gráfica: %s") % tr(str((Autotune.PRESETS[i] as Dictionary)["n"])))
+		if back.begins_with("options:"):
+			go("options", back.substr(8)))
 
 func toast(t: String) -> void:
 	toast_l.text = t

@@ -123,6 +123,24 @@ func _init() -> void:
 	check(Autotune.pending(old), "perfil de una versión anterior: se puede recalibrar")
 	check(Autotune.info_lines(p).size() >= 8, "el diagnóstico puede mostrar el perfil (%d líneas)" % Autotune.info_lines(p).size())
 
+	# elección a mano (15/10/2026): BAJA / NORMAL / ALTA / ULTRA
+	check(Autotune.PRESETS.size() == 4 and str(Autotune.PRESETS[0]["n"]) == "BAJA" and str(Autotune.PRESETS[3]["n"]) == "ULTRA", "4 calidades para elegir: BAJA, NORMAL, ALTA, ULTRA")
+	var last_r := 0.0
+	var mono2 := true
+	for P in Autotune.PRESETS:
+		mono2 = mono2 and float(P["autoRes"]) >= last_r and int(P["autoTrees"]) >= 0
+		last_r = float(P["autoRes"])
+	check(mono2 and float(Autotune.PRESETS[3]["autoRes"]) == 1.0, "de BAJA a ULTRA la escala 3D sube (ULTRA = 100 %)")
+	for i in Autotune.PRESETS.size():
+		var pm := Stub.new()
+		check(Autotune.pending(pm), "sin elegir: se pregunta")
+		Autotune.save_preset(pm, i)
+		var gm: Dictionary = pm.setting("gfx")
+		check(not Autotune.pending(pm) and bool(gm["manual"]) and str(gm["profile"]) == str(Autotune.PRESETS[i]["n"]) and float(pm.setting("autoRes")) == float(Autotune.PRESETS[i]["autoRes"])
+			and int(pm.setting("autoFrame")) == 0 and str(pm.setting("gfxMode")) == "auto" and Autotune.player_summary(pm).contains(str(Autotune.PRESETS[i]["n"])),
+			"elegir %s: se guarda, queda en Automática con escala 3D %.2f, frame 100 %% y no se vuelve a preguntar" % [str(gm["profile"]), float(pm.setting("autoRes"))])
+	check(Autotune.suggested_preset() >= 0 and Autotune.suggested_preset() <= 2, "hay una calidad sugerida para este equipo (%d)" % Autotune.suggested_preset())
+
 	# el perfil nuevo
 	var def := Profile.DEFAULT_SETTINGS
 	check(def["fx"] == [0, 0, 0] and int(def["lens2"]) == 0 and str(def["visual"]) == "none", "perfil nuevo: sin efectos de cámara ni filtros")
