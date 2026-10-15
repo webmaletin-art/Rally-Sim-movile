@@ -23,7 +23,8 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 - **Docs:** `docs/COMO_FUNCIONA_EL_JUEGO.md` (nuevo: resumen para el dueño), `ONLINE_POR_EVENTOS.md`, `PUBLICAR_RECOMPENSA_Y_TIEMPO_REAL.md`, `MODOS_MUNDO_ABIERTO.md`.
 - **Pruebas:** `city_modes_test` (33 OK: dos fugas a la vez, drift, textos), `account_econ_test` (vale), `scripts_parse_test`, `release_test`, `language_test`,
   `ow_events_test`, `police_test`, `spawn_menu_test`. Sin red.
-- **Resultado:** PENDIENTE DE APK y de aplicar la migración 20261021.
+- **Migración 20261021 APLICADA:** 15/10/2026 17:45 UTC, flujo «Supabase · aplicar migraciones» n.º 34, sin errores (con la autoprueba).
+- **Resultado:** servidor listo; cliente PENDIENTE DE APK.
 
 ## 15/10/2026 (14) · Online de EVENTOS DE CLASIFICACIÓN: el servidor como gestor de eventos y premios
 - **Pedido del dueño:** «hasta Supabase Pro (1/11), el juego es de eventos de clasificación: cada uno en su mapa contra la IA, sus registros al servidor. No modos en

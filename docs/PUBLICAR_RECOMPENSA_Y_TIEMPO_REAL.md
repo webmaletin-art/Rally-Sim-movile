@@ -6,7 +6,7 @@ Migraciones:
 - `20261020000000_world_events.sql`: el gestor de eventos.
 - `20261021000000_seasons_drift_vouchers.sql`: temporada, desafío de drift, vale de taller, diseños y gomas como premio.
 
-Las dos ya están aplicadas (15/10/2026 17:28 UTC, flujo «Supabase · aplicar migraciones» n.º 32). Qué es y cómo se juega: `docs/ONLINE_POR_EVENTOS.md`.
+Las tres ya están aplicadas (15/10/2026: 20261019 y 20261020 a las 17:28 UTC, flujo n.º 32; 20261021 a las 17:45 UTC, flujo n.º 34). Qué es y cómo se juega: `docs/ONLINE_POR_EVENTOS.md`.
 
 ## 1. El online hoy: por eventos (sin tiempo real)
 Cada jugador juega en su mundo: no se encuentran, no hay chat ni «quién está conectado». El servidor se usa sólo para:
