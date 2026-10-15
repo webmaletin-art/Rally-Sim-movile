@@ -5,6 +5,16 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 15/10/2026 · Migración de los volantes aplicada y modo online ABIERTO (autorización del dueño)
+- **Pedido del dueño:** «aplicá la migración y abrí el online, te autorizo todo hasta que ande bien el juego».
+- **Migración:** flujo «Supabase · aplicar migraciones» n.º 23 (a mano, 15/10/2026 01:38 UTC): aplicó `20261016000000_cosmetics_volantes_pro.sql` sin errores; la lista final muestra las 13 migraciones en el servidor (local = remoto).
+- **Online:** `game/data/release.gd` → `ONLINE_OPEN := true`, `REALTIME := true` (las dos únicas líneas que había que cambiar según `docs/ONLINE_SUPABASE.md`). `release_test` ahora comprueba que esté abierto.
+- **Pruebas (acá):** `release_test`, `realtime_test`, `remote_cars_test`, `remote_motion_test`, `online_profile_test`, `login_wall_test`, `account_econ_test`, `net_test`, `spawn_menu_test`, `scripts_parse_test` salida 0 sin fallas. (`menu_ui_test` «cámara libre» falla sólo en este entorno desde antes; en GitHub pasa.)
+- **Falta (no se puede desde acá):** Supabase → Realtime → Settings → «Allow public access» = OFF y revisar los topes del plan; Play Console → Seguridad de los datos; prueba con 2 teléfonos.
+- **Resultado:** PENDIENTE DE APK (contenido r184+; no hace falta reinstalar el APK para esto).
+
+---
+
 ## 15/10/2026 · Cierres nativos (prompt maestro del dueño): lápida de Android, capas del frame reducido, descarga 13/0 y evaluación de Godot
 - **Evidencia del dueño (contenido r180, Z2356, Mali-G57, Android 13 (el registro dice «33.20241128…»: Godot informa el nivel de API, 33), APK con CrashGuard):** 12 cierres de golpe seguidos; Android los clasifica `ERROR NATIVO (código 5, estado 11)` = `ApplicationExitInfo.REASON_CRASH_NATIVE` con señal 11 (SIGSEGV); RSS 567–664 MB, PSS 432–528 MB **en el momento de morir** (`getRss`/`getPss`). Ya no es «sólo el mundo abierto»: también en carrera rápida (Quarry, 4 autos) y en drift. En las tres cargas aparece, ~0,3 s después de «carrera cargada», `Attempt to disconnect a nonexistent connection from 'App' … Signal: 'child_order_changed'`. En otro teléfono: la descarga falla con «Falló la descarga (13/0)» con buen wifi, y la calibración se cierra al pasar a una resolución de frame más baja.
 - **Qué mide el registro (`game/diag/crash_log.gd`):** «RAM juego» = VmRSS de `/proc/self/status` (en el Z2356 sale «?»: Android no deja leerlo así); «libre … de …» = `OS.get_memory_info()` (también «?» en ese teléfono); «video»/«tex» = estimación del motor de la memoria de video/texturas (`RENDER_VIDEO_MEM_USED`, `RENDER_TEXTURE_MEM_USED`), no memoria del proceso; la línea `[android]` viene de Android (`getHistoricalProcessExitReasons`: motivo, estado = número de señal, RSS/PSS en kB). **Memoria descartada como causa directa:** Android no lo cerró por memoria (el motivo sería 3 = LOW_MEMORY) y el PSS al morir (430–530 MB) no muestra un crecimiento hasta el cierre.

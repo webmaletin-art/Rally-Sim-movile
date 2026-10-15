@@ -38,8 +38,8 @@ func _init() -> void:
 	q.d["settings"]["dev"] = false
 	Release.sync_cars(q)
 	check(Release.adventure_limit(q) == 99 and q.owns("truck") and q.owns("gt3") and q.owns("hyper"), "el juego completo da todo")
-	# modo online cerrado, herramientas técnicas sólo en desarrollo, tienda de monedas
-	check(not Release.online_open(p) and not Release.ONLINE_OPEN, "el modo online está cerrado (salvo modo desarrollador)")
+	# modo online abierto, herramientas técnicas sólo en desarrollo, tienda de monedas
+	check(Release.online_open(p) and Release.ONLINE_OPEN and Release.REALTIME, "el modo online está abierto con tiempo real (autorizado por el dueño el 15/10/2026)")
 	check(not (Release.store() and Release.tools()), "la versión de Play no trae herramientas técnicas (📊, RENDIMIENTO)")
 	var packs := 0
 	for id in Products.ORDER:

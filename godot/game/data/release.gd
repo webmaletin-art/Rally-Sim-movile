@@ -19,15 +19,15 @@ static func store() -> bool:
 static func tools() -> bool:
 	return not store() and OS.is_debug_build()
 
-## El modo online está cerrado hasta terminar el tiempo real (ver «Actualización futura» en CLAUDE.md); en modo desarrollador se puede abrir para probar
-const ONLINE_OPEN := false
+## Modo online ABIERTO (15/10/2026, autorización expresa del dueño: «abrí el online, te autorizo»). Para volver a cerrarlo: false (en modo desarrollador se abre igual)
+const ONLINE_OPEN := true
 
 static func online_open(profile: RefCounted) -> bool:
 	return ONLINE_OPEN or dev(profile)
 
 ## Posiciones del mundo online por Supabase Realtime (world_sync.gd) en vez de la consulta periódica de online_social.gd. Apagado hasta que se conecte Realtime
-## (docs/ONLINE_SUPABASE.md, «Tiempo real»); sólo tiene efecto con el modo online abierto, el mundo online y Supabase configurado.
-const REALTIME := false
+## (docs/ONLINE_SUPABASE.md, «Tiempo real»); sólo tiene efecto con el modo online abierto, el mundo online y Supabase configurado. Encendido el 15/10/2026 (autorización del dueño).
+const REALTIME := true
 
 ## CUENTA OBLIGATORIA: para jugar hay que iniciar sesión con un correo (también para jugar «sin conexión»). Los créditos, los autos y las compras viven en el SERVIDOR (Supabase, ver
 ## docs/CUENTA_Y_ECONOMIA.md): el juego le pregunta al servidor cuánto tenés y qué autos tiene la cuenta, y le manda cada premio y cada compra para que los valide; lo que diga el archivo
