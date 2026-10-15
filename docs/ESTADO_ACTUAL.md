@@ -4,6 +4,8 @@ Una sección por sistema, con lo que anda, lo que falta y lo que espera prueba e
 el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hecho y probado en la computadora · 📱 falta probar en el APK · 🚧 en curso · ⛔ bloqueado.
 
 ## Estabilidad (cierres nativos)
+- ✅📱 **Causa confirmada y corregida (15/10):** bucles de sonido que leían fuera de los datos (hilo de audio, `AudioStreamPlaybackWAV::decode_samples`) → `game/audio/wav_loop.gd`. Falta confirmar en el teléfono.
+- ✅📱 Los autos ya no largan marcha atrás (caja automática con el freno de mano de la largada).
 - 🚧📱 El juego se cierra de golpe con **ERROR NATIVO (SIGSEGV)** según Android, no por memoria: en el mundo abierto, en carrera rápida (Quarry) y en drift (registros r180 del 14/10). **Causa NO confirmada** (`docs/REGISTRO_TECNICO.md` → 15/10).
 - ✅ Corregido (15/10): las capas del frame reducido (`ui/frame_res.gd`) ya no salen del árbol apuntando a la SubViewport: desaparece el error `child_order_changed` y un SIGSEGV que se reproducía en la PC (no está probado que sea el del teléfono). Antes: carrera entre hilos en la región (`RegionData._cum`, 14/10).
 - ✅ El registro trae la **lápida** de Android del último cierre nativo (`game/diag/tombstone.gd`): hilo, biblioteca (motor o driver), dirección y logcat del instante. 📱 Falta el primer registro con `[lápida]`.

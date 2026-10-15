@@ -61,6 +61,8 @@ jobs:
           timeout -k 5 120 godot --headless --script res://tests/city_reach_test.gd
           timeout -k 5 300 godot --headless --script res://tests/region_threads_test.gd
           timeout -k 5 300 godot --headless --script res://tests/cabin_shake_test.gd
+          timeout -k 5 300 godot --headless --script res://tests/wav_loop_test.gd
+          timeout -k 5 300 godot --headless --script res://tests/start_hold_test.gd
           timeout -k 5 300 godot --headless --script res://tests/cabin_dash_test.gd
           timeout -k 5 300 godot --headless --script res://tests/frame_res_test.gd
           timeout -k 5 300 godot --headless --script res://tests/tombstone_test.gd

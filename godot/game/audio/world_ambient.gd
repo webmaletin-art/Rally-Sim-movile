@@ -5,6 +5,7 @@ extends Node
 ## El viento y el ruido de ciudad usan los bucles largos y parejos de car_audio (24 s, RMS 0,10: volumen 1,0 = −20 dBFS) y van bajitos: antes el viento de tormenta sonaba como un soplido fuerte.
 ## La lógica de decisión está en funciones estáticas (se prueba sin audio): pick_nearest, doppler, engine_pitch, bed_level, thunder_events.
 
+const WavLoop := preload("res://game/audio/wav_loop.gd")
 const DIR := "res://game/audio/samples/"
 const SPEED_OF_SOUND := 343.0
 const ENGINE_R := 60.0 # a esta distancia el motor de un auto del tránsito ya no suena
@@ -49,9 +50,7 @@ func setup(p_race, n_engines: int) -> void:
 		add_child(tp)
 		thunders.append(tp)
 	var eng: AudioStreamWAV = (load(DIR + "engine_ai.wav") as AudioStreamWAV).duplicate()
-	eng.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	eng.loop_begin = 0
-	eng.loop_end = int(consts["engine_ai"]["n"])
+	WavLoop.make(eng, int(consts["engine_ai"]["n"])) # (bucle que no lee fuera de los datos: ver wav_loop.gd)
 	for i in n_engines:
 		var p := AudioStreamPlayer3D.new()
 		p.stream = eng
@@ -95,9 +94,7 @@ func _make_bus(bus_name: String, cutoff: float) -> int:
 
 func _voice(vname: String, sample: String, bus: String) -> void:
 	var w: AudioStreamWAV = (load(DIR + sample + ".wav") as AudioStreamWAV).duplicate()
-	w.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	w.loop_begin = 0
-	w.loop_end = int(consts[sample]["n"])
+	WavLoop.make(w, int(consts[sample]["n"]))
 	var p := AudioStreamPlayer.new()
 	p.stream = w
 	p.bus = bus
