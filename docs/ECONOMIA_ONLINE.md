@@ -20,7 +20,7 @@ Todas las tablas tienen RLS **sin políticas**: el teléfono no escribe directo.
 * **Dueño** del auto (`instance_id`) y que no esté en venta.
 * **Catálogo**: auto, mejora, gomas, pieza, acabado; **compatibilidad** pieza↔auto; **niveles** de a uno (sin saltear); precios del catálogo (el teléfono no manda precios).
 * **Local**: los trabajos de taller exigen que el jugador esté en ese local (su última posición de presencia, de hace < 2 min, dentro del radio del local) y que el local sea el que hace ese trabajo (motor, ruedas, pintura…).
-* **Saldo** (`credits >= precio`, atómico) y **límite por hora** de acciones (anti-abuso). Garage máximo 12 autos; máximo 5 ventas abiertas.
+* **Saldo** (`credits >= precio`, atómico) y **límite por hora** de acciones (anti-abuso). Garage máximo 40 autos (12 hasta el 15/10/2026); se compra en cualquiera de los 4 concesionarios (`dealer*`) estando en ese local; los autos de la cuenta pasan una vez al garaje online (`online_imports`); máximo 5 ventas abiertas.
 * **Pintura**: sólo claves conocidas, colores `#rrggbb`, acabado del catálogo; nada de JSON arbitrario.
 * **Mercado**: el servidor traspasa la instancia, cobra al comprador y paga al vendedor **en el momento** (menos 5 % de comisión). No se crean créditos: la comisión es lo único que sale del sistema. Las funciones viejas (`market_list/buy/collect`, que aceptaban un estado arbitrario del teléfono y «acreditaban» créditos de palabra) ahora **rechazan** y las ventas viejas abiertas se cancelan.
 * **Autos premium (camión, GT3, hiper) y de premio (Genesis)**: no se compran con créditos online (se desbloquean con compras de Google Play / la aventura, que se validan del lado del dispositivo).

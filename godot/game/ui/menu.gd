@@ -536,6 +536,7 @@ func go(name: String, arg = null, push := true) -> void:
 		"iap": store.build()
 		"soon": world_ui.soon_screen(str(arg))
 		"online": world_ui.online_home()
+		"ogarage": world_ui.online_garage()
 		"spawn": world_ui.spawn_screen()
 		"rutas": net_ui.screen()
 		"diag":

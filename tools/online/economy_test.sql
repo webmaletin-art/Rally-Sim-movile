@@ -356,4 +356,50 @@ end $$;
 reset role;
 delete from public.realtime_bans;
 delete from realtime.messages;
+-- ───────── concesionarios nuevos y garaje único (20261017000000) ─────────
+reset role;
+update public.online_wallets set credits = 10000000 where player_id = '00000000-0000-0000-0000-0000000000b1';
+delete from public.online_log; -- (las pruebas de arriba gastaron el tope de acciones por hora)
+select tt.ok((select count(*) from public.online_cat_shops where id like 'dealer%') = 4, 'los 4 concesionarios de Dream City están en el catálogo de locales');
+set role authenticated;
+select tt.set_user(1);
+select tt.go('dealer', 'Alfa');
+select tt.expect_err($$select public.online_buy_vehicle('gt', 'dealer_rally')$$, 'no estás en el local', 'comprar en Rally & 4x4 estando en el concesionario general');
+select tt.expect_err($$select public.online_buy_vehicle('gt', 'wheels')$$, 'no se hace en ese local', 'un taller que no es concesionario no vende autos');
+select tt.go('dealer_rally', 'Alfa');
+do $$
+declare c0 bigint := tt.credits('00000000-0000-0000-0000-0000000000b1'); r jsonb;
+begin
+  r := public.online_buy_vehicle('gt', 'dealer_rally');
+  perform tt.ok((r -> 'vehicle' ->> 'vehicle') = 'gt' and c0 - tt.credits('00000000-0000-0000-0000-0000000000b1') = tt.vprice('gt'), 'en el concesionario Rally & 4x4 se compra y se descuenta el precio exacto');
+  perform tt.ok((r ->> 'credits')::bigint = tt.credits('00000000-0000-0000-0000-0000000000b1'), 'el saldo que devuelve es el real');
+end $$;
+-- los autos comprados con la cuenta (juego sin conexión) aparecen en el garaje online una sola vez
+reset role;
+create or replace function tt.count_v(p_uid uuid, p_vehicle text) returns int language sql security definer as $$ select count(*)::int from public.online_vehicles where owner = p_uid and vehicle_id = p_vehicle $$;
+grant execute on function tt.count_v(uuid, text) to authenticated;
+insert into public.account_econ (user_id, cars) values ('00000000-0000-0000-0000-0000000000b2', '{"gt": {"bought": 1}, "hatch": {"bought": 1}, "no_existe": {"bought": 1}}'::jsonb)
+  on conflict (user_id) do update set cars = excluded.cars;
+set role authenticated;
+select tt.set_user(2);
+do $$
+declare s jsonb; n0 int;
+begin
+  n0 := tt.count_v('00000000-0000-0000-0000-0000000000b2', 'hatch');
+  s := public.online_state('Beta');
+  perform tt.ok(tt.count_v('00000000-0000-0000-0000-0000000000b2', 'gt') = 1 and exists (select 1 from jsonb_array_elements(s -> 'vehicles') e where e ->> 'vehicle' = 'gt'), 'el auto comprado con la cuenta aparece en el garaje online');
+  perform tt.ok(tt.count_v('00000000-0000-0000-0000-0000000000b2', 'hatch') = greatest(n0, 1), 'un auto de la cuenta que ya estaba en el garaje online no se duplica');
+  s := public.online_state('Beta');
+  perform tt.ok(tt.count_v('00000000-0000-0000-0000-0000000000b2', 'gt') = 1, 'abrir el online otra vez no lo vuelve a sumar');
+end $$;
+reset role;
+delete from public.online_vehicles where owner = '00000000-0000-0000-0000-0000000000b2' and vehicle_id = 'gt'; -- (como si lo hubiera vendido en el mercado)
+set role authenticated;
+select tt.set_user(2);
+do $$
+begin
+  perform public.online_state('Beta');
+  perform tt.ok(tt.count_v('00000000-0000-0000-0000-0000000000b2', 'gt') = 0, 'un auto de la cuenta vendido en el online no vuelve gratis');
+end $$;
+reset role;
 select 'ECONOMIA_ONLINE_TEST OK' as resultado;

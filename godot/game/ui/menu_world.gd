@@ -262,6 +262,11 @@ func _online_hub() -> void:
 	g.add_child(m.tile("world", tr("DÓNDE APARECER"), tr("estacionamientos y pueblos"), func() -> void:
 		m.world_online = true
 		m.go("spawn"), false, 64.0))
+	var gar: Button = m.tile("car", tr("MI GARAJE ONLINE"), tr("cargando…"), func() -> void:
+		m.sfx.play("click")
+		m.go("ogarage"), false, 64.0)
+	gar.disabled = true
+	g.add_child(gar)
 	# ── lo que hay adentro del mundo
 	var inside := Kit.panel(10, Kit.PANEL2)
 	m.body.add_child(inside)
@@ -280,6 +285,11 @@ func _online_hub() -> void:
 	# billetera online (la guarda el servidor, aparte de los créditos sin conexión) y regalo diario
 	if await m.app.enter_online() and is_instance_valid(wal_l):
 		wal_l.text = "💰 %s: %s" % [tr("Créditos online"), Kit.fmt_cr(float(m.app.eco.credits))]
+		var op: RefCounted = m.app.oprofile
+		var ocm: Dictionary = CarBuild.catalog()["cars"].get(op.current_id(), {})
+		car_l.text = "%s %s" % [str(ocm.get("brand", "")), str(ocm.get("model", ""))] # (el auto del garaje online, no el del juego sin conexión)
+		gar.disabled = false
+		_tile_sub(gar, tr("%d autos · elegí cuál usar") % (op.d["owned"] as Dictionary).size())
 		gift.disabled = false
 		_tile_sub(gift, tr("cobrar el de hoy"))
 		gift.pressed.connect(func() -> void:
@@ -295,6 +305,7 @@ func _online_hub() -> void:
 				m.toast(tr(str(gr["text"]))))
 	elif is_instance_valid(gift):
 		_tile_sub(gift, tr("sin conexión"))
+		_tile_sub(gar, tr("sin conexión"))
 		wal_l.text = "💰 %s: %s" % [tr("Créditos online"), tr("sin conexión")]
 	# estado de la conexión y jugadores (sin trabar la pantalla)
 	var on: Node = m.app.online
@@ -322,6 +333,42 @@ func _online_hub() -> void:
 			m.go("online", null, false), false, 14, Vector2(0, 40)))
 
 ## Cambia la línea chica de un mosaico del menú (m.tile: ícono, nombre, línea chica)
+## Mi garaje online (15/10/2026, pedido del dueño: «me compré autos y una camioneta y el modo online no me deja elegirlos»): los autos que guarda el
+## servidor (los comprados en los concesionarios del mundo online, más los de la cuenta, que pasan una vez al garaje online) y cuál se usa al entrar.
+## Mejorar, pintar y vender se hace en los talleres y el mercado del mundo; acá sólo se elige.
+func online_garage() -> void:
+	m.set_title(tr("MI GARAJE ONLINE"))
+	var op: RefCounted = m.app.oprofile
+	if op == null:
+		m.body.add_child(Kit.label(tr("Conectando con tu garaje online…"), 16, Kit.MUTED))
+		if not await m.app.enter_online():
+			m.toast(tr("No se pudo cargar tu garaje online. Revisá la conexión."))
+			return
+		m.go("ogarage", null, false)
+		return
+	var owned: Dictionary = op.d["owned"]
+	var cars: Dictionary = CarBuild.catalog()["cars"]
+	m.body.add_child(Kit.label("💰 %s: %s" % [tr("Créditos online"), Kit.fmt_cr(float(m.app.eco.credits))], 16, Kit.GOLD))
+	m.body.add_child(Kit.wrap(tr("Los autos que compraste en los concesionarios del mundo online y los de tu cuenta. Tocá uno para usarlo al entrar. Las mejoras y la pintura se hacen en los talleres de Dream City."), 13, Kit.MUTED, 300))
+	if owned.is_empty():
+		m.body.add_child(Kit.label(tr("Todavía no tenés autos online."), 16, Kit.MUTED))
+		return
+	var cur: String = op.current_id()
+	if cur != "":
+		m.refresh_car(cur, owned[cur])
+	for key in owned:
+		var id := str(key)
+		var st: Dictionary = owned[id]
+		var cm: Dictionary = cars.get(id, {})
+		var pf: Dictionary = CarBuild.perf_of(CarBuild.build_params(m.vehicles[id], st)) if m.vehicles.has(id) else {}
+		var sub := "%d cv · %d km/h · %s km" % [int(pf.get("hp", 0)), int(pf.get("vmax", 0)), Kit.fmt_cr(float(st.get("km", 0.0)))]
+		var on := id == cur
+		m.body.add_child(m.menu_button(("✓ " if on else "") + "%s %s" % [str(cm.get("brand", "")), str(cm.get("model", id))], (tr("EN USO") + " · " if on else "") + sub, func() -> void:
+			m.sfx.play("click")
+			op.select(id)
+			m.refresh_car(id, owned[id])
+			m.go("ogarage", null, false), on, true, 18))
+
 func _tile_sub(t: Button, txt: String) -> void:
 	var labels: Array = []
 	var stack: Array = [t]

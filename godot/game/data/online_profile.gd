@@ -32,6 +32,7 @@ func _init(p_base: RefCounted = null, p_eco: RefCounted = null) -> void:
 	d["act"] = sub.get("act", {})
 	d["fuel"] = float(sub.get("fuel", 1.0))
 	d["toll_pass"] = int(sub.get("toll_pass", 0))
+	d["current"] = str(sub.get("cur", "")) # el auto elegido en el garaje online (no el del juego sin conexión)
 	rebuild()
 
 func _sub() -> Dictionary:
@@ -73,8 +74,6 @@ func rebuild() -> void:
 	d["credits"] = eco.credits
 	if owned.has(keep):
 		d["current"] = keep
-	elif owned.has(str(sub.get("cur", ""))):
-		d["current"] = str(sub["cur"])
 	else:
 		d["current"] = str(owned.keys()[0]) if owned.size() > 0 else ""
 
@@ -88,7 +87,7 @@ func _next_op() -> Dictionary:
 		var id := str(key)
 		var st: Dictionary = owned[id]
 		if not _inst.has(id):
-			return {"fn": "online_buy_vehicle", "args": {"p_vehicle": id, "p_shop": "dealer"}, "id": id}
+			return {"fn": "online_buy_vehicle", "args": {"p_vehicle": id, "p_shop": shop if shop.begins_with("dealer") else "dealer"}, "id": id}
 		var inst := str(_inst[id])
 		var sv: Dictionary = eco.find(inst)
 		if sv.is_empty():
@@ -119,9 +118,10 @@ func _next_op() -> Dictionary:
 				return {"fn": "online_remove_part", "args": {"p_instance": inst, "p_category": str(cat), "p_shop": shop}, "id": id}
 		var paint: Dictionary = st.get("paint", {})
 		var spaint: Dictionary = sv.get("paint", {})
+		var dpaint: Dictionary = new_car_state(id)["paint"] # (lo que el servidor no guarda se ve con los colores de fábrica, como en rebuild)
 		var diff: Dictionary = {}
 		for k in SERVER_PAINT_KEYS:
-			if paint.has(k) and str(paint[k]).to_lower() != str(spaint.get(k, "")).to_lower():
+			if paint.has(k) and str(paint[k]).to_lower() != str(spaint.get(k, dpaint.get(k, ""))).to_lower():
 				diff[k] = int(paint[k]) if k == "livery" else str(paint[k])
 		if not diff.is_empty():
 			return {"fn": "online_set_paint", "args": {"p_instance": inst, "p_paint": diff, "p_shop": shop}, "id": id}
@@ -156,6 +156,16 @@ func _run() -> void:
 			var nv: Variant = (r["data"] as Dictionary).get("vehicle")
 			if nv is Dictionary:
 				_inst[str(op["id"])] = str((nv as Dictionary).get("instance", ""))
+				# el auto sale con la pintura que le da el servidor (pintar se hace en el Taller de Pintura): sin esto, la diferencia
+				# se mandaba como «pintar» desde el concesionario y el servidor contestaba «este trabajo no se hace en ese local»
+				var pt: Dictionary = (new_car_state(str(op["id"]))["paint"] as Dictionary).duplicate()
+				var sp: Dictionary = (nv as Dictionary).get("paint", {})
+				for k in sp:
+					pt[k] = sp[k]
+				var bst: Dictionary = (d["owned"] as Dictionary).get(str(op["id"]), {})
+				if not bst.is_empty():
+					bst["paint"] = pt
+					bst["instance"] = str((nv as Dictionary).get("instance", ""))
 	if failed != "":
 		await eco.sync(str(eco.nick)) # lo que el servidor rechazó no pasó: se vuelve a pedir el saldo y los autos reales
 	_busy = false

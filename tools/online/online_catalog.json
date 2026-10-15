@@ -1052,6 +1052,24 @@
 			"name": "Reglaje del Puerto",
 			"x": 632.7,
 			"z": 947.5
+		},
+		{
+			"id": "dealer_rally",
+			"name": "Rally & 4x4 del Puerto",
+			"x": -427.9,
+			"z": -36.0
+		},
+		{
+			"id": "dealer_classic",
+			"name": "Clásicos de Colección",
+			"x": 21.5,
+			"z": 447.2
+		},
+		{
+			"id": "dealer_sport",
+			"name": "Dream Motorsport",
+			"x": 461.9,
+			"z": 12.0
 		}
 	],
 	"tires": [

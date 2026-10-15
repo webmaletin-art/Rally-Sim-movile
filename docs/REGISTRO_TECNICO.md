@@ -5,6 +5,15 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 15/10/2026 (8) · Online: compras que «volvían», concesionarios nuevos y garaje online
+- **Reporte del dueño:** «compré autos y una camioneta y el modo online no me deja elegirlos, tengo que volver a comprarlos»; «compraba, se descontaba y al rato volvía y me decía que ese no era el lugar para realizar eso, pero me dio una camioneta».
+- **Causa (confirmada en el código y con la prueba):** (1) la compra SÍ se cobraba en el servidor; justo después el cliente veía una diferencia de pintura entre su espejo y el auto recién comprado y mandaba `online_set_paint` desde el concesionario → el servidor contestaba «este trabajo no se hace en ese local» → el cliente volvía a pedir el saldo real (de ahí el «volvía»). (2) Los 3 concesionarios nuevos (Rally & 4x4, Clásicos, Motorsport) no estaban en `online_cat_shops` y `online_buy_vehicle` sólo aceptaba `'dealer'`. (3) No había garaje online en el menú y los autos de la cuenta (juego sin conexión) no pasaban al online. (4) Al entrar al online se elegía el auto del juego sin conexión si el online también lo tenía.
+- **Cambio:** migración `20261017000000_online_garage_dealers.sql` (concesionarios nuevos; compra en cualquier `dealer*` estando en ese local; garaje de 40; tabla `online_imports` + `_online_import_account`: los autos de `account_econ.cars` aparecen UNA vez en el garaje online, y si se venden en el mercado no vuelven gratis). Cliente: `online_profile.gd` manda el concesionario donde está el jugador, adopta la pintura del servidor después de comprar y compara lo que el servidor no guarda con el color de fábrica; recuerda el auto elegido online. `menu_world.gd`: pantalla «MI GARAJE ONLINE» (`ogarage`) desde el hub online, y la tarjeta del piloto muestra el auto online.
+- **Pruebas:** `tools/online/run_economy_test.sh` (todas las migraciones en Postgres 16, repetidas dos veces; 7 casos nuevos), `online_profile_test` (4 casos nuevos: reproducía la pintura rechazada antes del arreglo).
+- **Resultado:** PENDIENTE DE APK.
+
+---
+
 ## 15/10/2026 (7) · Optimización automática nueva: mide las calidades y recomienda
 - **Pedido del dueño:** «volver a la optimización automática para correr mejor según el dispositivo; aplicá la forma mejor que dijiste».
 - **Cómo funciona:** la primera vez (o con otro teléfono, o tras subir `Autotune.VERSION` a 2 → todos miden una vez) aparece el aviso y una carrera corta en el centro de Dream City (`calibration.gd`) mide como mucho 3 calidades: ALTA → si es fluida ULTRA, si no NORMAL → si no BAJA (`Autotune.PresetSearch`). «Fluida» = promedio ≥ 75 % del objetivo (45 FPS en 60 Hz) y el 95 % de los cuadros ≥ 50 % (30 FPS). Al terminar se abre la pantalla de elección con la ★ **recomendada** (la más alta fluida; si ninguna, BAJA) y los FPS medidos; el jugador elige (`save_preset` guarda la elegida y lo medido en `gfx.auto`). En Opciones → Gráficos → «ELEGIR CALIDAD GRÁFICA» se ve lo último medido y está «📏 MEDIR AUTOMÁTICAMENTE». El frame reducido sigue apagado; la escalera vieja de 8 escalones queda en el código sin uso.

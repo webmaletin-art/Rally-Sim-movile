@@ -35,7 +35,7 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 - ✅📱 18 diseños de pintura, 8 interiores y 6 volantes comprables (Volante Pro 3D del dueño) en el taller → Pintura (`docs/PERSONALIZACION.md`). ✅ Migraciones `20261015000000_catalog_28_cosmetics.sql` (14/10 20:26 UTC) y `20261016000000_cosmetics_volantes_pro.sql` (15/10 01:38 UTC) aplicadas. 📱 Falta probar una compra con la cuenta.
 
 ## Online
-- ✅📱 **Abierto desde el 15/10/2026** (autorización del dueño): `Release.ONLINE_OPEN` y `Release.REALTIME` en true. Cuenta obligatoria y economía en el servidor; todas las migraciones aplicadas. 📱 Falta la prueba con 2 teléfonos y, en el panel de Supabase, «Allow public access» = OFF en Realtime.
+- ✅📱 **Abierto desde el 15/10/2026** (autorización del dueño): `Release.ONLINE_OPEN` y `Release.REALTIME` en true. Cuenta obligatoria y economía en el servidor. Garaje online en el hub («MI GARAJE ONLINE») y compras en los 4 concesionarios (migración `20261017000000_online_garage_dealers.sql`, ver `docs/REGISTRO_TECNICO.md` → 15/10 (8)). 📱 Falta la prueba con 2 teléfonos y, en el panel de Supabase, «Allow public access» = OFF en Realtime.
 
 ## Compilación
 - ✅ Cada push a `main` arma el APK liviano + `content.pck` + `cars.pck` con **Godot 4.7.2** (release `godot-content-4.7`; desde el 15/10/2026, antes 4.5.1). `cars.pck` sólo se vuelve a bajar si cambian los autos.

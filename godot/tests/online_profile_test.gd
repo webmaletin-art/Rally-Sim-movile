@@ -19,6 +19,8 @@ class FakeOnline extends Node:
 	var veh: Dictionary = {"instance": "i-1", "vehicle": "pickup", "upg": {}, "tires": "street", "tiresOwned": ["street"], "tireWear": {}, "paint": {"body": "#b31f24", "accent": "#1b1d22", "rim": "#23262b", "livery": 11}, "partsOwned": [], "mods": {}, "km": 0, "status": "garage"}
 	var at_shop := false
 	var calls: Array = []
+	var bought: Array = [] # autos comprados en el concesionario
+	var buy_shop := ""
 	func call_fn(fn: String, args: Dictionary, _need := true) -> Dictionary:
 		calls.append(fn)
 		match fn:
@@ -26,7 +28,15 @@ class FakeOnline extends Node:
 				at_shop = true
 				return {"ok": true, "data": null, "error": ""}
 			"online_state":
-				return {"ok": true, "data": {"credits": credits, "vehicles": [veh.duplicate(true)]}, "error": ""}
+				return {"ok": true, "data": {"credits": credits, "vehicles": [veh.duplicate(true)] + bought.duplicate(true)}, "error": ""}
+			"online_buy_vehicle": # (como el SQL de 20261017000000: cualquier concesionario, con el color de fábrica del catálogo online; sin las demás claves)
+				buy_shop = str(args["p_shop"])
+				if not at_shop or not buy_shop.begins_with("dealer"):
+					return {"ok": false, "data": null, "error": "este trabajo no se hace en ese local"}
+				credits -= 1000
+				var nv := {"instance": "i-%d" % (bought.size() + 2), "vehicle": str(args["p_vehicle"]), "upg": {}, "tires": "street", "tiresOwned": ["street"], "tireWear": {}, "paint": {"body": "#b31f24"}, "partsOwned": [], "mods": {}, "km": 0, "status": "garage"}
+				bought.append(nv)
+				return {"ok": true, "data": {"ok": true, "vehicle": nv.duplicate(true), "credits": credits}, "error": ""}
 			"online_buy_upgrade":
 				if not at_shop or str(args["p_shop"]) != "engine":
 					return {"ok": false, "data": null, "error": "no estás en el local"}
@@ -107,6 +117,27 @@ func _initialize() -> void:
 	check(op.spend(50) and op.credits == cc, "en la calle no se descuenta (todavía sin cobro online)")
 	op.earn(5000.0)
 	check(op.credits == cc, "los premios offline no crean créditos online")
+	# comprar en un concesionario de especialidad (15/10/2026: «compraba y al rato me decía que ese no era el lugar»): se manda ESE local y después
+	# no se intenta repintar en el concesionario (lo que el servidor no guarda de la pintura se compara con el color de fábrica)
+	fo.credits = 200000
+	op.d["credits"] = 200000
+	op.shop = "dealer_rally"
+	fo.calls.clear()
+	var failed0 := failed.size()
+	var got: bool = op.buy_car("gt")
+	for i in 5:
+		await process_frame
+	check(got and fo.buy_shop == "dealer_rally" and fo.bought.size() == 1 and op.instance_of("gt") == "i-2", "el auto se compra en el concesionario donde está el jugador (%s)" % fo.buy_shop)
+	check(not fo.calls.has("online_set_paint") and failed.size() == failed0, "después de comprar no se manda una pintura que el concesionario rechaza")
+	check(op.credits == fo.credits and fo.credits == 199000, "se descontó una sola vez y el espejo coincide con el servidor")
+	# el garaje online recuerda su auto elegido, aunque en el juego sin conexión se use otro
+	op.shop = ""
+	op.select("gt")
+	op.flush()
+	base.d["current"] = "pickup"
+	var op2 := OnlineProfile.new(base, eco)
+	check(op2.current_id() == "gt", "al volver a entrar al online sigue el auto elegido en el garaje online (%s)" % op2.current_id())
+	base.d["current"] = "hatch"
 	# el perfil offline no se tocó
 	op.flush()
 	var off_after: String = JSON.stringify(base.d["owned"]) + str(base.d["credits"])
