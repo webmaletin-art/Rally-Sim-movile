@@ -147,6 +147,7 @@ func setup(p_online: Node) -> void:
 	rt.broadcast_received.connect(_on_broadcast)
 	rt.channel_joined.connect(_on_joined)
 	_send_t = randf() * 0.25 # (que no manden todos en el mismo instante)
+	_seq = seq_start()
 	rt.connect_socket()
 
 ## Para las pruebas: usar un cliente de Realtime ya armado
@@ -156,6 +157,7 @@ func setup_with(p_rt: Node, p_uid: String) -> void:
 	rt.broadcast_received.connect(_on_broadcast)
 	rt.channel_joined.connect(_on_joined)
 	_send_t = randf() * 0.25
+	_seq = seq_start()
 
 func stop() -> void:
 	if rt != null:
@@ -203,6 +205,11 @@ func update_me(dt: float, x: float, z: float, yaw: float, kmh: float) -> void:
 			_sent_pos = Vector2(x, z)
 			_sent_yaw = yaw
 			_sent_kmh = kmh
+
+## El número de mensaje arranca de la hora (20 por segundo): siempre crece, también al volver a entrar al mundo o reiniciar el juego.
+## Si arrancara de 1, los demás descartarían esos mensajes como viejos (repetidos) durante unos segundos.
+static func seq_start() -> int:
+	return int(Time.get_unix_time_from_system() * 20.0) % 1000000000000
 
 ## ¿Realtime está andando? (socket abierto y la celda propia unida hace un rato): con esto la lista y la presencia por HTTP se piden más despacio
 func healthy() -> bool:
@@ -298,7 +305,10 @@ func _on_broadcast(channel: String, event: String, payload: Dictionary) -> void:
 			_off[id] = raw
 		else:
 			_off[id] = minf(float(_off[id]) + 0.01 * (now - float(seen.get(id, now))), raw)
-		t_sample = minf(float(st["ts"]) + float(_off[id]), now)
+		# el desfase más chico todavía incluye lo que tarda el mensaje (del otro al servidor y del servidor a mí): se descuenta con la ida y vuelta de mi latido
+		# (lo mismo en cada tramo, si los dos tienen una red parecida). Sin esto el otro se dibuja atrasado lo que tarda la red (~1 m a 60 km/h con 60 ms).
+		var lat := clampf(float(rt.rtt_min_ms) / 1000.0, 0.0, 0.4) if rt != null and float(rt.rtt_min_ms) >= 0.0 else 0.0
+		t_sample = minf(float(st["ts"]) + float(_off[id]) - lat, now)
 	seen[id] = now
 	_others[id] = {"pos": Vector2(float(st["x"]), float(st["z"])), "at": now}
 	st["t"] = t_sample

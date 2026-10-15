@@ -31,6 +31,7 @@ var token := "" # JWT de la sesión (cuenta con correo)
 var state := "idle" # idle | connecting | open | waiting (espera para reconectar)
 var wanted := false # quien lo usa lo quiere conectado
 var rtt_ms := -1.0 # ida y vuelta del último latido
+var rtt_min_ms := -1.0 # la mejor ida y vuelta medida (la demora base de la red, sin los picos)
 var stats := {"sent": 0, "received": 0, "dropped": 0, "reconnects": 0}
 var last_close := ""
 
@@ -209,7 +210,7 @@ func _schedule_reconnect(why: String) -> void:
 func _on_open() -> void:
 	state = "open"
 	_attempt = 0
-	_hb_t = HEARTBEAT_S
+	_hb_t = 3.0 # (el primer latido sale enseguida: así se sabe cuánto tarda la red sin esperar 25 s)
 	_hb_ref = ""
 	socket_open.emit()
 	for name in _ch.keys():
@@ -321,6 +322,7 @@ func _handle(txt: String) -> void:
 	if topic == "phoenix":
 		if ev == "phx_reply" and ref == _hb_ref:
 			rtt_ms = (Time.get_ticks_msec() / 1000.0 - _hb_sent) * 1000.0
+			rtt_min_ms = rtt_ms if rtt_min_ms < 0.0 else minf(rtt_min_ms, rtt_ms)
 			_hb_ref = ""
 		return
 	var name := channel_of(topic)

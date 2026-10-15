@@ -64,7 +64,9 @@ var _err_yaw := 0.0
 var mode := "" # "interp" | "estim" (para el diagnóstico)
 var resyncs := 0 # veces que se reubicó en seco (salto grande, reaparición)
 var dropped := 0 # muestras repetidas o desordenadas descartadas
-var extrap_s := 0.0 # cuánto lleva extrapolando (sin muestras nuevas) en el modo interpolación
+var extrap_s := 0.0
+var _lead_om := 0.0
+var _lead_acc := 0.0 # cuánto lleva extrapolando (sin muestras nuevas) en el modo interpolación
 
 ## Llega una muestra: posición en el mapa del juego, rumbo (rad), velocidad (m/s) y la hora (segundos) en que se tomó (en el reloj propio).
 ## `arrival` (opcional): cuándo llegó de verdad (para medir cuánto se atrasan y elegir el atraso del dibujo); si falta, se usa `t`.
@@ -257,8 +259,12 @@ func step(now: float, dt: float) -> void:
 			# lo interpolado está `delay` s en el pasado: se proyecta al presente con su velocidad y su giro (un arco), así el otro no se ve atrasado
 			var lead := minf(delay, NT.LEAD_MAX)
 			var s2 := sample_at(rt - 0.06)
-			var om := clampf(wrapf(ty - float(s2[1]), -PI, PI) / 0.06, -1.5, 1.5)
-			var acc := clampf((tv - float(s2[2])) / 0.06, -12.0, 8.0)
+			# giro y aceleración de lo interpolado, filtrados (cambian a escalones entre una muestra y otra; sin filtro la proyección daría saltitos)
+			var kf := 1.0 - exp(-dt / 0.10)
+			_lead_om = lerpf(_lead_om, clampf(wrapf(ty - float(s2[1]), -PI, PI) / 0.06, -1.5, 1.5), kf)
+			_lead_acc = lerpf(_lead_acc, clampf((tv - float(s2[2])) / 0.06, -12.0, 8.0), kf)
+			var om := _lead_om
+			var acc := _lead_acc
 			var v_end := maxf(0.0, tv + acc * lead * 0.5)
 			var vm := (tv + v_end) * 0.5
 			var hm := ty + om * lead * 0.5
@@ -270,7 +276,7 @@ func step(now: float, dt: float) -> void:
 			# si la trayectoria cambió de golpe (llegó una muestra que corrige lo extrapolado), la diferencia se absorbe de a poco
 			var expect := _tgt + Vector2(sin(_tgt_yaw), cos(_tgt_yaw)) * float(smp[2]) * dt
 			var jump := expect - tp
-			if jump.length() > 0.08 + 0.01 * float(smp[2]):
+			if jump.length() > 0.03 + 0.004 * float(smp[2]):
 				_err += jump
 				_err_yaw += wrapf(_tgt_yaw - ty, -PI, PI) if absf(wrapf(_tgt_yaw - ty, -PI, PI)) > 0.15 else 0.0
 		if _err.length() > NT.SNAP_ERR:

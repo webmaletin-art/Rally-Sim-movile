@@ -8,12 +8,14 @@ Sólo biblioteca estándar (asyncio): no hace falta instalar nada. Hace lo justo
   · broadcast: reenvía a los demás del canal (a uno mismo sólo si config.broadcast.self = true)
   · presence: track → presence_diff para todos; al entrar manda presence_state; al irse manda la baja
   · ganchos de prueba: evento «__test_drop» (corta el socket sin avisar), «__test_stats» (devuelve contadores) y «__test_kick» (phx_close del canal)
-Uso: python3 tools/online/mock_realtime.py [--port 0] [--apikey testkey]   (imprime «PORT <n>» al arrancar)"""
+  · red «de teléfono» opcional (--lag y --jitter en ms): cada broadcast le llega a cada uno con una demora de lag + azar(0, jitter), en orden (como un 4G)
+Uso: python3 tools/online/mock_realtime.py [--port 0] [--apikey testkey] [--lag 0] [--jitter 0]   (imprime «PORT <n>» al arrancar)"""
 import argparse
 import asyncio
 import base64
 import hashlib
 import json
+import random
 import struct
 import sys
 import urllib.parse
@@ -28,6 +30,10 @@ class Member:
         self.self_echo = self_echo
         self.meta = None
         self.ref = 0
+
+
+LAG = 0.0
+JITTER = 0.0
 
 
 class Client:
@@ -47,7 +53,28 @@ class Client:
 
     async def send_json(self, obj):
         data = json.dumps(obj, separators=(',', ':')).encode()
+        if (LAG > 0 or JITTER > 0) and obj.get('event') == 'broadcast':
+            loop = asyncio.get_running_loop()
+            due = max(getattr(self, '_last_due', 0.0), loop.time() + LAG + random.uniform(0.0, JITTER))
+            self._last_due = due
+            if not hasattr(self, '_q'):
+                self._q = asyncio.Queue()
+                asyncio.ensure_future(self._pump())
+            await self._q.put((due, data))
+            return
         await self.send_frame(1, data)
+
+    async def _pump(self):
+        loop = asyncio.get_running_loop()
+        while True:
+            due, data = await self._q.get()
+            wait = due - loop.time()
+            if wait > 0:
+                await asyncio.sleep(wait)
+            try:
+                await self.send_frame(1, data)
+            except Exception:
+                return
 
     async def send_frame(self, opcode, payload):
         n = len(payload)
@@ -161,6 +188,8 @@ class Server:
         payload = m.get('payload') or {}
         if topic == 'phoenix' and ev == 'heartbeat':
             self.stats['heartbeats'] += 1
+            if LAG > 0:
+                await asyncio.sleep(LAG)  # (ida y vuelta: el latido también cruza la red «de teléfono»; LAG por tramo, sin el azar)
             await self.reply(c, m)
             return
         if ev == '__test_drop':
@@ -242,7 +271,12 @@ async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--port', type=int, default=0)
     ap.add_argument('--apikey', default='testkey')
+    ap.add_argument('--lag', type=float, default=0.0)
+    ap.add_argument('--jitter', type=float, default=0.0)
     a = ap.parse_args()
+    global LAG, JITTER
+    LAG = a.lag / 1000.0
+    JITTER = a.jitter / 1000.0
     srv = Server(a.apikey)
     server = await asyncio.start_server(srv.handle, '127.0.0.1', a.port)
     port = server.sockets[0].getsockname()[1]
