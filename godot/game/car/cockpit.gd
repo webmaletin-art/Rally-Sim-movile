@@ -1457,9 +1457,10 @@ func camera_local(mode: String, p: CarSnapshot, time: float, rough: float) -> Di
 	var look: Vector3
 	var roll := 0.0
 	if mode == "onboard":
-		# un poco más atrás y arriba que la cabeza: se ven los antebrazos y más tablero; mira apenas hacia la ventanilla del piloto
+		# un poco más atrás y arriba que la cabeza: se ven los antebrazos y más tablero. Mira derecho al frente (15/10/2026: antes miraba 4,3° hacia la
+		# ventanilla del piloto y el volante, que está de frente al piloto, se veía girado sobre su eje vertical: «la parte izquierda más adelante»)
 		pos = Vector3(xD + H.x + jv.x, eY + 0.075 + H.y + jv.y, eZ - ob_dist + H.z)
-		var yl := clampf(p.steerAngle * 0.45 + p.yawRate * 0.06, -0.35, 0.35) + 0.075
+		var yl := clampf(p.steerAngle * 0.45 + p.yawRate * 0.06, -0.35, 0.35)
 		look = pos + Vector3(sin(yl), -0.17, cos(yl))
 		roll = -H.x * 0.9
 	else:
