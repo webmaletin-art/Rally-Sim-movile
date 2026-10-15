@@ -18,11 +18,13 @@ const DARK := Color(0.05, 0.06, 0.08)
 const GROUP_SHORT := {"Neumáticos": "Gomas", "Alineación": "Alineac.", "Suspensión": "Susp.", "Frenos": "Frenos", "Transmisión": "Transm.", "Aerodinámica": "Aero", "Diversión (gustos raros)": "Extras"}
 const PAINT_TARGETS := [["body", "Carrocería"], ["accent", "Detalles"], ["text", "Letras"], ["rim", "Llantas"], ["tire", "Gomas"], ["spring", "Resortes"], ["caliper", "Pinzas"], ["disc", "Discos"], ["interior", "Interior"], ["steer", "Volante"]]
 const Cosmetics := preload("res://game/data/cosmetics.gd")
+const DealerVariants := preload("res://game/data/dealer_variants.gd")
 var cos_pick := "" # cosmético elegido para comprar (interior, volante o diseño): se muestra su barra de COMPRAR
 const DISC_NAMES := {"steel": "Acero", "dark": "Oscuro", "gold": "Dorado", "carbon": "Carbono"}
 
 var m # menu.gd
 var shop_i := 0
+var shop_var := 0 # versión elegida del auto en la tienda (de fábrica, sport, preparado, llamas: dealer_variants.gd)
 var mine_i := -1
 var ws_tab := 0
 var body_cat := 0
@@ -179,6 +181,12 @@ func _cars(mine: bool) -> void:
 	var id: String = ids[idx]
 	var owned: bool = m.profile.owns(id)
 	var st: Dictionary = _car_state(id)
+	var variants: Array = []
+	if not mine and not owned and not Release.PREMIUM_CARS.has(id):
+		variants = DealerVariants.for_car(dealer, id, m.profile.has_method("instance_of")) # (online: sólo la de fábrica)
+		shop_var = clampi(shop_var, 0, variants.size() - 1)
+		if shop_var > 0:
+			st = DealerVariants.state(id, variants[shop_var])
 	var cm: Dictionary = _cat()["cars"][id]
 	var pf := _perf(id, st)
 	var cls: Dictionary = CarBuild.class_of(int(pf["pi"]))
@@ -192,6 +200,7 @@ func _cars(mine: bool) -> void:
 			mine_i = n
 		else:
 			shop_i = n
+			shop_var = 0
 		var nid: String = ids[n]
 		m.refresh_car(nid, _car_state(nid))
 		m.go(screen_name, null, false)
@@ -257,6 +266,7 @@ func _cars(mine: bool) -> void:
 	dl.max_lines_visible = 2
 	dl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	m.body.add_child(dl)
+	dl.visible = variants.size() <= 1 # (con versiones, en su lugar va la fila de versiones: el botón de comprar tiene que entrar en el panel)
 	var brow := Kit.hbox(8)
 	m.body.add_child(brow)
 	if mine:
@@ -294,8 +304,22 @@ func _cars(mine: bool) -> void:
 			lk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			brow.add_child(lk)
 		else:
-			var price := int(cm["price"])
-			var bb := Kit.icon_button("cart", tr("COMPRAR") + "  " + Kit.fmt_cr(float(price)), func() -> void: _buy_car(id), m.profile.credits >= price, 18, Vector2(0, 48))
+			# versiones del mismo auto (pedido del dueño, 15/10/2026): más preparado y con mejor pintura, más caro
+			if variants.size() > 1:
+				var vrow := Kit.hbox(6)
+				m.body.add_child(vrow)
+				m.body.move_child(vrow, brow.get_index())
+				for v in variants:
+					var vi := int(v["i"])
+					var vb := Kit.button("%s\n%s" % [tr(str(v["n"])), Kit.fmt_cr(float(v["price"]))], func() -> void:
+						m.sfx.play("click")
+						shop_var = vi
+						m.refresh_car(id, DealerVariants.state(id, v) if vi > 0 else _car_state(id))
+						m.go("dealer", null, false), vi == shop_var, 13, Vector2(0, 40))
+					vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+					vrow.add_child(vb)
+			var price := int(variants[shop_var]["price"]) if not variants.is_empty() else int(cm["price"])
+			var bb := Kit.icon_button("cart", tr("COMPRAR") + "  " + Kit.fmt_cr(float(price)), func() -> void: _buy_car(id, variants[shop_var] if shop_var > 0 else {}), m.profile.credits >= price, 18, Vector2(0, 48))
 			bb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			brow.add_child(bb)
 		# probar el auto antes de comprarlo (también los que ya tenés): sin premios y con el taller de prueba en la pausa
@@ -313,9 +337,22 @@ func _cars(mine: bool) -> void:
 			tb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			trow.add_child(tb)
 
-func _buy_car(id: String) -> void:
+func _buy_car(id: String, variant := {}) -> void:
 	if not Release.can_buy(m.profile, id):
 		m.sfx.play("error")
+		return
+	if not variant.is_empty():
+		var r: Dictionary = DealerVariants.buy(m.profile, id, variant)
+		if bool(r["ok"]):
+			shop_var = 0
+			m.sfx.play("buy")
+			m.toast(tr("¡Es tuyo! %s %s · %s") % [_cat()["cars"][id]["brand"], _cat()["cars"][id]["model"], tr(str(variant["n"]))])
+			m.refresh_car()
+			m.update_credits()
+			m.go("dealer", null, false)
+		else:
+			m.sfx.play("error")
+			m.toast(tr(str(r["reason"])))
 		return
 	if m.profile.buy_car(id):
 		m.sfx.play("buy")

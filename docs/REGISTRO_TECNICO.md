@@ -5,6 +5,14 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 15/10/2026 (10) · Concesionarios: cada uno con su rubro y 4 versiones de cada auto
+- **Pedido del dueño:** «si voy a un concesionario no debe mostrar todos los autos, es según el concesionario»; «3 o 4 del mismo modelo con distintos ajustes y pinturas: con llamas más caro, con más caballos más caro, pintura premium más cara».
+- **Cambio:** `shops.gd`: el Concesionario Dream City ahora vende sólo autos de calle (12); Rally & 4x4, Clásicos y Motorsport ya tenían su lista (la TIENDA del menú sigue con todos). `game/data/dealer_variants.gd` (nuevo): cada auto en 4 versiones — DE FÁBRICA · SPORT (motor 1, susp./frenos 1, gomas, dos tonos) · PREPARADO (motor 2, turbo 1, caja 1, susp./frenos 2, pintura de competición) · LLAMAS (motor 3, turbo 2, caja 2, aligerado, susp./frenos 3, llamas); el diseño y las gomas cambian según el rubro (tierra: ripio y diseños de rally; Motorsport: slicks y carbono). Precio = auto + lo que cuestan esas piezas en el taller (p. ej. GT: $72.000 / 516 cv → LLAMAS $151.500 / 748 cv). Al comprar se hace cada compra de siempre, así la cuenta del servidor la valida igual. `menu_garage.gd`: fila de versiones en la tienda (la sala y los números muestran la versión). En el online, sólo la de fábrica (las mejoras se hacen en cada taller).
+- **Pruebas:** `dealer_variants_test` (nueva, en el CI), capturas de la tienda a 2400×1080.
+- **Resultado:** PENDIENTE DE APK.
+
+---
+
 ## 15/10/2026 (9) · Optimización automática más potente: opción 60 FPS y recomendada ≥ 40 FPS
 - **Pedido del dueño:** «primero la recomendada, que corra a más de 40 FPS; también una opción de 60 FPS que reduzca todo hasta correr a 60 aunque se vea pixelado; después las demás con sus FPS (normal 30, alta 20…). Entre 40 y 60 vamos a estar».
 - **Cambio:** `autotune.gd` (5 calidades, búsqueda nueva, `presets_for`, `preset_info`, `preset_order`, `VERSION` 3 → todos miden una vez), `calibration.gd` (aplica la escala calculada y la vida del mundo de la 60 FPS), `calib_ui.gd` (orden), `menu.gd`. Detalle en `docs/CONFIGURACION_GRAFICA_AUTOMATICA.md` → «Versión actual».

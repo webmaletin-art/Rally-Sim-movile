@@ -4,7 +4,9 @@ extends RefCounted
 
 const SHOPS := {
 	"dealer": {"name": "Concesionario Dream City", "short": "Concesionario", "icon": "🚗", "color": Color(0.20, 0.45, 0.85), "kind": "dealer",
-		"info": "Autos nuevos y tu garaje.", "display": ["hatch", "gt", "veltor"]},
+		"info": "Autos de calle, familiares y deportivos de todos los días.", "display": ["hatch", "gt", "veltor"],
+		# (pedido del dueño, 15/10/2026: «cada concesionario muestra sólo lo suyo»; la TIENDA del menú sigue mostrando todos)
+		"cars": ["hatch", "hatch2", "suv", "pickup", "camo", "trilux", "trilux_s", "kl5", "pro_gt", "gt", "muscle", "veltor"]},
 	# concesionarios de especialidad: venden sólo su rubro (cars) y muestran 3 autos de verdad en la vidriera (display)
 	"dealer_rally": {"name": "Rally & 4x4 del Puerto", "short": "Rally y 4x4", "icon": "🚙", "color": Color(0.85, 0.42, 0.12), "kind": "dealer",
 		"info": "Autos de rally, camionetas y camiones para la tierra.", "display": ["hatch2", "kodiak", "buggy"],
