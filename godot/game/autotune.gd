@@ -9,7 +9,7 @@ extends RefCounted
 
 const FrameRes := preload("res://game/ui/frame_res.gd")
 
-const VERSION := 1 # sube cuando una actualización grande justifique volver a calibrar
+const VERSION := 2 # sube cuando una actualización grande justifique volver a calibrar (2: optimización automática por calidades, 15/10/2026)
 const TARGET_FPS := 60.0
 const SETTLE_S := 2.5 # lo que sigue a cada cambio no cuenta (se rearman cuadras, compila el shader…)
 const MEASURE_S := 5.0
@@ -293,12 +293,47 @@ const PRESETS := [
 	{"n": "ULTRA", "d": "Máxima calidad: mundo 3D al 100 %, todo al máximo (para teléfonos potentes)", "autoRes": 1.00, "autoTex": "high", "autoParticles": 10, "autoTrees": 6000, "autoShadows": true, "autoTier": 2},
 ]
 
+## Optimización automática NUEVA (15/10/2026, pedido del dueño: «volver a la optimización automática según el teléfono»): mide en Dream City las
+## calidades (no la escalera vieja de 8 escalones) y recomienda la más alta que corre FLUIDA; después el jugador elige en la misma pantalla.
+## Fluida = promedio ≥ FLUID_AVG × objetivo y sin tirones frecuentes (95 % de los cuadros ≥ FLUID_LOW × objetivo). Con 60 Hz: 45 FPS de promedio, 30 de piso.
+const FLUID_AVG := 0.75
+const FLUID_LOW := 0.5
+
+static func is_fluid(m: Dictionary, target: float) -> bool:
+	return float(m.get("avg", 0.0)) >= FLUID_AVG * target and float(m.get("low", 0.0)) >= FLUID_LOW * target
+
+## Búsqueda sobre las 4 calidades (0 BAJA … 3 ULTRA), 3 mediciones como mucho: ALTA → (fluida) ULTRA / (no) NORMAL → (no) BAJA.
+class PresetSearch extends RefCounted:
+	var target := 60.0
+	var probes := {} # calidad -> {avg, low, n}
+	var _queue: Array = [2]
+	func _init(p_target: float) -> void:
+		target = p_target
+	func fluid(m: Dictionary) -> bool: # (igual que Autotune.is_fluid)
+		return float(m.get("avg", 0.0)) >= 0.75 * target and float(m.get("low", 0.0)) >= 0.5 * target
+	func next() -> int:
+		return int(_queue.pop_front()) if not _queue.is_empty() else -1
+	func report(i: int, m: Dictionary) -> void:
+		probes[i] = m
+		var ok := fluid(m)
+		if i == 2:
+			_queue = [3] if ok else [1]
+		elif i == 1 and not ok:
+			_queue = [0]
+	## La recomendada: la más alta medida que fue fluida; si ninguna, BAJA
+	func recommended() -> int:
+		var best := 0
+		for i in probes:
+			if fluid(probes[i]) and int(i) > best:
+				best = int(i)
+		return best
+
 ## La calidad sugerida para este teléfono (según la GPU; es sólo una marca en la pantalla de elección)
 static func suggested_preset() -> int:
 	return clampi(device_tier(), 0, 2)
 
 ## Guarda la calidad elegida a mano: queda en «Automática» con esos ajustes y no se vuelve a preguntar (salvo «ELEGIR CALIDAD GRÁFICA» en Opciones)
-static func save_preset(profile: RefCounted, i: int) -> void:
+static func save_preset(profile: RefCounted, i: int, measured := {}) -> void:
 	i = clampi(i, 0, PRESETS.size() - 1)
 	var P: Dictionary = PRESETS[i]
 	var st: Dictionary = profile.d["settings"]
@@ -312,6 +347,12 @@ static func save_preset(profile: RefCounted, i: int) -> void:
 	st["gfx"] = {"locked": true, "manual": true, "version": VERSION, "sig": device_sig(), "device": device_info(), "profile": str(P["n"]), "preset": i,
 		"frame_level": 0, "frame_pct": 100, "frame_px": [win.x, win.y], "scale3d": k3, "world_px": [int(float(win.x) * k3), int(float(win.y) * k3)],
 		"date": Time.get_datetime_string_from_system()}
+	if not measured.is_empty(): # (lo que midió la optimización automática: la recomendada y los FPS de cada calidad probada)
+		var pr := {}
+		for k in (measured.get("probes", {}) as Dictionary):
+			var m: Dictionary = measured["probes"][k]
+			pr[str(k)] = {"avg": snappedf(float(m["avg"]), 0.1), "low": snappedf(float(m["low"]), 0.1)}
+		st["gfx"]["auto"] = {"rec": int(measured.get("rec", i)), "probes": pr, "target": float(measured.get("target", TARGET_FPS))}
 	st["autotuned"] = true
 	profile.save()
 

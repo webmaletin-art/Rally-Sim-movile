@@ -5,6 +5,14 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 15/10/2026 (7) · Optimización automática nueva: mide las calidades y recomienda
+- **Pedido del dueño:** «volver a la optimización automática para correr mejor según el dispositivo; aplicá la forma mejor que dijiste».
+- **Cómo funciona:** la primera vez (o con otro teléfono, o tras subir `Autotune.VERSION` a 2 → todos miden una vez) aparece el aviso y una carrera corta en el centro de Dream City (`calibration.gd`) mide como mucho 3 calidades: ALTA → si es fluida ULTRA, si no NORMAL → si no BAJA (`Autotune.PresetSearch`). «Fluida» = promedio ≥ 75 % del objetivo (45 FPS en 60 Hz) y el 95 % de los cuadros ≥ 50 % (30 FPS). Al terminar se abre la pantalla de elección con la ★ **recomendada** (la más alta fluida; si ninguna, BAJA) y los FPS medidos; el jugador elige (`save_preset` guarda la elegida y lo medido en `gfx.auto`). En Opciones → Gráficos → «ELEGIR CALIDAD GRÁFICA» se ve lo último medido y está «📏 MEDIR AUTOMÁTICAMENTE». El frame reducido sigue apagado; la escalera vieja de 8 escalones queda en el código sin uso.
+- **Pruebas:** `autotune_test` (+ 5 casos de la búsqueda y que se guarde lo medido), `scripts_parse_test`, `language_test`; la medición real en la PC de punta a punta (`tests/_calib_run.gd`: midió ALTA, NORMAL, BAJA, recomendó BAJA con ~20 FPS de la PC, al tocar la ★ quedó guardada y no vuelve a preguntar).
+- **Resultado:** PENDIENTE DE APK (¿cuánto tarda en el Z2356?, ¿qué recomienda?).
+
+---
+
 ## 15/10/2026 (6) · Interior: sólo el tablero clásico
 - **Pedido del dueño:** «vamos a usar sólo el interior clásico, el PNG se ve feo y el 3D también; luego mejoramos ese interior aparte, es liviano y optimizado».
 - **Cambio:** `cockpit.gd` arma siempre el tablero clásico (se borraron `_b_dash_model`, `_b_dash_image`, la opción «Tablero de la cabina», `cabDash` del perfil, `models/cabin/tablero_rally.glb` + su textura, `tablero_imagen.png` y `cabin_dash_test`). Las herramientas `tools/cars/build_cabin_dash.py` y `build_dash_image.py` quedan por si se retoma. Se mantienen el Volante Pro 3D y la pantallita digital.

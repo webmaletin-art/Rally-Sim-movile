@@ -1,6 +1,15 @@
 ## (herramienta) Corre la calibración real (Dream City) como en el teléfono y anota cada paso. Uso: xvfb-run godot --rendering-driver opengl3 -s tests/_calib_run.gd -- --menu --noconsent
 extends SceneTree
 
+func _star(n: Node) -> Button:
+	if n is Button and "★" in (n as Button).text:
+		return n as Button
+	for ch in n.get_children():
+		var r := _star(ch)
+		if r != null:
+			return r
+	return null
+
 func _init() -> void:
 	_run()
 
@@ -29,8 +38,16 @@ func _run() -> void:
 				last = st
 			if str(c.get("state")) == "done":
 				print("[calib] terminó: ", c.get("result"))
-				c._play()
+				var b := _star(c)
+				print("[calib] botón recomendado: ", b.text if b != null else "(no está)")
+				if b != null:
+					b.pressed.emit()
+				for i in 10:
+					await process_frame
+				break
 	for i in 60:
 		await process_frame
+	var g = app.profile.setting("gfx")
+	print("[calib] perfil guardado: ", g.get("profile"), " · auto ", g.get("auto"), " · pendiente: ", preload("res://game/autotune.gd").pending(app.profile))
 	print("[calib] FIN")
 	quit(0)

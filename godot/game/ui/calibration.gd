@@ -14,7 +14,7 @@ const CrashLog := preload("res://game/diag/crash_log.gd")
 var race: Node
 var back := "home"
 var target := 60.0
-var searcher: Autotune.Searcher
+var searcher: RefCounted # Autotune.PresetSearch (desde el 15/10/2026 mide las 4 calidades BAJA/NORMAL/ALTA/ULTRA)
 var layer: CanvasLayer
 var ui := {}
 var state := "load"
@@ -35,7 +35,7 @@ func begin(p_race: Node) -> void:
 	add_child(layer)
 	ui = CalibUi.progress(layer)
 	target = Autotune.target_fps()
-	searcher = Autotune.Searcher.new(target, Autotune.LADDER.size())
+	searcher = Autotune.PresetSearch.new(target)
 
 func _process(dt: float) -> void:
 	if race == null or not is_instance_valid(race):
@@ -55,7 +55,7 @@ func _process(dt: float) -> void:
 		"measure":
 			_t += dt
 			_times.append(dt) # los tirones también cuentan: son parte de lo que se siente
-			(ui["bar"] as ProgressBar).value = clampf((float(_n_probe) - 1.0 + _t / Autotune.MEASURE_S) / 4.0, 0.0, 1.0)
+			(ui["bar"] as ProgressBar).value = clampf((float(_n_probe) - 1.0 + _t / Autotune.MEASURE_S) / 3.0, 0.0, 1.0)
 			if _t >= Autotune.MEASURE_S:
 				var st := Autotune.stats(_times)
 				searcher.report(_rung, st)
@@ -80,7 +80,7 @@ func _setup() -> void:
 	_next()
 
 func _next() -> void:
-	var r := searcher.next()
+	var r: int = searcher.next()
 	if r < 0:
 		_finish()
 		return
@@ -91,42 +91,39 @@ func _start_probe(r: int) -> void:
 	_n_probe += 1
 	_t = 0.0
 	state = "settle"
-	var s := Autotune.rung_settings(r)
+	var P: Dictionary = Autotune.PRESETS[r]
 	var st: Dictionary = race.profile.d["settings"]
-	for k in s:
-		st[k] = s[k]
-	race._apply_quality_settings() # partículas, texturas, sombras, ESCALA 3D del perfil y RESOLUCIÓN DE FRAME (todo por los mismos ajustes de siempre)
+	for k in P:
+		if k != "n" and k != "d":
+			st[k] = P[k]
+	st["autoFrame"] = 0
+	race._apply_quality_settings() # partículas, texturas, sombras y ESCALA 3D (los mismos ajustes de siempre)
 	if race.track is CityTrack:
-		race._set_city_view(Autotune.view_k_for(int(s["autoTier"])))
+		race._set_city_view(Autotune.view_k_for(int(P["autoTier"])))
 	var fp: Vector2i = _res_of(r)
 	(ui["res"] as Label).text = "%s %d×%d" % [CalibUi.Tr.t("Resolución:"), fp.x, fp.y]
-	CrashLog.mark("calib", "escalón %d · %d×%d · frame %d · escala 3D %.2f · sombras %s · texturas %s · partículas %d · árboles %d" % [r, fp.x, fp.y, race.frame_rig.level if race.frame_rig != null else -1,
-		float(s["autoRes"]), str(s["autoShadows"]), str(s["autoTex"]), int(s["autoParticles"]), int(s["autoTrees"])])
+	CrashLog.mark("calib", "%s · %d×%d · escala 3D %.2f · sombras %s · texturas %s · partículas %d · árboles %d" % [str(P["n"]), fp.x, fp.y,
+		float(P["autoRes"]), str(P["autoShadows"]), str(P["autoTex"]), int(P["autoParticles"]), int(P["autoTrees"])])
 	(ui["perf"] as Label).text = CalibUi.Tr.t("Rendimiento: calibrando...")
-	(ui["quality"] as Label).text = "%s %s" % [CalibUi.Tr.t("Calidad visual:"), Autotune.rung_name(r)]
+	(ui["quality"] as Label).text = "%s %s" % [CalibUi.Tr.t("Calidad visual:"), CalibUi.Tr.t(str(P["n"]))]
 
+## Terminó de medir: la pantalla de elección con la recomendada marcada y los FPS de lo medido; lo que elija el jugador queda guardado
 func _finish() -> void:
 	state = "done"
-	result = searcher.finish()
-	var r: int = int(result["rung"])
-	var L: Array = Autotune.LADDER[r]
-	var fp: Vector2i = _res_of(r)
+	var rec: int = searcher.recommended()
+	var info := {}
+	for i in searcher.probes:
+		var m: Dictionary = searcher.probes[i]
+		info[int(i)] = "%s: %d FPS" % [CalibUi.Tr.t("medido"), int(round(float(m["avg"])))]
+	result = {"rec": rec, "probes": searcher.probes, "target": target}
+	CrashLog.mark("calib", "recomendada %s · %s" % [str(Autotune.PRESETS[rec]["n"]), str(info)])
 	(ui["root"] as Control).queue_free()
-	var pct := FrameRes.fraction_of(int(L[0])) if FrameRes.is_enabled() else Autotune.scale3d_for(int(L[0]))
-	var summary := "%s: %s · %s %d×%d (%d%%)" % [CalibUi.Tr.t("Perfil"), Autotune.rung_name(r), CalibUi.Tr.t("imagen a"), fp.x, fp.y, int(round(pct * 100.0))]
-	if not bool(result["stable"]):
-		summary += "\n" + CalibUi.Tr.t("Este dispositivo no llega a mantener 60 cuadros por segundo: se eligió la mejor configuración estable que logró.")
-	CalibUi.done(layer, summary, _play)
+	CalibUi.pick(layer, Autotune.PRESETS, rec, func(i: int) -> void:
+		Autotune.save_preset(race.profile, i, result)
+		race.exit_requested.emit(back), info, true)
 
-## Resolución del escalón r: la del frame (si el frame reducido está encendido) o la del mundo 3D (pantalla × escala 3D), que es lo que baja con el frame apagado
+## Resolución del mundo 3D de la calidad r (pantalla × escala 3D)
 func _res_of(r: int) -> Vector2i:
-	var fi := int((Autotune.LADDER[r] as Array)[0])
-	if FrameRes.is_enabled():
-		return race.frame_rig.size_of(fi)
-	var k := Autotune.scale3d_for(fi)
+	var k := float(Autotune.PRESETS[r]["autoRes"])
 	var scr := Vector2(DisplayServer.window_get_size())
 	return Vector2i(int(round(scr.x * k)), int(round(scr.y * k)))
-
-func _play() -> void:
-	Autotune.save_result(race.profile, result, target) # aplica, guarda y deja FIJO el perfil (Automático)
-	race.exit_requested.emit(back)

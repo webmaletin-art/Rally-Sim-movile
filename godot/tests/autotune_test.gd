@@ -140,6 +140,21 @@ func _init() -> void:
 			and int(pm.setting("autoFrame")) == 0 and str(pm.setting("gfxMode")) == "auto" and Autotune.player_summary(pm).contains(str(Autotune.PRESETS[i]["n"])),
 			"elegir %s: se guarda, queda en Automática con escala 3D %.2f, frame 100 %% y no se vuelve a preguntar" % [str(gm["profile"]), float(pm.setting("autoRes"))])
 	check(Autotune.suggested_preset() >= 0 and Autotune.suggested_preset() <= 2, "hay una calidad sugerida para este equipo (%d)" % Autotune.suggested_preset())
+	# optimización automática nueva: mide las calidades (ALTA → ULTRA o NORMAL → BAJA) y recomienda la más alta fluida
+	var cases := [[{2: 58.0, 3: 50.0}, 3, [2, 3]], [{2: 58.0, 3: 30.0}, 2, [2, 3]], [{2: 35.0, 1: 50.0}, 1, [2, 1]], [{2: 30.0, 1: 33.0, 0: 41.0}, 0, [2, 1, 0]], [{2: 20.0, 1: 22.0, 0: 25.0}, 0, [2, 1, 0]]]
+	for cs in cases:
+		var ps = Autotune.PresetSearch.new(60.0)
+		var order: Array = []
+		var r: int = ps.next()
+		while r >= 0:
+			order.append(r)
+			var fps: float = float((cs[0] as Dictionary).get(r, 10.0))
+			ps.report(r, {"avg": fps, "low": fps * 0.8, "n": 100})
+			r = ps.next()
+		check(order == cs[2] and ps.recommended() == int(cs[1]), "medición %s → mide %s y recomienda %s" % [str(cs[0]), str(order), str(Autotune.PRESETS[ps.recommended()]["n"])])
+	var pm2 := Stub.new()
+	Autotune.save_preset(pm2, 1, {"rec": 2, "probes": {2: {"avg": 50.0, "low": 40.0}}, "target": 60.0})
+	check(int(pm2.setting("gfx")["auto"]["rec"]) == 2 and float(pm2.setting("gfx")["auto"]["probes"]["2"]["avg"]) == 50.0, "se guarda lo medido (recomendada y FPS) aunque se elija otra")
 
 	# el perfil nuevo
 	var def := Profile.DEFAULT_SETTINGS

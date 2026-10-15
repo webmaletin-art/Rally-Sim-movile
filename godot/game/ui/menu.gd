@@ -365,16 +365,26 @@ func offer_calibration() -> void:
 	if calib_prompted or autotest != "" or perf_arg != "" or autorace != "" or shot_path != "" or no_consent or not Autotune.pending(profile):
 		return
 	calib_prompted = true
-	request_calibration("home")
+	offer_auto_tune() # la primera vez: aviso → medición automática → elección con la recomendada
 
-## Desde el 15/10/2026 no se corre la calibración automática (se cerraba en dos teléfonos): se elige la calidad a mano (BAJA / NORMAL / ALTA / ULTRA)
+## Optimización automática (15/10/2026): la PRIMERA vez (o con otro teléfono) se mide sola en Dream City y al final se elige con la recomendada marcada
+## (calibration.gd). Desde Opciones → Gráficos → «ELEGIR CALIDAD GRÁFICA» se abre la elección directa, con lo último medido y el botón «MEDIR AUTOMÁTICAMENTE».
+func offer_auto_tune() -> void:
+	CalibUi.notice(root, func() -> void: app.start_calibration("home"))
+
 func request_calibration(back: String) -> void:
-	CalibUi.pick(root, Autotune.PRESETS, Autotune.suggested_preset(), func(i: int) -> void:
-		Autotune.save_preset(profile, i)
+	var g = profile.setting("gfx")
+	var auto: Dictionary = (g as Dictionary).get("auto", {}) if g is Dictionary else {}
+	var info := {}
+	for k in (auto.get("probes", {}) as Dictionary):
+		info[int(k)] = "%s: %d FPS" % [tr("medido"), int(round(float(auto["probes"][k]["avg"])))]
+	var rec := int(auto.get("rec", Autotune.suggested_preset()))
+	CalibUi.pick(root, Autotune.PRESETS, rec, func(i: int) -> void:
+		Autotune.save_preset(profile, i, auto)
 		sfx.play("click")
 		toast(tr("Calidad gráfica: %s") % tr(str((Autotune.PRESETS[i] as Dictionary)["n"])))
 		if back.begins_with("options:"):
-			go("options", back.substr(8)))
+			go("options", back.substr(8)), info, not auto.is_empty(), func() -> void: app.start_calibration(back))
 
 func toast(t: String) -> void:
 	toast_l.text = t

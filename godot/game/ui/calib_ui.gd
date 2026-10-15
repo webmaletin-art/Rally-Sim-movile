@@ -37,7 +37,8 @@ static func notice(parent: Node, on_continue: Callable) -> Control:
 
 ## Elección a mano de la calidad (BAJA / NORMAL / ALTA / ULTRA): reemplaza a la calibración automática desde el 15/10/2026 (ver autotune.gd → PRESETS).
 ## `suggested` lleva la marca «sugerida». Al tocar una se cierra y se llama on_pick(i).
-static func pick(parent: Node, presets: Array, suggested: int, on_pick: Callable) -> Control:
+## `info` (opcional): texto extra por calidad (los FPS medidos); `measured`: true si `suggested` sale de la medición («recomendada»); `on_measure`: botón «MEDIR AUTOMÁTICAMENTE».
+static func pick(parent: Node, presets: Array, suggested: int, on_pick: Callable, info := {}, measured := false, on_measure := Callable()) -> Control:
 	var m := _modal(parent, 940.0)
 	var dim: Control = m[0]
 	var col: VBoxContainer = m[1]
@@ -49,15 +50,23 @@ static func pick(parent: Node, presets: Array, suggested: int, on_pick: Callable
 		var P: Dictionary = presets[i]
 		var t := Tr.t(str(P["n"]))
 		if i == suggested:
-			t += "  ★ " + Tr.t("sugerida")
+			t += "  ★ " + Tr.t("recomendada" if measured else "sugerida")
 		var b := Kit.button(t, func() -> void:
 			dim.queue_free()
 			on_pick.call(i), i == suggested, 22, Vector2(420, 58))
 		var box := Kit.vbox(4)
 		box.add_child(b)
 		box.add_child(Kit.wrap(Tr.t(str(P["d"])), 14, Kit.MUTED, 420))
+		if info.has(i):
+			box.add_child(Kit.label(str(info[i]), 15, Kit.GOLD if i == suggested else Kit.TEXT))
 		grid.add_child(box)
+	if measured:
+		col.add_child(Kit.wrap(Tr.t("Medimos el rendimiento en Dream City: la recomendada es la más alta que corre fluida en este teléfono."), 15, Kit.TEXT, 860))
 	col.add_child(Kit.wrap(Tr.t("Podés cambiarla cuando quieras en OPCIONES → GRÁFICOS (también cada opción por separado)."), 15, Kit.MUTED, 860))
+	if on_measure.is_valid():
+		col.add_child(Kit.button("📏 " + Tr.t("MEDIR AUTOMÁTICAMENTE"), func() -> void:
+			dim.queue_free()
+			on_measure.call(), false, 17, Vector2(0, 48)))
 	return dim
 
 ## Progreso de la calibración. Devuelve {root, res, perf, quality, bar} para actualizar los textos
