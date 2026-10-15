@@ -22,12 +22,15 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 - ✅📱 Ciudades alcanzadas: para aparecer en otra ciudad o pueblo hay que haber llegado manejando (`city/city_reach.gd`).
 - ✅📱 4 concesionarios con vidriera y 3 autos reales cada uno (general, Rally & 4x4, Clásicos, Motorsport); los de especialidad venden sólo su rubro (`docs/MUNDO_ABIERTO.md`).
 - 🚧 Reorganización del centro (autopistas elevadas, túneles nuevos): ver `docs/REGISTRO_TECNICO.md`.
+- ✅📱 (15/10) Peatones sólo en la Plaza Aurora (con reja baja, chicos y paseantes) y lavando autos en los concesionarios; no llueve bajo techo (estacionamiento, rampas, túneles, gasolineras); faros desde la trompa, más largos y fuertes; capó sin brillos «arrugados» desde la cabina (`docs/REGISTRO_TECNICO.md` → 15/10 (11)).
+- 🔎 Rutas mal unidas / pasto en caminos: las pruebas de la región dan 0; falta que el dueño marque dónde lo ve. Puentes y pasos a distinto nivel: sin hacer.
 
 ## Carreras del mundo abierto
 - ✅📱 79 eventos para descubrir (sprint, rally, montaña, velocidad, picada, circuito urbano, huida, persecución), en el mapa, con rivales adaptables y premios que valida el servidor (`docs/CARRERAS_MUNDO_ABIERTO.md`). Apagados en el online.
 
 ## Policía
 - ✅📱 Controles policiales en las 176 rutas largas entre ciudades (patrulleros en la banquina), persecución, interceptor de frente, arresto, multa y comisaría de Dream City (`docs/POLICIA.md`). Probado en la computadora; falta sentirlo en el teléfono.
+- ✅📱 (15/10) Online: 2 patrulleros por jugador fuerte, implacable con grupos de 3+, aviso y paso despacio para 1–2 jugadores, y los patrulleros de cada uno a la vista de todos (`online/police_net.gd`). Falta probar con 2 teléfonos.
 
 ## Vehículos
 - ✅ 26 autos con textura propia (`docs/AUTOS.md`).

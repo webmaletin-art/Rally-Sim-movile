@@ -24,8 +24,8 @@ const W := 0.9
 ## del cerco, sin autos) y frente a la vidriera de cada concesionario.
 const SIDEWALKS := false
 const PLAZA_C := Vector2.ZERO
-const PLAZA_WALKERS := 16
-const PLAZA_KIDS := 12
+const PLAZA_WALKERS := 20
+const PLAZA_KIDS := 14
 const KID_SCALE := 0.62
 
 var layout: RefCounted
@@ -165,7 +165,7 @@ func special_slots() -> Array:
 		var dth := 0.55 + float((m >> 16) & 0xFF) / 255.0 * 0.6
 		var qa := PLAZA_C + Vector2(cos(th), sin(th)) * r
 		var qb := PLAZA_C + Vector2(cos(th + dth), sin(th + dth)) * r
-		out.append(_slot(qa, qb, hf, k, 0.7 + float((m >> 24) & 0xFF) / 255.0 * 0.4, 1.0, 1.8))
+		out.append(_slot(qa, qb, hf, k, 0.7 + float((m >> 24) & 0xFF) / 255.0 * 0.4, 1.0, 3.0))
 	# chicos jugando: corren de un lado a otro en el pasto, entre los canteros (r 16–24)
 	for i in PLAZA_KIDS:
 		var k := WorldSeed.hash_ints(sd, 9002, i, 0, 0)
@@ -174,7 +174,7 @@ func special_slots() -> Array:
 		var th := TAU * float(i) / float(PLAZA_KIDS) + 0.2
 		var qa := PLAZA_C + Vector2(cos(th), sin(th)) * r
 		var dd := Vector2(cos(th + 1.3), sin(th + 1.3)) * (4.0 + float((m >> 8) & 0xFF) / 255.0 * 4.0)
-		out.append(_slot(qa, qa + dd, hf, k, 1.8 + float((m >> 16) & 0xFF) / 255.0 * 0.9, KID_SCALE, 1.8))
+		out.append(_slot(qa, qa + dd, hf, k, 1.8 + float((m >> 16) & 0xFF) / 255.0 * 0.9, KID_SCALE, 3.0))
 	# concesionarios: dos personas lavando los autos frente a la vidriera (van y vienen poquito, a cada lado del portón)
 	if layout != null:
 		var di := 0
