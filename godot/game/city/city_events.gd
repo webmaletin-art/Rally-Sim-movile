@@ -211,6 +211,9 @@ func _begin(i: int) -> void:
 			(_marks[id] as Node).queue_free()
 	_marks.clear()
 	_banner_t = 0.0
+	var md = race.get("modes")
+	if md != null and md.has_method("on_ow_start"):
+		md.on_ow_start(str(cur["id"])) # (si es la carrera de la semana, el intento se anota en el servidor)
 	CrashLog.mark("evento", "largada %s" % cur["id"])
 
 func _spawn_rivals() -> void:
@@ -437,6 +440,9 @@ func _finish(ok: bool, why: String) -> void:
 	r["title"] = _title(cur) # (para la pantalla de ranking del menú)
 	if ok and typ != "huida" and typ != "persecucion":
 		_send_record(id, t)
+	var md = race.get("modes")
+	if md != null and md.has_method("on_ow_finish"):
+		md.on_ow_finish(id, ok and typ != "huida" and typ != "persecucion", t)
 	race.profile.save()
 	_result = {"ok": ok, "won": won}
 	_show_banner("%s %s\n%s%s" % [cur["icon"], _title(cur), title, ("\n+ $%d" % reward) if reward > 0 else ""], 4.5)
@@ -536,9 +542,28 @@ func _mark_node(ev: Dictionary) -> Node3D:
 	lb.modulate = Color(1.0, 0.9, 0.55)
 	lb.position = Vector3(s.x, y + 5.0, s.y)
 	root.add_child(lb)
+	var md = race.get("modes")
+	if md != null and md.has_method("is_weekly") and md.is_weekly(str(ev["id"])):
+		lb.text = "🏆 " + Tr.t("CARRERA DE LA SEMANA") + "\n" + lb.text
+		lb.modulate = Color(1.0, 0.8, 0.25)
+	var best: Variant = _rec(str(ev["id"])).get("best")
+	if best != null:
+		lb.text += "\n" + Tr.t("tu mejor: %s") % _fmt(float(best))
+	_fetch_record(str(ev["id"]), lb)
 	if track.world_node != null:
 		track.world_node.add_child(root)
 	return root
+
+## El récord mundial de esa carrera (ranking por datos): se agrega al cartel cuando llega
+func _fetch_record(id: String, lb: Label3D) -> void:
+	var on = race.get("online")
+	if on == null or not on.has_method("is_account") or not on.is_account():
+		return
+	var r: Dictionary = await on.leaderboard("ow:" + id, "owev", 1)
+	if not is_instance_valid(lb) or not r.get("ok", false) or not (r.get("data") is Array) or (r["data"] as Array).is_empty():
+		return
+	var top: Dictionary = (r["data"] as Array)[0]
+	lb.text += "\n🌍 %s · %s" % [_fmt(float(top.get("value", 0))), str(top.get("name", ""))]
 
 func _gate_update(typ: String) -> void:
 	if typ == "persecucion":

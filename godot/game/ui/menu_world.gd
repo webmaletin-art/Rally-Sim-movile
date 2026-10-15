@@ -230,7 +230,7 @@ func _data_hub(connected: bool) -> void:
 	g.add_child(m.tile("trophy", tr("RANKING"), tr("récords y ganadores"), func() -> void:
 		m.sfx.play("click")
 		m.go("ranking"), false, 64.0))
-	g.add_child(m.tile("star", tr("RECOMPENSA"), tr("un auto suelto: gana el primero"), func() -> void:
+	g.add_child(m.tile("star", tr("EVENTOS EN VIVO"), tr("cacerías, fugas, contrarreloj"), func() -> void:
 		m.sfx.play("click")
 		m.go("bounty"), false, 64.0))
 	var on_r: bool = m.profile.setting("onlineScores") == true
@@ -244,7 +244,7 @@ func _data_hub(connected: bool) -> void:
 	var iv := Kit.vbox(3)
 	info.add_child(iv)
 	iv.add_child(Kit.label(tr("ONLINE POR AHORA · cada uno en su mundo"), 14, Kit.ACCENT))
-	for t in ["💰 " + tr("Tus créditos, autos y compras, guardados en el servidor"), "🏁 " + tr("Récords mundiales de las carreras del mundo abierto"), "🚨 " + tr("Ranking de la mejor racha del modo Fugitivo"), "🎯 " + tr("Recompensa: cada tanto se suelta un auto y se lo lleva el primero que lo atrape")]:
+	for t in ["📅 " + tr("Eventos en vivo en tu mapa: los manda el servidor y compiten todos"), "🎯 " + tr("Cazarrecompensas: el primero que atrapa el auto se lo lleva"), "🚨 " + tr("Fugas: aguantá a la policía y ganá autos por unos días"), "🏁 " + tr("Contrarreloj entre ciudades y la carrera de la semana"), "🌍 " + tr("Récords mundiales de cada carrera del mapa"), "💰 " + tr("Tus créditos y autos, guardados en el servidor (sin trampas)")]:
 		iv.add_child(Kit.label(t, 14, Kit.TEXT))
 	m.body.add_child(m.menu_button("🏙 " + tr("JUGAR EN DREAM CITY"), tr("carreras, Fugitivo y la recompensa"), func() -> void:
 		m.sfx.play("click")
@@ -281,7 +281,7 @@ func ranking(arg = null) -> void:
 		var w := Kit.label(tr("cargando…"), 14, Kit.MUTED)
 		v.add_child(w)
 		return v
-	var vb: VBoxContainer = sec.call("🎯 " + tr("GANADORES DE LA RECOMPENSA"))
+	var vb: VBoxContainer = sec.call("🏆 " + tr("GANADORES DE LOS EVENTOS"))
 	var vf: VBoxContainer = sec.call("🚨 " + tr("FUGITIVO · mejor racha"))
 	var vr: VBoxContainer = sec.call("🏁 " + tr("CARRERAS DEL MUNDO ABIERTO"))
 	# las carreras del mundo abierto que el jugador ya corrió (con su mejor tiempo)
@@ -294,11 +294,12 @@ func ranking(arg = null) -> void:
 				mine.append([str(id), str((rec as Dictionary).get("title", id)), float(rec["best"])])
 	mine.sort_custom(func(a: Array, b: Array) -> bool: return str(a[1]) < str(b[1]))
 	var sel := str(arg) if arg != null else (str(mine[0][0]) if not mine.is_empty() else "")
-	var rw: Dictionary = await on.call_fn("bounty_winners", {"p_limit": 8}, false)
+	var rw: Dictionary = await on.call_fn("event_winners", {"p_limit": 10}, false)
 	if not is_instance_valid(vb):
 		return
 	_fill_rows(vb, rw.get("data") if rw["ok"] else null, func(e: Dictionary) -> String:
-		return "%s · %s · %s" % [str(e.get("name", "")), _car_name(str(e.get("car", ""))), Time.get_date_string_from_unix_time(int(e.get("at", 0)))], tr("Todavía nadie ganó una recompensa."))
+		var car := str(e.get("car", ""))
+		return "%s · %s%s · %s" % [str(e.get("name", "")), tr(str(e.get("event", ""))), (" · " + _car_name(car)) if car != "" and car != "<null>" else "", Time.get_date_string_from_unix_time(int(e.get("at", 0)))], tr("Todavía nadie ganó un evento."))
 	var rf: Dictionary = await on.leaderboard("fugitivo", "fugitive", 10)
 	if not is_instance_valid(vf):
 		return
@@ -342,39 +343,70 @@ static func _car_name(id: String) -> String:
 	var c: Dictionary = CarBuild.catalog()["cars"].get(id, {})
 	return ("%s %s" % [str(c.get("brand", "")), str(c.get("model", ""))]).strip_edges() if not c.is_empty() else id
 
-## La recompensa (evento del servidor): cuándo se suelta, qué auto, cuántos segundos pegado y quién ganó la última
+## Eventos en vivo (los manda el servidor): qué hay ahora, qué viene, premios, intentos y ganadores
 func bounty_screen() -> void:
-	m.set_title(tr("RECOMPENSA"))
-	m.body.add_child(Kit.wrap(tr("Cada tanto se suelta un auto en Dream City. Durante unos segundos se ve en el mapa dónde está: andá a buscarlo y pegate atrás. La barra se llena (en verde) mientras estés pegado; el PRIMERO que la completa se lo lleva. Es para los mejores: el que huye maneja muy bien."), 15, Kit.TEXT, 300))
-	var st := Kit.wrap(tr("cargando…"), 17, Kit.GOLD, 300)
-	m.body.add_child(st)
-	m.body.add_child(m.menu_button("🏙 " + tr("JUGAR EN DREAM CITY"), tr("la recompensa aparece en el mapa"), func() -> void:
+	m.set_title(tr("EVENTOS EN VIVO"))
+	m.body.add_child(Kit.wrap(tr("El servidor manda eventos al mapa de todos a la misma hora; cada uno los juega en su celular y el servidor decide quién ganó. Entrá a Dream City: los avisos aparecen arriba."), 15, Kit.TEXT, 300))
+	var box := Kit.vbox(6)
+	m.body.add_child(box)
+	var wait_l := Kit.label(tr("cargando…"), 15, Kit.MUTED)
+	box.add_child(wait_l)
+	m.body.add_child(m.menu_button("🏙 " + tr("JUGAR EN DREAM CITY"), tr("los eventos aparecen en el mapa"), func() -> void:
 		m.sfx.play("click")
 		m.world_online = false
 		m.go("spawn"), true))
 	var on: Node = m.app.online
 	if on == null or not on.is_account():
-		st.text = tr("Para la recompensa hay que iniciar sesión con tu cuenta.")
+		wait_l.text = tr("Para los eventos hay que iniciar sesión con tu cuenta.")
 		return
-	var r: Dictionary = await on.call_fn("bounty_current", {})
-	if not is_instance_valid(st):
+	var r: Dictionary = await on.call_fn("events_current", {})
+	if not is_instance_valid(wait_l):
 		return
 	if not r["ok"] or not (r["data"] is Dictionary):
-		st.text = tr("Sin conexión con el servidor (o falta aplicar la migración de la recompensa).")
+		wait_l.text = tr("Sin conexión con el servidor (o falta aplicar la migración de los eventos).")
 		return
+	wait_l.queue_free()
 	var d: Dictionary = r["data"]
-	var lines: Array = []
-	if d.get("next") is Dictionary:
-		var n: Dictionary = d["next"]
-		var now := int(n.get("now", 0))
-		var dt := int(n.get("starts", 0)) - now
-		var when := tr("¡SUELTO AHORA!") if dt <= 0 else (tr("en %d h %02d min") % [dt / 3600, (dt % 3600) / 60] if dt >= 3600 else tr("en %d min") % maxi(1, dt / 60))
-		lines.append("🎯 %s · %s" % [_car_name(str(n.get("car", ""))), when])
-		lines.append(tr("pegado %d s para ganarlo") % int(n.get("hold_s", 60)))
-	if d.get("last") is Dictionary:
-		var l: Dictionary = d["last"]
-		lines.append("🏆 " + tr("La última se la llevó %s (%s)") % [str(l.get("winner", "")), _car_name(str(l.get("car", "")))])
-	st.text = "\n".join(lines) if not lines.is_empty() else tr("No hay recompensas programadas por ahora.")
+	var now := int(d.get("now", Time.get_unix_time_from_system()))
+	var evs: Array = d.get("events", [])
+	if evs.is_empty():
+		box.add_child(Kit.wrap(tr("Ahora no hay eventos programados: volvé en un rato."), 15, Kit.MUTED, 300))
+	for e in evs:
+		var pnl := Kit.panel(10, Kit.PANEL2)
+		box.add_child(pnl)
+		var v := Kit.vbox(2)
+		pnl.add_child(v)
+		var st := int(e.get("starts", 0))
+		var en := int(e.get("ends", 0))
+		var icon: String = {"bounty": "🎯", "escape": "🚨", "reach": "🏁", "record": "🏆"}.get(str(e.get("kind", "")), "📅")
+		var when := (tr("EN VIVO · termina en %s") % _dur(en - now)) if st <= now else (tr("empieza en %s") % _dur(st - now))
+		v.add_child(Kit.label("%s %s" % [icon, tr(str(e.get("title", "")))], 18, Kit.ACCENT if st <= now else Kit.TEXT))
+		v.add_child(Kit.label(when, 14, Kit.GREEN if st <= now else Kit.GOLD))
+		v.add_child(Kit.wrap(tr(str(e.get("descr", ""))), 14, Kit.TEXT, 300))
+		var info: Array = []
+		var rw: Dictionary = e.get("reward", {})
+		if rw.has("credits"):
+			info.append(tr("premio: $%d") % int(rw["credits"]))
+		if rw.has("rent"):
+			info.append(tr("premio: el %s por %d días") % [_car_name(str(rw["rent"])), int(rw.get("days", 1))])
+		if rw.has("top"):
+			info.append(tr("premios a los 3 primeros"))
+		if str(e.get("kind", "")) == "bounty":
+			var names: Array = []
+			for c in ((e.get("params", {}) as Dictionary).get("cars", []) as Array):
+				names.append(_car_name(str(c)))
+			info.append(tr("autos: %s") % ", ".join(names))
+		if int(e.get("attempts", 0)) > 0:
+			info.append(tr("intentos: %d de %d") % [int(e.get("used", 0)), int(e.get("attempts", 0))])
+		if bool(e.get("done", false)):
+			info.append("✅ " + tr("ya lo ganaste"))
+		v.add_child(Kit.wrap(" · ".join(info), 13, Kit.MUTED, 300))
+		for w in (e.get("winners", []) as Array):
+			v.add_child(Kit.label("🏆 " + str(w.get("name", "")), 14, Kit.GOLD))
+	m.body.add_child(Kit.wrap("⏳ " + tr("Jugador contra jugador en tiempo real: próximamente."), 14, Kit.MUTED, 300))
+
+static func _dur(s: int) -> String:
+	return ("%d h %02d min" % [s / 3600, (s % 3600) / 60]) if s >= 3600 else ("%d min" % maxi(1, s / 60))
 
 ## El hub del mundo online (rediseño 14/10/2026): tarjeta del piloto con el estado de la conexión, el botón grande para entrar al mundo, accesos a lo que se maneja
 ## desde el menú (regalo diario, rankings, cuenta, dónde aparecer) y un resumen de lo que hay adentro del mundo (en la pausa: chat, jugadores y amigos, mercado, reportes).

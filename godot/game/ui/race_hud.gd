@@ -427,6 +427,8 @@ func _fill_pause() -> void:
 		var mb: Array = modes_fn.call()
 		if mb.size() >= 2:
 			pair.call(Kit.button(str(mb[0][0]), func(): mode_pressed.emit(str(mb[0][1])), false, 19, sz), Kit.button(str(mb[1][0]), func(): mode_pressed.emit(str(mb[1][1])), false, 19, sz))
+		elif mb.size() == 1:
+			pair.call(Kit.button(str(mb[0][0]), func(): mode_pressed.emit(str(mb[0][1])), false, 19, sz), null)
 	var ed_b := Kit.button("🕹  MODIFICAR CONTROLES", func(): edit_controls_pressed.emit(), false, 19, sz)
 	ed_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	pause_col.add_child(ed_b)

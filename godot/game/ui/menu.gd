@@ -807,7 +807,7 @@ func _home() -> void:
 	advb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(advb)
 	var on_open := Release.online_open(profile)
-	var obn := menu_button("MODO ONLINE", "con otros jugadores" if on_open else "próximamente", func(): go("online"), on_open, true, 20)
+	var obn := menu_button("MODO ONLINE", ("con otros jugadores" if Release.pvp_open(profile) else "eventos y ranking · tiempo real pronto") if on_open else "próximamente", func(): go("online"), on_open, true, 20)
 	obn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(obn)
 	var g := Kit.grid(3, 8, 8)

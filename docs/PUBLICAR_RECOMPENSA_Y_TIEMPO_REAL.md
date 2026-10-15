@@ -1,64 +1,80 @@
-# Guía: la RECOMPENSA, el ranking y cómo habilitar el tiempo real
+# Guía: eventos en vivo, ranking y cómo habilitar el tiempo real
 
-Todo se maneja desde el panel de Supabase (supabase.com → tu proyecto). No hace falta un APK nuevo para nada de esto.
-Migración que lo arma: `supabase/migrations/20261019000000_bounty_event_ranking_flags.sql` (se aplica con el flujo «Supabase · aplicar migraciones»).
+Todo se maneja desde el panel de Supabase (supabase.com → tu proyecto). Para nada de esto hace falta un APK nuevo.
+Migraciones:
+- `20261019000000_bounty_event_ranking_flags.sql`: el interruptor `app_flags` y el ranking.
+- `20261020000000_world_events.sql`: el gestor de eventos.
 
-## 1. El online hoy: «por datos» (sin tiempo real)
-- Cada jugador juega en su mundo: **no se encuentran**, no hay chat ni «quién está conectado».
-- El servidor se usa sólo para: iniciar sesión, los créditos, los autos y las compras, los récords (ranking) y la recompensa.
-- En el menú, MODO ONLINE muestra: RANKING, RECOMPENSA, MIS RÉCORDS (si se mandan o no), CUENTA y «MUNDO ONLINE EN TIEMPO REAL» → pantalla «PRÓXIMAMENTE».
-- Gasto: unas pocas llamadas por hora por jugador (la recompensa pregunta cada 2 min, cada 20 s cuando está por soltarse o suelta; un récord por carrera terminada).
-  Cero mensajes de Realtime.
+Se aplican con el flujo «Supabase · aplicar migraciones». Qué es y cómo se juega: `docs/ONLINE_POR_EVENTOS.md`.
+
+## 1. El online hoy: por eventos (sin tiempo real)
+Cada jugador juega en su mundo: no se encuentran, no hay chat ni «quién está conectado». El servidor se usa sólo para:
+- la cuenta, los créditos y los autos;
+- los eventos y sus premios;
+- el ranking.
+
+Cero mensajes de Realtime.
 
 ## 2. Habilitar el tiempo real (cuando pagues Supabase Pro) — UN BOTÓN
-1. Supabase → **Table Editor** → tabla **`app_flags`** → fila **`pvp`** → columna **`val`** → marcar **true** → Save.
-2. Listo: la próxima vez que un jugador abra MODO ONLINE, aparece el hub de siempre con «ENTRAR AL MUNDO ONLINE» (Realtime, chat, conectados, mercado).
+1. Supabase → **Table Editor** → tabla **`app_flags`** → fila **`pvp`** → columna **`val`** → **true** → Save.
+2. Listo: la próxima vez que un jugador abra MODO ONLINE aparece «ENTRAR AL MUNDO ONLINE» (Realtime, chat, conectados, mercado). Los eventos siguen.
 3. Para volver a apagarlo: `val` = false.
-(En el código: `Release.pvp_open()` = `REALTIME` y (`PVP_FORCE` o la bandera del servidor o modo desarrollador). Antes de habilitarlo: Realtime → Settings →
-«Allow public access» = OFF y mirar los topes del plan; ver `docs/COSTOS_ONLINE.md`.)
 
-## 3. La RECOMPENSA (un auto suelto, un solo ganador)
-Cómo se juega: a la hora que dice el servidor se suelta el mismo auto para todos, en el mismo lugar de Dream City. Diez minutos antes avisa en el juego.
-Al soltarse, durante `map_s` segundos se ve en el mapa dónde está; después hay que buscarlo. Pegado atrás (a menos de 20 m) la barra se llena en verde;
-lejos baja despacio. **El primero que completa la barra (`hold_s`) se lo lleva** y el servidor le pone el auto en su cuenta (si ya lo tenía: la mitad de su
-precio en créditos). A los demás se les va con el aviso «X se llevó el …». El que huye maneja muy bien: rápido, sin errores, dobla para el otro lado si lo
-tenés encima y se hace el boludo un ratito al 45 % y al 78 % de la barra.
+Antes de habilitarlo: Realtime → Settings → «Allow public access» = OFF, y mirar los topes del plan (`docs/COSTOS_ONLINE.md`).
 
-### Configurar (Table Editor → tabla `bounty_cfg`, columna `val`)
-| clave | qué es | por defecto |
-|---|---|---|
-| `auto` | el servidor programa solo la próxima cuando no hay ninguna pendiente (`true`/`false`) | true |
-| `every_h` | cada cuántas horas (aprox.) | 6 |
-| `jitter_min` | demora al azar extra, en minutos (para que no sea siempre a la misma hora) | 90 |
-| `hold_s` | segundos pegado para ganarla | 60 |
-| `map_s` | segundos que se ve en el mapa al soltarse | 45 |
-| `duration_min` | cuánto anda suelta si nadie la gana | 15 |
-| `notice_min` | aviso previo en el juego, en minutos | 10 |
-| `cars` | autos que pueden salir (ids separados por coma) | veltor_s,moust,veltor_gtr,strix,veltor,trilux_gt,kl5,pro_gt |
-| `win_cooldown_d` | días que un ganador tiene que esperar para ganar otra | 7 |
-Los cambios valen para la próxima que se programe.
+## 3. Los EVENTOS (el servidor es el gestor)
+El servidor mantiene programados hasta `max_open` eventos (4) a partir de las **plantillas**. Los elige al azar según su peso, respeta el descanso de cada una
+y pone a su hora las de hora fija. Los avisa con anticipación, cuenta los intentos, valida los tiempos, da los premios y publica los ganadores.
 
-### Publicar una a mano (por ejemplo, para un anuncio o un sábado a la noche)
-SQL Editor → pegar y ejecutar (cambiar el auto, la hora y los segundos):
+### Plantillas (Table Editor → `wev_templates`)
+| columna | qué es |
+|---|---|
+| `kind` | `bounty` (cazarrecompensas) · `escape` (fuga) · `reach` (contrarreloj a una ciudad) · `record` (carrera de la semana) |
+| `title` / `descr` | lo que lee el jugador |
+| `weight` | más alto = sale más seguido |
+| `params` | bounty: `{"n": autos a la vez, "pool": [autos posibles], "hold_s": 60, "map_s": 45}` · escape: `{"chase_s": 600}` · reach: `{"speed": 24, "time_max": 1800}` (tiempo = distancia × 1,25 / speed) · record: `{}` |
+| `reward` | `{"credits": 20000}` · `{"car": true}` (el auto atrapado) · `{"rent": "police", "days": 3}` (alquilado) · `{"top": [25000, 12000, 6000]}` (3 primeros) |
+| `duration_min` | cuánto dura abierto |
+| `attempts` | intentos por jugador (0 = sin límite) |
+| `max_winners` | cupo de ganadores (0 = todos los que cumplan; en la cacería, uno por auto) |
+| `notice_min` | cuántos minutos antes se anuncia |
+| `cooldown_h` | no se repite antes de tantas horas |
+| `hours_utc` | horas fijas en UTC (Argentina = UTC − 3: las 22 h son `{1}`); vacío = a cualquier hora |
+| `enabled` | apagarla sin borrarla |
+
+Las de fábrica son `caza_22`, `caza_tarde`, `fuga_10` (Interceptor por 3 días), `fuga_5`, `llegada` y `carrera_semana`. Para agregar otra, copiá una fila y cambiá el `id`.
+Ideas: «fuga de 15 min → STRIX por 2 días»; una cacería de un solo auto muy caro el sábado a las 21 (`hours_utc` = `{0}`).
+
+### Configuración general (Table Editor → `wev_cfg`)
+- `auto`: el servidor programa solo (true/false).
+- `max_open`: eventos a la vez.
+- `bounty_cooldown_d`: días entre dos autos de cacería del mismo jugador.
+
+### Programar uno a mano (para un anuncio)
+SQL Editor:
 ```sql
-select public.bounty_admin_schedule('veltor_gtr', now() + interval '30 minutes', 60, 15);
--- auto, cuándo se suelta, segundos pegado, minutos que anda suelta
+select public.event_admin_schedule('caza_22', now() + interval '30 minutes');
+-- o a una hora fija de Argentina:
+select public.event_admin_schedule('fuga_10', '2026-10-18 21:00:00-03'::timestamptz);
 ```
-Para una hora fija (hora de Argentina): `'2026-10-18 21:00:00-03'::timestamptz` en vez de `now() + …`.
-Ver las programadas y quién ganó: Table Editor → `bounty_events` (columnas `starts_at`, `car`, `winner_name`, `won_at`).
-Cancelar una que todavía no salió: borrar su fila en `bounty_events`.
+- Ver los programados y los que ya pasaron: `wev_events`.
+- Cancelar uno que todavía no empezó: borrar su fila.
+- Ganadores: `wev_winners`. Intentos: `wev_runs`.
+
+### Autos alquilados
+Un premio `rent` pone el auto en la cuenta con fecha de vencimiento (`until` dentro de `account_econ.cars`). El servidor lo borra solo al vencer y el juego lo saca del
+garaje en la sincronización siguiente. Si el jugador ya tenía ese auto para siempre, no pasa nada.
 
 ### Revisar un ganador sospechoso
-`bounty_claims` guarda cada reclamo con el recorrido que mandó el juego (`trace`: cada segundo `[segundo, x jugador, z jugador, x auto, z auto, barra]`).
-Un ganador «real» tiene la distancia jugador–auto chica durante la barra y posiciones que avanzan a velocidades de auto. Si alguien hizo trampa: en
-`bounty_events` borrar `winner`/`winner_name` de esa fila (no le saca el auto: para eso, en `account_econ` quitarle el auto de `cars`).
-**Límite honesto:** el servidor no ve la persecución (cada uno juega en su mundo); se protege con: tiene que haber «salido a buscarla» (`bounty_join`) y pasado
-`hold_s` segundos desde entonces, uno por evento, uno cada `win_cooldown_d` días por cuenta, y el recorrido queda guardado para revisar.
+- `wev_runs` guarda cada intento: hora de inicio y de fin, el valor (segundos o barra) y, en la cacería, el recorrido (`trace`: cada segundo `[segundo, x jugador, z jugador, x auto, z auto, barra]`).
+- Un ganador «real» tiene la distancia jugador–auto chica mientras sube la barra, y posiciones que avanzan a velocidades de auto.
+- Si hubo trampa: borrar su fila en `wev_winners` y sacarle el premio en `account_econ` (créditos o el auto en `cars`).
+
+**Límite honesto:** el servidor no ve la carrera (cada uno juega en su celular). Se protege con la hora de inicio de cada intento, los cupos y topes, y el recorrido guardado.
 
 ## 4. El RANKING
-- **Carreras del mundo abierto:** al terminar una, el juego manda el tiempo (`submit_record`, board `owev`) y avisa «🌍 Récord mundial: 1:23.4 de X · vos sos 5º»
-  o «¡NUEVO RÉCORD MUNDIAL!». Menú → MODO ONLINE → RANKING → elegir la carrera.
-- **Fugitivo:** la mejor racha de escapes (board `fugitive`).
-- **Recompensa:** los últimos ganadores.
-- Los tiempos se validan (entre 8 s y 1 h; rachas de 1 a 500) y hay tope de 40 envíos por hora por cuenta. Tabla `scores` (Table Editor) para mirar o borrar.
-- Si un jugador no quiere aparecer: MODO ONLINE → MIS RÉCORDS (☐ no se mandan).
+- **Carreras del mapa:** el cartel de cada carrera muestra el récord mundial y tu mejor tiempo. Al terminarla, el juego avisa tu puesto o «¡NUEVO RÉCORD MUNDIAL!».
+  Tablero `owev` en la tabla `scores`.
+- **Escapes:** la mejor racha de escapes de la policía, tablero `fugitive`.
+- **Ganadores de los eventos:** `wev_winners`.
+- Menú → MODO ONLINE → RANKING. El jugador puede dejar de mandar sus récords con MIS RÉCORDS.

@@ -5,6 +5,30 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 15/10/2026 (14) · Online de EVENTOS DE CLASIFICACIÓN: el servidor como gestor de eventos y premios
+- **Pedido del dueño:** «hasta Supabase Pro (1/11), el juego es de eventos de clasificación: cada uno en su mapa contra la IA, sus registros al servidor. No modos en
+  la pausa: eventos del mundo que manda el servidor (cacería de las 22 con 3 autos; fuga de 10 min → auto de policía 3 días; llegar a una ciudad con 3 intentos →
+  $20.000…), premios justos; eventos al azar no muy seguidos; la policía y los controles mezclados con los eventos; récord de cada carrera del mapa; dejar listo
+  para subir y avisar que el tiempo real viene pronto».
+- **Servidor** (`20261020000000_world_events.sql`): `wev_cfg`, `wev_templates` (6 de fábrica), `wev_events`, `wev_runs`, `wev_winners`; `_wev_ensure` (programa al azar
+  según peso y descanso, hora fija en UTC, hasta 4 abiertos), `_wev_close` (paga a los 3 primeros de la carrera de la semana), `events_current`, `event_start`,
+  `event_finish` (valida por tipo con la hora de inicio del intento, cupos, uno por auto en la cacería, cooldown de 7 días), `event_board`, `event_winners`,
+  `event_admin_schedule`; `_wev_grant` (créditos, auto, alquiler); `_acct_row` borra los autos alquilados vencidos. Apaga la programación de la recompensa
+  vieja (`bounty_cfg.auto`). Autoprueba al aplicar. Sintaxis revisada con `pglast`.
+- **Cliente:** `city_modes.gd` reescrito como cliente de los eventos (sin modos en la pausa: un botón «📅 EVENTOS EN VIVO»); `city_police.gd` (`checkpoint_near`,
+  control que se suma a la persecución), presa que pasa un control → te persigue la policía; cada escape paga; `city_events.gd` (récord mundial y tu mejor tiempo
+  en el cartel de cada carrera, carrera de la semana); `account_econ.gd` (marca `until` de los alquilados); `menu_world.gd` (EVENTOS EN VIVO, ganadores en el
+  ranking); `menu.gd` («eventos y ranking · tiempo real pronto»); `race_hud.gd` (un solo botón en la pausa).
+- **Docs:** `docs/ONLINE_POR_EVENTOS.md` (texto para el dueño + checklist para subir), `docs/PUBLICAR_RECOMPENSA_Y_TIEMPO_REAL.md` (panel), `docs/MODOS_MUNDO_ABIERTO.md`.
+- **Pruebas:** `city_modes_test` (reescrita, servidor falso en memoria), `scripts_parse_test`, `release_test`, `language_test`, `police_online_test`,
+  `account_econ_test`. Sin pruebas con red. (`menu_ui_test` falla en esta máquina en «cámara libre: arrastrar» también con el commit verde 510ffa7: es del entorno
+  local, en la compilación anda.)
+- **Migración 20261019 FALLÓ al aplicarse** (flujo n.º 29, 16:56 UTC: `malformed array literal: "notice_min"`). Causa: Postgres crea solo el tipo `_bounty_cfg`
+  (arreglo de la tabla `bounty_cfg`), y `public._bounty_cfg('notice_min')` se leía como conversión a ese tipo, no como la función. No se aplicó nada (la
+  migración es repetible). Arreglo: la función pasa a llamarse `_bounty_conf`; lo mismo en 20261020 (`_wev_cfg` → `_wev_conf`). `pglast` sólo revisa la
+  sintaxis, no estos choques de nombres: no nombrar funciones `_<tabla>`.
+- **Resultado:** PENDIENTE DE APK y de aplicar las migraciones 20261019 y 20261020.
+
 ## 15/10/2026 (13) · Online «por datos» (sin tiempo real), recompensa global con un solo ganador, ranking
 - **Pedido del dueño:** «hasta pagar Supabase Pro, nada de tiempo real ni de encontrarse: el servidor para la cuenta, la plata, los autos, los eventos y el ranking;
   al entrar al mundo online, un aviso de «próximamente»; habilitarlo con un botón». «La recompensa: aparece un rato en el mapa, gana uno solo, el que se pega lo que

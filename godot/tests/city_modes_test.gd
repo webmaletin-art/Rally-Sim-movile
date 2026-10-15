@@ -1,6 +1,7 @@
-## Modos del mundo abierto contra la IA (city/city_modes.gd) y el «desmadre» de la policía (city/city_police.gd): reglas puras, la cacería que arranca por
-## chocar y romper cosas, el modo Fugitivo (paga cada escape) y la RECOMPENSA del servidor (un solo ganador: se suelta a la hora del servidor, pegado hold_s
-## segundos → bounty_claim; si la gana otro, se va). Sin red: el servidor es un objeto falso en memoria. Uso: godot --headless --path godot --script res://tests/city_modes_test.gd
+## Eventos del mundo (city/city_modes.gd) y el «desmadre» de la policía (city/city_police.gd): cada escape paga, la cacería que arranca por chocar y romper,
+## el control que se suma a la persecución, y los eventos que manda el servidor: cazarrecompensas (varios autos, gana el primero), fuga (aguantar N min),
+## contrarreloj a una ciudad y la carrera de la semana. Sin red: el servidor es un objeto falso en memoria.
+## Uso: godot --headless --path godot --script res://tests/city_modes_test.gd
 extends SceneTree
 
 const CityTrack := preload("res://game/track/city_track.gd")
@@ -68,30 +69,32 @@ class FakeProfile:
 	func save() -> void:
 		pass
 
-## El servidor de la recompensa, en memoria (las mismas respuestas que bounty_current / bounty_join / bounty_claim)
+## El servidor de eventos, en memoria (las mismas respuestas que events_current / event_start / event_finish)
 class FakeOnline:
 	extends Node
-	var state := {}
-	var claims: Array = []
-	var joins: Array = []
-	var winner := ""
+	var state := {"now": 0, "events": [], "winners": []}
+	var starts: Array = []
+	var finishes: Array = []
+	var won_slots := {}
+	var next_run := 100
 	func is_account() -> bool:
 		return true
 	func enabled() -> bool:
 		return false
 	func call_fn(fn: String, args: Dictionary, _need := true) -> Dictionary:
 		match fn:
-			"bounty_current":
+			"events_current":
+				state["now"] = int(Time.get_unix_time_from_system())
 				return {"ok": true, "data": state}
-			"bounty_join":
-				joins.append(int(args["p_id"]))
-				return {"ok": true, "data": {"ok": true}}
-			"bounty_claim":
-				claims.append(args)
-				if winner != "":
-					return {"ok": true, "data": {"ok": false, "reason": "ya la ganó " + winner, "winner": winner}}
-				winner = "yo"
-				return {"ok": true, "data": {"ok": true, "car": "veltor", "dup": false}}
+			"event_start":
+				starts.append(args)
+				next_run += 1
+				return {"ok": true, "data": {"ok": true, "run": next_run}}
+			"event_finish":
+				finishes.append(args)
+				if not bool(args["p_ok"]):
+					return {"ok": true, "data": {"ok": true, "won": false}}
+				return {"ok": true, "data": {"ok": true, "won": true, "reward": {"credits": 20000}}}
 		return {"ok": false, "data": null, "error": "?"}
 
 var fail := false
@@ -141,9 +144,8 @@ func _run() -> void:
 	var vehicles: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
 	# reglas puras
 	_check(CityModes.escape_reward(0, 0.0) == CityModes.ESC_BASE and CityModes.escape_reward(3, 60.0) > CityModes.escape_reward(1, 60.0), "cada escape paga más con nivel y tiempo (%d · %d)" % [CityModes.escape_reward(1, 60.0), CityModes.escape_reward(3, 60.0)])
-	var e0 := {"id": 7, "starts": 1000, "ends": 1900, "won": false}
-	_check(CityModes.phase_of(e0, 900.0) == "wait" and CityModes.phase_of(e0, 1100.0) == "live" and CityModes.phase_of(e0, 2000.0) == "over", "la recompensa: espera, suelta y se va a la hora del servidor")
-	_check(CityModes.phase_of({"id": 7, "starts": 1000, "ends": 1900, "won": true}, 1100.0) == "over", "si ya la ganó alguien, se terminó para todos")
+	var e0 := {"id": 7, "starts": 1000, "ends": 1900}
+	_check(CityModes.phase_of(e0, 900.0) == "wait" and CityModes.phase_of(e0, 1100.0) == "live" and CityModes.phase_of(e0, 2000.0) == "over", "los eventos: esperan, están en vivo y terminan a la hora del servidor")
 	var h := 0.0
 	for i in 30:
 		h = CityModes.hold_step(h, 10.0, 1.0, 60.0)
@@ -171,78 +173,127 @@ func _run() -> void:
 	_check(str(pol.state) == "chase" and not (pol.units as Array).is_empty(), "lleno: la policía arranca la cacería (%s, %d patrulleros)" % [pol.state, (pol.units as Array).size()])
 	_check(pol.rage == 0.0, "y el medidor vuelve a cero")
 	race.queue_free()
-	# fugitivo: más sensible, y cada escape paga
+	# cada escape paga (siempre) y la racha sube
 	race = _make(tr, vehicles, start.x, start.y, 0.0)
 	pol = race.police
 	_sim(race, 0.3)
-	race.modes.start("fugitivo")
-	_check(race.modes.mode == "fugitivo" and pol.fugitive, "modo Fugitivo prendido")
-	pol.on_wall(18.0)
-	_check(pol.rage > one * 1.8, "en el modo Fugitivo el mismo choque cuenta el doble (%.2f)" % pol.rage)
 	pol.rage = 1.0
 	_sim(race, 0.2)
 	_check(str(pol.state) == "chase", "la cacería arranca")
+	var n_units := (pol.units as Array).size()
+	# pasa por un control en plena persecución: sus patrulleros se suman
+	var ck: Dictionary = pol.checkpoints[(pol.cp + 7) % pol.checkpoints.size()] # (otro control, no el de esta persecución)
+	race.cars[0].place((ck["p"] as Vector2).x, (ck["p"] as Vector2).y, 0.0)
+	_sim(race, 0.6)
+	_check(pol._joined.size() == 1 and (pol.units as Array).size() >= 2, "pasa por un control escapando: sus patrulleros se suman (%d en la persecución)" % (pol.units as Array).size())
 	for u in pol.units:
 		u["car"].place(u["car"].phys.px + 5000.0, u["car"].phys.pz, 0.0)
 		u["drv"].mode = "parked"
 	pol.lose_t = CityPolice.ESCAPE_T
 	_sim(race, 0.3)
 	var prof: FakeProfile = race.profile
-	_check(race.modes.streak == 1 and prof.earned >= CityModes.ESC_BASE and pol.fugitive_level == 1, "escapó: cobra $%d, racha %d y la próxima viene más fuerte (nivel extra %d)" % [int(prof.earned), race.modes.streak, pol.fugitive_level])
-	race.modes.toggle("fugitivo")
-	_check(race.modes.mode == "" and not pol.fugitive, "desde la pausa se apaga")
+	_check(race.modes.streak == 1 and prof.earned >= CityModes.ESC_BASE, "escapó: cobra $%d y la racha es %d" % [int(prof.earned), race.modes.streak])
 	race.queue_free()
-	# recompensa: el servidor la suelta; aparece en el mismo lugar para todos, huye; pegado hold_s s → bounty_claim (gana el primero)
+	# eventos del servidor
 	race = _make(tr, vehicles, start.x, start.y, 0.0)
 	var srv := FakeOnline.new()
 	race.add_child(srv)
 	race.online = srv
 	var md = race.modes
 	var now := int(Time.get_unix_time_from_system())
-	srv.state = {"next": {"id": 41, "car": "veltor", "starts": now + 300, "ends": now + 1200, "hold_s": 20, "map_s": 30, "seed": 1234, "won": false, "winner": "", "mine": false, "now": now, "notice_s": 600}, "last": null}
+	# cazarrecompensas con 2 autos, programada
+	var bounty := {"id": 51, "kind": "bounty", "title": "Cazarrecompensas", "descr": "", "params": {"cars": ["veltor", "moust"], "hold_s": 20, "map_s": 30}, "reward": {"car": true},
+		"starts": now + 600, "ends": now + 1800, "attempts": 0, "seed": 1234, "used": 0, "done": false, "winners": []}
+	srv.state["events"] = [bounty]
 	_sim(race, 0.3)
 	md._poll_t = 0.0
-	_sim(race, 0.3)
-	_check(CityModes.phase_of(md.ev, md.now_server()) == "wait" and md.target.is_empty(), "programada: avisa y espera (todavía no hay auto)")
-	srv.state["next"]["starts"] = now - 2
-	srv.state["next"]["now"] = now
+	_sim(race, 0.5)
+	_check(md.targets.is_empty() and md.events.size() == 1, "programada: avisa y espera (todavía no hay autos)")
+	bounty["starts"] = now - 2
 	md._poll_t = 0.0
-	_sim(race, 1.0)
-	_check(not md.target.is_empty() and md.target["vid"] == "veltor" and srv.joins == [41], "se soltó: aparece el auto y el jugador queda anotado en la caza")
+	_sim(race, 0.5)
+	_check(md.targets.size() == 2, "a la hora: se sueltan los 2 autos (%d)" % md.targets.size())
 	var sp := CityModes.spawn_point(tr.city, 1234)
-	var tq := Vector2(md.target["car"].phys.px, md.target["car"].phys.pz)
-	_check(tq.distance_to(sp) < 90.0, "aparece donde dice la semilla, el mismo lugar para todos (a %.0f m: ya arrancó a huir)" % tq.distance_to(sp))
+	var tq := Vector2(md.targets[0]["car"].phys.px, md.targets[0]["car"].phys.pz)
+	_check(tq.distance_to(sp) < 90.0, "el primero aparece donde dice la semilla, el mismo lugar para todos (a %.0f m)" % tq.distance_to(sp))
 	_sim(race, 6.0)
-	_check(Vector2(md.target["car"].phys.px, md.target["car"].phys.pz).distance_to(tq) > 30.0, "y huye por las calles")
-	_sim(race, 22.0, func() -> void:
-		if not md.target.is_empty():
-			var c = md.target["car"]
+	_check(Vector2(md.targets[0]["car"].phys.px, md.targets[0]["car"].phys.pz).distance_to(tq) > 30.0, "y huyen por las calles")
+	var tg0: Dictionary = md.targets[0]
+	_sim(race, 24.0, func() -> void:
+		if not tg0.get("done", true):
+			var c = tg0["car"]
 			race.cars[0].place(c.phys.px - sin(c.phys.yaw) * 9.0, c.phys.pz - cos(c.phys.yaw) * 9.0, c.phys.yaw))
-	_check(srv.claims.size() == 1 and int(srv.claims[0]["p_id"]) == 41 and (srv.claims[0]["p_trace"] as Array).size() >= 20, "pegado 20 s: se reclama (con el recorrido para revisar: %d puntos)" % (srv.claims[0]["p_trace"] as Array).size() if not srv.claims.is_empty() else "pegado 20 s: se reclama")
-	_check(md.stats["caught"] == 1 and bool(md.ev.get("mine", false)), "el servidor dice que llegó primero: la gana")
-	_sim(race, 5.0)
-	_check(md.target.is_empty() and race.cars.size() == 1, "el auto se va (el premio lo da el servidor a la cuenta)")
+	_check(srv.starts.size() >= 1 and int(srv.starts[0]["p_id"]) == 51, "al acercarse se anota el intento en el servidor")
+	var fin_ok := false
+	for f in srv.finishes:
+		if bool(f["p_ok"]) and (f["p_trace"] as Array).size() >= 15:
+			fin_ok = true
+	_check(fin_ok and md.stats["caught"] == 1, "pegado 20 s: lo reclama con el recorrido y el servidor dice que ganó")
+	_check(md.targets.is_empty() and race.cars.size() == 1, "ganó uno: los autos de esa cacería se van")
+	# otro jugador atrapó un auto: se va con el aviso
+	var b2 := bounty.duplicate(true)
+	b2["id"] = 52
+	b2["starts"] = now - 2
+	srv.state["events"] = [b2]
+	md._poll_t = 0.0
+	_sim(race, 0.5)
+	_check(md.targets.size() == 2, "otra cacería: 2 autos")
+	b2["winners"] = [{"name": "ElRápido", "slot": 1}]
+	md._poll_t = 0.0
+	_sim(race, 0.5)
+	_check(md.targets.size() == 1 and int(md.targets[0]["slot"]) == 0, "ElRápido atrapó uno: ese se va, el otro sigue suelto")
 	race.queue_free()
-	# otro jugador la gana antes: se va con el aviso
+	# fuga: cualquier persecución cuenta; aguantar chase_s y escapar (en una partida nueva)
 	race = _make(tr, vehicles, start.x, start.y, 0.0)
 	srv = FakeOnline.new()
 	race.add_child(srv)
 	race.online = srv
 	md = race.modes
-	now = int(Time.get_unix_time_from_system())
-	var live := {"id": 42, "car": "moust", "starts": now - 5, "ends": now + 900, "hold_s": 60, "map_s": 30, "seed": 99, "won": false, "winner": "", "mine": false, "now": now, "notice_s": 600}
-	srv.state = {"next": live, "last": null}
+	var esc := {"id": 61, "kind": "escape", "title": "Fuga", "descr": "", "params": {"chase_s": 2}, "reward": {"rent": "police", "days": 3}, "starts": now - 10, "ends": now + 3600, "attempts": 5, "seed": 1, "used": 0, "done": false, "winners": []}
+	srv.state["events"] = [esc]
+	md._poll_t = 0.0
+	pol = race.police
 	_sim(race, 0.3)
+	pol.rage = 1.0
+	_sim(race, 0.5)
+	_check(str(pol.state) == "chase" and srv.starts.size() == 1 and int(srv.starts[0]["p_id"]) == 61, "empieza la persecución: se anota un intento de la fuga")
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 2300:
+		OS.delay_msec(50)
+	for u in pol.units:
+		u["car"].place(u["car"].phys.px + 5000.0, u["car"].phys.pz, 0.0)
+		u["drv"].mode = "parked"
+	pol.lose_t = CityPolice.ESCAPE_T
+	_sim(race, 0.5)
+	var last: Dictionary = srv.finishes[srv.finishes.size() - 1]
+	_check(int(last["p_run"]) == srv.next_run and bool(last["p_ok"]) and float(last["p_value"]) >= 2.0, "aguantó %.1f s y escapó: fuga cumplida" % float(last["p_value"]))
+	# contrarreloj a una ciudad
+	var rc := {"id": 71, "kind": "reach", "title": "Contrarreloj", "descr": "", "params": {"speed": 24, "time_max": 1500}, "reward": {"credits": 20000}, "starts": now - 10, "ends": now + 3600, "attempts": 3, "seed": 5, "used": 0, "done": false, "winners": []}
+	srv.state["events"] = [rc]
 	md._poll_t = 0.0
-	_sim(race, 1.0)
-	_check(not md.target.is_empty(), "suelta otra")
-	var won := live.duplicate()
-	won["won"] = true
-	won["winner"] = "ElRápido"
-	srv.state = {"next": null, "last": won}
-	md._poll_t = 0.0
-	_sim(race, 1.0)
-	_check(md.target.is_empty() and md.stats["lost"] == 1, "la ganó otro (ElRápido): el auto se va")
+	_sim(race, 0.5)
+	var plan: Dictionary = md._reach
+	_check(not plan.is_empty() and (plan["pos"] as Vector2).length() > CityModes.REACH_MIN and float(plan["limit"]) >= 120.0, "contrarreloj a %s: %.1f km, %d s" % [str(plan.get("town", "")), float(plan.get("dist", 0)) / 1000.0, int(plan.get("limit", 0))])
+	var st0: Vector2 = plan["start"]
+	race.cars[0].place(st0.x, st0.y, 0.0)
+	race.cars[0].phys.vx = 0.0
+	race.cars[0].phys.vz = 0.0
+	_sim(race, 1.5, func() -> void:
+		race.cars[0].phys.vx = 0.0
+		race.cars[0].phys.vz = 0.0)
+	_check(int(md._reach.get("run", -1)) >= 0, "frenó en el círculo de largada: empieza el intento")
+	_sim(race, 2.0)
+	if md._reach.is_empty():
+		_check(false, "el contrarreloj sigue armado")
+		race.queue_free()
+		print("RESULTADO: FALLA")
+		quit(1)
+		return
+	var tp: Vector2 = md._reach["pos"]
+	race.cars[0].place(tp.x, tp.y, 0.0)
+	_sim(race, 0.5)
+	last = srv.finishes[srv.finishes.size() - 1]
+	_check(bool(last["p_ok"]) and float(last["p_value"]) > 1.0, "llegó a tiempo (%.1f s): lo reclama" % float(last["p_value"]))
 	race.queue_free()
 	print("RESULTADO: ", "FALLA" if fail else "TODO OK")
 	quit(1 if fail else 0)

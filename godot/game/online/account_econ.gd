@@ -409,6 +409,11 @@ static func reconcile(d: Dictionary, state: Dictionary, pending: Array) -> Dicti
 			owned[id] = Profile.new_car_state(str(id))
 			(rep["added"] as Array).append(str(id))
 		var st: Dictionary = owned[id]
+		# autos alquilados (premios de eventos): el servidor los borra al vencer
+		if cs.has("until"):
+			st["until"] = int(cs["until"])
+		else:
+			st.erase("until")
 		# mejoras compradas
 		var ow := {}
 		for k in (cs.get("owned", []) as Array):

@@ -59,27 +59,27 @@ alter table public.bounty_joins enable row level security;
 alter table public.bounty_claims enable row level security;
 revoke all on public.bounty_cfg, public.bounty_events, public.bounty_joins, public.bounty_claims from anon, authenticated;
 
-create or replace function public._bounty_cfg(p_key text) returns text language sql stable security definer set search_path = public as $$
+create or replace function public._bounty_conf(p_key text) returns text language sql stable security definer set search_path = public as $$
   select val from public.bounty_cfg where key = p_key
 $$;
-revoke all on function public._bounty_cfg(text) from public, anon, authenticated;
+revoke all on function public._bounty_conf(text) from public, anon, authenticated;
 
 -- programa el próximo si no hay ninguno por venir (uno a la vez; la traba evita que dos pedidos creen dos)
 create or replace function public._bounty_ensure() returns void language plpgsql security definer set search_path = public as $$
 declare cars text[]; n int; st timestamptz;
 begin
-  if coalesce(public._bounty_cfg('auto'), 'true') <> 'true' then return; end if;
+  if coalesce(public._bounty_conf('auto'), 'true') <> 'true' then return; end if;
   perform pg_advisory_xact_lock(424242);
   if exists (select 1 from public.bounty_events where ends_at > now() and winner is null) then return; end if;
-  cars := string_to_array(replace(coalesce(public._bounty_cfg('cars'), 'veltor'), ' ', ''), ',');
+  cars := string_to_array(replace(coalesce(public._bounty_conf('cars'), 'veltor'), ' ', ''), ',');
   n := coalesce(array_length(cars, 1), 0);
   if n = 0 then return; end if;
-  st := now() + make_interval(mins => coalesce(public._bounty_cfg('notice_min'), '10')::int)
-        + make_interval(hours => greatest(0, coalesce(public._bounty_cfg('every_h'), '6')::int - 1))
-        + make_interval(mins => floor(random() * (coalesce(public._bounty_cfg('jitter_min'), '90')::int + 1))::int);
+  st := now() + make_interval(mins => coalesce(public._bounty_conf('notice_min'), '10')::int)
+        + make_interval(hours => greatest(0, coalesce(public._bounty_conf('every_h'), '6')::int - 1))
+        + make_interval(mins => floor(random() * (coalesce(public._bounty_conf('jitter_min'), '90')::int + 1))::int);
   insert into public.bounty_events (car, starts_at, ends_at, hold_s, map_s, seed)
-  values (cars[1 + floor(random() * n)::int], st, st + make_interval(mins => coalesce(public._bounty_cfg('duration_min'), '15')::int),
-          coalesce(public._bounty_cfg('hold_s'), '60')::int, coalesce(public._bounty_cfg('map_s'), '45')::int, floor(random() * 1000000)::int);
+  values (cars[1 + floor(random() * n)::int], st, st + make_interval(mins => coalesce(public._bounty_conf('duration_min'), '15')::int),
+          coalesce(public._bounty_conf('hold_s'), '60')::int, coalesce(public._bounty_conf('map_s'), '45')::int, floor(random() * 1000000)::int);
 end;
 $$;
 revoke all on function public._bounty_ensure() from public, anon, authenticated;
@@ -88,7 +88,7 @@ create or replace function public._bounty_json(e public.bounty_events) returns j
   select jsonb_build_object('id', e.id, 'car', e.car, 'starts', extract(epoch from e.starts_at)::bigint, 'ends', extract(epoch from e.ends_at)::bigint,
     'hold_s', e.hold_s, 'map_s', e.map_s, 'seed', e.seed, 'won', e.winner is not null, 'winner', coalesce(e.winner_name, ''),
     'mine', e.winner is not null and e.winner = auth.uid(), 'now', extract(epoch from now())::bigint,
-    'notice_s', coalesce(public._bounty_cfg('notice_min'), '10')::int * 60)
+    'notice_s', coalesce(public._bounty_conf('notice_min'), '10')::int * 60)
 $$;
 
 -- el evento actual o el próximo (y el último ganado de la última hora, para mostrar quién se lo llevó)
@@ -134,7 +134,7 @@ begin
   elsif now() > e.ends_at + interval '1 minute' then why := 'la recompensa ya se fue';
   elsif j is null then why := 'no saliste a buscarla';
   elsif now() < greatest(j, e.starts_at) + make_interval(secs => e.hold_s + 5) then why := 'todavía no pudiste completar la barra';
-  elsif exists (select 1 from public.bounty_events b where b.winner = uid and b.won_at > now() - make_interval(days => coalesce(public._bounty_cfg('win_cooldown_d'), '7')::int)) then
+  elsif exists (select 1 from public.bounty_events b where b.winner = uid and b.won_at > now() - make_interval(days => coalesce(public._bounty_conf('win_cooldown_d'), '7')::int)) then
     why := 'ya ganaste una recompensa hace poco: dejá que la gane otro';
   end if;
   if why <> '' then
@@ -173,7 +173,7 @@ declare nid bigint;
 begin
   if not exists (select 1 from public.online_cat_vehicles where id = p_car) then raise exception 'ese auto no existe' using errcode = '22023'; end if;
   insert into public.bounty_events (car, starts_at, ends_at, hold_s, map_s, seed)
-  values (p_car, p_at, p_at + make_interval(mins => greatest(3, p_minutes)), greatest(10, least(p_hold_s, 600)), coalesce(public._bounty_cfg('map_s'), '45')::int, floor(random() * 1000000)::int)
+  values (p_car, p_at, p_at + make_interval(mins => greatest(3, p_minutes)), greatest(10, least(p_hold_s, 600)), coalesce(public._bounty_conf('map_s'), '45')::int, floor(random() * 1000000)::int)
   returning id into nid;
   return jsonb_build_object('ok', true, 'id', nid);
 end;
@@ -214,7 +214,7 @@ begin
   insert into public.score_log (player_id) values (uid);
   tid := case when p_board = 'fugitive' then 'fugitivo' else 'ow:' || p_id end;
   insert into public.tracks (id, name, length_m) values (tid, case when p_board = 'fugitive' then 'Modo Fugitivo' else 'Mundo abierto · ' || p_id end, 0) on conflict (id) do nothing;
-  insert into public.players (id, name) values (uid, coalesce(nullif(left(trim(p_name), 20), ''), 'Piloto'))
+  insert into public.players (id, name) values (uid, case when char_length(trim(coalesce(p_name, ''))) >= 2 then left(trim(p_name), 20) else 'Piloto' end)
     on conflict (id) do update set name = case when p_name is not null and char_length(trim(p_name)) >= 2 then left(trim(p_name), 20) else public.players.name end, last_seen = now();
   select value into prev from public.scores where player_id = uid and track = tid and board = p_board;
   if prev is null then

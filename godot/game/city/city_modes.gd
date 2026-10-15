@@ -1,15 +1,18 @@
 extends RefCounted
-## Modos del mundo abierto contra la IA (15/10/2026, pedidos del dueño). Funcionan sin el mundo online compartido (cada uno juega en su mundo). Detalle en
-## docs/MODOS_MUNDO_ABIERTO.md.
+## EVENTOS DEL MUNDO (15/10/2026, pedido del dueño: «mientras no haya tiempo real, el online es de eventos de clasificación: cada uno juega en su mapa contra la
+## IA y sus registros se suben al servidor para competir; no son modos a elegir en la pausa: el servidor los manda»). Ver docs/MODOS_MUNDO_ABIERTO.md.
 ##
-##  · FUGITIVO (desde la pausa): hacé lío por la ciudad y la policía te caza (city_police.gd → desmadre, el doble de sensible y la cacería llega igual).
-##    Cada escape paga (más cuanto más dura y más alto el nivel) y la próxima viene más fuerte; si te agarran se corta la racha. La mejor racha va al ranking.
-##  · RECOMPENSA (evento del SERVIDOR, un solo ganador): cada tanto el servidor suelta un auto (el mismo para todos, a la misma hora: bounty_current). Al
-##    soltarse, durante map_s segundos se ve en el mapa dónde está; hay que ir, encontrarlo y pegarse atrás: la barra se llena en verde mientras estés a menos
-##    de STICK_R m y baja despacio si te alejás. El PRIMERO que la completa (hold_s, lo pone el servidor: 60 s) se lo lleva (bounty_claim: el servidor le da
-##    el auto a la cuenta); a los demás se les va. El que huye maneja muy bien (rápido, sin errores, rehace el camino para el otro lado si lo tenés encima)
-##    y «se hace el boludo» un ratito a mitad de la barra. Necesita conexión y cuenta.
-## Es un servicio de la ciudad (city_services.gd): setup(race) / update(dt).
+## El servidor (migración 20261020000000_world_events.sql) es el gestor: programa eventos al azar y a hora fija, cuenta intentos, valida tiempos, da los premios
+## y publica los ganadores. Este módulo pregunta qué hay (events_current), los muestra (cartel, renglón arriba, mapa) y juega cada uno en el mundo de este celular:
+##  · bounty  CAZARRECOMPENSAS: a la hora del evento aparecen N autos (el mismo lugar para todos, sale de la semilla); se ven map_s s en el mapa; pegado a menos
+##            de STICK_R m la barra de ese auto se llena (verde); el primero que la completa se lo lleva (event_finish). Si la presa pasa un control policial y estás
+##            cerca, la policía te persigue a vos también.
+##  · escape  FUGA: cualquier persecución de la policía cuenta (por desmadre o por pasar un control): aguantá chase_s segundos y escapá.
+##  · reach   CONTRARRELOJ: frená en el círculo de la salida de Dream City y llegá a la ciudad marcada antes del tiempo (intentos limitados).
+##  · record  CARRERA DE LA SEMANA: una de las carreras del mundo abierto (sale de la semilla); cada vez que la terminás, tu tiempo va a la tabla; al cerrar,
+##            premios a los 3 primeros.
+## Además, siempre: cada escape de la policía paga (más cuanto más dura y más alto el nivel) y la mejor racha de escapes va al ranking.
+## Sin conexión o sin cuenta no hay eventos (el resto del juego anda igual). Es un servicio de la ciudad (city_services.gd): setup(race) / update(dt).
 
 const PoliceDriver := preload("res://game/ai/police_driver.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
@@ -17,164 +20,160 @@ const Profile := preload("res://game/data/profile.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CrashLog := preload("res://game/diag/crash_log.gd")
 
-# fugitivo
+# escapes de la policía (siempre)
 const ESC_BASE := 1500
 const ESC_LEVEL := 1000
 const ESC_PER_S := 20
-# recompensa
-const STICK_R := 20.0 # «pegado»
-const DECAY_K := 0.35 # lejos, la barra baja a esta fracción de lo que sube
-const FLEE_R := 140.0 # más cerca que esto, huye para el otro lado
-const POLL_IDLE := 120.0 # cada cuánto se pregunta por la recompensa (s)
-const POLL_SOON := 20.0 # si falta poco o está suelta
+# cacería
+const STICK_R := 20.0
+const DECAY_K := 0.35
+const FLEE_R := 140.0
 const TRACE_MAX := 400
-const SLACK_AT := [0.45, 0.78] # a qué fracción de la barra se hace el boludo (una vez cada una)
+const SLACK_AT := [0.45, 0.78] # a qué fracción de la barra el que huye se hace el boludo (una vez cada una)
 const SLACK_S := 3.5
+const CP_TRIGGER_R := 60.0 # la presa pasa a menos de esto de un control…
+const CP_ME_R := 450.0 # …y vos estás a menos de esto: la policía te persigue
+# contrarreloj
+const REACH_MIN := 10000.0 # la ciudad marcada está entre estas distancias de Dream City (la más cercana está a 14 km)
+const REACH_MAX := 30000.0
+const REACH_ARRIVE := 250.0
+const START_R := 12.0
+# servidor
+const POLL_IDLE := 90.0
+const POLL_SOON := 15.0
 
 var race
-var mode := "" # "" · "fugitivo"
-var stats := {"escapes": 0, "arrests": 0, "caught": 0, "lost": 0}
-# fugitivo
+var stats := {"escapes": 0, "arrests": 0, "caught": 0, "lost": 0, "won": 0}
 var streak := 0
 var best_streak := 0
-var _esc0 := 0
-var _arr0 := 0
+var _esc0 := -1
+var _arr0 := -1
 var _chase_t := 0.0
-# recompensa
-var ev: Dictionary = {} # el evento del servidor: {id, car, starts, ends, hold_s, map_s, seed, won, winner, mine}
-var target: Dictionary = {} # {car, drv, vid, name, ev}
-var hold := 0.0
-var _clock_off := 0.0 # hora del servidor − hora del teléfono
-var _poll_t := 3.0
+var _was_chase := false
+
+var events: Array = [] # lo último que dijo el servidor
+var _clock_off := 0.0
+var _poll_t := 2.0
 var _busy := false
-var _warned := {} # id → avisos ya dados
+var _seen_win := {} # ganadores ya anunciados
+var _announced := {} # id → 1 anunciado, 2 avisado al minuto, 3 suelto
+var _first_poll := true
+# cacería: un objetivo por auto suelto
+var targets: Array = [] # [{ev, slot, car, drv, vid, name, hold, run, trace, slack_i, slack_t, label, route_t, done, cp_t}]
 var _map_t := 0.0
-var _route_t := 0.0
 var _gps_t := 0.0
-var _end_t := 0.0
-var _trace: Array = []
-var _trace_t := 0.0
-var _slack_i := 0
-var _slack_t := 0.0
-var _claiming := false
-var _label: Label3D
+# fuga
+var _esc_run := -1
+var _esc_ev := -1
+var _esc_start := 0.0
+var _esc_wait := false
+# contrarreloj
+var _reach: Dictionary = {} # {ev, town, pos, start, yaw, limit, run, t, marker}
+var _reach_stop := 0.0
+# carrera de la semana
+var weekly: Dictionary = {} # {ev, ow_id, run}
 var _hud: CanvasLayer
 var _hud_l: Label
 var _bar: ProgressBar
 var _bar_fill: StyleBoxFlat
 var _banner: Label
 var _banner_t := 0.0
+var _towns: Array = []
 
 func setup(p_race) -> void:
 	race = p_race
 	_build_hud()
+	var rg = race.track.get("region") if race.track != null else null
+	if rg != null:
+		for n in rg.nodes:
+			if int(n[3]) in [3, 4]:
+				var q := Vector2(float(n[1]), float(n[2]))
+				if q.length() >= REACH_MIN and q.length() <= REACH_MAX:
+					_towns.append([str(n[0]), q, str(n[4]) if (n as Array).size() > 4 else ""])
+	_towns.sort_custom(func(a: Array, b: Array) -> bool: return str(a[0]) < str(b[0]))
 
-## ¿Se pueden usar acá? (mundo abierto sin el mundo online compartido, con la policía de la región)
+## ¿Hay eventos acá? (mundo abierto sin el mundo compartido, con la policía de la región, con cuenta y conexión)
 func available() -> bool:
 	return race.get("police") != null and bool(race.police.enabled) and race.cfg.get("online", false) != true
 
-## La recompensa necesita la cuenta conectada
 func _online_ok() -> bool:
 	var on = race.get("online")
 	return on != null and on.has_method("is_account") and on.is_account() and race.cfg.get("testCar") == null
 
-## Los botones de la pausa: [[texto, modo]]
+## La pausa: un solo botón con los eventos del momento
 func pause_buttons() -> Array:
-	if not available():
-		return []
-	return [[Tr.t("🚨  TERMINAR FUGITIVO") if mode == "fugitivo" else Tr.t("🚨  MODO FUGITIVO"), "fugitivo"], [Tr.t("🎯  RECOMPENSA"), "caza"]]
+	return [[Tr.t("📅  EVENTOS EN VIVO"), "eventos"]] if available() else []
 
-func toggle(m: String) -> void:
-	if m == "caza":
-		_bounty_status()
-		return
-	if mode == "fugitivo":
-		stop(true)
-		return
-	start(m)
+func toggle(_m: String) -> void:
+	_show_board()
 
-func start(m: String) -> void:
-	if not available() or race.cars.is_empty() or m != "fugitivo":
-		return
-	var evs = race.get("ow_events")
-	if evs != null and evs.busy():
-		_toast(Tr.t("Terminá la carrera antes de empezar un modo"))
-		return
-	var pol = race.police
-	mode = "fugitivo"
-	pol.fugitive = true
-	pol.fugitive_level = 0
-	streak = 0
-	_esc0 = int(pol.stats["escapes"])
-	_arr0 = int(pol.stats["arrests"])
-	_chase_t = 0.0
-	_big(Tr.t("🚨 MODO FUGITIVO\nHacé lío por la ciudad: la policía te va a cazar.\nCada escape paga y la próxima viene más fuerte."), 5.0)
-	CrashLog.mark("modo", "empieza fugitivo")
-
-## Termina el Fugitivo (desde la pausa)
-func stop(by_player := false) -> void:
-	if mode != "fugitivo":
-		return
-	var pol = race.get("police")
-	if pol != null:
-		pol.fugitive = false
-		pol.fugitive_level = 0
-	if by_player:
-		_big(Tr.t("🚨 FIN DEL MODO FUGITIVO · racha de %d escapes") % streak, 3.5)
-	CrashLog.mark("modo", "termina fugitivo")
-	mode = ""
+func now_server() -> float:
+	return Time.get_unix_time_from_system() + _clock_off
 
 func update(dt: float) -> void:
 	if _banner != null:
 		_banner_t -= dt
 		_banner.visible = _banner_t > 0.0
-	if race.cars.is_empty():
+	if race.cars.is_empty() or not available():
+		_hud.visible = false
 		return
 	var lines: Array = []
-	if mode == "fugitivo":
-		lines.append(_fugitive(dt, race.police))
-	if available() and _online_ok():
-		var l := _bounty(dt)
-		if l != "":
-			lines.append(l)
+	_escapes(dt)
+	if _online_ok():
+		_poll_t -= dt
+		if _poll_t <= 0.0 and not _busy:
+			_poll_t = POLL_SOON if _soon() else POLL_IDLE
+			_poll()
+		var now := now_server()
+		for e in events:
+			var l := _event_tick(e, dt, now)
+			if l != "":
+				lines.append(l)
 	_hud.visible = not lines.is_empty()
-	_hud_l.text = "\n".join(lines)
-	_bar.visible = not target.is_empty()
+	_hud_l.text = "\n".join(lines.slice(0, 3))
+	_bar.visible = false
+	for tg in targets:
+		if not bool(tg["done"]):
+			_bar.visible = true
 
-# ───────────────────────── fugitivo ─────────────────────────
-func _fugitive(dt: float, pol) -> String:
-	if str(pol.state) == "chase":
+# ───────────────────────── escapes (siempre) ─────────────────────────
+func _escapes(dt: float) -> void:
+	var pol = race.police
+	if _esc0 < 0:
+		_esc0 = int(pol.stats["escapes"])
+		_arr0 = int(pol.stats["arrests"])
+	var chasing := str(pol.state) == "chase"
+	if chasing:
 		_chase_t += dt
 	if int(pol.stats["escapes"]) > _esc0:
 		_esc0 = int(pol.stats["escapes"])
 		streak += 1
 		stats["escapes"] += 1
 		var pay := escape_reward(int(pol.heat), _chase_t)
-		race.profile.earn(float(pay), "fugitivo")
+		race.profile.earn(float(pay), "fuga")
 		race.profile.add_xp(float(pay) * 0.2)
 		race.profile.save()
-		pol.fugitive_level = mini(3, streak)
-		_big(Tr.t("😎 ¡ESCAPASTE! + $%d\nRacha: %d · la próxima viene más fuerte") % [pay, streak], 4.0)
-		_chase_t = 0.0
+		_big(Tr.t("😎 ¡TE ESCAPASTE! + $%d · racha %d") % [pay, streak], 3.5)
 		if race.has_method("update_credits_hud"):
 			race.update_credits_hud()
 		if streak > best_streak:
 			best_streak = streak
 			_send_record("fugitive", "fugitivo", float(streak))
+		_escape_event_end(true)
+		_chase_t = 0.0
 	if int(pol.stats["arrests"]) > _arr0:
 		_arr0 = int(pol.stats["arrests"])
 		stats["arrests"] += 1
-		_big(Tr.t("🚔 TE AGARRARON · la racha quedó en %d") % streak, 4.0)
 		streak = 0
-		pol.fugitive_level = 0
+		_escape_event_end(false)
 		_chase_t = 0.0
-	var st := Tr.t("en persecución · %d s") % int(_chase_t) if str(pol.state) == "chase" else Tr.t("la policía te busca: %d %%") % int(minf(pol.rage, 1.0) * 100.0)
-	return Tr.t("🚨 FUGITIVO · racha %d · %s") % [streak, st]
+	if chasing and not _was_chase:
+		_escape_event_begin()
+	_was_chase = chasing
 
 static func escape_reward(level: int, chase_s: float) -> int:
 	return int(round(float(ESC_BASE + ESC_LEVEL * clampi(level, 0, 3) + ESC_PER_S * int(clampf(chase_s, 0.0, 300.0))) / 50.0) * 50)
 
-## Manda un récord al ranking (si el jugador participa); no traba el juego
 func _send_record(board: String, id: String, value: float) -> void:
 	var on = race.get("online")
 	if on == null or not on.has_method("enabled") or not on.enabled() or not on.has_method("submit_record"):
@@ -183,23 +182,103 @@ func _send_record(board: String, id: String, value: float) -> void:
 	if r.get("ok", false) and r.get("data") is Dictionary and bool((r["data"] as Dictionary).get("saved", false)) and int((r["data"] as Dictionary).get("rank", 0)) == 1:
 		_toast(Tr.t("🌍 ¡NUEVO RÉCORD MUNDIAL!"))
 
-# ───────────────────────── recompensa (evento del servidor) ─────────────────────────
-func now_server() -> float:
-	return Time.get_unix_time_from_system() + _clock_off
+# ───────────────────────── servidor ─────────────────────────
+func _soon() -> bool:
+	var now := now_server()
+	for e in events:
+		if float(e.get("starts", 0)) - now < 300.0 and float(e.get("ends", 0)) > now:
+			return true
+	return false
 
-## Lo que pasa con el evento en este momento: «wait» (falta), «live» (suelto), «over» (se fue o ya lo ganaron), «none»
-static func phase_of(e: Dictionary, now: float) -> String:
-	if e.is_empty():
-		return "none"
-	if bool(e.get("won", false)) or now >= float(e.get("ends", 0)):
-		return "over"
-	return "live" if now >= float(e.get("starts", 0)) else "wait"
+func _poll() -> void:
+	var on = race.get("online")
+	if on == null:
+		return
+	_busy = true
+	var r: Dictionary = await on.call_fn("events_current", {})
+	_busy = false
+	if r.get("ok", false) and r.get("data") is Dictionary:
+		apply_state(r["data"])
 
-## La barra: sube 1 por segundo pegado, baja DECAY_K por segundo lejos (nunca de cero para abajo ni más que el máximo)
-static func hold_step(h: float, dist: float, dt: float, hold_s: float) -> float:
-	return minf(hold_s, h + dt) if dist < STICK_R else maxf(0.0, h - dt * DECAY_K)
+## Lo que contestó el servidor: {now, events: [...], winners: [...]}
+func apply_state(d: Dictionary) -> void:
+	_clock_off = float(d.get("now", Time.get_unix_time_from_system())) - Time.get_unix_time_from_system()
+	events = (d.get("events", []) as Array).duplicate() if d.get("events") is Array else []
+	# ganadores nuevos: se anuncian (la primera vez sólo se recuerdan)
+	for w in (d.get("winners", []) as Array):
+		var k := "%s|%s|%s" % [str(w.get("event", "")), str(w.get("name", "")), str(w.get("at", ""))]
+		if not _seen_win.has(k):
+			_seen_win[k] = true
+			if not _first_poll and float(w.get("at", 0)) > now_server() - 300.0:
+				var car := str(w.get("car", ""))
+				_toast(Tr.t("📢 %s ganó «%s»%s") % [str(w.get("name", "")), Tr.t(str(w.get("event", ""))), (" · " + _car_name(car)) if car != "" and car != "<null>" else ""])
+	_first_poll = false
+	# la carrera de la semana: cuál de las carreras del mundo abierto es
+	weekly = {}
+	for e in events:
+		if str(e.get("kind", "")) == "record" and float(e.get("starts", 0)) <= now_server():
+			var evs = race.get("ow_events")
+			if evs != null and not (evs.events as Array).is_empty():
+				var ids: Array = []
+				for oe in evs.events:
+					ids.append(str(oe["id"]))
+				ids.sort()
+				weekly = {"ev": int(e["id"]), "ow_id": str(ids[absi(int(e.get("seed", 0))) % ids.size()]), "run": -1, "best": e.get("best"), "title": str(e.get("title", ""))}
 
-## Dónde se suelta: el mismo lugar para todos (sale de la semilla del servidor): el frente de uno de los locales de Dream City
+static func _find(evs: Array, id: int) -> Dictionary:
+	for e in evs:
+		if int(e.get("id", -1)) == id:
+			return e
+	return {}
+
+## Un evento, cada cuadro: avisos, lo que corresponde según el tipo y el renglón del HUD
+func _event_tick(e: Dictionary, dt: float, now: float) -> String:
+	var id := int(e["id"])
+	var st := float(e.get("starts", 0))
+	var en := float(e.get("ends", 0))
+	var kind := str(e.get("kind", ""))
+	var a: int = int(_announced.get(id, 0))
+	if now < st:
+		if a == 0 and st - now < 1800.0:
+			_announced[id] = 1
+			_big(Tr.t("📅 %s\nEmpieza en %d min · %s") % [Tr.t(str(e["title"])), maxi(1, int((st - now) / 60.0)), _reward_text(e)], 5.0)
+		elif a == 1 and st - now < 60.0:
+			_announced[id] = 2
+			_toast(Tr.t("📅 «%s» empieza en 1 minuto") % Tr.t(str(e["title"])))
+		return (Tr.t("📅 %s en %d:%02d") % [Tr.t(str(e["title"])), int(st - now) / 60, int(st - now) % 60]) if st - now < 1200.0 else ""
+	if now >= en:
+		if kind == "bounty":
+			_bounty_end(id, Tr.t("💨 Se fueron los autos de la cacería"))
+		return ""
+	if a < 3 and kind != "bounty":
+		_announced[id] = 3
+		_big(Tr.t("📅 EN VIVO: %s\n%s\n%s") % [Tr.t(str(e["title"])), Tr.t(str(e.get("descr", ""))), _reward_text(e)], 6.0)
+	match kind:
+		"bounty":
+			return _bounty_tick(e, dt, now)
+		"escape":
+			return _escape_line(e, now)
+		"reach":
+			return _reach_tick(e, dt, now)
+		"record":
+			return _record_line(e, now)
+	return ""
+
+static func _reward_text(e: Dictionary) -> String:
+	var r: Dictionary = e.get("reward", {})
+	if r.has("rent"):
+		return Tr.t("premio: el %s por %d días") % [_car_name(str(r["rent"])), int(r.get("days", 1))]
+	if r.has("car"):
+		return Tr.t("premio: el auto que atrapes")
+	if r.has("top"):
+		var tp: Array = r["top"]
+		return Tr.t("premios: $%d · $%d · $%d") % [int(tp[0]), int(tp[1]) if tp.size() > 1 else 0, int(tp[2]) if tp.size() > 2 else 0]
+	if r.has("credits"):
+		return Tr.t("premio: $%d") % int(r["credits"])
+	return ""
+
+# ───────────────────────── cacería ─────────────────────────
+## Dónde se suelta cada auto: el mismo lugar para todos (semilla del servidor + número de auto): el frente de uno de los locales de Dream City
 static func spawn_point(city, seed: int) -> Vector2:
 	var pts: Array = []
 	for p in city.pois:
@@ -211,90 +290,99 @@ static func spawn_point(city, seed: int) -> Vector2:
 	pts.sort_custom(func(a: Array, b: Array) -> bool: return str(a[0]) < str(b[0]))
 	return pts[absi(seed) % pts.size()][1]
 
-func _bounty(dt: float) -> String:
-	_poll_t -= dt
-	var now := now_server()
-	var ph := phase_of(ev, now)
-	if _poll_t <= 0.0 and not _busy:
-		_poll_t = POLL_SOON if (ph == "live" or (ph == "wait" and float(ev.get("starts", 0)) - now < 900.0)) else POLL_IDLE
-		_poll()
-	if ph == "wait":
-		var left := float(ev["starts"]) - now
-		var id := str(ev["id"])
-		var w: int = int(_warned.get(id, 0))
-		if left < float(ev.get("notice_s", 600)) and w == 0:
-			_warned[id] = 1
-			_big(Tr.t("🎯 RECOMPENSA en %d min\nSe suelta un %s: el primero que lo atrape se lo lleva") % [maxi(1, int(left / 60.0)), _car_name(str(ev["car"]))], 5.0)
-		elif left < 60.0 and w == 1:
-			_warned[id] = 2
-			_toast(Tr.t("🎯 ¡La recompensa se suelta en 1 minuto!"))
-		return (Tr.t("🎯 Recompensa: %s en %d:%02d") % [_car_name(str(ev["car"])), int(left) / 60, int(left) % 60]) if left < 900.0 else ""
-	if ph == "live":
-		if target.is_empty() and _end_t <= 0.0 and not _claiming:
-			var evs = race.get("ow_events")
-			if evs == null or not evs.busy():
-				_release()
-		if not target.is_empty():
-			return _hunt(dt, now)
-		return ""
-	# terminado: el auto se va
-	if not target.is_empty() and _end_t <= 0.0 and not _claiming:
-		if bool(ev.get("won", false)) and not bool(ev.get("mine", false)):
-			_big(Tr.t("😞 %s se llevó el %s") % [str(ev.get("winner", "otro piloto")), _car_name(str(ev["car"]))], 4.5)
-			stats["lost"] += 1
-		elif not bool(ev.get("won", false)):
-			_big(Tr.t("💨 La recompensa se fue: nadie la atrapó"), 4.0)
-			stats["lost"] += 1
-		_end_t = 0.01
-	if _end_t > 0.0:
-		_end_t -= dt
-		if _end_t <= 0.0:
-			_drop_target()
-	return ""
+static func hold_step(h: float, dist: float, dt: float, hold_s: float) -> float:
+	return minf(hold_s, h + dt) if dist < STICK_R else maxf(0.0, h - dt * DECAY_K)
 
-func _poll() -> void:
-	var on = race.get("online")
-	if on == null:
-		return
-	_busy = true
-	var r: Dictionary = await on.call_fn("bounty_current", {})
-	_busy = false
-	if not r.get("ok", false) or not (r.get("data") is Dictionary):
-		return
-	apply_state(r["data"])
+static func phase_of(e: Dictionary, now: float) -> String:
+	if e.is_empty():
+		return "none"
+	if now >= float(e.get("ends", 0)):
+		return "over"
+	return "live" if now >= float(e.get("starts", 0)) else "wait"
 
-## Lo que contestó el servidor (bounty_current): {next, last}
-func apply_state(d: Dictionary) -> void:
-	var n: Variant = d.get("next")
-	var last: Variant = d.get("last")
-	var cur_id := int(target.get("ev", ev.get("id", -1)))
-	# el que estaba persiguiendo ya lo ganó alguien (o yo): manda lo que dice «last»
-	if last is Dictionary and int((last as Dictionary).get("id", -2)) == cur_id:
-		ev = last
-		_clock_off = float((last as Dictionary).get("now", 0)) - Time.get_unix_time_from_system()
-		return
-	if n is Dictionary:
-		_clock_off = float((n as Dictionary).get("now", 0)) - Time.get_unix_time_from_system()
-		if not target.is_empty() and int((n as Dictionary)["id"]) != cur_id:
-			ev["won"] = true # el que se estaba persiguiendo terminó (y ya hay otro programado)
-			return
-		if ev.is_empty() or int(ev["id"]) != int((n as Dictionary)["id"]):
-			hold = 0.0
-			_slack_i = 0
-			_trace.clear()
-		ev = n
-	elif not target.is_empty():
-		ev["won"] = true
+func _bounty_tick(e: Dictionary, dt: float, now: float) -> String:
+	var id := int(e["id"])
+	var cars: Array = (e.get("params", {}) as Dictionary).get("cars", [])
+	var won_slots := {}
+	for w in (e.get("winners", []) as Array):
+		won_slots[int(w.get("slot", 0))] = str(w.get("name", ""))
+	# los autos que ya atrapó alguien se van
+	for tg in targets.duplicate():
+		if int(tg["ev"]) == id and won_slots.has(int(tg["slot"])) and not bool(tg["done"]):
+			if not bool(tg.get("mine", false)):
+				_big(Tr.t("😞 %s atrapó el %s") % [str(won_slots[int(tg["slot"])]), str(tg["name"])], 4.0)
+			_drop(tg)
+	var mine := bool(e.get("done", false))
+	if int(_announced.get(id, 0)) < 3:
+		_announced[id] = 3
+		if not mine and _free_to_play():
+			var n := 0
+			for s in cars.size():
+				if not won_slots.has(s) and _release(e, s):
+					n += 1
+			if n > 0:
+				_map_t = float((e.get("params", {}) as Dictionary).get("map_s", 45))
+				_gps_t = 0.0
+				_big(Tr.t("🎯 ¡CAZARRECOMPENSAS!\n%d autos sueltos: mirá el mapa (%d s).\nEl primero que se pegue %d s a uno se lo lleva.") % [n, int(_map_t), int((e.get("params", {}) as Dictionary).get("hold_s", 60))], 6.0)
+		else:
+			_announced[id] = 2 # (estaba en una carrera: aparecen cuando termine)
+	var line := ""
+	var best_d := 1e9
+	var best: Dictionary = {}
+	var me = race.cars[0].phys
+	var p := Vector2(me.px, me.pz)
+	for tg in targets:
+		if int(tg["ev"]) != id or bool(tg["done"]):
+			continue
+		var c = tg["car"]
+		if c == null or not race.cars.has(c):
+			continue
+		var q := Vector2(c.phys.px, c.phys.pz)
+		var d := q.distance_to(p)
+		_hunt_one(e, tg, dt, now, p, q, d)
+		if d < best_d:
+			best_d = d
+			best = tg
+	# el mapa: los primeros map_s segundos se ve dónde está el más cercano
+	var ch = _ch()
+	if _map_t > 0.0 and not best.is_empty():
+		_map_t -= dt
+		_gps_t -= dt
+		var bq := Vector2(best["car"].phys.px, best["car"].phys.pz)
+		if ch != null and _gps_t <= 0.0:
+			_gps_t = 2.0
+			if not bool(ch.get("has_dest")) or (ch.get("dest") as Vector2).distance_to(bq) > 40.0:
+				ch.set_dest(bq, "🎯 " + str(best["name"]), bool(ch.get("has_dest")))
+		if _map_t <= 0.0:
+			if ch != null and ch.has_method("clear_dest"):
+				ch.clear_dest()
+			_toast(Tr.t("🎯 Ya no se ven en el mapa: buscalos"))
+	if not best.is_empty():
+		var hs := float((e.get("params", {}) as Dictionary).get("hold_s", 60))
+		var green := best_d < STICK_R
+		_bar.max_value = hs
+		_bar.value = float(best["hold"])
+		_bar_fill.bg_color = Color(0.2, 0.9, 0.35) if green else Color(0.95, 0.7, 0.15)
+		var where := (Tr.t("en el mapa %d s") % int(_map_t)) if _map_t > 0.0 else ((Tr.t("%d m") % int(best_d)) if best_d < 500.0 else Tr.t("buscalos"))
+		var left := maxf(0.0, float(e.get("ends", now)) - now)
+		line = Tr.t("🎯 %s · %s · %d/%d s · %d:%02d") % [str(best["name"]), where, int(best["hold"]), int(hs), int(left) / 60, int(left) % 60]
+	elif int(_announced.get(id, 0)) == 2 and _free_to_play() and not mine:
+		_announced[id] = 0 # terminó la carrera: ahora sí se sueltan
+	return line
 
-## Se suelta el auto: aparece en el mismo lugar para todos y se ve en el mapa durante map_s segundos
-func _release() -> void:
-	var vid := str(ev["car"])
+func _free_to_play() -> bool:
+	var evs = race.get("ow_events")
+	return (evs == null or not evs.busy()) and _reach.get("run", -1) == -1
+
+func _release(e: Dictionary, slot: int) -> bool:
+	var cars: Array = (e.get("params", {}) as Dictionary).get("cars", [])
+	var vid := str(cars[slot])
 	if not race.vehicles.has(vid):
-		return
-	var p0 := spawn_point(race.track.city, int(ev.get("seed", 0)))
+		return false
+	var p0 := spawn_point(race.track.city, int(e.get("seed", 0)) + slot * 7)
 	var pose: Array = race.track.nearest_road_pose(p0, 0.0)
 	if pose.is_empty():
-		return
+		return false
 	var drv := PoliceDriver.new()
 	drv.mode = "parked"
 	drv.grip = 1.15
@@ -304,90 +392,75 @@ func _release() -> void:
 	var car = race.add_ai_car(vid, float(pose[0]), float(pose[1]), float(pose[2]), drv, Color(str(Profile.new_car_state(vid)["paint"]["body"])),
 		{"powerScale": float(base.get("powerScale", 1.0)) * 1.15, "mu": float(base.get("mu", 1.0)) * 1.12})
 	if car == null:
-		return
-	target = {"car": car, "drv": drv, "vid": vid, "name": _car_name(vid), "ev": int(ev["id"])}
-	_label = Label3D.new()
-	_label.text = "🎯"
-	_label.font_size = 110
-	_label.pixel_size = 0.014
-	_label.outline_size = 18
-	_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_label.no_depth_test = true
-	_label.position = Vector3(0, 2.8, 0)
-	car.visual.add_child(_label)
-	hold = 0.0
-	_slack_i = 0
-	_trace.clear()
-	_map_t = float(ev.get("map_s", 45))
-	_route_t = 0.0
-	_gps_t = 0.0
-	_big(Tr.t("🎯 ¡SE SOLTÓ LA RECOMPENSA!\n%s · mirá el mapa: se ve %d s dónde está.\nPegate %d s y es tuyo… si llegás primero.") % [str(target["name"]), int(_map_t), int(ev.get("hold_s", 60))], 6.0)
-	CrashLog.mark("recompensa", "suelta %s · ev %d" % [vid, int(ev["id"])])
-	var on = race.get("online")
-	if on != null and on.has_method("call_fn"):
-		var r: Dictionary = await on.call_fn("bounty_join", {"p_id": int(ev["id"])})
-		if r.get("ok", false) and r.get("data") is Dictionary and not bool((r["data"] as Dictionary).get("ok", true)):
-			_toast(str((r["data"] as Dictionary).get("reason", "")))
+		return false
+	var lb := Label3D.new()
+	lb.text = "🎯"
+	lb.font_size = 110
+	lb.pixel_size = 0.014
+	lb.outline_size = 18
+	lb.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lb.no_depth_test = true
+	lb.position = Vector3(0, 2.8, 0)
+	car.visual.add_child(lb)
+	targets.append({"ev": int(e["id"]), "slot": slot, "car": car, "drv": drv, "vid": vid, "name": _car_name(vid), "hold": 0.0, "run": -1, "trace": [], "trace_t": 0.0,
+		"slack_i": 0, "slack_t": 0.0, "label": lb, "route_t": 0.0, "done": false, "claiming": false, "cp_t": 0.0, "starting": false})
+	CrashLog.mark("evento", "cacería: suelto %s (slot %d)" % [vid, slot])
+	return true
 
-func _hunt(dt: float, now: float) -> String:
-	var tc = target["car"]
-	if tc == null or not race.cars.has(tc):
-		target = {}
-		return ""
-	var me = race.cars[0].phys
-	var p := Vector2(me.px, me.pz)
-	var q := Vector2(tc.phys.px, tc.phys.pz)
-	var d := q.distance_to(p)
-	var hs := float(ev.get("hold_s", 60))
-	if not _claiming:
-		hold = hold_step(hold, d, dt, hs)
-	# recorrido para el servidor (por si hay que revisar un ganador): cada segundo, jugador, auto y barra
-	_trace_t -= dt
-	if _trace_t <= 0.0 and _trace.size() < TRACE_MAX:
-		_trace_t = 1.0
-		_trace.append([int(now) % 100000, int(p.x), int(p.y), int(q.x), int(q.y), int(hold)])
-	if hold >= hs and not _claiming:
-		_claim()
-	# el que huye: rápido y sin errores; a mitad de la barra se hace el boludo un ratito
-	var drv = target["drv"]
-	if _slack_t > 0.0:
-		_slack_t -= dt
+func _hunt_one(e: Dictionary, tg: Dictionary, dt: float, now: float, p: Vector2, q: Vector2, d: float) -> void:
+	var hs := float((e.get("params", {}) as Dictionary).get("hold_s", 60))
+	# el intento se anota en el servidor cuando te acercás (gasta un intento sólo si de verdad vas por él)
+	if int(tg["run"]) < 0 and d < 300.0 and not bool(tg["starting"]):
+		_start_run(tg, int(e["id"]), int(tg["slot"]))
+	if not bool(tg["claiming"]):
+		tg["hold"] = hold_step(float(tg["hold"]), d, dt, hs) if int(tg["run"]) >= 0 else 0.0
+	tg["trace_t"] = float(tg["trace_t"]) - dt
+	if float(tg["trace_t"]) <= 0.0 and (tg["trace"] as Array).size() < TRACE_MAX and int(tg["run"]) >= 0:
+		tg["trace_t"] = 1.0
+		(tg["trace"] as Array).append([int(now) % 100000, int(p.x), int(p.y), int(q.x), int(q.y), int(float(tg["hold"]))])
+	if float(tg["hold"]) >= hs and not bool(tg["claiming"]):
+		_claim(tg)
+	var drv = tg["drv"]
+	if float(tg["slack_t"]) > 0.0:
+		tg["slack_t"] = float(tg["slack_t"]) - dt
 		drv.pace = 0.72
-		if _slack_t <= 0.0:
+		if float(tg["slack_t"]) <= 0.0:
 			drv.pace = 1.12
-	elif _slack_i < SLACK_AT.size() and hold / hs >= float(SLACK_AT[_slack_i]):
-		_slack_i += 1
-		_slack_t = SLACK_S
-	_route_t -= dt
-	if not _claiming and (_route_t <= 0.0 or (drv.mode == "path" and drv.idx >= (drv.path as PackedVector2Array).size() - 2)):
-		_route_t = 3.0 if d < FLEE_R else 9.0
-		_flee(q, p, tc.phys.yaw)
-	# el mapa: los primeros map_s segundos se ve dónde está
-	var ch = _ch()
-	if _map_t > 0.0:
-		_map_t -= dt
-		_gps_t -= dt
-		if ch != null and _gps_t <= 0.0:
-			_gps_t = 2.0
-			if not bool(ch.get("has_dest")) or (ch.get("dest") as Vector2).distance_to(q) > 40.0:
-				ch.set_dest(q, "🎯 " + str(target["name"]), bool(ch.get("has_dest")))
-		if _map_t <= 0.0:
-			if ch != null and ch.has_method("clear_dest"):
-				ch.clear_dest()
-			_toast(Tr.t("🎯 Ya no se ve en el mapa: buscalo"))
+	elif int(tg["slack_i"]) < SLACK_AT.size() and float(tg["hold"]) / hs >= float(SLACK_AT[int(tg["slack_i"])]):
+		tg["slack_i"] = int(tg["slack_i"]) + 1
+		tg["slack_t"] = SLACK_S
+	tg["route_t"] = float(tg["route_t"]) - dt
+	if not bool(tg["claiming"]) and (float(tg["route_t"]) <= 0.0 or (drv.mode == "path" and drv.idx >= (drv.path as PackedVector2Array).size() - 2)):
+		tg["route_t"] = 3.0 if d < FLEE_R else 9.0
+		_flee(drv, q, p, tg["car"].phys.yaw)
 	var green := d < STICK_R
-	if _label != null and is_instance_valid(_label):
-		_label.modulate = Color(0.3, 1.0, 0.4) if green else Color(1.0, 0.85, 0.2)
-	_bar.max_value = hs
-	_bar.value = hold
-	_bar_fill.bg_color = Color(0.2, 0.9, 0.35) if green else Color(0.95, 0.7, 0.15)
-	var left := maxf(0.0, float(ev.get("ends", now)) - now)
-	var where := (Tr.t("se ve en el mapa %d s") % int(_map_t)) if _map_t > 0.0 else ((Tr.t("%d m") % int(d)) if d < 400.0 else Tr.t("buscalo"))
-	return Tr.t("🎯 RECOMPENSA · %s · %s · %d/%d s · %d:%02d") % [str(target["name"]), where, int(hold), int(hs), int(left) / 60, int(left) % 60]
+	var lb: Variant = tg["label"]
+	if lb != null and is_instance_valid(lb):
+		(lb as Label3D).modulate = Color(0.3, 1.0, 0.4) if green else Color(1.0, 0.85, 0.2)
+	# si la presa pasa un control policial y vos venís atrás, la policía te persigue a vos
+	tg["cp_t"] = float(tg["cp_t"]) - dt
+	if float(tg["cp_t"]) <= 0.0 and d < CP_ME_R:
+		tg["cp_t"] = 0.5
+		var pol = race.police
+		if str(pol.state) != "chase" and pol.has_method("checkpoint_near") and pol.checkpoint_near(q, CP_TRIGGER_R) >= 0:
+			pol.event_chase(race.cars[0].phys, clampi(int(pol.heat) + 1, 0, 3))
+			_toast(Tr.t("🚨 Tu presa pasó un control: ¡la policía te persigue a vos también!"))
 
-func _flee(q: Vector2, p: Vector2, yaw: float) -> void:
+func _start_run(tg: Dictionary, ev_id: int, slot: int) -> void:
+	tg["starting"] = true
+	var on = race.get("online")
+	var r: Dictionary = await on.call_fn("event_start", {"p_id": ev_id, "p_slot": slot})
+	tg["starting"] = false
+	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
+	if r.get("ok", false) and bool(d.get("ok", false)):
+		tg["run"] = int(d["run"])
+	elif d.has("reason"):
+		_toast("🎯 " + str(d["reason"]))
+		if str(d["reason"]).begins_with("ese auto ya") or str(d["reason"]).begins_with("ya ganaste"):
+			_drop(tg)
+
+func _flee(drv, q: Vector2, p: Vector2, yaw: float) -> void:
 	var pol = race.police
-	var drv = target["drv"]
 	var away := (q - p).normalized() if q.distance_to(p) > 1.0 else Vector2(sin(yaw), cos(yaw))
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
@@ -405,74 +478,351 @@ func _flee(q: Vector2, p: Vector2, yaw: float) -> void:
 			drv.mode = "path"
 			return
 
-## Completó la barra: el servidor dice si llegó primero
-func _claim() -> void:
-	_claiming = true
-	target["drv"].mode = "parked"
+func _claim(tg: Dictionary) -> void:
+	tg["claiming"] = true
+	tg["drv"].mode = "parked"
 	_big(Tr.t("🎯 ¡BARRA COMPLETA!\nAvisándole al servidor…"), 3.0)
 	var on = race.get("online")
-	var r: Dictionary = await on.call_fn("bounty_claim", {"p_id": int(ev["id"]), "p_trace": _trace, "p_name": str(race.profile.d.get("name", "Piloto"))})
-	_claiming = false
-	if target.is_empty():
+	var r: Dictionary = await on.call_fn("event_finish", {"p_run": int(tg["run"]), "p_ok": true, "p_value": float(tg["hold"]), "p_trace": tg["trace"], "p_name": str(race.profile.d.get("name", "Piloto"))})
+	tg["claiming"] = false
+	if bool(tg["done"]):
 		return
 	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
-	if r.get("ok", false) and bool(d.get("ok", false)):
+	if r.get("ok", false) and bool(d.get("won", false)):
 		stats["caught"] += 1
-		ev["won"] = true
-		ev["mine"] = true
-		if bool(d.get("dup", false)):
-			_big(Tr.t("🏆 ¡GANASTE LA RECOMPENSA!\nYa tenías el %s: + $%d") % [str(target["name"]), int(d.get("credits", 0))], 6.0)
+		stats["won"] += 1
+		tg["mine"] = true
+		var rw: Dictionary = d.get("reward", {})
+		if bool(rw.get("dup", false)):
+			_big(Tr.t("🏆 ¡LO ATRAPASTE!\nYa tenías el %s: + $%d") % [str(tg["name"]), int(rw.get("credits", 0))], 6.0)
 		else:
-			_big(Tr.t("🏆 ¡GANASTE LA RECOMPENSA!\nEl %s es tuyo: ya está en tu garaje") % str(target["name"]), 6.0)
-		var acct = race.profile.get("acct")
-		if acct != null and acct.has_method("sync"):
-			acct.sync() # el servidor ya le dio el auto a la cuenta: se trae
-		CrashLog.mark("recompensa", "ganada %s" % str(target["vid"]))
-		_end_t = 4.0
+			_big(Tr.t("🏆 ¡LO ATRAPASTE!\nEl %s es tuyo: ya está en tu garaje") % str(tg["name"]), 6.0)
+		_sync_account()
+		CrashLog.mark("evento", "cacería: ganada %s" % str(tg["vid"]))
+		for o in targets.duplicate(): # (uno por evento: los otros se van)
+			if int(o["ev"]) == int(tg["ev"]):
+				_drop(o)
 		return
 	var why := str(d.get("reason", r.get("error", Tr.t("sin conexión"))))
 	_big("😞 " + why, 4.5)
-	if why.begins_with("ya la ganó") or why.begins_with("la recompensa ya se fue") or why.begins_with("ya ganaste"):
-		ev["won"] = true
-		ev["winner"] = str(d.get("winner", ""))
-		_end_t = 4.0
+	if r.get("ok", false):
+		_drop(tg) # el servidor dijo que no (lo ganó otro, ya ganaste hace poco…)
 	else:
-		hold = maxf(0.0, float(ev.get("hold_s", 60)) - 5.0) # (sin conexión o muy temprano: se reintenta en unos segundos)
-		target["drv"].mode = "path"
+		tg["hold"] = maxf(0.0, float(tg["hold"]) - 5.0) # sin conexión: se reintenta
+		tg["drv"].mode = "path"
 
-func _drop_target() -> void:
-	if target.is_empty():
-		return
-	var car = target["car"]
+func _drop(tg: Dictionary) -> void:
+	tg["done"] = true
+	var car = tg["car"]
 	if car != null and race.cars.has(car):
 		race.remove_car(car)
-	target = {}
-	_label = null
-	var ch = _ch()
-	if ch != null and ch.has_method("clear_dest") and _map_t > 0.0:
-		ch.clear_dest()
-	_map_t = 0.0
+	targets.erase(tg)
+	if targets.is_empty():
+		var ch = _ch()
+		if ch != null and ch.has_method("clear_dest") and _map_t > 0.0:
+			ch.clear_dest()
+		_map_t = 0.0
 
-## Desde la pausa: cómo está la recompensa
-func _bounty_status() -> void:
+func _bounty_end(ev_id: int, msg: String) -> void:
+	var any := false
+	for tg in targets.duplicate():
+		if int(tg["ev"]) == ev_id:
+			_drop(tg)
+			any = true
+	if any:
+		_big(msg, 4.0)
+
+# ───────────────────────── fuga ─────────────────────────
+func _escape_ev() -> Dictionary:
+	var now := now_server()
+	for e in events:
+		if str(e.get("kind", "")) == "escape" and phase_of(e, now) == "live" and not bool(e.get("done", false)):
+			var att := int(e.get("attempts", 0))
+			if att <= 0 or int(e.get("used", 0)) < att:
+				return e
+	return {}
+
+func _escape_event_begin() -> void:
+	if not _online_ok() or _esc_wait or _esc_run >= 0:
+		return
+	var e := _escape_ev()
+	if e.is_empty():
+		return
+	_esc_wait = true
+	_esc_ev = int(e["id"])
+	_esc_start = Time.get_ticks_msec() / 1000.0
+	var on = race.get("online")
+	var r: Dictionary = await on.call_fn("event_start", {"p_id": int(e["id"]), "p_slot": 0})
+	_esc_wait = false
+	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
+	if r.get("ok", false) and bool(d.get("ok", false)):
+		_esc_run = int(d["run"])
+		e["used"] = int(e.get("used", 0)) + 1
+		_toast(Tr.t("⏱ «%s»: ¡aguantá %d min y escapá!") % [Tr.t(str(e["title"])), int(float((e.get("params", {}) as Dictionary).get("chase_s", 600)) / 60.0)])
+
+func _escape_event_end(escaped: bool) -> void:
+	if _esc_run < 0:
+		return
+	var run := _esc_run
+	_esc_run = -1
+	var held := Time.get_ticks_msec() / 1000.0 - _esc_start
+	var e := _find(events, _esc_ev)
+	var need := float((e.get("params", {}) as Dictionary).get("chase_s", 600)) if not e.is_empty() else 600.0
+	var ok := escaped and held >= need
+	var on = race.get("online")
+	var r: Dictionary = await on.call_fn("event_finish", {"p_run": run, "p_ok": ok, "p_value": snappedf(held, 0.1), "p_trace": null, "p_name": str(race.profile.d.get("name", "Piloto"))})
+	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
+	if ok and r.get("ok", false) and bool(d.get("won", false)):
+		stats["won"] += 1
+		_big(Tr.t("🏆 ¡FUGA CUMPLIDA!\n%s") % _got_text(d.get("reward", {})), 6.0)
+		_sync_account()
+		if not e.is_empty():
+			e["done"] = true
+	elif ok:
+		_big("😞 " + str(d.get("reason", r.get("error", Tr.t("sin conexión")))), 4.0)
+	elif escaped:
+		_toast(Tr.t("⏱ Aguantaste %d:%02d · hacían falta %d:%02d") % [int(held) / 60, int(held) % 60, int(need) / 60, int(need) % 60])
+
+func _escape_line(e: Dictionary, now: float) -> String:
+	if bool(e.get("done", false)):
+		return ""
+	var need := float((e.get("params", {}) as Dictionary).get("chase_s", 600))
+	var att := int(e.get("attempts", 0))
+	var left := (Tr.t(" · %d intentos") % maxi(0, att - int(e.get("used", 0)))) if att > 0 else ""
+	if _esc_run >= 0 and int(e["id"]) == _esc_ev:
+		var held := Time.get_ticks_msec() / 1000.0 - _esc_start
+		return Tr.t("⏱ FUGA %d:%02d / %d:%02d — ¡no te dejes agarrar!") % [int(held) / 60, int(held) % 60, int(need) / 60, int(need) % 60]
+	var rem := maxf(0.0, float(e.get("ends", now)) - now)
+	return Tr.t("🚨 %s%s · quedan %dh%02d") % [Tr.t(str(e["title"])), left, int(rem) / 3600, (int(rem) % 3600) / 60]
+
+# ───────────────────────── contrarreloj ─────────────────────────
+## La ciudad marcada (la misma para todos: semilla del servidor) y la salida de Dream City más cercana a ella
+func reach_plan(seed: int) -> Dictionary:
+	if _towns.is_empty():
+		return {}
+	var t: Array = _towns[absi(seed) % _towns.size()]
+	var tp: Vector2 = t[1]
+	var best: Dictionary = {}
+	var bd := 1e18
+	for ex in race.track.city.exits:
+		var d := (ex["pos"] as Vector2).distance_to(tp)
+		if d < bd:
+			bd = d
+			best = ex
+	if best.is_empty():
+		return {}
+	var ep: Vector2 = best["pos"]
+	var start := ep + (Vector2.ZERO - ep).normalized() * 60.0 # (el círculo va un poco adentro de la ciudad, sobre la misma calle)
+	var pose: Array = race.track.nearest_road_pose(start, 0.0)
+	if not pose.is_empty():
+		start = Vector2(float(pose[0]), float(pose[1]))
+	return {"town": str(t[2]) if str(t[2]) != "" else str(t[0]), "pos": tp, "start": start, "dist": start.distance_to(tp)}
+
+func _reach_tick(e: Dictionary, dt: float, now: float) -> String:
+	if bool(e.get("done", false)):
+		_reach_clear()
+		return ""
+	var att := int(e.get("attempts", 0))
+	var used := int(e.get("used", 0))
+	if _reach.is_empty() or int(_reach.get("ev", -1)) != int(e["id"]):
+		_reach_clear()
+		var plan := reach_plan(int(e.get("seed", 0)))
+		if plan.is_empty():
+			return ""
+		var speed := float((e.get("params", {}) as Dictionary).get("speed", 24.0))
+		plan["limit"] = clampf(roundf(float(plan["dist"]) * 1.25 / speed / 10.0) * 10.0, 120.0, float((e.get("params", {}) as Dictionary).get("time_max", 1500)))
+		plan["ev"] = int(e["id"])
+		plan["run"] = -1
+		plan["t"] = 0.0
+		plan["marker"] = _reach_marker(plan["start"], "%s → %s" % [Tr.t("CONTRARRELOJ"), str(plan["town"])])
+		_reach = plan
+	var me = race.cars[0].phys
+	var p := Vector2(me.px, me.pz)
+	var limit := float(_reach["limit"])
+	if int(_reach["run"]) >= 0:
+		_reach["t"] = float(_reach["t"]) + dt
+		var t := float(_reach["t"])
+		if p.distance_to(_reach["pos"]) < REACH_ARRIVE:
+			_reach_finish(t <= limit, t)
+		elif t > limit + 1.0:
+			_reach_finish(false, t)
+		return Tr.t("🏁 %s · %d:%02d / %d:%02d") % [str(_reach["town"]), int(t) / 60, int(t) % 60, int(limit) / 60, int(limit) % 60]
+	if att > 0 and used >= att:
+		return ""
+	# largada: frená en el círculo
+	if not bool(_reach.get("starting", false)) and p.distance_to(_reach["start"]) < START_R and sqrt(me.vx * me.vx + me.vz * me.vz) < 2.0 and _free_to_play():
+		_reach_stop += dt
+		if _reach_stop > 0.8:
+			_reach_stop = 0.0
+			_reach_begin(e)
+	else:
+		_reach_stop = 0.0
+	var dd := p.distance_to(_reach["start"])
+	return Tr.t("🏁 %s: llegá a %s en %d:%02d · %d intentos · largada a %.1f km") % [Tr.t(str(e["title"])), str(_reach["town"]), int(limit) / 60, int(limit) % 60, maxi(0, att - used), dd / 1000.0]
+
+func _reach_begin(e: Dictionary) -> void:
+	_reach["starting"] = true
+	var on = race.get("online")
+	var r: Dictionary = await on.call_fn("event_start", {"p_id": int(e["id"]), "p_slot": 0})
+	_reach["starting"] = false
+	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
+	if r.get("ok", false) and bool(d.get("ok", false)):
+		_reach["run"] = int(d["run"])
+		_reach["t"] = 0.0
+		e["used"] = int(e.get("used", 0)) + 1
+		var ch = _ch()
+		if ch != null:
+			ch.set_dest(_reach["pos"], "🏁 " + str(_reach["town"]))
+		_big(Tr.t("🏁 ¡YA! Llegá a %s en %d:%02d") % [str(_reach["town"]), int(float(_reach["limit"])) / 60, int(float(_reach["limit"])) % 60], 3.0)
+	else:
+		_toast("🏁 " + str(d.get("reason", r.get("error", Tr.t("sin conexión")))))
+
+func _reach_finish(ok: bool, t: float) -> void:
+	var run := int(_reach["run"])
+	_reach["run"] = -1
+	var ch = _ch()
+	if ch != null and ch.has_method("clear_dest"):
+		ch.clear_dest()
+	var on = race.get("online")
+	var r: Dictionary = await on.call_fn("event_finish", {"p_run": run, "p_ok": ok, "p_value": snappedf(t, 0.1), "p_trace": null, "p_name": str(race.profile.d.get("name", "Piloto"))})
+	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
+	if ok and r.get("ok", false) and bool(d.get("won", false)):
+		stats["won"] += 1
+		_big(Tr.t("🏆 ¡LLEGASTE A TIEMPO! %d:%02d\n%s") % [int(t) / 60, int(t) % 60, _got_text(d.get("reward", {}))], 6.0)
+		_sync_account()
+		var e := _find(events, int(_reach.get("ev", -1)))
+		if not e.is_empty():
+			e["done"] = true
+	elif ok:
+		_big("😞 " + str(d.get("reason", r.get("error", Tr.t("sin conexión")))), 4.0)
+	else:
+		_big(Tr.t("⌛ Se terminó el tiempo"), 3.0)
+
+func _reach_marker(pos: Vector2, text: String) -> Node3D:
+	if race.track == null or race.track.world_node == null:
+		return null
+	var root := Node3D.new()
+	var y := float(race.track.ground_y(pos.x, pos.y))
+	var ring := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = START_R
+	cm.bottom_radius = START_R
+	cm.height = 0.06
+	cm.radial_segments = 32
+	cm.rings = 1
+	ring.mesh = cm
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(0.3, 1.0, 0.5, 0.35)
+	ring.material_override = mat
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ring.position = Vector3(pos.x, y + 0.12, pos.y)
+	root.add_child(ring)
+	var lb := Label3D.new()
+	lb.text = "🏁 " + text
+	lb.font_size = 56
+	lb.pixel_size = 0.011
+	lb.outline_size = 12
+	lb.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lb.visibility_range_begin = 16.0
+	lb.modulate = Color(0.6, 1.0, 0.7)
+	lb.position = Vector3(pos.x, y + 5.0, pos.y)
+	root.add_child(lb)
+	race.track.world_node.add_child(root)
+	return root
+
+func _reach_clear() -> void:
+	var mk: Variant = _reach.get("marker")
+	if mk != null and is_instance_valid(mk):
+		(mk as Node).queue_free()
+	_reach = {}
+
+# ───────────────────────── carrera de la semana ─────────────────────────
+func _record_line(e: Dictionary, _now: float) -> String:
+	if weekly.is_empty() or int(weekly["ev"]) != int(e["id"]):
+		return ""
+	var b: Variant = e.get("best")
+	return Tr.t("🏆 %s · tu mejor: %s") % [Tr.t(str(e["title"])), _fmt(float(b)) if b != null else "—"]
+
+## city_events.gd avisa cuando empieza y termina una carrera del mundo abierto
+func on_ow_start(id: String) -> void:
+	if weekly.is_empty() or str(weekly["ow_id"]) != id or not _online_ok():
+		return
+	var on = race.get("online")
+	var r: Dictionary = await on.call_fn("event_start", {"p_id": int(weekly["ev"]), "p_slot": 0})
+	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
+	if r.get("ok", false) and bool(d.get("ok", false)) and not weekly.is_empty():
+		weekly["run"] = int(d["run"])
+
+func on_ow_finish(id: String, ok: bool, secs: float) -> void:
+	if weekly.is_empty() or str(weekly["ow_id"]) != id or int(weekly.get("run", -1)) < 0:
+		return
+	var run := int(weekly["run"])
+	weekly["run"] = -1
+	var on = race.get("online")
+	var r: Dictionary = await on.call_fn("event_finish", {"p_run": run, "p_ok": ok, "p_value": snappedf(secs, 0.01), "p_trace": null, "p_name": str(race.profile.d.get("name", "Piloto"))})
+	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
+	if ok and bool(d.get("saved", false)):
+		_toast(Tr.t("🏆 Carrera de la semana: vas %dº") % int(d.get("rank", 0)))
+		_poll_t = 1.0
+
+func is_weekly(id: String) -> bool:
+	return not weekly.is_empty() and str(weekly["ow_id"]) == id
+
+# ───────────────────────── tablero (pausa) ─────────────────────────
+func _show_board() -> void:
 	if not _online_ok():
-		_toast(Tr.t("La recompensa necesita conexión y tu cuenta"))
+		_big(Tr.t("📅 Los eventos en vivo necesitan conexión y tu cuenta"), 3.5)
 		return
 	var now := now_server()
-	match phase_of(ev, now):
-		"wait":
-			var left := float(ev["starts"]) - now
-			_big(Tr.t("🎯 Próxima recompensa: %s\nse suelta en %d h %02d min · pegado %d s") % [_car_name(str(ev["car"])), int(left) / 3600, (int(left) % 3600) / 60, int(ev.get("hold_s", 60))], 4.0)
-		"live":
-			_toast(Tr.t("🎯 Está suelta: ¡buscala!") if not target.is_empty() else Tr.t("🎯 Está suelta: terminá lo que estás haciendo y aparece"))
-		_:
-			_toast(Tr.t("🎯 No hay recompensa programada por ahora"))
-			_poll_t = 0.0
+	var lines: Array = [Tr.t("📅 EVENTOS EN VIVO")]
+	for e in events:
+		var st := float(e.get("starts", 0))
+		var en := float(e.get("ends", 0))
+		if en < now:
+			continue
+		var when := Tr.t("en vivo · termina en %s") % _dur(en - now) if st <= now else Tr.t("empieza en %s") % _dur(st - now)
+		lines.append("%s %s — %s · %s" % [_kind_icon(str(e.get("kind", ""))), Tr.t(str(e["title"])), when, _reward_text(e)])
+	if lines.size() == 1:
+		lines.append(Tr.t("Ahora no hay eventos: vuelve a mirar en un rato"))
+		_poll_t = 0.0
+	lines.append(Tr.t("⏳ Tiempo real (jugador contra jugador): próximamente"))
+	_big("\n".join(lines.slice(0, 7)), 7.0)
 
-## Los autos se rehicieron (taller de prueba, cambio de auto): el que andaba suelto ya no está en la lista
+static func _kind_icon(k: String) -> String:
+	return {"bounty": "🎯", "escape": "🚨", "reach": "🏁", "record": "🏆"}.get(k, "📅")
+
+static func _dur(s: float) -> String:
+	var n := int(s)
+	return ("%dh%02d" % [n / 3600, (n % 3600) / 60]) if n >= 3600 else ("%d:%02d" % [n / 60, n % 60])
+
+static func _fmt(secs: float) -> String:
+	return "%d:%04.1f" % [int(secs / 60.0), fmod(secs, 60.0)]
+
+static func _got_text(rw: Variant) -> String:
+	if not (rw is Dictionary):
+		return ""
+	var r: Dictionary = rw
+	var out: Array = []
+	if r.has("credits") and int(r["credits"]) > 0:
+		out.append("+ $%d" % int(r["credits"]))
+	if r.has("rent") and not bool(r.get("had", false)):
+		out.append(Tr.t("el %s es tuyo hasta el %s") % [_car_name(str(r["rent"])), Time.get_date_string_from_unix_time(int(r.get("until", 0)))])
+	if r.has("car") and not bool(r.get("dup", false)):
+		out.append(Tr.t("el %s es tuyo") % _car_name(str(r["car"])))
+	return " · ".join(out)
+
+func _sync_account() -> void:
+	var acct = race.profile.get("acct")
+	if acct != null and acct.has_method("sync"):
+		acct.sync() # el servidor ya dio el premio a la cuenta: se trae
+	if race.has_method("update_credits_hud"):
+		race.update_credits_hud()
+
+## Los autos se rehicieron (taller de prueba, cambio de auto): los de la cacería ya no están en la lista
 func forget() -> void:
-	target = {}
-	_label = null
+	targets.clear()
 
 static func _car_name(vid: String) -> String:
 	var c: Dictionary = CarBuild.catalog()["cars"].get(vid, {})
@@ -488,14 +838,14 @@ func _build_hud() -> void:
 	var box := VBoxContainer.new()
 	box.anchor_left = 0.5
 	box.anchor_right = 0.5
-	box.offset_left = -330.0
-	box.offset_right = 330.0
+	box.offset_left = -340.0
+	box.offset_right = 340.0
 	box.offset_top = 176.0 # (debajo del velocímetro y del cartel de la policía)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hud.add_child(box)
 	_hud_l = Label.new()
 	_hud_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hud_l.add_theme_font_size_override("font_size", 20)
+	_hud_l.add_theme_font_size_override("font_size", 18)
 	_hud_l.add_theme_color_override("font_color", Color(1.0, 0.92, 0.55))
 	_hud_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_hud_l.add_theme_constant_override("outline_size", 6)
@@ -511,20 +861,21 @@ func _build_hud() -> void:
 	box.add_child(_bar)
 	_hud.visible = false
 	race.add_child(_hud)
-	var lay := CanvasLayer.new() # el cartel grande va aparte
+	var lay := CanvasLayer.new()
 	lay.layer = 3
 	_banner = Label.new()
 	_banner.anchor_left = 0.5
 	_banner.anchor_right = 0.5
 	_banner.anchor_top = 0.5
 	_banner.anchor_bottom = 0.5
-	_banner.offset_left = -420.0
-	_banner.offset_right = 420.0
-	_banner.offset_top = -150.0
-	_banner.offset_bottom = 10.0
+	_banner.offset_left = -440.0
+	_banner.offset_right = 440.0
+	_banner.offset_top = -170.0
+	_banner.offset_bottom = 20.0
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_banner.add_theme_font_size_override("font_size", 30)
+	_banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_banner.add_theme_font_size_override("font_size", 28)
 	_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 	_banner.add_theme_constant_override("outline_size", 10)
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE

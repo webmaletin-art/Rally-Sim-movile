@@ -97,6 +97,8 @@ var _group_t := 0.0
 var chase_m := 0.0 # metros recorridos en esta persecución
 var _strong := -1
 var rage := 0.0 # desmadre (0–1)
+var _join_t := 0.0
+var _joined := {} # controles que ya se sumaron a esta persecución
 var fugitive := false # modo Fugitivo (city_modes.gd)
 var fugitive_level := 0 # sube con cada escape del modo Fugitivo
 var _rage_quiet := 0.0
@@ -140,6 +142,16 @@ func _build_checkpoints() -> void:
 			(_cells[ci] as Array).append(checkpoints.size())
 			checkpoints.append({"p": q, "dir": r[1], "ei": ei, "hw": float(region.e_hw[ei])})
 			break
+
+## El control que está a menos de r metros de p (−1 si ninguno). Lo usa la cacería: si la presa pasa un control, la policía te persigue a vos
+func checkpoint_near(p: Vector2, r: float) -> int:
+	var c0 := Vector2i(floori(p.x / 2000.0), floori(p.y / 2000.0))
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			for i in _cells.get(c0 + Vector2i(dx, dz), []):
+				if (checkpoints[i]["p"] as Vector2).distance_to(p) < r:
+					return i
+	return -1
 
 func _near_cp(p: Vector2) -> int:
 	var c0 := Vector2i(floori(p.x / 2000.0), floori(p.y / 2000.0))
@@ -389,8 +401,28 @@ func _lights() -> void:
 			if is_instance_valid(l[k]):
 				(l[k] as Node3D).visible = on == (k == 0)
 
+## Un control que pasás durante una persecución: sus patrulleros salen de la banquina detrás tuyo (hasta 7 en total)
+func _join_checkpoint(c: int, me) -> void:
+	var ck: Dictionary = checkpoints[c]
+	var dir: Vector2 = ck["dir"]
+	var fwd := Vector2(me.vx, me.vz).normalized() if Vector2(me.vx, me.vz).length() > 1.0 else Vector2(sin(me.yaw), cos(me.yaw))
+	var toward := dir if fwd.dot(dir) > 0.0 else -dir
+	var lat := Vector2(toward.y, -toward.x)
+	var n := mini(2, 7 - units.size())
+	for k in n:
+		var side := 1.0 if k % 2 == 0 else -1.0
+		var q: Vector2 = ck["p"] - toward * (12.0 + 8.0 * float(k)) + lat * side * (float(ck["hw"]) + 2.2)
+		_spawn(q, atan2(toward.x, toward.y), ROLES[(units.size()) % ROLES.size()])
+		var u: Dictionary = units[units.size() - 1]
+		u["drv"].target = me
+		u["drv"].mode = "chase"
+	if n > 0:
+		_toast(Tr.t("🚨 ¡Pasaste por un control! Se suman %d patrulleros") % n)
+		CrashLog.mark("policia", "control %d se suma a la persecución" % c)
+
 func _start_chase(me) -> void:
 	state = "chase"
+	_joined.clear()
 	bust = 0.0
 	lose_t = 0.0
 	chase_t = 0.0
@@ -408,6 +440,15 @@ func _start_chase(me) -> void:
 func _chase(dt: float, p: Vector2, me) -> void:
 	chase_t += dt
 	_spawn_t += dt
+	# te escapás y justo pasás por otro control: los patrulleros de ese control se suman (pedido del dueño, 15/10/2026)
+	_join_t -= dt
+	if _join_t <= 0.0:
+		_join_t = 0.5
+		var c := checkpoint_near(p, TRIGGER_R * 2.0)
+		if c >= 0 and c != cp and not cool.has(c) and not _joined.has(c):
+			_joined[c] = true
+			cool[c] = COOLDOWN
+			_join_checkpoint(c, me)
 	var sp := sqrt(me.vx * me.vx + me.vz * me.vz)
 	chase_m += sp * dt
 	if online and not implacable() and chase_m > LENIENT_M:
