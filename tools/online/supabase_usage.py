@@ -24,13 +24,14 @@ def get(path, params=None):
     except Exception as e:  # noqa
         return {"error": str(e)[:300]}
 
-END = datetime.now(timezone.utc)
-START = END - timedelta(hours=HOURS)
+END = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+START = END - timedelta(minutes=int(HOURS * 60))
+ISO = lambda d: d.strftime("%Y-%m-%dT%H:%M:%S.000Z") # (el API rechaza microsegundos y «+00:00»)
 
 def logs(sql, start=None, end=None):
     """Registros del proyecto (desde 2026: GET …/analytics/endpoints/logs, SQL de ClickHouse sobre una sola tabla «logs»; máx. 24 h por consulta)."""
     time.sleep(3.0)  # (el API frena con 429 si se le pide muy seguido)
-    r = get("/analytics/endpoints/logs", {"sql": sql, "iso_timestamp_start": (start or START).isoformat(), "iso_timestamp_end": (end or END).isoformat()})
+    r = get("/analytics/endpoints/logs", {"sql": sql, "iso_timestamp_start": ISO(start or START), "iso_timestamp_end": ISO(end or END)})
     if isinstance(r, dict) and r.get("error"):
         return {"error": r["error"]}
     return r.get("result", r) if isinstance(r, dict) else r
