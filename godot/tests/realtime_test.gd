@@ -60,7 +60,11 @@ func _run() -> void:
 	check(WorldSync.cells_for(100.0, 1000.0).size() == 2 and WorldSync.cells_for(100.0, 1000.0)[1] == Vector2i(-1, 0), "cerca del borde oeste se suma la vecina")
 	check(WorldSync.cells_for(1950.0, 1950.0).size() == 4, "en una esquina se escuchan 4 canales (el tope)")
 	check(WorldSync.cells_for(800.0, 1000.0).size() == 1 and WorldSync.cells_for(800.0, 1000.0, [Vector2i(-1, 0)]).size() == 2, "histéresis: un canal abierto se mantiene un poco más")
-	check(is_equal_approx(WorldSync.rate_for(2), 5.0) and WorldSync.rate_for(3) == 5.0 and WorldSync.rate_for(5) == 3.0 and absf(WorldSync.rate_for(8) - 60.0 / 56.0) < 0.01 and WorldSync.rate_for(30) == 0.5 and WorldSync.rate_for(1) == 0.1, "ritmo adaptativo: solo 0,1 Hz · 2 a 3 → 5 Hz · 5 → 3 Hz · 8 → 1,1 Hz · 30 → 0,5 Hz")
+	# ritmos del 15/10/2026 («online fluido», net_tuning.gd): del otro lado se interpola con búfer y se proyecta al presente, así que 4 por s alcanza para verse fluido
+	check(is_equal_approx(WorldSync.rate_for(2), 4.0) and WorldSync.rate_for(3) == 4.0 and WorldSync.rate_for(5) == 2.0 and WorldSync.rate_for(8) == 1.0 and WorldSync.rate_for(30) == 0.5 and WorldSync.rate_for(1) == 0.2, "ritmo adaptativo con alguien cerca: solo 0,2 Hz · 2 a 3 → 4 Hz · 5 → 2 Hz · 8 → 1 Hz · 30 → 0,5 Hz")
+	check(WorldSync.rate_for(3, 1500.0) == 1.0 and WorldSync.rate_for(3, 300.0) == 4.0, "con otros en la celda pero lejos (no se ven): 1 por s")
+	var tp := WorldSync.unpack(WorldSync.pack("aaaaaaaa-1111", 1.0, 2.0, 0.5, 50.0, 3, 123456))
+	check(absf(float(tp.get("ts", -1.0)) - 123.456) < 1e-6 and not WorldSync.unpack(WorldSync.pack("aaaaaaaa-1111", 1.0, 2.0, 0.5, 50.0, 3)).has("ts"), "el mensaje lleva la hora del que lo manda (y un cliente viejo, sin hora, se sigue leyendo)")
 	var okp := WorldSync.pack("aaaaaaaa-1111", 123.456, -7.0, 1.2345, 99.6, 5)
 	var up := WorldSync.unpack(okp)
 	check(not up.is_empty() and absf(float(up["x"]) - 123.5) < 0.01 and int(up["kmh"]) == 100, "un mensaje bueno se lee")

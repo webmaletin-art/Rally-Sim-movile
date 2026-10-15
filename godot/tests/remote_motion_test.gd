@@ -51,7 +51,8 @@ func _truth(name: String, t: float) -> Array:
 
 ## Simula RUN s a 60 cuadros por segundo con una muestra cada `period` s; cada muestra llega con su propia demora de la red (entre 0 y 2·`jitter` s, siempre en orden).
 ## Devuelve {mean, max, step (cuánto se aparta, a lo sumo, el paso de un cuadro de lo que el auto avanza de verdad), hold (error medio de dejar el auto en la última muestra)}
-func _drive(name: String, period: float, jitter: float, no_yaw := false) -> Dictionary:
+## `stamped`: las muestras traen la hora en que se tomaron (protocolo nuevo de world_sync.gd, 15/10/2026); si no, sólo se sabe cuándo llegaron (clientes viejos y consulta HTTP).
+func _drive(name: String, period: float, jitter: float, no_yaw := false, stamped := false) -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var m := RemoteMotion.new()
@@ -72,7 +73,7 @@ func _drive(name: String, period: float, jitter: float, no_yaw := false) -> Dict
 		if t >= next_sample - 1e-9:
 			# la muestra se toma ahora (t) pero llega más tarde, y trae la posición de cuando se tomó
 			last_arrive = maxf(t + rng.randf_range(0.0, 2.0 * jitter), last_arrive + 0.001)
-			pending.append([last_arrive, _truth(name, t)])
+			pending.append([last_arrive, _truth(name, t), t])
 			next_sample += period
 		var rest: Array = []
 		for q in pending:
@@ -80,6 +81,8 @@ func _drive(name: String, period: float, jitter: float, no_yaw := false) -> Dict
 				var s: Array = q[1]
 				if no_yaw:
 					m.push_track(s[0], s[2], t)
+				elif stamped:
+					m.push_sample(s[0], s[1], s[2], float(q[2]), t) # (hora de la muestra + hora de llegada)
 				else:
 					m.push_sample(s[0], s[1], s[2], t)
 				last_arrived = s[0]
@@ -88,7 +91,7 @@ func _drive(name: String, period: float, jitter: float, no_yaw := false) -> Dict
 		pending = rest
 		m.step(t, dt)
 		if t > WARM and m.has:
-			var truth := _truth(name, t + dt - jitter) # (el auto ya está al final del cuadro; y la red lo muestra jitter s atrasado en promedio: eso no es error del modelo)
+			var truth := _truth(name, t + dt - (0.0 if stamped else jitter)) # (el auto ya está al final del cuadro; sin la hora de la muestra la red lo muestra jitter s atrasado en promedio: eso no es error del modelo)
 			var e := m.pos.distance_to(truth[0])
 			sum += e
 			sum_hold += last_arrived.distance_to(truth[0])
@@ -129,6 +132,14 @@ func _init() -> void:
 	print("con demora irregular: ", j02, " ", j05)
 	check(j02["mean"] < 1.3 and j02["max"] < 3.5, "círculo con demora irregular de la red: error medio %.2f m, máximo %.2f m" % [j02["mean"], j02["max"]])
 	check(j05["mean"] < 1.4 and j05["max"] < 3.2, "zigzag con demora irregular de la red: error medio %.2f m, máximo %.2f m" % [j05["mean"], j05["max"]])
+	# protocolo nuevo (15/10/2026): cada muestra trae la hora en que se tomó → la demora irregular de la red casi no se nota (se dibuja proyectado al presente)
+	var st02 := _drive("circle", 0.25, 0.12, false, true)
+	var st05 := _drive("slalom", 0.25, 0.12, false, true)
+	var sl10 := _drive("slalom", 1.0, 0.12, false, true)
+	print("con hora de la muestra: ", st02, " ", st05, " ", sl10)
+	check(st02["mean"] < 0.15 and st02["max"] < 0.6 and st05["mean"] < 0.5 and st05["max"] < 1.0, "con la hora de cada muestra (4 por s) y demora irregular: círculo %.2f m (máx %.2f), zigzag %.2f m (máx %.2f) de error contra el auto real AHORA" % [st02["mean"], st02["max"], st05["mean"], st05["max"]])
+	check(st02["step"] < 0.1 and st05["step"] < 0.15, "y sin saltos: a lo sumo %.2f m por cuadro de diferencia" % maxf(st02["step"], st05["step"]))
+	check(sl10["mean"] < 3.0 and sl10["step"] < 0.6, "una muestra por segundo (muchos jugadores en la celda; el peor caso: zigzag continuo): %.2f m de error medio, %.2f m por cuadro" % [sl10["mean"], sl10["step"]])
 	# no salta: el paso de un cuadro a otro no se aparta mucho de lo que avanza el auto de verdad
 	check(c02["step"] < 0.05 and s02["step"] < 0.05 and c05["step"] < 0.05 and s05["step"] < 0.1 and c20["step"] < 0.2, "no salta: el paso de un cuadro se aparta de lo real a lo sumo %.2f m con Realtime y %.2f m con una muestra cada 2 s (círculo)" % [maxf(c02["step"], s02["step"]), c20["step"]])
 	check(j02["step"] < 0.5 and j05["step"] < 0.5, "con demora irregular de la red tampoco: a lo sumo %.2f m por cuadro de diferencia" % maxf(j02["step"], j05["step"]))

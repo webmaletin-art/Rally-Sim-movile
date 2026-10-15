@@ -3,7 +3,8 @@ extends Node
 ## Todo pasa por funciones de la base (supabase/migrations/20261005000000_chat_social_market.sql); acá no hay ninguna regla de confianza: el servidor filtra los insultos,
 ## aplica los bloqueos del chat y guarda la evidencia de los reportes. Si no hay red, cada llamada devuelve {ok:false} y el juego sigue.
 
-const BEAT_EVERY := 2.0 # segundos entre avisos de posición (los otros jugadores te ven moverte con esa frecuencia)
+const NT := preload("res://game/online/net_tuning.gd")
+const BEAT_EVERY := NT.BEAT_S # segundos entre avisos de posición al servidor (sin Realtime, los otros te ven moverte con esta frecuencia)
 const POLL_IDLE := 12.0 # el chat mundial se mira despacio con el panel cerrado (para el globito de mensajes nuevos)
 const POLL_OPEN := 3.0 # y rápido con el panel abierto
 const KEEP := 80 # mensajes que se guardan por canal
@@ -24,6 +25,8 @@ var panel_open := false
 var watch := "world" # canal que se está mirando
 var blocked_until := 0.0 # unix: hasta cuándo no puedo escribir
 var sent_log: Array = [] # lo que intenté escribir (incluye lo que el filtro tapó), para la evidencia
+var beat_every := NT.BEAT_S # con Realtime andando race.gd lo sube a NT.BEAT_RT_S (la posición ya viaja en vivo)
+var beats := 0
 var _beat_t := 0.0
 var _poll_t := 0.0
 var _busy := false
@@ -75,7 +78,8 @@ func _process(dt: float) -> void:
 		return
 	_beat_t -= dt
 	if _beat_t <= 0.0 and not _beating:
-		_beat_t = BEAT_EVERY
+		_beat_t = beat_every
+		beats += 1
 		_beat()
 	_poll_t -= dt
 	if _poll_t <= 0.0 and not _busy:
@@ -165,6 +169,12 @@ func threads() -> Array:
 func players() -> Array:
 	var r: Dictionary = await online.call_fn("presence_list_v", {"p_limit": 60})
 	return r["data"] if r["ok"] and r["data"] is Array else []
+
+## Igual, pero distingue «no hay nadie» de «no contestó el servidor» (los autos en pantalla no se borran por una consulta fallida): {ok, list}
+func players_safe() -> Dictionary:
+	var r: Dictionary = await online.call_fn("presence_list_v", {"p_limit": 60})
+	var ok: bool = bool(r["ok"]) and r["data"] is Array
+	return {"ok": ok, "list": r["data"] if ok else []}
 
 func friends() -> Array:
 	var r: Dictionary = await online.call_fn("follow_list", {})

@@ -3,6 +3,9 @@ extends Node3D
 ## los más cercanos con su modelo real (el mismo que usan los autos de la IA: ruedas que giran y se orientan, carrocería que cabecea y se balancea) y el resto como un auto de papel liviano.
 ## El movimiento sale de `remote_motion.gd`: entre una muestra y la otra se estima dónde está (un arco con la velocidad y el giro) y el auto se acerca suave a ese punto, así se ve fluido y dobla
 ## las curvas aunque lleguen pocos datos. Sólo se muestran los más cercanos (hasta MAX_SHOWN, a menos de SHOW_R metros). Sin física compartida: no se chocan.
+## 15/10/2026 («online fluido»): un auto aparece con el PRIMER dato en vivo (antes había que esperar la lista HTTP, hasta 2 s); una lista que falla no borra a nadie;
+## el que se va (deja de mandar o la presencia de Realtime dice que se fue) se saca enseguida y la lista no lo vuelve a poner por 60 s salvo que se mueva (la presencia del
+## servidor dura 45 s: eran los «fantasmas»); se deja de dibujar recién a HIDE_R (no titila en el borde); con Realtime andando la lista se pide cada 8 s en vez de 2.
 
 const CityLayout := preload("res://game/city/city_layout.gd")
 const PaperKit := preload("res://game/fx/paper_kit.gd")
@@ -14,9 +17,11 @@ const VehicleParams := preload("res://game/physics/vehicle_params.gd")
 const Profile := preload("res://game/data/profile.gd")
 const RemoteMotion := preload("res://game/online/remote_motion.gd")
 
-const POLL := 2.0
-const SHOW_R := 700.0
-const MAX_SHOWN := 12
+const NT := preload("res://game/online/net_tuning.gd")
+const POLL := NT.POLL_S
+const SHOW_R := NT.SHOW_R
+const HIDE_R := NT.HIDE_R
+const MAX_SHOWN := NT.MAX_SHOWN
 const LABEL_R := 140.0
 const REAL_R := 170.0 # los más cercanos se dibujan con su modelo real (pintura, llantas y piezas que el SERVIDOR sabe que tiene); el resto, de papel con su color
 const REAL_MAX := 5
@@ -29,6 +34,10 @@ var _t := 0.0
 var _busy := false
 static var _meshes: Dictionary = {}
 var _snap := CarSnapshot.new()
+var fast_live := false # Realtime andando (lo pone race.gd): la lista se pide más despacio
+var _left: Dictionary = {} # id → {t, pos}: se fue hace poco (la lista del servidor todavía lo trae unos segundos: no se vuelve a poner)
+var _soon_t := -100.0
+var stats := {"polls": 0, "poll_fail": 0, "from_live": 0, "dropped": 0, "ghosts_blocked": 0, "left": 0}
 
 func setup(p_race, p_social: Node, p_city) -> void:
 	race = p_race
@@ -65,14 +74,18 @@ func _process(dt: float) -> void:
 		return
 	_t -= dt
 	if _t <= 0.0 and not _busy:
-		_t = POLL
+		_t = poll_every()
 		_poll()
 	var ph = race.cars[0].phys
 	var me := Vector2(ph.px, ph.pz)
 	var now := Time.get_ticks_msec() / 1000.0
-	for id in cars:
+	for id in cars.keys():
 		var c: Dictionary = cars[id]
 		if not bool(c["has"]):
+			continue
+		# perdido (no llega nada hace rato) o se alejó: se saca (vuelve solo si se acerca o manda de nuevo)
+		if (c["motion"] as RefCounted).stale(now) or (c["pos"] as Vector2).distance_to(me) > HIDE_R:
+			_remove(id)
 			continue
 		var m = c["motion"]
 		m.step(now, dt)
@@ -98,42 +111,113 @@ func _process(dt: float) -> void:
 			_snap.wheel_omega = PackedFloat64Array([w, w, w, w])
 			vis.sync_from(_snap, dt)
 
-## Posición en vivo (Realtime, varias veces por segundo): sólo para los autos que la consulta periódica ya conoce (de ahí salen el nombre y el modelo).
-## Mientras llegan datos en vivo, la consulta periódica no pisa la posición.
+## Cada cuánto se pide la lista: con Realtime andando y todos los autos cercanos en vivo, despacio (sólo nombres, modelos y recién llegados); si no, rápido
+func poll_every() -> float:
+	if not fast_live:
+		return POLL
+	var now := Time.get_ticks_msec() / 1000.0
+	for id in cars:
+		var c: Dictionary = cars[id]
+		if not (c.has("live_t") and now - float(c["live_t"]) < 4.0):
+			return POLL # (alguien cercano sin datos en vivo: un cliente viejo o con Realtime caído; su posición viene por la lista)
+	return NT.POLL_RT_S
+
+## Posición en vivo (Realtime, varias veces por segundo). Si es alguien que la lista todavía no trajo, aparece igual (de papel, sin nombre) y se pide la lista enseguida
+## para su nombre y su modelo. Mientras llegan datos en vivo, la lista no pisa la posición.
 func apply_live(id: String, st: Dictionary) -> void:
-	if not cars.has(id):
-		return
-	var c: Dictionary = cars[id]
+	var now := Time.get_ticks_msec() / 1000.0
 	var pos := Vector2(float(st["x"]), float(st["z"]))
+	_left.erase(id) # (manda: está)
+	if not cars.has(id):
+		if race == null or race.cars.is_empty():
+			return
+		var ph = race.cars[0].phys
+		var me := Vector2(ph.px, ph.pz)
+		if pos.distance_to(me) > SHOW_R or CityLayout.in_pocket(pos.x) != CityLayout.in_pocket(me.x) or cars.size() >= MAX_SHOWN:
+			return
+		_new_car(id, "…", pos, false)
+		stats["from_live"] += 1
+		if now - _soon_t > NT.POLL_SOON_GAP: # (nombre y modelo cuanto antes)
+			_soon_t = now
+			_t = minf(_t, NT.POLL_SOON_S)
+	var c: Dictionary = cars[id]
 	c["yaw"] = float(st["yaw"])
 	c["target"] = pos
 	c["speed"] = float(st["kmh"]) / 3.6
-	c["t"] = Time.get_ticks_msec() / 1000.0
-	c["live_t"] = c["t"]
-	(c["motion"] as RefCounted).push_sample(pos, float(st["yaw"]), float(c["speed"]), float(c["t"]))
+	c["t"] = now
+	c["live_t"] = now
+	(c["motion"] as RefCounted).push_sample(pos, float(st["yaw"]), float(c["speed"]), float(st.get("t", now)), float(st.get("arr", now)))
 
-## El auto dejó de mandar posiciones en vivo: vuelve a mandar la consulta periódica
+## Se fue (dejó de mandar, o la presencia de Realtime dice que salió): se saca ya, y la lista no lo vuelve a poner mientras el servidor lo siga teniendo
 func live_gone(id: String) -> void:
 	if cars.has(id):
-		(cars[id] as Dictionary).erase("live_t")
+		_left[id] = {"t": Time.get_ticks_msec() / 1000.0, "pos": (cars[id] as Dictionary)["pos"]}
+		stats["left"] += 1
+		_remove(id)
+
+func _remove(id: String) -> void:
+	if not cars.has(id):
+		return
+	_drop_real(cars[id])
+	var n: Variant = (cars[id] as Dictionary).get("node")
+	if n != null and is_instance_valid(n):
+		(n as Node3D).queue_free()
+	cars.erase(id)
+	stats["dropped"] += 1
+
+## Datos de red para el diagnóstico (sin pedir nada al servidor)
+func net_info() -> Dictionary:
+	var now := Time.get_ticks_msec() / 1000.0
+	var live := 0
+	var buf := 0
+	var age := 0.0
+	var resyncs := 0
+	var dropped := 0
+	var lead := 0.0
+	for id in cars:
+		var c: Dictionary = cars[id]
+		var m: RefCounted = c["motion"]
+		if c.has("live_t") and now - float(c["live_t"]) < 4.0:
+			live += 1
+		buf = maxi(buf, (m.buf as Array).size())
+		age = maxf(age, m.age(now))
+		resyncs += int(m.resyncs)
+		dropped += int(m.dropped)
+		lead = maxf(lead, float(m.delay))
+	return {"shown": cars.size(), "live": live, "buf": buf, "age": age if not cars.is_empty() else 0.0, "resyncs": resyncs, "dropped": dropped, "delay": lead, "poll_s": poll_every()}
 
 func _poll() -> void:
 	_busy = true
-	var list: Array = await social.players()
+	var res: Dictionary = await social.players_safe() if social.has_method("players_safe") else {"ok": true, "list": await social.players()}
 	_busy = false
-	if not is_inside_tree():
+	if not is_inside_tree() or race == null or race.cars.is_empty():
 		return
+	stats["polls"] += 1
+	if not bool(res["ok"]):
+		stats["poll_fail"] += 1
+		return # (sin respuesta del servidor: no se borra a nadie; antes una consulta fallida hacía desaparecer a todos)
+	var list: Array = res["list"]
 	var ph = race.cars[0].phys
 	var me := Vector2(ph.px, ph.pz)
+	var now := Time.get_ticks_msec() / 1000.0
+	for id in _left.keys():
+		if now - float((_left[id] as Dictionary)["t"]) > NT.GHOST_HOLD_S:
+			_left.erase(id)
 	var near: Array = []
 	for p in list:
 		if bool(p.get("is_me", false)):
 			continue
+		var pid := str(p.get("player_id", ""))
 		var pos := Vector2(float(p.get("x", 0.0)), float(p.get("z", 0.0)))
 		if CityLayout.in_pocket(pos.x) != CityLayout.in_pocket(me.x):
 			continue # uno está en el estacionamiento/túnel (el bolsillo) y el otro no: no se ven
+		if _left.has(pid):
+			if pos.distance_to((_left[pid] as Dictionary)["pos"]) < 3.0:
+				stats["ghosts_blocked"] += 1
+				continue # se fue y la lista todavía lo trae (quieto donde estaba): no se vuelve a poner
+			_left.erase(pid) # se movió: está
 		var d := pos.distance_to(me)
-		if d < SHOW_R:
+		if d < (HIDE_R if cars.has(pid) else SHOW_R):
 			near.append([d, p, pos])
 	near.sort_custom(func(a, b) -> bool: return float(a[0]) < float(b[0]))
 	var keep := {}
@@ -144,35 +228,39 @@ func _poll() -> void:
 		keep[id] = true
 		_update_car(id, p, pos)
 	for id in cars.keys():
-		if not keep.has(id):
-			_drop_real(cars[id])
-			(cars[id]["node"] as Node3D).queue_free()
-			cars.erase(id)
+		var c: Dictionary = cars[id]
+		var live: bool = c.has("live_t") and now - float(c["live_t"]) < NT.GONE_S
+		if not keep.has(id) and not live: # (los que mandan en vivo siguen aunque la lista no los traiga: la lista tiene tope y puede venir atrasada)
+			_remove(id)
 	_update_real(me)
+
+func _new_car(id: String, name: String, pos: Vector2, friend: bool) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	var n := Node3D.new()
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh_for(absi(hash(id)) % 12)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	n.add_child(mi)
+	var lab := Label3D.new()
+	lab.text = name
+	lab.font_size = 56
+	lab.pixel_size = 0.012
+	lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	lab.outline_size = 12
+	lab.outline_modulate = Color(0.05, 0.1, 0.2)
+	lab.modulate = Color(1.0, 0.9, 0.5) if friend else Color.WHITE
+	lab.position = Vector3(0, 2.6, 0)
+	n.add_child(lab)
+	add_child(n)
+	n.position = Vector3(pos.x, 0.0, pos.y)
+	cars[id] = {"node": n, "label": lab, "pos": pos, "target": pos, "yaw": 0.0, "speed": 0.0, "t": now, "has": true, "motion": RemoteMotion.new(), "veh": {}}
 
 func _update_car(id: String, p: Dictionary, pos: Vector2) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	if not cars.has(id):
-		var n := Node3D.new()
-		var mi := MeshInstance3D.new()
-		mi.mesh = mesh_for(absi(hash(id)) % 12)
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		n.add_child(mi)
-		var lab := Label3D.new()
-		lab.text = str(p.get("name", "?"))
-		lab.font_size = 56
-		lab.pixel_size = 0.012
-		lab.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-		lab.outline_size = 12
-		lab.outline_modulate = Color(0.05, 0.1, 0.2)
-		lab.modulate = Color(1.0, 0.9, 0.5) if bool(p.get("is_friend", false)) else Color.WHITE
-		lab.position = Vector3(0, 2.6, 0)
-		n.add_child(lab)
-		add_child(n)
-		n.position = Vector3(pos.x, 0.0, pos.y)
-		cars[id] = {"node": n, "label": lab, "pos": pos, "target": pos, "yaw": 0.0, "speed": 0.0, "t": now, "has": true, "motion": RemoteMotion.new()}
+		_new_car(id, str(p.get("name", "?")), pos, bool(p.get("is_friend", false)))
 	var c: Dictionary = cars[id]
-	var live: bool = c.has("live_t") and now - float(c["live_t"]) < 3.0 # llegan posiciones en vivo: la consulta sólo trae nombre y modelo
+	var live: bool = c.has("live_t") and now - float(c["live_t"]) < 4.0 # llegan posiciones en vivo: la consulta sólo trae nombre y modelo
 	if not live:
 		c["target"] = pos
 		c["speed"] = float(p.get("speed", 0.0)) / 3.6

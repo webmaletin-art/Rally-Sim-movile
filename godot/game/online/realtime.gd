@@ -138,6 +138,12 @@ func channels() -> Array:
 func is_joined(channel: String) -> bool:
 	return _ch.has(channel) and (_ch[channel] as Dictionary)["state"] == "joined"
 
+## Segundos desde que se entró al canal (0 si no está adentro)
+func joined_for(channel: String) -> float:
+	if not is_joined(channel):
+		return 0.0
+	return Time.get_ticks_msec() / 1000.0 - float((_ch[channel] as Dictionary).get("joined_at", Time.get_ticks_msec() / 1000.0))
+
 func joined_count() -> int:
 	var n := 0
 	for name in _ch:
@@ -193,7 +199,7 @@ func _open() -> void:
 func _schedule_reconnect(why: String) -> void:
 	last_close = why
 	state = "waiting"
-	_wait = float(BACKOFF[mini(_attempt, BACKOFF.size() - 1)])
+	_wait = float(BACKOFF[mini(_attempt, BACKOFF.size() - 1)]) * randf_range(0.75, 1.25) # (con algo de azar: si se cae el servidor, no vuelven todos en el mismo instante)
 	_attempt += 1
 	_hb_ref = ""
 	for name in _ch:
@@ -328,6 +334,7 @@ func _handle(txt: String) -> void:
 				if st == "ok":
 					c["state"] = "joined"
 					c["tries"] = 0
+					c["joined_at"] = Time.get_ticks_msec() / 1000.0
 					channel_joined.emit(name)
 				else:
 					var resp: Variant = (payload as Dictionary).get("response", {}) if payload is Dictionary else {}
@@ -338,8 +345,11 @@ func _handle(txt: String) -> void:
 		"phx_error":
 			_chan_failed(name, "error del canal")
 		"phx_close":
-			c["state"] = "closed"
-			c["want"] = false
+			# lo cerró el servidor (sesión renovada, reinicio): se olvida, y quien lo pidió (world_sync._manage_cells) lo vuelve a pedir si todavía lo quiere.
+			# Antes quedaba en la lista sin querer reabrirse: esa celda quedaba muda hasta salir de ella.
+			var jr := str(d.get("join_ref", "")) if d.get("join_ref") != null else ref
+			if jr == "" or jr == str(c["join_ref"]): # (el cierre de una entrada vieja no borra la nueva)
+				_ch.erase(name)
 		"broadcast":
 			if payload is Dictionary and str((payload as Dictionary).get("type", "")) == "broadcast":
 				var inner: Variant = (payload as Dictionary).get("payload", {})

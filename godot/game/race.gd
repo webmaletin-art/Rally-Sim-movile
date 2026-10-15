@@ -18,6 +18,7 @@ const OnlineSocial := preload("res://game/online/online_social.gd")
 const CityDriver := preload("res://game/ai/city_driver.gd")
 const RemoteCars := preload("res://game/online/remote_cars.gd")
 const WorldSync := preload("res://game/online/world_sync.gd")
+const NetTuning := preload("res://game/online/net_tuning.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityClock := preload("res://game/city/city_clock.gd")
 const DriftSession := preload("res://game/drift_session.gd")
@@ -86,6 +87,7 @@ var profile: RefCounted
 var online: Node # app.gd: la conexión online (sólo se usa en el mundo online)
 var social: Node # online_social.gd: chat, presencia, amigos, reportes y mercado
 var rtsync: Node # world_sync.gd: posiciones en tiempo real (Supabase Realtime); sólo con Release.REALTIME
+var remote_cars: Node # remote_cars.gd: los autos de los otros jugadores (para el diagnóstico de red)
 var menu_mode := false
 var session # Session (carreras) o DriftSession
 var race_hud: Control
@@ -1377,6 +1379,7 @@ func _start_session() -> void:
 					var rc := RemoteCars.new() # los autos de los otros jugadores
 					rc.setup(self, social, track.city)
 					add_child(rc)
+					remote_cars = rc
 					if Release.REALTIME and online != null and online.is_account():
 						rtsync = WorldSync.new() # posiciones en vivo por Realtime; el servidor sigue dando nombres y modelos (presence_list_v)
 						add_child(rtsync)
@@ -1925,6 +1928,28 @@ func _update_fps_label(fps: float) -> void:
 	_fps_l.visible = true
 	_fps_l.position = Vector2(get_viewport().get_visible_rect().size.x - 190.0, 118.0)
 	_fps_l.text = "%d FPS" % int(fps) + ((" · VIDA " + (("%.1fms" % world_life.life_ms) + (" ▼%d" % world_life.throttle if world_life.throttle > 0 else "") if world_life.is_enabled() else "OFF")) if world_life != null else "")
+	if profile.setting("showNet") == true and social != null:
+		_fps_l.position.x = get_viewport().get_visible_rect().size.x - 520.0
+		_fps_l.text += "\n" + net_line()
+
+## Diagnóstico de red en una línea (opción «Mostrar datos de red»): todo sale de lo que ya se mide; no pide nada al servidor
+func net_line() -> String:
+	var out := PackedStringArray()
+	if rtsync != null and is_instance_valid(rtsync) and rtsync.rt != null:
+		var r: Node = rtsync.rt
+		var st := {"open": "● en vivo", "connecting": "◌ conectando", "waiting": "○ reconectando", "idle": "○ apagado"}
+		out.append("%s%s" % [str(st.get(str(r.state), str(r.state))), (" · latido %d ms" % int(r.rtt_ms)) if float(r.rtt_ms) >= 0.0 else ""])
+		out.append("env %.1f/s (ritmo %.1f) · rec %.1f/s" % [float(rtsync.rates["sent_hz"]), float(rtsync.rates["want_hz"]), float(rtsync.rates["recv_hz"])])
+		out.append("desc %d · reconex %d · bajas %d+%d" % [int(rtsync.stats["stale"]), int(r.stats["reconnects"]), int(rtsync.stats["left_timeout"]), int(rtsync.stats["left_presence"])])
+		if float(rtsync.near_d) < 1e8:
+			out.append("más cerca %d m" % int(rtsync.near_d))
+	else:
+		out.append("sin tiempo real (lista HTTP)")
+	if remote_cars != null and is_instance_valid(remote_cars):
+		var ni: Dictionary = remote_cars.net_info()
+		out.append("autos %d (%d en vivo) · búfer %d · atraso %.2f s · edad %.1f s · resinc %d" % [int(ni["shown"]), int(ni["live"]), int(ni["buf"]), float(ni["delay"]), float(ni["age"]), int(ni["resyncs"])])
+		out.append("lista c/%.0f s · aviso c/%.0f s · fallas %d" % [float(ni["poll_s"]), float(social.beat_every), int(remote_cars.stats["poll_fail"])])
+	return "RED " + " · ".join(out)
 
 var _gate_go := false
 var _gate_t := 0.0 # fundido a negro al cruzar un portón abierto (en vez de cambiar de pantalla de golpe)
@@ -2051,6 +2076,11 @@ func _tick_session(dt: float) -> void:
 			social.set_state(sp0.px, sp0.pz, sqrt(sp0.vx * sp0.vx + sp0.vz * sp0.vz) * 3.6)
 			if rtsync != null:
 				rtsync.update_me(dt, sp0.px, sp0.pz, sp0.yaw, sqrt(sp0.vx * sp0.vx + sp0.vz * sp0.vz) * 3.6)
+			# con Realtime andando la posición viaja en vivo: el aviso al servidor y la lista por HTTP se piden más despacio (net_tuning.gd)
+			var rt_ok: bool = rtsync != null and rtsync.healthy()
+			social.beat_every = NetTuning.BEAT_RT_S if rt_ok else NetTuning.BEAT_S
+			if remote_cars != null:
+				remote_cars.fast_live = rt_ok
 		if life != null:
 			life.update(dt)
 		if clock != null:
