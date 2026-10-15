@@ -10,6 +10,7 @@ extends Node
 ##  · report(): lo que copia el botón «COPIAR REGISTRO» (Acerca de y Opciones → Sonido): teléfono + sesión anterior + sesión actual.
 ## Se crea una sola vez en app.gd; los demás lo buscan con CrashLog.get_instance().
 
+const Tombstone := preload("res://game/diag/tombstone.gd")
 const DIR := "user://diag"
 const FLAG := "user://diag/open.flag"
 const STATE := "user://diag/state.json"
@@ -73,11 +74,13 @@ func _ready() -> void:
 	if crashed_last_time:
 		write("[guard] la sesión anterior terminó de golpe (%d seguidas)" % crashes)
 		_exit_reasons()
+	elif not FileAccess.file_exists(TOMB_SEEN): # la primera vez con la lectura de lápidas: trae la del último cierre nativo aunque esta vez se haya salido bien
+		_exit_reasons()
 	_logger = _EngineLog.new()
 	_logger._o = weakref(self)
 	OS.add_logger(_logger)
 
-func write(line: String) -> void:
+func write(line: String, force := false) -> void:
 	_mutex.lock()
 	if _file != null:
 		var s := int(Time.get_ticks_msec() / 1000)
@@ -88,7 +91,7 @@ func write(line: String) -> void:
 			_sec_n = 0
 			_dropped = 0
 		_sec_n += 1
-		if _sec_n <= MAX_PER_SEC:
+		if _sec_n <= MAX_PER_SEC or force: # (force: la lápida de un cierre, que se escribe toda junta)
 			_file.store_line("%7.1f %s" % [Time.get_ticks_msec() / 1000.0, line])
 			_file.flush() # que llegue al disco ya: si el sistema mata la app, lo escrito queda
 		else:
@@ -208,6 +211,7 @@ func _exit_reasons() -> void:
 			var lst: Variant = am.call("getHistoricalProcessExitReasons", pkg, 0, 3)
 			if lst is Object and lst != null:
 				var n := int(lst.call("size"))
+				var tomb_done := false
 				for i in mini(n, 3):
 					var e: Variant = lst.call("get", i)
 					if not (e is Object) or e == null:
@@ -217,9 +221,71 @@ func _exit_reasons() -> void:
 					write("[android] cierre %d: %s (código %d, estado %s) · hace %d s · RAM %d MB (pss %d MB) · %s" % [i + 1,
 						EXIT_REASONS[r] if r >= 0 and r < EXIT_REASONS.size() else "?", r, str(e.call("getStatus")),
 						int(Time.get_unix_time_from_system()) - ts, int(e.call("getRss")) / 1024, int(e.call("getPss")) / 1024, str(e.call("getDescription"))])
+					if r == 5 and not tomb_done: # error nativo: la «lápida» del más reciente (hilo, biblioteca y logcat del instante del cierre)
+						tomb_done = true
+						_tombstone(e)
+				if not tomb_done and not FileAccess.file_exists(TOMB_SEEN): # (sin cierres nativos: no se vuelve a preguntar en cada apertura)
+					var sf := FileAccess.open(TOMB_SEEN, FileAccess.WRITE)
+					if sf != null:
+						sf.store_string("0")
+						sf.close()
 			else:
 				write("[android] Android no devolvió los motivos de cierre")
 	DirAccess.remove_absolute(EXIT_TRY)
+
+## La lápida del cierre nativo (Android 13+: readAllBytes). Se lee una sola vez por cierre (se recuerda la hora del último leído) y se guarda
+## también el archivo crudo (user://diag/lapida_<hora>.pb) por si hace falta decodificarlo entero. Ver diag/tombstone.gd.
+const TOMB_SEEN := "user://diag/lapida_vista.txt"
+func _tombstone(e: Object) -> void:
+	var ts := str(e.call("getTimestamp"))
+	if FileAccess.file_exists(TOMB_SEEN) and FileAccess.get_file_as_string(TOMB_SEEN).strip_edges() == ts:
+		var old := "%s/lapida_%s.txt" % [DIR, ts]
+		if FileAccess.file_exists(old): # ya se leyó: se repiten sus líneas (así el informe siempre la trae)
+			for ln in FileAccess.get_file_as_string(old).split("\n"):
+				if ln.strip_edges() != "":
+					write(ln, true)
+		return
+	var sf := FileAccess.open(TOMB_SEEN, FileAccess.WRITE)
+	if sf != null:
+		sf.store_string(ts)
+		sf.close()
+	var st: Variant = e.call("getTraceInputStream")
+	if not (st is Object) or st == null:
+		write("[lápida] Android no guardó la lápida de este cierre")
+		return
+	if not (st as Object).has_method("readAllBytes") and int(OS.get_version().get_slice(".", 0)) < 13:
+		write("[lápida] (Android %s: hace falta Android 13 para leerla desde el juego)" % OS.get_version())
+		return
+	var raw: Variant = st.call("readAllBytes")
+	st.call("close")
+	if not (raw is PackedByteArray) or (raw as PackedByteArray).is_empty():
+		write("[lápida] vacía o no se pudo leer (%s)" % type_string(typeof(raw)))
+		return
+	var b := raw as PackedByteArray
+	var f := FileAccess.open("%s/lapida_%s.pb" % [DIR, ts], FileAccess.WRITE)
+	if f != null:
+		f.store_buffer(b)
+		f.close()
+	var ls := Tombstone.lines(b)
+	var tf := FileAccess.open("%s/lapida_%s.txt" % [DIR, ts], FileAccess.WRITE)
+	if tf != null:
+		tf.store_string("\n".join(ls))
+		tf.close()
+	for ln in ls:
+		write(ln, true)
+	_prune_tombs()
+
+## Deja sólo las 3 lápidas más nuevas
+func _prune_tombs() -> void:
+	var fs: Array = []
+	for fn in DirAccess.get_files_at(DIR):
+		if fn.begins_with("lapida_") and fn.ends_with(".pb"):
+			fs.append(fn)
+	fs.sort()
+	for k in maxi(0, fs.size() - 3):
+		var base := str(fs[k]).get_basename()
+		DirAccess.remove_absolute(DIR + "/" + base + ".pb")
+		DirAccess.remove_absolute(DIR + "/" + base + ".txt")
 
 static func mem_line() -> String:
 	return ram_line() + " · video %.0f MB · tex %.0f MB · nodos %d · objetos %d · fps %d" % [
@@ -256,7 +322,7 @@ func report() -> String:
 	out += "cierres de golpe seguidos: %d (la anterior %s)\n" % [crashes, "TERMINÓ DE GOLPE" if crashed_last_time else "terminó bien"]
 	if _path != "" and FileAccess.file_exists(_path): # el motivo que dio Android, siempre arriba (aunque la sesión actual sea larga)
 		for ln in FileAccess.get_file_as_string(_path).split("\n"):
-			if ln.contains("[android]"):
+			if ln.contains("[android]") or ln.contains("[lápida]"):
 				out += ln.strip_edges() + "\n"
 	out += "\n--- SESIÓN ANTERIOR [%s] ---\n%s\n" % [prev.get_file(), _tail(prev, 160) if prev != "" else "(no hay)"]
 	out += "\n--- SESIÓN ACTUAL ---\n%s\n" % _tail(_path, 50)

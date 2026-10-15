@@ -93,6 +93,8 @@ func _deactivate() -> void:
 	for cl in _moved:
 		if is_instance_valid(cl):
 			(cl as CanvasLayer).custom_viewport = get_tree().root # de vuelta a la ventana (con null Godot 4.4.1 deja la capa sin dibujar)
+			if (cl as CanvasLayer).tree_exiting.is_connected(_on_layer_exiting):
+				(cl as CanvasLayer).tree_exiting.disconnect(_on_layer_exiting)
 	_moved.clear()
 	if sub != null:
 		sub.render_target_update_mode = SubViewport.UPDATE_DISABLED
@@ -100,10 +102,21 @@ func _deactivate() -> void:
 		show_layer.visible = false
 
 func _redirect(cl: CanvasLayer) -> void:
-	if cl == show_layer or _moved.has(cl) or not is_instance_valid(cl):
-		return
+	if level == 0 or cl == show_layer or _moved.has(cl) or not is_instance_valid(cl) or not cl.is_inside_tree():
+		return # (level 0: un _redirect diferido que llega después de apagar el frame no debe mandar la capa a la SubViewport)
 	cl.custom_viewport = sub
 	_moved.append(cl)
+	if not cl.tree_exiting.is_connected(_on_layer_exiting):
+		cl.tree_exiting.connect(_on_layer_exiting.bind(cl), CONNECT_ONE_SHOT)
+
+## Una capa redirigida se va del árbol (la pantalla de carga al terminar de cargar, un aviso, la carrera entera): se la devuelve a la ventana
+## ANTES de que salga. Godot conecta `child_order_changed` del padre con el viewport en el que la capa ENTRÓ (la ventana) y al salir desconecta con
+## el viewport que tenga en ese momento: si seguía en el frame, desconectaba algo que no existe («Attempt to disconnect a nonexistent connection from
+## 'App' … child_order_changed», en todos los registros del 14/10) y la capa quedaba apuntando a una SubViewport que se borra con la carrera.
+func _on_layer_exiting(cl: CanvasLayer) -> void:
+	_moved.erase(cl)
+	if is_instance_valid(cl) and cl.is_inside_tree() and cl.custom_viewport == sub:
+		cl.custom_viewport = cl.get_tree().root
 
 func _on_node_added(n: Node) -> void:
 	if level > 0 and n is CanvasLayer:
@@ -119,7 +132,11 @@ func _resize() -> void:
 	rect.size = Vector2(logical)
 
 func _exit_tree() -> void:
-	# la carrera se está yendo y sus capas con ella: no hace falta devolverlas a la ventana (y tocarlas mientras salen da avisos del motor)
+	# la carrera se está yendo: cada capa que todavía está en el frame se devuelve sola a la ventana al salir (_on_layer_exiting); las de afuera de la carrera
+	# (si alguna quedara) también vuelven acá, para no quedar apuntando a la SubViewport que se borra
+	for cl in _moved.duplicate():
+		if is_instance_valid(cl) and (cl as CanvasLayer).is_inside_tree() and not (cl as CanvasLayer).is_queued_for_deletion() and not is_ancestor_of(cl) and not get_parent().is_ancestor_of(cl):
+			_on_layer_exiting(cl)
 	if level > 0:
 		level = 0
 		if is_inside_tree() and get_tree().node_added.is_connected(_on_node_added):

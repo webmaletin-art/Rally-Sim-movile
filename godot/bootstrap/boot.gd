@@ -31,11 +31,22 @@ var _manifest: Dictionary = {}
 var _packs: Array = [] # [{name, version, url, size, sha256}] en el orden en que se montan
 var _pi := 0 # paquete que se está bajando
 var _downloading := false
+## Descarga (arreglo del 15/10/2026: «Falló la descarga (13/0)» con buen wifi). El 13 es RESULT_TIMEOUT: HTTPRequest.timeout es el tiempo TOTAL del pedido y
+## estaba en 30 s también para bajar los paquetes (cientos de MB): sólo terminaba si bajaba a más de ~20 MB/s. Ahora: 30 s para el manifiesto, sin tope
+## total para los paquetes y un vigilante que corta si no llega NADA durante stall_s; si se corta, sigue desde donde quedó (Range) y reintenta solo.
+var stall_s := 45.0 # (las pruebas lo achican con --stall=)
+const AUTO_TRIES := 4
+var _tries := 0
+var _stall := 0.0
+var _last_got := -1
+var _resume_from := 0 # bytes que ya estaban en el .tmp al pedir el resto
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--manifest="):
 			_manifest_url = a.substr(11) # para pruebas locales
+		elif a.begins_with("--stall="):
+			stall_s = float(a.substr(8))
 	_build_ui()
 	if ResourceLoader.exists(GAME_SCENE):
 		_start_game()
@@ -78,8 +89,11 @@ func _build_ui() -> void:
 	_retry.pressed.connect(_check_updates)
 	box.add_child(_retry)
 	_http = HTTPRequest.new()
-	_http.use_threads = true
+	# sin hilo: con use_threads el motor lee en modo BLOQUEANTE y una conexión trabada deja la descarga colgada para siempre (ni cancel_request vuelve);
+	# sin hilo se lee de a un bloque por cuadro (1 MB × 60 cuadros: sobra para cualquier wifi) y el vigilante puede cortar
+	_http.use_threads = false
 	_http.timeout = 30.0
+	_http.download_chunk_size = 1048576
 	add_child(_http)
 
 func _pck_path(name: String) -> String:
@@ -105,6 +119,7 @@ func _check_updates() -> void:
 	_bar.visible = false
 	_status.text = "Buscando actualizaciones…"
 	_http.download_file = ""
+	_http.timeout = 30.0 # (el manifiesto es chico)
 	if _http.request_completed.is_connected(_on_download_done):
 		_http.request_completed.disconnect(_on_download_done)
 	if not _http.request_completed.is_connected(_on_manifest):
@@ -145,39 +160,99 @@ func _download() -> void:
 	_status.text = "Descargando %s (%.0f MB)…" % ["los autos" if str(p["name"]) == "cars" else "el juego", mb]
 	_bar.value = 0.0
 	_bar.visible = true
+	_retry.visible = false
+	var tmp := _pck_path(str(p["name"])) + ".tmp"
+	# lo que quedó de un intento anterior de ESTA versión: se pide sólo el resto (si es de otra versión, se empieza de cero)
+	var vtmp := tmp + ".ver"
+	if not FileAccess.file_exists(vtmp) or FileAccess.get_file_as_string(vtmp).strip_edges() != str(p["version"]):
+		DirAccess.remove_absolute(tmp)
+		var vf := FileAccess.open(vtmp, FileAccess.WRITE)
+		if vf != null:
+			vf.store_string(str(p["version"]))
+			vf.close()
+	_resume_from = _file_size(tmp)
+	var headers := PackedStringArray()
+	if _resume_from > 0 and (float(p["size"]) <= 0.0 or float(_resume_from) < float(p["size"])):
+		headers.append("Range: bytes=%d-" % _resume_from)
+		_http.download_file = tmp + ".part"
+	else:
+		DirAccess.remove_absolute(tmp)
+		_resume_from = 0
+		_http.download_file = tmp
 	_downloading = true
-	_http.download_file = _pck_path(str(p["name"])) + ".tmp"
+	_stall = 0.0
+	_last_got = -1
+	_http.timeout = 0.0 # sin tope total: lo vigila _process (stall_s sin recibir nada)
 	_http.request_completed.connect(_on_download_done)
-	var err := _http.request(str(p["url"]))
+	var err := _http.request(str(p["url"]), headers)
 	if err != OK:
 		_downloading = false
 		_http.request_completed.disconnect(_on_download_done)
 		_offline("No se pudo empezar la descarga (error %d)" % err)
 
-func _process(_dt: float) -> void:
+static func _file_size(path: String) -> int:
+	if not FileAccess.file_exists(path):
+		return 0
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return 0
+	var n := int(f.get_length())
+	f.close()
+	return n
+
+func _process(dt: float) -> void:
 	if _downloading:
 		var p: Dictionary = _packs[_pi]
 		var total := float(p["size"])
-		var got := float(_http.get_downloaded_bytes())
+		var now := _http.get_downloaded_bytes()
+		if now != _last_got:
+			_last_got = now
+			_stall = 0.0
+		else:
+			_stall += dt
+			if _stall > stall_s: # no llega nada: se corta y se reintenta desde donde quedó
+				_http.cancel_request()
+				_on_download_done(HTTPRequest.RESULT_TIMEOUT, 0, PackedStringArray(), PackedByteArray())
+				return
+		var got := float(_resume_from + now)
 		if total > 0.0:
 			_bar.value = clampf(got / total, 0.0, 1.0)
 			_status.text = "Descargando %s (%d/%d)… %d%%  (%.0f / %.0f MB)" % ["los autos" if str(p["name"]) == "cars" else "el juego", _pi + 1, _packs.size(), int(100.0 * got / total), got / 1048576.0, total / 1048576.0]
 
 func _on_download_done(result: int, code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
+	if not _downloading:
+		return
 	_downloading = false
-	_http.request_completed.disconnect(_on_download_done)
+	if _http.request_completed.is_connected(_on_download_done):
+		_http.request_completed.disconnect(_on_download_done)
 	var p: Dictionary = _packs[_pi]
 	var path := _pck_path(str(p["name"]))
 	var tmp := path + ".tmp"
-	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
+	var part := tmp + ".part"
+	var ok := result == HTTPRequest.RESULT_SUCCESS and (code == 200 or code == 206)
+	if ok and _resume_from > 0:
+		if code == 206: # el resto: se pega al final de lo que ya había
+			ok = _append(tmp, part)
+		else: # el servidor mandó el archivo entero: reemplaza lo anterior
+			DirAccess.remove_absolute(tmp)
+			ok = DirAccess.rename_absolute(part, tmp) == OK
+	elif not ok and _resume_from > 0 and code == 206:
+		_append(tmp, part) # lo que llegó de este intento también sirve para el próximo
+	DirAccess.remove_absolute(part)
+	if result == HTTPRequest.RESULT_SUCCESS and code == 416: # «ya lo tenés entero»: se verifica abajo
+		ok = true
+	elif result == HTTPRequest.RESULT_SUCCESS and code >= 400: # una página de error no sirve para seguir
 		DirAccess.remove_absolute(tmp)
-		_offline("Falló la descarga (%d/%d)" % [result, code])
+	if not ok:
+		_fail_or_retry("Falló la descarga (%d/%d)" % [result, code])
 		return
 	var want := str(p["sha256"])
 	if want != "" and FileAccess.get_sha256(tmp) != want:
 		DirAccess.remove_absolute(tmp)
-		_offline("El archivo descargado está dañado")
+		_fail_or_retry("El archivo descargado está dañado")
 		return
+	_tries = 0
+	DirAccess.remove_absolute(tmp + ".ver")
 	if FileAccess.file_exists(path):
 		DirAccess.remove_absolute(path)
 	DirAccess.rename_absolute(tmp, path)
@@ -186,6 +261,35 @@ func _on_download_done(result: int, code: int, _headers: PackedStringArray, _bod
 	f.close()
 	_pi += 1
 	_next_pack()
+
+## Pega `part` al final de `dst` (de a 4 MB)
+func _append(dst: String, part: String) -> bool:
+	if not FileAccess.file_exists(part):
+		return false
+	var src := FileAccess.open(part, FileAccess.READ)
+	var out := FileAccess.open(dst, FileAccess.READ_WRITE) if FileAccess.file_exists(dst) else FileAccess.open(dst, FileAccess.WRITE)
+	if src == null or out == null:
+		return false
+	out.seek_end()
+	var left := src.get_length()
+	while left > 0:
+		var n := mini(left, 4194304)
+		out.store_buffer(src.get_buffer(n))
+		left -= n
+	src.close()
+	out.close()
+	return true
+
+## Un intento falló: reintenta solo (sigue desde lo que ya bajó) hasta AUTO_TRIES veces; después muestra el botón
+func _fail_or_retry(msg: String) -> void:
+	_tries += 1
+	if _tries < AUTO_TRIES:
+		_status.text = "%s\nReintentando (%d de %d)…" % [msg, _tries + 1, AUTO_TRIES]
+		await get_tree().create_timer(3.0).timeout
+		_download()
+		return
+	_tries = 0
+	_offline(msg)
 
 ## Sin internet: si ya hay una versión guardada se juega con esa; si no, se puede reintentar
 func _offline(msg: String) -> void:
