@@ -164,6 +164,34 @@ def cups_repeat_rate(cat, p):
     return best
 
 
+def activity_table(evs, cat, fix):
+    """$/h por actividad (fase 4.6): primera vez, repetición y premios únicos, con las fórmulas reales (ver comentarios)"""
+    import statistics
+    p = PROFILES["B · intermedio"]
+    rows = []
+    # carreras del mapa: 1.ª victoria (premio entero) y repetición (pares cercanos, perfil intermedio)
+    first = [e["reward"] / (race_seconds(e) + SETUP_S + 600.0) * 3600.0 for e in evs]  # +10 min de viaje promedio entre carreras (SUPUESTO)
+    rows.append(("Carreras del mapa · 1.ª victoria (una vez)", statistics.median(first), "premio entero; +10 min de viaje"))
+    rep = repeat_rate(evs, p, fix)
+    rows.append(("Carreras del mapa · repetidas (típico)", rep[4], "mediana de pares cercanos, 35 %%%s" % (" · no-victoria ×0,55" if fix else "")))
+    rows.append(("Carreras del mapa · repetidas (mejor par)", rep[0], rep[1] + "+" + rep[2]))
+    rows.append(("Granja 2.º/plata a propósito", second_place_farm(evs, fix), "corregida" if fix else "AGUJERO"))
+    t_cup, m_cup = cups_first(cat, p)
+    rows.append(("Copas Debut+Nacional · 1.ª vez (una vez)", m_cup / max(t_cup, 0.01), "%.1f h en total" % t_cup))
+    rows.append(("Copas · repetidas (caída al 20 %)", cups_repeat_rate(cat, p), "la carrera que más paga"))
+    rows.append(("Carrera rápida (tope $400)", 400 / (CUP_RACE_S + 60) * 3600.0, "rewards.gd: mini(400, …)"))
+    rows.append(("Drift rápido (tope $700, 90 s)", 700 / (90 + 60) * 3600.0, "sólo con puntajes ≥ 63.000"))
+    conv_old = (600 + 1200) / 2 / (35 * 60) * 3600.0
+    conv_new = (3000 + 6000) / 2 / (35 * 60) * 3600.0
+    rows.append(("Travesía X (antes)", conv_old, "$600–1.200 por 30–40 min"))
+    rows.append(("Travesía X (fase 4)", conv_new, "$3.000–6.000 por 30–40 min"))
+    rows.append(("Escapes encadenados (medido, escape_farm_test)", -145618, "multas > premios: no hay granja"))
+    print("Ingresos por actividad (perfil intermedio, bruto, sin gastos de ≈ $400/h):")
+    for name, v, note in rows:
+        print(f"  {name:48s} ${v:>9,.0f}/h  ({v / 60:>6,.0f}/min)  {note}".replace(",", "."))
+    print()
+
+
 def main():
     fix = "--fix" in sys.argv
     evs, cars, cat = load()
@@ -171,6 +199,7 @@ def main():
     print(f"Datos: {len(evs)} carreras del mapa (premio total 1.ª vez ${sum(e['reward'] for e in evs):,}), {len(cars)} autos, logros ${ach:,}"
           .replace(",", "."))
     print(f"Regla del 2.º puesto: {'CORREGIDA (no-victoria × 0,55 desde el 2.º intento)' if fix else 'ACTUAL (2.º = 45 % siempre, sin caída)'}\n")
+    activity_table(evs, cat, fix)
     print(f"Granja «salir 2.º o sacar plata a propósito» (la carrera que más paga): ${second_place_farm(evs, fix):,.0f}/h".replace(",", "."))
     print()
     for name, p in PROFILES.items():

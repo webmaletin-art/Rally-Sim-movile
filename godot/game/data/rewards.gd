@@ -94,6 +94,10 @@ static func tier_open(profile: RefCounted, tier: Dictionary) -> bool:
 		return false
 	return profile.stars() >= stars_needed(tier)
 
+## Premio de Travesía X por llegar con el convoy (coh = unión del grupo 0..1)
+static func convoy_pay(coh: float) -> int:
+	return 3000 + int(round(clampf(coh, 0.0, 1.0) * 300.0)) * 10
+
 ## Aplica un resultado al perfil y devuelve lo que muestra la pantalla de resultados
 static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictionary:
 	var out := r.duplicate()
@@ -155,11 +159,12 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 				cr = int(round(float(cr) * (1.5 if r.get("win", false) == true else 0.7) / 10.0)) * 10 # ganarle al bot paga más
 			show_medal = false
 		elif t == "convoy":
-			# Travesía X: se cobra por llegar con el grupo, más cuanto más unido hayas ido
+			# Travesía X: se cobra por llegar con el grupo, más cuanto más unido hayas ido. Fase 4 (16/10/2026): antes $600–1.200 por 30–40 min
+			# (≈ $1.000–2.400/h, diez veces menos que repetir carreras del mapa); ahora convoy_pay = $3.000–6.000 (≈ $5.000–10.000/h, sigue debajo)
 			var coh := clampf(float(r.get("cohesion", 0.0)), 0.0, 1.0)
 			if r.get("win", false) == true:
 				medal = 3 if coh > 0.8 else (2 if coh > 0.55 else 1)
-				cr = 600 + int(round(coh * 60.0)) * 10
+				cr = convoy_pay(coh)
 				xp = 250 + int(round(coh * 200.0))
 			else:
 				xp = 40

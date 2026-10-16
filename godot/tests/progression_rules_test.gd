@@ -6,6 +6,7 @@ const CityEvents := preload("res://game/city/city_events.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const Profile := preload("res://game/data/profile.gd")
 const CarVisual := preload("res://game/car/car_visual.gd")
+const Rewards := preload("res://game/data/rewards.gd")
 
 var fail := false
 
@@ -57,5 +58,8 @@ func _init() -> void:
 	_check(is_zero_approx(CarVisual.camber_tilt(-1.0)) and is_zero_approx(CarVisual.camber_tilt(-2.0)) and CarVisual.camber_tilt(cam12) > deg_to_rad(10.0), "se dibuja sólo lo extremo: −1° y −2° no inclinan la rueda; −13° la inclina %.0f°" % rad_to_deg(CarVisual.camber_tilt(cam12)))
 	ss["upg"] = {}
 	_check(is_equal_approx(float(CarBuild.build_params(veh["hatch"], ss)["camberF"]), -1.0), "sin el kit stance el valor guardado no hace nada")
+	# Travesía X (fase 4): $3.000–6.000 por llegar con el grupo (30–40 min ≈ $5.000–10.000/h, debajo de repetir carreras del mapa ≈ $15.000/h)
+	_check(Rewards.convoy_pay(0.0) == 3000 and Rewards.convoy_pay(1.0) == 6000 and Rewards.convoy_pay(0.5) == 4500, "Travesía X paga $3.000–6.000 según la unión del grupo")
+	_check(float(Rewards.convoy_pay(1.0)) / (30.0 / 60.0) < 15000.0, "…y aun en 30 min queda debajo de lo que rinde repetir carreras del mapa")
 	print("RESULTADO: ", "FALLA" if fail else "TODO OK")
 	quit(1 if fail else 0)

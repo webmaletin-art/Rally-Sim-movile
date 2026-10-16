@@ -28,7 +28,7 @@ uno() {
   local dt=$(( $(date +%s) - t0 ))
   local nok nfa est
   nok=$(grep -cE '\] (OK|  OK)\b|TEST OK|TODO OK' "$log")
-  nfa=$(grep -cE '\] FALLA|SCRIPT ERROR|Parse Error' "$log")
+  nfa=$(grep -cE '\] FALLA( |$)|SCRIPT ERROR|Parse Error|FALLAS: [1-9]' "$log")
   if [ "$rc" = "124" ] || [ "$rc" = "137" ]; then est="TIEMPO AGOTADO"
   elif [ "$rc" = "0" ] && [ "$nfa" = "0" ]; then est="OK"
   else est="FALLA (código $rc)"; fi
