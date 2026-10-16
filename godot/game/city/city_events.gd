@@ -22,6 +22,10 @@ const START_R := 12.0
 const OFF_R := 70.0
 const OFF_T := 6.0
 const REPEAT_K := 0.35
+## Un resultado que NO es victoria (2.º puesto, plata, bronce) paga entero sólo en el primer intento; desde el segundo, × LOSE_K (fase 4, 16/10/2026).
+## Antes pagaba entero siempre: salir 2.º (45 %) o sacar plata (60 %) a propósito rendía MÁS que ganar repetido (35 %) — medido con
+## tools/econ/progression_sim.py: la «granja de plata» daba $45.000/h, la actividad más rentable del juego. Con 0,55: 2.º 25 %, plata 33 % (< 35 %).
+const LOSE_K := 0.55
 const COOLDOWN := 90.0
 const PLACE_K := [1.0, 0.45, 0.25, 0.1]
 const MEDAL_K := [1.0, 0.6, 0.35]
@@ -390,6 +394,12 @@ func _at(s: float) -> Vector2:
 	return pts[pts.size() - 1]
 
 # ───────────────────────── resultado y premio
+## Multiplicador del premio: 1.ª victoria 100 %; victoria repetida REPEAT_K; no-victoria 100 % en el 1.er intento y LOSE_K después (runs = intentos, éste incluido)
+static func pay_mult(won: bool, first_win: bool, runs: int) -> float:
+	if won:
+		return 1.0 if first_win else REPEAT_K
+	return 1.0 if runs <= 1 else LOSE_K
+
 func _finish(ok: bool, why: String) -> void:
 	var typ := str(cur["type"])
 	var id := str(cur["id"])
@@ -431,7 +441,7 @@ func _finish(ok: bool, why: String) -> void:
 				if won and (not r.has("best") or t < float(r["best"])):
 					r["best"] = t
 		first = int(r.get("wins", 0)) == 0
-		reward = int(round(float(cur["reward"]) * k * (1.0 if first or not won else REPEAT_K) / 10.0) * 10.0)
+		reward = int(round(float(cur["reward"]) * k * pay_mult(won, first, int(r["runs"])) / 10.0) * 10.0)
 		if won:
 			r["wins"] = int(r.get("wins", 0)) + 1
 	# rivales adaptables: ganaste → la próxima van más rápido; perdiste → un poco más lento
