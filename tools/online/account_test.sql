@@ -507,12 +507,15 @@ insert into public.wev_events (tpl, kind, title, starts_at, ends_at, params, rew
   ('llegada', 'reach', 'T llegada', now() - interval '2 hours', now() + interval '1 hour', '{}', '{}');
 insert into public.wev_runs (event_id, user_id, started_at, finished_at, ok, value)
   select id, '00000000-0000-0000-0000-0000000000a2', now() - interval '1 hour', now() - interval '50 minutes', true, 300 from public.wev_events where title = 'T llegada';
+-- (el jugador no lee wev_events: el id de la temporada de prueba lo da un ayudante, como los otros de ta)
+create or replace function ta.ev_id(p_title text) returns bigint language sql security definer as $$ select id from public.wev_events where title = p_title $$;
+grant execute on function ta.ev_id(text) to authenticated;
 set role authenticated;
 select ta.set_user(2);
 do $$
 declare r jsonb; c0 bigint; sid bigint; s jsonb;
 begin
-  select id into sid from public.wev_events where title = 'T prueba';
+  sid := ta.ev_id('T prueba');
   c0 := (ta.st() ->> 'credits')::bigint;
   r := public.season_claim(sid);
   perform ta.ok((r ->> 'ok')::boolean and (r ->> 'pts')::int = 30 and jsonb_array_length(r -> 'granted') = 1 and (ta.st() ->> 'credits')::bigint = c0 + 3000, 'hito de temporada: con 30 pts se cobra el de 25 (+3000) y no el de 60: ' || r::text);
