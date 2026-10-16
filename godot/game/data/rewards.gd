@@ -113,6 +113,7 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 	var ev: Dictionary = cfg.get("event", {})
 	var t := str(r["type"])
 	var show_medal := false
+	var ex := {} # progreso para la cuenta del servidor (medalla, mejor marca, jugadas; 1.ª vez): migración 20261022
 	if not ev.is_empty():
 		var tier: Dictionary = cfg["tier"]
 		medal = medal_for(ev, float(r["value"]))
@@ -123,6 +124,13 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 		cr = int(round(float(rw["cr"]) * decay / 10.0)) * 10
 		xp = int(round(float(rw["xp"]) * decay))
 		var rec: Dictionary = profile.record_event(str(ev["id"]), float(r["value"]), medal, lower_is_better(str(ev["type"])))
+		var er: Dictionary = profile.event_result(str(ev["id"]))
+		ex = {"m": int(er.get("medal", 0)), "p": int(er.get("plays", 0))}
+		if er.get("best") != null:
+			ex["b" if lower_is_better(str(ev["type"])) else "h"] = float(er["best"])
+		if plays == 0:
+			ex["first"] = true
+			ex["rep"] = int(round(float(rw["cr"]) * 0.6 / 10.0)) * 10
 		record = bool(rec["improved"]) and int(profile.event_result(str(ev["id"])).get("plays", 0)) > 1
 		if bool(rec["firstMedal"]) and medal == 3:
 			cr += int(round(float(tier["base"]) * 0.25))
@@ -172,6 +180,7 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 		if int(r["value"]) <= 3:
 			st["podiums"] = int(st["podiums"]) + 1
 	var cup_msg := ""
+	var cup_bonus := 0
 	if not ev.is_empty():
 		var tier2: Dictionary = cfg["tier"]
 		var all_done := true
@@ -181,11 +190,18 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 		if all_done and not (d["cups"] as Dictionary).has(tier2["id"]):
 			d["cups"][tier2["id"]] = 1
 			var bonus := int(round(float(tier2["base"]) * 2.0))
-			cr += bonus
+			cup_bonus = bonus # se cobra aparte: es de una sola vez (la cuenta no lo paga dos veces aunque reinstales)
 			xp += 1500
 			cup_msg = "🏆 ¡%s completada! +%s" % [tier2["name"], "$ " + str(bonus)]
 	cr = int(round(float(cr) / 10.0)) * 10
-	profile.earn(cr, "race", str(ev.get("id", "quick_" + t)))
+	if practice:
+		ex = {}
+	profile.earn(cr, "race", str(ev.get("id", "quick_" + t)), ex)
+	if cr <= 0 and not ex.is_empty():
+		profile.progress("race:" + str(ev.get("id", "")), ex) # sin premio (la medalla igual queda en la cuenta)
+	if cup_bonus > 0:
+		profile.earn(cup_bonus, "cup", str(cfg["tier"]["id"]))
+		cr += cup_bonus
 	var ups: Array = profile.add_xp(xp)
 	out["cup_msg"] = cup_msg
 	out["medal"] = medal

@@ -5,6 +5,25 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 16/10/2026 (16) · Versión candidata, fase 1: economía y seguridad (rama ccr-e7ae3f10-45afj2, NO en main)
+- **Pedido del dueño:** «prompt maestro definitivo»: implementar la auditoría (docs/AUDITORIA_CICLO_DE_JUEGO.md) por fases en una rama aparte, con APK experimental que no pise el estable.
+- **APK aparte:** la rama arma «Dream Racing RC» (`com.gskorp.rallygodot.rc`, release `godot-apk-rc`, contenido `godot-content-4.7-rc`; los autos se reusan de main). Al fusionar hay que deshacer
+  esos 4 cambios (`build-godot.yml`, `bootstrap/boot.gd` CHANNEL, `export_presets.cfg`).
+- **Reglajes bloqueados (P0):** CONFIRMADO: la pantalla dejaba mover, guardar y cobrar reglajes que la física ignora sin la mejora. Arreglo: reglas puras en `CarBuild`
+  (`tune_req`, `tune_unlocked`, `unlock_source`, `tune_sanitize`, `tune_change_count`); el taller muestra 🔒 + «Se habilita con <mejora> nivel N · $», no deja mover, no cobra
+  y los presets/«fábrica» no tocan lo bloqueado. Prueba nueva `tune_lock_test` (17 OK: también que con la mejora sí cobra y sí cambia la física).
+- **Granja de escapes (P0):** MEDIDA con `escape_farm_test` (física real, IA a fondo por autopista, cacería por desmadre nivel 1): Veltor GTR 3/3 arrestos (21–50 s), R2 2/2
+  arrestos (22–30 s) → **−$145.000/h y −$199.000/h** (multas). No hay granja demostrable: NO se tocaron los premios. La prueba queda de guardia (falla si encadenar escapes pasa
+  $75.000/h).
+- **Premios irrepetibles y progreso (P0):** migración ADITIVA `20261022000000_claims_progress.sql` (**NO aplicada**: el servidor es el mismo que usa el APK estable; aplicarla
+  desde la rama dejaría a main sin esa versión en su carpeta de migraciones). Columna `account_econ.claims` (lo cobrado/logrado por «tipo:ref»), `_claim_merge`, el envoltorio
+  `_acct_one` (mantiene el vale de 20261021) bloquea para siempre «goal», «cup», «rank», «level», «adv» repetidos (también con el APK viejo) y paga como repetición una
+  «primera vez» que la cuenta ya tenía; evento nuevo «prog» (progreso sin plata). Cliente: `profile.earn(…, extra)` + `progress()`, `city_events` (descubierta, victorias,
+  mejor tiempo, 1.ª vez + monto de repetición), `rewards.gd` (medalla, marca, jugadas; el bono de copa completa ahora se cobra aparte como «cup»), `account_econ.restore_progress`
+  (al sincronizar vuelven logros, copas, medallas, carreras del mapa, Aventura, rango y nivel; nunca empeora). Pruebas: `account_test.sql` (+9 casos, corre en GitHub con su
+  Postgres), `account_econ_test` (+6), `ow_events_test` y `rewards_test` siguen OK. Sin la migración el juego anda igual que antes (el servidor ignora los datos nuevos).
+- **Compras:** revisado el código (verificación en el servidor, consumo después de confirmar, recibo repetido no acredita, restauración al abrir): no se tocó.
+
 ## 15/10/2026 (15) · Temporada semanal, desafío de drift, vale de taller; resumen del juego
 - **Pedido del dueño:** «un resumen de cómo quedó el juego, su lógica, cómo funciona el online, cómo se gana y por qué jugarían»; «eventos de una semana tipo
   temporada para ganarse un súper deportivo, una skin, 50.000 pesos en reparaciones/mejoras; eventos de drift: el mayor puntaje en un tiempo limitado se lleva

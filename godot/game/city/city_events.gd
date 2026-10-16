@@ -168,6 +168,7 @@ func _free(dt: float, p: Vector2, sp: float) -> void:
 func _discover(ev: Dictionary) -> void:
 	var r := _rec(str(ev["id"]))
 	r["found"] = true
+	race.profile.progress("owev:" + str(ev["id"])) # queda en la cuenta: al reinstalar sigue descubierta
 	race.profile.save()
 	_refresh_map()
 	var extra := ""
@@ -397,6 +398,7 @@ func _finish(ok: bool, why: String) -> void:
 	var title := why
 	var k := 0.0
 	var won := false
+	var first := false
 	if ok:
 		match typ:
 			"rally", "montana":
@@ -427,16 +429,26 @@ func _finish(ok: bool, why: String) -> void:
 				title = (Tr.t("🏆 ¡GANASTE!") if won else Tr.t("Llegaste %dº") % pos) + " · " + _fmt(t)
 				if won and (not r.has("best") or t < float(r["best"])):
 					r["best"] = t
-		var first: bool = int(r.get("wins", 0)) == 0
+		first = int(r.get("wins", 0)) == 0
 		reward = int(round(float(cur["reward"]) * k * (1.0 if first or not won else REPEAT_K) / 10.0) * 10.0)
 		if won:
 			r["wins"] = int(r.get("wins", 0)) + 1
 	# rivales adaptables: ganaste → la próxima van más rápido; perdiste → un poco más lento
 	var pace := float(r.get("pace", 0.93 + 0.07 * float(cur["tier"])))
 	r["pace"] = clampf(pace + (0.03 if won else -0.03), 0.85, 1.08)
+	# el progreso viaja con el premio a la cuenta (victorias, mejor tiempo); la primera victoria avisa cuánto sería repetida: si la cuenta ya la tenía
+	# (reinstalación, otro teléfono) el servidor paga eso (migración 20261022)
+	var ex := {"w": int(r.get("wins", 0))}
+	if r.has("best"):
+		ex["b"] = float(r["best"])
 	if reward > 0:
-		race.profile.earn(float(reward), "owev", id)
+		if won and first:
+			ex["first"] = true
+			ex["rep"] = int(round(float(cur["reward"]) * k * REPEAT_K / 10.0) * 10.0)
+		race.profile.earn(float(reward), "owev", id, ex)
 		race.profile.add_xp(float(reward) * 0.2)
+	elif ok:
+		race.profile.progress("owev:" + id, ex)
 	r["title"] = _title(cur) # (para la pantalla de ranking del menú)
 	if ok and typ != "huida" and typ != "persecucion":
 		_send_record(id, t)

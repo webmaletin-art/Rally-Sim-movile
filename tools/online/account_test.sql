@@ -430,5 +430,39 @@ begin
   perform ta.ok((r ->> 'dup')::boolean, 'ese mismo comprobante no se puede usar en otra cuenta');
 end $$;
 
+-- ───────── premios irrepetibles y progreso en la cuenta (20261022: auditoría del ciclo de juego, P0) ─────────
 reset role;
+update public.account_cfg set val = 0 where key = 'earn_ref_gap_s';
+delete from public.account_earns where user_id = '00000000-0000-0000-0000-0000000000a2';
+set role authenticated;
+select ta.set_user(2);
+do $$
+declare r jsonb; s jsonb; c0 bigint;
+begin
+  r := ta.one('{"t":"earn","amount":3000,"kind":"goal","ref":"t_logro"}');
+  perform ta.ok((r ->> 'ok')::boolean, 'un logro se cobra la primera vez');
+  r := ta.one('{"t":"earn","amount":3000,"kind":"goal","ref":"t_logro"}');
+  perform ta.ok(not (r ->> 'ok')::boolean and (r ->> 'claimed')::boolean, 'el mismo logro no se cobra dos veces (reinstalar, otro teléfono): ' || (r ->> 'reason'));
+  r := ta.one('{"t":"earn","amount":500,"kind":"level","ref":"lv2"}');
+  r := ta.one('{"t":"earn","amount":500,"kind":"level","ref":"lv2"}');
+  perform ta.ok(not (r ->> 'ok')::boolean, 'el bono de un nivel tampoco se cobra dos veces');
+  c0 := (ta.st() ->> 'credits')::bigint;
+  r := ta.one('{"t":"earn","amount":5000,"kind":"owev","ref":"t_ev1","first":true,"rep":1750,"w":1,"b":95.5}');
+  perform ta.ok((r ->> 'ok')::boolean and (r ->> 'credits')::bigint = c0 + 5000, 'primera victoria de una carrera del mapa: paga entera');
+  r := ta.one('{"t":"earn","amount":5000,"kind":"owev","ref":"t_ev1","first":true,"rep":1750,"w":1,"b":99.0}');
+  perform ta.ok((r ->> 'ok')::boolean and (r ->> 'repeat')::boolean and (r ->> 'credits')::bigint = c0 + 5000 + 1750, 'la misma «primera victoria» otra vez (reinstaló) paga como repetición: +1750');
+  r := ta.one('{"t":"prog","key":"race:t_copa1","m":2,"b":70.0,"p":3}');
+  r := ta.one('{"t":"prog","key":"race:t_copa1","m":1,"b":80.0,"p":1}');
+  perform ta.ok((r ->> 'ok')::boolean, 'el progreso sin plata se guarda');
+  r := ta.one('{"t":"prog","key":"plata:t","m":3}');
+  perform ta.ok(not (r ->> 'ok')::boolean, 'un progreso de un tipo que no existe se rechaza');
+  s := ta.st();
+  perform ta.ok((s -> 'claims' -> 'race:t_copa1' ->> 'm')::int = 2 and (s -> 'claims' -> 'race:t_copa1' ->> 'b')::numeric = 70 and (s -> 'claims' -> 'race:t_copa1' ->> 'p')::int = 3, 'la medalla y el tiempo guardados no empeoran: ' || (s -> 'claims' ->> 'race:t_copa1'));
+  perform ta.ok((s -> 'claims' -> 'owev:t_ev1' ->> 'b')::numeric = 95.5 and (s -> 'claims' -> 'owev:t_ev1' ->> 'a')::bigint = 5000 and s -> 'claims' ? 'goal:t_logro', 'el estado de la cuenta trae lo cobrado y lo logrado (para devolverlo al reinstalar)');
+  r := ta.one('{"t":"earn","amount":800,"kind":"race","ref":"t_rep"}');
+  perform ta.ok((r ->> 'ok')::boolean, 'los premios repetibles de siempre se siguen pagando');
+end $$;
+reset role;
+update public.account_cfg set val = 15 where key = 'earn_ref_gap_s';
+
 select 'CUENTA_TEST OK' as resultado;

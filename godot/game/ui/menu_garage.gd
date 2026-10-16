@@ -692,20 +692,9 @@ func _draft_sync(id: String, st: Dictionary) -> void:
 		draft_tune = (st["tune"] as Dictionary).duplicate(true)
 		draft_paint = (st["paint"] as Dictionary).duplicate(true)
 
+## Cuántos reglajes cambian (los bloqueados no cuentan: no hacen nada, no se cobran; auditoría 15/10/2026)
 func _tune_changes(id: String, st: Dictionary) -> int:
-	var defs := CarBuild.default_tune(m.vehicles[id])
-	var n := 0
-	var keys := {}
-	for k in draft_tune:
-		keys[k] = true
-	for k in (st["tune"] as Dictionary):
-		keys[k] = true
-	for k in keys:
-		var a := float(draft_tune.get(k, defs.get(k, 0.0)))
-		var b := float((st["tune"] as Dictionary).get(k, defs.get(k, 0.0)))
-		if absf(a - b) > 0.0001:
-			n += 1
-	return n
+	return CarBuild.tune_change_count(draft_tune, st["tune"], CarBuild.default_tune(m.vehicles[id]), st.get("upg", {}))
 
 func _paint_changed(st: Dictionary) -> bool:
 	return draft_paint.hash() != (st["paint"] as Dictionary).hash()
@@ -771,7 +760,7 @@ func _draft_bar(id: String, st: Dictionary, with_test: bool) -> void:
 			m.sfx.play("error")
 			m.toast(tr("No te alcanza el dinero"))
 			return
-		st["tune"] = draft_tune.duplicate(true)
+		st["tune"] = CarBuild.tune_sanitize(draft_tune, st["tune"], st.get("upg", {}))
 		st["paint"] = draft_paint.duplicate(true)
 		m.profile.save()
 		m.sfx.play("buy")
@@ -846,10 +835,13 @@ func _ws_tune(id: String, st: Dictionary) -> void:
 	info.text = tune_info
 	for it in items:
 		var k := str(it["k"])
+		var locked := not CarBuild.tune_unlocked(k, st.get("upg", {}))
 		var v0 := float(tune.get(k, defs.get(k, it["def"])))
+		if locked:
+			v0 = float((st["tune"] as Dictionary).get(k, defs.get(k, it["def"])))
 		var row := Kit.hbox(8)
 		m.body.add_child(row)
-		var nl := Kit.label(str(it["n"]), 15, Kit.TEXT)
+		var nl := Kit.label(("🔒 " if locked else "") + str(it["n"]), 15, Kit.MUTED if locked else Kit.TEXT)
 		nl.custom_minimum_size.x = 168
 		nl.clip_text = true
 		row.add_child(nl)
@@ -866,7 +858,14 @@ func _ws_tune(id: String, st: Dictionary) -> void:
 		var vl := Kit.label("%s %s" % [_num(v0), unit], 15, Kit.GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
 		vl.custom_minimum_size.x = 74
 		row.add_child(vl)
-		if it.has("lo"):
+		if locked:
+			# bloqueado: no se mueve ni se cobra; se dice qué mejora lo habilita y cuánto cuesta
+			sl.editable = false
+			sl.modulate.a = 0.4
+			var src := CarBuild.unlock_source(str(it.get("req", "")))
+			var why := Tr.t("🔒 Se habilita con %s nivel %d (%s) · %s") % [Tr.t(str(src.get("name", ""))), int(src.get("level", 0)), Tr.t(str(src.get("level_name", ""))), Kit.fmt_cr(float(src.get("cost", 0)))] if not src.is_empty() else Tr.t("🔒 Bloqueado")
+			m.body.add_child(Kit.wrap(why, 12, Kit.GOLD, 300))
+		elif it.has("lo"):
 			m.body.add_child(Kit.wrap("▼ %s\n▲ %s" % [Tr.t(str(it["lo"])), Tr.t(str(it["hi"]))], 12, Kit.MUTED, 300)) # guía fácil: qué pasa si lo bajás y si lo subís
 		var txt := str(it.get("info", ""))
 		sl.value_changed.connect(func(nv: float) -> void:
@@ -887,12 +886,13 @@ func _ws_tune(id: String, st: Dictionary) -> void:
 			draft_tune = {}
 			for k2 in _cat()["presets"][key]:
 				draft_tune[k2] = float(_cat()["presets"][key][k2])
+			draft_tune = CarBuild.tune_sanitize(draft_tune, st["tune"], st.get("upg", {})) # lo bloqueado no lo cambia un preset
 			_draft_refresh(id, st)
 			m.go("workshop", null, false), false, 15, Vector2(0, 40))
 		pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		prow.add_child(pb)
 	var rb := Kit.button("↺ FÁBRICA", func() -> void:
-		draft_tune = {}
+		draft_tune = CarBuild.tune_sanitize({}, st["tune"], st.get("upg", {}))
 		_draft_refresh(id, st)
 		m.go("workshop", null, false), false, 15, Vector2(0, 40))
 	rb.size_flags_horizontal = Control.SIZE_EXPAND_FILL

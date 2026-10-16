@@ -62,6 +62,67 @@ static func unlocks_of(upg: Dictionary) -> Dictionary:
 				s[x] = true
 	return s
 
+## ── Reglajes bloqueados (auditoría 15/10/2026, P0) ──
+## Un reglaje con «req» sólo actúa en la física si alguna mejora comprada lo desbloquea (build_params usa unlocks_of). La pantalla del taller
+## tiene que mostrarlo con candado, no dejar moverlo y no cobrarlo. Estas funciones son la regla (puras: las usa el taller y las pruebas).
+
+## El desbloqueo que pide un reglaje («springs», «camber»…) o "" si está siempre libre
+static func tune_req(k: String) -> String:
+	for g in catalog()["tune"]:
+		for i in g["items"]:
+			if str(i["k"]) == k:
+				return str(i.get("req", ""))
+	return ""
+
+## ¿Se puede usar el reglaje k con estas mejoras?
+static func tune_unlocked(k: String, upg: Dictionary) -> bool:
+	var r := tune_req(k)
+	return r == "" or unlocks_of(upg).has(r)
+
+## La mejora más barata que desbloquea `req`: {cat, name, level, level_name, cost} (vacío si ninguna)
+static func unlock_source(req: String) -> Dictionary:
+	for u in catalog()["upgrades"]:
+		var lv: Array = u["levels"]
+		for i in range(1, lv.size()):
+			if (lv[i].get("unlock", []) as Array).has(req):
+				return {"cat": str(u["id"]), "name": str(u.get("name", u["id"])), "level": i, "level_name": str(lv[i].get("n", "")), "cost": int(lv[i].get("cost", 0))}
+	return {}
+
+## El borrador del reglaje limpio: los reglajes bloqueados quedan como estaban guardados (no se pueden cambiar con un preset ni a mano)
+static func tune_sanitize(draft: Dictionary, saved: Dictionary, upg: Dictionary) -> Dictionary:
+	var out := draft.duplicate(true)
+	var un := unlocks_of(upg)
+	for g in catalog()["tune"]:
+		for i in g["items"]:
+			var r := str(i.get("req", ""))
+			if r == "" or un.has(r):
+				continue
+			var k := str(i["k"])
+			if saved.has(k):
+				out[k] = saved[k]
+			else:
+				out.erase(k)
+	return out
+
+## Cuántos reglajes cambian de verdad (sólo los desbloqueados: lo bloqueado no se cobra porque no hace nada)
+static func tune_change_count(draft: Dictionary, saved: Dictionary, defs: Dictionary, upg: Dictionary) -> int:
+	var un := unlocks_of(upg)
+	var keys := {}
+	for k in draft:
+		keys[k] = true
+	for k in saved:
+		keys[k] = true
+	var n := 0
+	for k in keys:
+		var r := tune_req(str(k))
+		if r != "" and not un.has(r):
+			continue
+		var a := float(draft.get(k, defs.get(k, 0.0)))
+		var b := float(saved.get(k, defs.get(k, 0.0)))
+		if absf(a - b) > 0.0001:
+			n += 1
+	return n
+
 static func effects_of(upg: Dictionary) -> Dictionary:
 	var e := {}
 	for k in ["power", "rpm", "inertia", "mass", "com", "yaw", "brake", "freq", "arb", "damp", "travel", "clutch", "shift", "lsd", "aeroF", "aeroR", "drag", "nitro", "nitroBoost", "steer", "vgov"]:

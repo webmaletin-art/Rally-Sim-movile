@@ -218,7 +218,7 @@ func spend(n: int, _kind := "misc") -> bool:
 	return _take(n)
 
 ## Los premios online los paga el servidor cuando valide los resultados (todavía no hay): acá no se crea dinero
-func earn(_n: float, _kind := "misc", _ref := "") -> void:
+func earn(_n: float, _kind := "misc", _ref := "", _extra := {}) -> void:
 	pass
 
 func daily_check() -> Dictionary:

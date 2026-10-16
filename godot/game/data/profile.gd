@@ -161,11 +161,22 @@ func _take_shop(n: int, e: Dictionary) -> bool:
 	return true
 
 ## Premio en créditos. `kind` y `ref` (qué carrera, qué logro) le sirven al servidor para no pagar dos veces lo mismo y para poner topes
-func earn(n: float, kind := "misc", ref := "") -> void:
+## `extra` (opcional) viaja con el evento a la cuenta del servidor: {first: true, rep: monto de repetición} para las primeras victorias y {m, b, h, w, p}
+## (medalla, mejor tiempo, mejor puntaje, victorias, jugadas) para que el progreso quede en la cuenta y vuelva al reinstalar (migración 20261022).
+func earn(n: float, kind := "misc", ref := "", extra := {}) -> void:
 	d["credits"] = credits + roundi(n)
 	if acct != null and roundi(n) > 0:
-		acct.log_event({"t": "earn", "amount": roundi(n), "kind": kind, "ref": ref}, roundi(n))
+		var e := {"t": "earn", "amount": roundi(n), "kind": kind, "ref": ref}
+		e.merge(extra)
+		acct.log_event(e, roundi(n))
 	save()
+
+## Progreso sin plata (medalla, mejor tiempo, carrera descubierta) para la cuenta del servidor: key «owev:<id>» o «race:<id>»
+func progress(key: String, data := {}) -> void:
+	if acct != null:
+		var e := {"t": "prog", "key": key}
+		e.merge(data)
+		acct.log_event(e, 0)
 
 func buy_car(id: String) -> bool:
 	var m: Dictionary = CarBuild.catalog()["cars"][id]

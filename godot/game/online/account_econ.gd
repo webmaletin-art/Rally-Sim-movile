@@ -17,6 +17,7 @@ const CarBuild := preload("res://game/data/car_build.gd")
 const PartCatalog := preload("res://game/car/part_catalog.gd")
 const VehicleCustomization := preload("res://game/car/vehicle_customization.gd")
 const Tr := preload("res://game/i18n/tr.gd")
+const WorldProgress := preload("res://game/world/world_progress.gd")
 
 signal changed # cambió el estado de la sincronización o la cola
 signal corrected(text: String) # el servidor corrigió algo de lo que se veía (compra rechazada, premio recortado…)
@@ -473,7 +474,95 @@ static func reconcile(d: Dictionary, state: Dictionary, pending: Array) -> Dicti
 	# regalo diario
 	if not p_daily:
 		d["daily"] = {"day": str(state.get("daily", "")), "streak": int(state.get("streak", 0))}
+	# lo cobrado y lo logrado que guarda la cuenta (logros, copas, medallas, carreras del mapa, Aventura, rango, nivel): vuelve al reinstalar
+	if state.get("claims") is Dictionary:
+		rep["restored"] = restore_progress(d, state["claims"])
 	return rep
+
+## Vuelca sobre el perfil lo que la cuenta del servidor dice que ya se cobró o se logró (migración 20261022). Nunca empeora nada: medalla, victorias y
+## jugadas suben, el mejor tiempo baja, lo cobrado queda cobrado. Devuelve cuántas cosas cambió. (Auditoría del ciclo de juego, P0: reinstalar no borra el
+## progreso y no deja volver a cobrar los premios de una sola vez.)
+static func restore_progress(d: Dictionary, claims: Dictionary) -> int:
+	var n := 0
+	for key in claims:
+		var c: Dictionary = claims[key] if claims[key] is Dictionary else {}
+		var ks := str(key)
+		var i := ks.find(":")
+		if i <= 0:
+			continue
+		var kind := ks.left(i)
+		var ref := ks.substr(i + 1)
+		match kind:
+			"goal":
+				if not (d.get("claimed") is Dictionary):
+					d["claimed"] = {}
+				if not (d["claimed"] as Dictionary).has(ref):
+					d["claimed"][ref] = 1
+					n += 1
+			"cup":
+				if not (d.get("cups") is Dictionary):
+					d["cups"] = {}
+				if not (d["cups"] as Dictionary).has(ref):
+					d["cups"][ref] = 1
+					n += 1
+			"race":
+				if not (d.get("events") is Dictionary):
+					d["events"] = {}
+				var cur: Dictionary = d["events"].get(ref, {"medal": 0, "best": null})
+				var before := cur.hash()
+				cur["medal"] = maxi(int(cur.get("medal", 0)), int(c.get("m", 0)))
+				cur["plays"] = maxi(int(cur.get("plays", 0)), maxi(int(c.get("p", 0)), 1))
+				cur["done"] = true
+				if c.has("b") and (cur.get("best") == null or float(c["b"]) < float(cur["best"])):
+					cur["best"] = float(c["b"])
+				elif c.has("h") and (cur.get("best") == null or float(c["h"]) > float(cur["best"])):
+					cur["best"] = float(c["h"])
+				d["events"][ref] = cur
+				if cur.hash() != before:
+					n += 1
+			"owev":
+				if not (d.get("owEvents") is Dictionary):
+					d["owEvents"] = {}
+				var r: Dictionary = d["owEvents"].get(ref, {})
+				var before2 := r.hash()
+				r["found"] = true
+				r["wins"] = maxi(int(r.get("wins", 0)), int(c.get("w", 0)))
+				if c.has("b") and (not r.has("best") or float(c["b"]) < float(r["best"])):
+					r["best"] = float(c["b"])
+				d["owEvents"][ref] = r
+				if r.hash() != before2:
+					n += 1
+			"adv":
+				if not (d.get("adv") is Dictionary):
+					continue # la Aventura arma su estado al abrirla; se completa la próxima sincronización
+				var st: Dictionary = d["adv"]
+				if ref == "final":
+					if st.get("done") != true:
+						st["done"] = true
+						n += 1
+				elif ref.begins_with("stage") and ref.substr(5).is_valid_int():
+					var stg := mini(int(ref.substr(5)) + 1, 12)
+					if int(st.get("stage", 0)) < stg:
+						st["stage"] = stg
+						st["started"] = true
+						n += 1
+			"rank":
+				if ref.begins_with("rk") and ref.substr(2).is_valid_int():
+					var rk := clampi(int(ref.substr(2)), 0, WorldProgress.RANKS.size() - 1)
+					if not (d.get("worldRep") is Dictionary):
+						d["worldRep"] = {"pts": 0.0, "visited": {}}
+					var need := float(WorldProgress.RANKS[rk]["pts"])
+					if float(d["worldRep"].get("pts", 0.0)) < need:
+						d["worldRep"]["pts"] = need
+						n += 1
+			"level":
+				if ref.begins_with("lv") and ref.substr(2).is_valid_int():
+					var lv := int(ref.substr(2))
+					if int(d.get("level", 1)) < lv:
+						d["level"] = lv
+						d["xp"] = 0
+						n += 1
+	return n
 
 static func _push(dict: Dictionary, key: String, value: String) -> void:
 	if not dict.has(key):

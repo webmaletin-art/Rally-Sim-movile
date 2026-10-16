@@ -416,6 +416,18 @@ func _run() -> void:
 	check(int(dd["credits"]) == maxi(0, 100 + 50 - 18000), "reconcile: saldo = servidor + lo que todavía no se mandó (nunca negativo)")
 	check((dd["owned"] as Dictionary).has("hatch") and not (dd["owned"] as Dictionary).has("torito"), "reconcile: una compra que espera no inventa el auto (se arma con el estado del servidor)")
 	check(rep2["removed"] is Array, "reconcile devuelve el informe")
+	# ───── premios irrepetibles y progreso: la cuenta devuelve lo cobrado y lo logrado (20261022) ─────
+	var pr := Profile.default_profile()
+	pr["events"] = {"debut_1": {"medal": 3, "best": 50.0, "plays": 4, "done": true}}
+	var claims := {"goal:first_win": {"a": 3000}, "cup:debut": {"a": 4000}, "race:debut_1": {"m": 1, "b": 60.0, "p": 1}, "race:debut_2": {"m": 2, "b": 70.0, "p": 2},
+		"owev:t1": {"w": 2, "b": 95.0}, "rank:rk2": {"a": 600}, "level:lv5": {"a": 800}, "nada": {}}
+	var nch := AccountEcon.restore_progress(pr, claims)
+	check((pr["claimed"] as Dictionary).has("first_win") and (pr["cups"] as Dictionary).has("debut"), "reinstalar: los logros y las copas cobrados vuelven marcados (no se cobran otra vez)")
+	check(int(pr["events"]["debut_1"]["medal"]) == 3 and float(pr["events"]["debut_1"]["best"]) == 50.0, "lo local mejor que lo guardado no empeora (oro y 50 s se quedan)")
+	check(int(pr["events"]["debut_2"]["medal"]) == 2 and float(pr["events"]["debut_2"]["best"]) == 70.0 and int(pr["events"]["debut_2"]["plays"]) == 2, "una copa jugada en otro teléfono vuelve con su medalla, su tiempo y sus jugadas")
+	check(bool(pr["owEvents"]["t1"]["found"]) and int(pr["owEvents"]["t1"]["wins"]) == 2, "una carrera del mapa ganada vuelve descubierta y ganada (la próxima paga como repetición)")
+	check(float(pr["worldRep"]["pts"]) >= 180.0 and int(pr["level"]) == 5, "el rango y el nivel vuelven")
+	check(nch >= 6 and AccountEcon.restore_progress(pr, claims) == 0, "volver a sincronizar no cambia nada más (%d cambios la primera vez)" % nch)
 	# ───── vale de taller (premio de eventos): saldo aparte para el taller ─────
 	AccountEcon.reconcile(dd, {"credits": 100, "voucher": 30000, "cars": {"hatch": {"owned": [], "tires": ["street"], "parts": []}}, "iap": {}, "streak": 0, "daily": ""}, [{"t": "buy_upgrade", "car": "hatch", "cat": "engine", "level": 1, "d": 0, "v": 5000, "id": "c"}])
 	check(int(dd.get("voucher", -1)) == 25000, "reconcile: el vale es el del servidor menos lo que usaron las compras que esperan (%d)" % int(dd.get("voucher", -1)))

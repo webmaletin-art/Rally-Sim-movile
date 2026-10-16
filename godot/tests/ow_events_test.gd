@@ -15,9 +15,12 @@ class EvProfile:
 	func spend(n: int, _k := "") -> bool:
 		credits -= n
 		return true
-	func earn(n: float, kind := "", ref := "") -> void:
+	var prog: Array = []
+	func earn(n: float, kind := "", ref := "", extra := {}) -> void:
 		credits += int(n)
-		earned.append([int(n), kind, ref])
+		earned.append([int(n), kind, ref, extra])
+	func progress(key: String, data := {}) -> void:
+		prog.append([key, data])
 	func add_xp(_x: float) -> void:
 		pass
 	func save() -> void:
