@@ -18,6 +18,7 @@ const PartCatalog := preload("res://game/car/part_catalog.gd")
 const VehicleCustomization := preload("res://game/car/vehicle_customization.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const WorldProgress := preload("res://game/world/world_progress.gd")
+const Daily := preload("res://game/data/daily.gd")
 
 signal changed # cambió el estado de la sincronización o la cola
 signal corrected(text: String) # el servidor corrigió algo de lo que se veía (compra rechazada, premio recortado…)
@@ -189,6 +190,7 @@ static func wipe_economy(d: Dictionary, uid: String) -> void:
 	d["iap"] = {}
 	d["iapTokens"] = []
 	d["daily"] = {"day": "", "streak": 0}
+	d.erase("dailyCh") # los desafíos del día cobrados son de la cuenta: los de la otra vuelven al sincronizar
 	d["acct"] = {"uid": uid, "synced": 0, "seq": 0, "pending": [], "n": 0, "seal": ""}
 
 # ───────────────────────── sincronización ─────────────────────────
@@ -476,6 +478,9 @@ static func reconcile(d: Dictionary, state: Dictionary, pending: Array) -> Dicti
 	# regalo diario
 	if not p_daily:
 		d["daily"] = {"day": str(state.get("daily", "")), "streak": int(state.get("streak", 0))}
+	# configuración de los desafíos del día (migración 20261024; un servidor sin ella no la manda y queda la de fábrica)
+	if state.get("dcfg") is Dictionary and not (state["dcfg"] as Dictionary).is_empty():
+		d["dailyCfg"] = (state["dcfg"] as Dictionary).duplicate(true)
 	# lo cobrado y lo logrado que guarda la cuenta (logros, copas, medallas, carreras del mapa, Aventura, rango, nivel): vuelve al reinstalar
 	if state.get("claims") is Dictionary:
 		rep["restored"] = restore_progress(d, state["claims"])
@@ -500,6 +505,11 @@ static func restore_progress(d: Dictionary, claims: Dictionary) -> int:
 					d["claimed"] = {}
 				if not (d["claimed"] as Dictionary).has(ref):
 					d["claimed"][ref] = 1
+					n += 1
+			"daily":
+				var ds := Daily.state(d) # sólo importa lo de hoy (lo viejo ya no se puede cobrar)
+				if ref.begins_with(str(ds["day"]) + ":") and not (ds["got"] as Dictionary).has(ref):
+					ds["got"][ref] = 1
 					n += 1
 			"cup":
 				if not (d.get("cups") is Dictionary):

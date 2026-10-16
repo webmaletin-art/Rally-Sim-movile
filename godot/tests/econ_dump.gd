@@ -21,7 +21,7 @@ func _run() -> void:
 	for e in evs:
 		var p: Vector2 = e["start"]
 		print("EV " + JSON.stringify({"id": e["id"], "type": e["type"], "len": snappedf(float(e["len"]), 1.0), "reward": int(e["reward"]),
-			"tier": snappedf(float(e["tier"]), 0.01), "dist": snappedf(p.length(), 1.0), "rivals": int(e["rivals"])}))
+			"tier": snappedf(float(e["tier"]), 0.01), "dist": snappedf(p.length(), 1.0), "x": snappedf(p.x, 1.0), "y": snappedf(p.y, 1.0), "rivals": int(e["rivals"])}))
 	print("EVENTOS %d" % evs.size())
 	# los 28 autos: prestaciones de serie y con todas las mejoras al máximo (CarBuild.perf_of, lo mismo que muestra el garaje)
 	var veh: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))

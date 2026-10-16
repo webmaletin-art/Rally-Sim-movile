@@ -483,6 +483,52 @@ begin
   perform ta.ok((select late from public.get_class_leaderboard('ow:ev_test', 'owev', 'C', 5) limit 1), 'una marca que llegó desde la cola sin conexión queda marcada «enviada después»');
   perform ta.ok(r ->> 'cls' = 'C' and (r ->> 'rank')::int = 1, 'las carreras del mundo abierto también van por clase');
 end $$;
+-- ───────── fase 5 (20261024): horarios rotativos, desafíos del día, hitos de la temporada ─────────
+reset role;
+do $$
+declare a timestamptz; b timestamptz; i int; hs int[] := '{}'; mn interval := interval '100 days';
+begin
+  a := '2026-10-16 13:00+00';
+  for i in 1..8 loop
+    b := public._wev_next_slot(array[23, 0, 1, 2], true, 12, a, 60);
+    if i > 1 then mn := least(mn, b - a); end if;
+    hs := hs || extract(hour from b at time zone 'utc')::int;
+    a := b;
+  end loop;
+  perform ta.ok(mn >= interval '18 hours', 'la cacería de la noche rota y entre dos seguidas hay al menos 18 h (mínimo: ' || mn || ')');
+  perform ta.ok((select count(distinct x) from unnest(hs) x) = 4, 'en 8 días pasa por las 4 horas de la lista: ' || hs::text);
+  perform ta.ok(public._wev_next_slot(array[19], false, 12, '2026-10-16 18:50+00', 30) = '2026-10-17 19:00+00', 'sin rotar: si no llega al aviso, pasa al día siguiente a la misma hora');
+  perform ta.ok((select (params ->> 'boost')::numeric = 1.0 and (params ->> 'max_pi')::int = 599 and not (params -> 'pool' ? 'veltor') from public.wev_templates where id = 'caza_inicial'),
+    'la cacería accesible: autos de calle, sin empujón, tope de PI 599');
+end $$;
+-- una temporada con un evento cumplido (contrarreloj: 30 pts) del jugador 2
+insert into public.wev_events (tpl, kind, title, starts_at, ends_at, params, reward) values
+  ('temporada', 'season', 'T prueba', now() - interval '1 day', now() + interval '6 days', '{"pts": {"reach": 30}, "hitos": [{"pts": 25, "reward": {"credits": 3000}}, {"pts": 60, "reward": {"credits": 6000}}]}', '{}'),
+  ('llegada', 'reach', 'T llegada', now() - interval '2 hours', now() + interval '1 hour', '{}', '{}');
+insert into public.wev_runs (event_id, user_id, started_at, finished_at, ok, value)
+  select id, '00000000-0000-0000-0000-0000000000a2', now() - interval '1 hour', now() - interval '50 minutes', true, 300 from public.wev_events where title = 'T llegada';
+set role authenticated;
+select ta.set_user(2);
+do $$
+declare r jsonb; c0 bigint; sid bigint; s jsonb;
+begin
+  select id into sid from public.wev_events where title = 'T prueba';
+  c0 := (ta.st() ->> 'credits')::bigint;
+  r := public.season_claim(sid);
+  perform ta.ok((r ->> 'ok')::boolean and (r ->> 'pts')::int = 30 and jsonb_array_length(r -> 'granted') = 1 and (ta.st() ->> 'credits')::bigint = c0 + 3000, 'hito de temporada: con 30 pts se cobra el de 25 (+3000) y no el de 60: ' || r::text);
+  r := public.season_claim(sid);
+  perform ta.ok(jsonb_array_length(r -> 'granted') = 0 and (ta.st() ->> 'credits')::bigint = c0 + 3000 and r -> 'got' = '[0]'::jsonb, 'pedirlo otra vez (reconexión, otro teléfono) no paga de nuevo');
+  r := public.season_claim(-5);
+  perform ta.ok(not (r ->> 'ok')::boolean, 'una temporada que no existe: ' || (r ->> 'reason'));
+  s := ta.st();
+  perform ta.ok((s -> 'dcfg' ->> 'on')::boolean and jsonb_array_length(s -> 'dcfg' -> 'cr') = 3, 'el estado de la cuenta trae la configuración de los desafíos del día');
+  r := ta.one('{"t":"earn","amount":2500,"kind":"daily","ref":"2026-10-16:0","once":true}');
+  perform ta.ok((r ->> 'ok')::boolean, 'un desafío del día se cobra');
+  r := ta.one('{"t":"earn","amount":2500,"kind":"daily","ref":"2026-10-16:0","once":true}');
+  perform ta.ok(not (r ->> 'ok')::boolean and (r ->> 'claimed')::boolean, 'el mismo desafío del mismo día no se cobra dos veces (reinstalar, reconectar)');
+  r := ta.one('{"t":"earn","amount":2500,"kind":"daily","ref":"2026-10-17:0","once":true}');
+  perform ta.ok((r ->> 'ok')::boolean, 'el del día siguiente sí');
+end $$;
 reset role;
 update public.account_cfg set val = 15 where key = 'earn_ref_gap_s';
 

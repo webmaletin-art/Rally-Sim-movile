@@ -3,6 +3,7 @@ extends RefCounted
 
 const CarBuild := preload("res://game/data/car_build.gd")
 const MapData := preload("res://game/data/map_data.gd")
+const Daily := preload("res://game/data/daily.gd")
 
 static func event_by_id(id: String) -> Dictionary:
 	for e in CarBuild.catalog()["events"]:
@@ -176,6 +177,8 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 	if practice:
 		cr = 0
 		xp = 0
+	if not practice:
+		Daily.note(d, "race") # desafío del día (fase 5)
 	if t == "drift" and not practice:
 		st["driftBest"] = maxf(float(st["driftBest"]), float(r["value"]))
 	if t == "race" and not practice:
@@ -220,10 +223,62 @@ static func apply(profile: RefCounted, cfg: Dictionary, r: Dictionary) -> Dictio
 	profile.save()
 	return out
 
+## Carreras del mapa (las que arma game/world/ow_events.gd; tools/econ/game_data_snapshot.txt) y autos de la colección (los 28 sin el monoplaza)
+const OW_TOTAL := 79
+
+## Los autos de la colección (los 28: todos menos el monoplaza, que no se compra) y los que se compran con créditos (sin los premium de la tienda
+## ni los de premio): la meta «Colección completa»
+static func collection_cars(buyable_only := false) -> Array:
+	var Rel = preload("res://game/data/release.gd")
+	var out: Array = []
+	var cars: Dictionary = CarBuild.catalog()["cars"]
+	for id in cars:
+		var special: bool = Rel.PREMIUM_CARS.has(id) or Rel.REWARD_CARS.has(id)
+		if (buyable_only and int(cars[id].get("price", 0)) > 0 and not special) or (not buyable_only and (int(cars[id].get("price", 0)) > 0 or special)):
+			out.append(str(id))
+	return out
+
+## Colección (fase 5): autos [tenés, total], los que se compran con créditos, carreras del mapa descubiertas y ganadas [n, total]
+static func collection(profile: RefCounted) -> Dictionary:
+	var d: Dictionary = profile.d
+	var owned: Dictionary = d["owned"]
+	var all := collection_cars()
+	var buy := collection_cars(true)
+	var found := 0
+	var won := 0
+	var ow: Dictionary = d.get("owEvents", {}) if d.get("owEvents") is Dictionary else {}
+	for id in ow:
+		if (ow[id] as Dictionary).get("found", false) == true:
+			found += 1
+		if int((ow[id] as Dictionary).get("wins", 0)) > 0:
+			won += 1
+	return {"cars": [all.filter(func(id): return owned.has(id)).size(), all.size()], "buyable": [buy.filter(func(id): return owned.has(id)).size(), buy.size()],
+		"found": [mini(found, OW_TOTAL), OW_TOTAL], "won": [mini(won, OW_TOTAL), OW_TOTAL]}
+
+## Avance de un logro que se cuenta (para mostrar «12/24»); [0, 0] si no es de contar
+static func ach_progress(profile: RefCounted, id: String) -> Array:
+	var d: Dictionary = profile.d
+	var st: Dictionary = d["stats"]
+	var c := collection(profile) if id.begins_with("ow") or id == "carsall" else {}
+	match id:
+		"win1", "win5", "win15": return [int(st["wins"]), int(id.substr(3))]
+		"pod10": return [int(st["podiums"]), 10]
+		"board6", "board12": return [(st["boards"] as Dictionary).size(), int(id.substr(5))]
+		"cars2", "cars4", "cars10": return [(d["owned"] as Dictionary).size(), int(id.substr(4))]
+		"carsall": return c["buyable"]
+		"owfind20": return [c["found"][0], 20]
+		"owfind79": return c["found"]
+		"owwin25": return [c["won"][0], 25]
+		"lvl10": return [int(d["level"]), 10]
+	return [0, 0]
+
 static func ach_done(profile: RefCounted, id: String) -> bool:
 	var d: Dictionary = profile.d
 	var st: Dictionary = d["stats"]
 	match id:
+		"owfind20", "owfind79", "owwin25", "carsall":
+			var pr := ach_progress(profile, id)
+			return int(pr[1]) > 0 and int(pr[0]) >= int(pr[1])
 		"win1": return int(st["wins"]) >= 1
 		"win5": return int(st["wins"]) >= 5
 		"win15": return int(st["wins"]) >= 15

@@ -9,6 +9,7 @@ const Showroom := preload("res://game/ui/showroom.gd")
 const UiSfx := preload("res://game/audio/ui_sfx.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const Rewards := preload("res://game/data/rewards.gd")
+const Daily := preload("res://game/data/daily.gd")
 const Career := preload("res://game/ui/menu_career.gd")
 const MenuDiag := preload("res://game/ui/menu_diag.gd")
 const Garage := preload("res://game/ui/menu_garage.gd")
@@ -819,7 +820,8 @@ func _home() -> void:
 	tiles.append(["car", "GARAJE", "tus autos", func(): go("garage"), false])
 	tiles.append(["wrench", "TALLER", "piezas · pintura", func(): go("workshop", 0), false])
 	tiles.append(["cart", "TIENDA", "comprá autos", func(): go("dealer"), false])
-	tiles.append(["flag", "LOGROS", ("%d para cobrar" % Rewards.ach_ready(profile)) if Rewards.ach_ready(profile) > 0 else "objetivos", func(): go("goals"), false])
+	var to_claim := Rewards.ach_ready(profile) + Daily.ready_count(profile.d)
+	tiles.append(["flag", "LOGROS", ("%d para cobrar" % to_claim) if to_claim > 0 else "desafíos del día", func(): go("goals"), false])
 	tiles.append(["bag", "COMPRAS", "juego completo · monedas", func(): go("iap"), false])
 	if not next_ev.is_empty():
 		tiles.append(["star", "COPAS", "%d ⭐" % profile.stars(), func(): go("career"), false])
@@ -870,11 +872,19 @@ func _goals() -> void:
 	title_l.text = "LOGROS"
 	var claimed: Dictionary = profile.d["claimed"]
 	var all: Array = CarBuild.catalog()["achievements"]
-	var pages := maxi(1, int(ceil(float(all.size()) / float(GOALS_PER_PAGE))))
+	var pages := 1 + maxi(1, int(ceil(float(all.size()) / float(GOALS_PER_PAGE)))) # la primera: desafíos del día y colección (fase 5)
 	goals_page = clampi(goals_page, 0, pages - 1)
+	var pager := func() -> void:
+		body.add_child(Kit.pager(goals_page, pages, func(pg: int) -> void:
+			goals_page = pg
+			go("goals", null, false)))
+	if goals_page == 0:
+		_goals_daily()
+		pager.call()
+		return
 	var g := Kit.grid(2, 8, 8)
 	body.add_child(g)
-	for i in range(goals_page * GOALS_PER_PAGE, mini(all.size(), (goals_page + 1) * GOALS_PER_PAGE)):
+	for i in range((goals_page - 1) * GOALS_PER_PAGE, mini(all.size(), goals_page * GOALS_PER_PAGE)):
 		var a: Dictionary = all[i]
 		var id := str(a["id"])
 		var got := claimed.has(id)
@@ -897,16 +907,56 @@ func _goals() -> void:
 		dl.custom_minimum_size.x = 150
 		dl.max_lines_visible = 2
 		v.add_child(dl)
+		var pr := Rewards.ach_progress(profile, id)
+		var count := ("  ·  %d/%d" % [mini(int(pr[0]), int(pr[1])), int(pr[1])]) if int(pr[1]) > 0 and not got else ""
 		if got:
 			v.add_child(Kit.label("COBRADO ✔", 14, Kit.GREEN))
 		elif ok:
 			v.add_child(Kit.button("COBRAR " + Kit.fmt_cr(float(a["cr"])), func(): _claim(a), true, 14, Vector2(0, 32)))
 		else:
-			v.add_child(Kit.label(Kit.fmt_cr(float(a["cr"])), 14, Kit.MUTED))
-	if pages > 1:
-		body.add_child(Kit.pager(goals_page, pages, func(pg: int) -> void:
-			goals_page = pg
-			go("goals", null, false)))
+			v.add_child(Kit.label(Kit.fmt_cr(float(a["cr"])) + count, 14, Kit.MUTED))
+	pager.call()
+
+## Página 1 de LOGROS: los tres desafíos del día (cambian a la medianoche de Argentina) y la colección
+func _goals_daily() -> void:
+	var dc := Daily.cfg(profile.d)
+	var head := Kit.hbox(8)
+	body.add_child(head)
+	head.add_child(Kit.label("DESAFÍOS DEL DÍA", 20, Kit.GOLD))
+	head.add_child(Kit.label("· cambian a las 0 h (Argentina)", 13, Kit.MUTED))
+	if not bool(dc["on"]):
+		body.add_child(Kit.label("Hoy no hay desafíos.", 16, Kit.MUTED))
+	else:
+		var g := Kit.grid(3, 8, 8)
+		body.add_child(g)
+		for ch in Daily.list(profile.d):
+			var p := Kit.panel(8, Kit.PANEL2 if not ch["got"] else Color(0.1, 0.2, 0.14, 0.95))
+			p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			g.add_child(p)
+			var v := Kit.vbox(2)
+			p.add_child(v)
+			var tl := Kit.label("%s %s" % [ch["icon"], ch["text"]], 14, Kit.TEXT)
+			tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			tl.custom_minimum_size.x = 120
+			v.add_child(tl)
+			if ch["got"]:
+				v.add_child(Kit.label("COBRADO ✔", 14, Kit.GREEN))
+			elif ch["done"]:
+				var n := int(ch["n"])
+				v.add_child(Kit.button("COBRAR " + Kit.fmt_cr(float(ch["cr"])), func(): _claim_daily(n), true, 14, Vector2(0, 32)))
+			else:
+				v.add_child(Kit.label("%d/%d  ·  %s" % [int(ch["have"]), int(ch["need"]), Kit.fmt_cr(float(ch["cr"]))], 14, Kit.MUTED))
+	var c := Rewards.collection(profile)
+	body.add_child(Kit.label("COLECCIÓN", 20, Kit.GOLD))
+	body.add_child(Kit.label("🚘 Autos: %d/%d   ·   🗺️ Carreras del mapa descubiertas: %d/%d   ·   🏁 ganadas: %d/%d" % [c["cars"][0], c["cars"][1], c["found"][0], c["found"][1], c["won"][0], c["won"][1]], 14, Kit.TEXT))
+	body.add_child(Kit.label("Las metas de colección (con premio de una sola vez) están en las páginas siguientes.", 12, Kit.MUTED))
+
+func _claim_daily(i: int) -> void:
+	var cr := Daily.claim(profile, i)
+	if cr > 0:
+		sfx.play("buy")
+		toast("🎯 Desafío del día · +%s" % Kit.fmt_cr(float(cr)))
+	go("goals", null, false)
 
 func _claim(a: Dictionary) -> void:
 	profile.d["claimed"][a["id"]] = 1

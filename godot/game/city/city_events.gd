@@ -15,6 +15,7 @@ const CarBuild := preload("res://game/data/car_build.gd")
 const ClassRecords := preload("res://game/online/class_records.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CrashLog := preload("res://game/diag/crash_log.gd")
+const Daily := preload("res://game/data/daily.gd")
 
 const FIND_R := 90.0
 const MARK_R := 450.0
@@ -173,6 +174,7 @@ func _free(dt: float, p: Vector2, sp: float) -> void:
 func _discover(ev: Dictionary) -> void:
 	var r := _rec(str(ev["id"]))
 	r["found"] = true
+	r["title"] = _title(ev) # (el desafío del día la nombra)
 	race.profile.progress("owev:" + str(ev["id"])) # queda en la cuenta: al reinstalar sigue descubierta
 	race.profile.save()
 	_refresh_map()
@@ -461,6 +463,8 @@ func _finish(ok: bool, why: String) -> void:
 	elif ok:
 		race.profile.progress("owev:" + id, ex)
 	r["title"] = _title(cur) # (para la pantalla de ranking del menú)
+	if ok:
+		Daily.note(race.profile.d, "play", won, id) # desafío del día (fase 5)
 	if ok and typ != "huida" and typ != "persecucion":
 		_send_record(id, t)
 	var md = race.get("modes")

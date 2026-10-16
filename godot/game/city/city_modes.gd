@@ -230,6 +230,12 @@ func apply_state(d: Dictionary) -> void:
 				var car := str(w.get("car", ""))
 				_toast(Tr.t("📢 %s ganó «%s»%s") % [str(w.get("name", "")), Tr.t(str(w.get("event", ""))), (" · " + _car_name(car)) if car != "" and car != "<null>" else ""])
 	_first_poll = false
+	# hitos de la temporada (fase 5): si llegaste a uno que no cobraste, se pide una vez (el servidor lo paga una sola vez)
+	for e in events:
+		var hi := season_due(e)
+		if hi >= 0 and int(_hito_asked.get(int(e["id"]), -1)) < hi:
+			_hito_asked[int(e["id"])] = hi
+			_claim_hitos(int(e["id"]))
 	# la carrera de la semana: cuál de las carreras del mundo abierto es
 	weekly = {}
 	for e in events:
@@ -241,6 +247,42 @@ func apply_state(d: Dictionary) -> void:
 					ids.append(str(oe["id"]))
 				ids.sort()
 				weekly = {"ev": int(e["id"]), "ow_id": str(ids[absi(int(e.get("seed", 0))) % ids.size()]), "run": -1, "best": e.get("best"), "title": str(e.get("title", ""))}
+
+## Hitos de la temporada: el más alto alcanzado y sin cobrar (−1 si no hay)
+static func season_due(e: Dictionary) -> int:
+	if str(e.get("kind", "")) != "season" or not (e.get("hitos") is Array):
+		return -1
+	var pts := int(e["pts"]) if e.get("pts") != null else 0
+	var got: Array = e.get("hitos_got", []) if e.get("hitos_got") is Array else []
+	var best := -1
+	for i in (e["hitos"] as Array).size():
+		if pts >= int((e["hitos"][i] as Dictionary).get("pts", 1 << 30)) and not got.has(i) and not got.has(float(i)):
+			best = i
+	return best
+
+## El próximo hito de la temporada: «próximo hito: 60 pts → $6.000» (vacío si ya los tiene todos)
+static func next_hito_text(e: Dictionary) -> String:
+	if not (e.get("hitos") is Array):
+		return ""
+	var pts := int(e["pts"]) if e.get("pts") != null else 0
+	for h in (e["hitos"] as Array):
+		if pts < int((h as Dictionary).get("pts", 0)):
+			return " · " + Tr.t("próximo hito: %d pts → %s") % [int(h["pts"]), got_text(h.get("reward", {}))]
+	return ""
+
+var _hito_asked := {}
+func _claim_hitos(ev_id: int) -> void:
+	var on = race.get("online")
+	if on == null or not _online_ok():
+		return
+	var r: Dictionary = await on.call_fn("season_claim", {"p_id": ev_id})
+	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
+	for g in (d.get("granted", []) as Array):
+		_big(Tr.t("🏅 ¡Hito de la temporada! %s") % got_text((g as Dictionary).get("reward", {})), 4.5)
+	if not (d.get("granted", []) as Array).is_empty():
+		var acct = race.profile.get("acct")
+		if acct != null and acct.has_method("sync"):
+			acct.sync() # el servidor ya dio el premio a la cuenta: se trae
 
 static func _find(evs: Array, id: int) -> Dictionary:
 	for e in evs:
@@ -421,6 +463,17 @@ func _free_to_play() -> bool:
 	var evs = race.get("ow_events")
 	return (evs == null or not evs.busy()) and _reach.get("run", -1) == -1
 
+## Cómo maneja el auto perseguido de una cacería. Por defecto, como siempre (+15 % de potencia, +12 % de agarre, ritmo 112 %, sin errores: la cacería
+## difícil). Fase 5 (16/10/2026): el servidor puede mandar params.boost / pace / errors para una cacería accesible (autos C/B, sin empujón, con errores).
+## Cacería con tope de PI (params.max_pi, la accesible): ¿el auto con el que vas puede entrar? Sin tope, cualquiera.
+static func pi_ok(prm: Dictionary, my_pi: int) -> bool:
+	return int(prm.get("max_pi", 0)) <= 0 or my_pi <= int(prm.get("max_pi", 0))
+
+static func prey_ai(prm: Dictionary) -> Dictionary:
+	var boost := float(prm.get("boost", 1.0 if prm.has("pace") else 1.15))
+	return {"power": boost, "mu": 1.0 + (boost - 1.0) * 0.8, "grip": float(prm.get("grip", 1.15 if boost > 1.0 else 1.0)),
+		"pace": clampf(float(prm.get("pace", 1.12)), 0.8, 1.2), "errors": bool(prm.get("errors", false))}
+
 func _release(e: Dictionary, slot: int) -> bool:
 	var cars: Array = (e.get("params", {}) as Dictionary).get("cars", [])
 	var vid := str(cars[slot])
@@ -431,13 +484,15 @@ func _release(e: Dictionary, slot: int) -> bool:
 	if pose.is_empty():
 		return false
 	var drv := PoliceDriver.new()
+	var prm: Dictionary = e.get("params", {})
+	var ai := prey_ai(prm)
 	drv.mode = "parked"
-	drv.grip = 1.15
-	drv.pace = 1.12
-	drv.errors = false
+	drv.grip = float(ai["grip"])
+	drv.pace = float(ai["pace"])
+	drv.errors = bool(ai["errors"])
 	var base: Dictionary = race.vehicles[vid]
 	var car = race.add_ai_car(vid, float(pose[0]), float(pose[1]), float(pose[2]), drv, Color(str(Profile.new_car_state(vid)["paint"]["body"])),
-		{"powerScale": float(base.get("powerScale", 1.0)) * 1.15, "mu": float(base.get("mu", 1.0)) * 1.12})
+		{"powerScale": float(base.get("powerScale", 1.0)) * float(ai["power"]), "mu": float(base.get("mu", 1.0)) * float(ai["mu"])})
 	if car == null:
 		return false
 	var lb := Label3D.new()
@@ -450,7 +505,7 @@ func _release(e: Dictionary, slot: int) -> bool:
 	lb.position = Vector3(0, 2.8, 0)
 	car.visual.add_child(lb)
 	targets.append({"ev": int(e["id"]), "slot": slot, "car": car, "drv": drv, "vid": vid, "name": _car_name(vid), "hold": 0.0, "run": -1, "trace": [], "trace_t": 0.0,
-		"slack_i": 0, "slack_t": 0.0, "label": lb, "route_t": 0.0, "done": false, "claiming": false, "cp_t": 0.0, "starting": false})
+		"slack_i": 0, "slack_t": 0.0, "label": lb, "route_t": 0.0, "done": false, "claiming": false, "cp_t": 0.0, "starting": false, "pace": float(ai["pace"])})
 	CrashLog.mark("evento", "cacería: suelto %s (slot %d)" % [vid, slot])
 	return true
 
@@ -458,7 +513,12 @@ func _hunt_one(e: Dictionary, tg: Dictionary, dt: float, now: float, p: Vector2,
 	var hs := float((e.get("params", {}) as Dictionary).get("hold_s", 60))
 	# el intento se anota en el servidor cuando te acercás (gasta un intento sólo si de verdad vas por él)
 	if int(tg["run"]) < 0 and d < 300.0 and not bool(tg["starting"]):
-		_start_run(tg, int(e["id"]), int(tg["slot"]))
+		if not pi_ok(e.get("params", {}), _my_pi()):
+			if not bool(tg.get("pi_told", false)):
+				tg["pi_told"] = true
+				_toast(Tr.t("🎯 Esta cacería es para autos de hasta PI %d: el tuyo tiene %d") % [int((e.get("params", {}) as Dictionary).get("max_pi", 0)), _my_pi()])
+		else:
+			_start_run(tg, int(e["id"]), int(tg["slot"]))
 	if not bool(tg["claiming"]):
 		tg["hold"] = hold_step(float(tg["hold"]), d, dt, hs) if int(tg["run"]) >= 0 else 0.0
 	tg["trace_t"] = float(tg["trace_t"]) - dt
@@ -472,7 +532,7 @@ func _hunt_one(e: Dictionary, tg: Dictionary, dt: float, now: float, p: Vector2,
 		tg["slack_t"] = float(tg["slack_t"]) - dt
 		drv.pace = 0.72
 		if float(tg["slack_t"]) <= 0.0:
-			drv.pace = 1.12
+			drv.pace = float(tg.get("pace", 1.12))
 	elif int(tg["slack_i"]) < SLACK_AT.size() and float(tg["hold"]) / hs >= float(SLACK_AT[int(tg["slack_i"])]):
 		tg["slack_i"] = int(tg["slack_i"]) + 1
 		tg["slack_t"] = SLACK_S
@@ -492,6 +552,14 @@ func _hunt_one(e: Dictionary, tg: Dictionary, dt: float, now: float, p: Vector2,
 		if str(pol.state) != "chase" and pol.has_method("checkpoint_near") and pol.checkpoint_near(q, CP_TRIGGER_R) >= 0:
 			pol.event_chase(race.cars[0].phys, clampi(int(pol.heat) + 1, 0, 3))
 			_toast(Tr.t("🚨 Tu presa pasó un control: ¡la policía te persigue a vos también!"))
+
+## PI del auto con el que vas (lo mismo que se manda con los récords por clase)
+var _pi_of := ["", 0]
+func _my_pi() -> int:
+	var car := str(race.cfg.get("car", ""))
+	if str(_pi_of[0]) != car:
+		_pi_of = [car, int(ClassRecords.meta(race.vehicles.get(car, {}), race.cfg.get("state", {}) if race.cfg.get("state") is Dictionary else {}, "").get("pi", 0))]
+	return int(_pi_of[1])
 
 func _start_run(tg: Dictionary, ev_id: int, slot: int) -> void:
 	tg["starting"] = true
@@ -889,7 +957,7 @@ static func standing_text(e: Dictionary) -> String:
 	var k := str(e.get("kind", ""))
 	var rk := (" · " + Tr.t("vas %dº de %d") % [int(e["rank"]), int(e.get("players", 0))]) if e.get("rank") != null else ""
 	if k == "season":
-		return " · " + Tr.t("tus puntos: %d") % (int(e["pts"]) if e.get("pts") != null else 0) + rk
+		return " · " + Tr.t("tus puntos: %d") % (int(e["pts"]) if e.get("pts") != null else 0) + rk + next_hito_text(e)
 	if k == "drift" and e.get("best") != null:
 		return " · " + Tr.t("tu mejor: %d pts") % int(float(e["best"])) + rk
 	if k == "record" and e.get("best") != null:
