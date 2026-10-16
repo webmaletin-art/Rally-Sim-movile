@@ -6,6 +6,8 @@ Estructura general de carpetas: `docs/ARQUITECTURA.md`.
 
 | Módulo | Documento | Archivos principales | Depende de | Pruebas (`tests/`) | Estado | Última modificación |
 |---|---|---|---|---|---|---|
+| Desafíos del día, colección, hitos de temporada (fase 5) | `docs/VERSION_CANDIDATA.md`, `docs/REGISTRO_TECNICO.md` → 16/10 (20) | `game/data/daily.gd`, `game/data/rewards.gd` (`collection`, `ach_progress`), `game/ui/menu.gd` (`_goals_daily`), `game/city/city_modes.gd` (`prey_ai`, `pi_ok`, `season_due`, `_claim_hitos`); servidor `supabase/migrations/20261024000000_events_rotation_daily_milestones.sql` | cuenta (`account_econ.gd`: `dcfg`, claims «daily»), eventos del servidor | `events_rules_test`, `tools/online/account_test.sql` | RC, sin migración aplicada | 16/10 |
+| Versión candidata y publicación | `docs/VERSION_CANDIDATA.md`, `docs/PLAY_STORE.md` | `.github/workflows/build-godot.yml` (RC, concurrencia), `build-aab.yml`, `tools/test/run_test.sh` (pruebas cortas con tope y registro), `tools/econ/progression_sim.py` | — | todas (CI) | RC | 16/10 |
 | Física del vehículo | `docs/ESPECIFICACION_TECNICA.md` | `game/physics/vehicle_physics.gd`, `vehicle_params.gd`, `track_base.gd` (altura/superficie: `ground_info`) | datos `game/data/vehicles.json` | `physics_test`, `wall_test`, `surfaces_test` | estable | — |
 | Controles y dirección | `ROADMAP.md` (controles) | `game/ui/controls.gd` | física | `controls_test`, `menu_input_test` | estable | — |
 | Cámaras | `docs/AUTOS.md` (cabina) | `game/car/camera_rig.gd` (`_clearance`), `game/car/cabin_cfg.gd` | pista (`camera_clear`) | `interp_test` | estable | — |

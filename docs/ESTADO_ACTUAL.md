@@ -3,6 +3,12 @@
 Una sección por sistema, con lo que anda, lo que falta y lo que espera prueba en el teléfono. El detalle técnico vive en el documento de cada sistema (ver `docs/INDICE_TECNICO.md`);
 el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hecho y probado en la computadora · 📱 falta probar en el APK · 🚧 en curso · ⛔ bloqueado.
 
+## Versión candidata (rama ccr-e7ae3f10-45afj2, NO en main) — `docs/VERSION_CANDIDATA.md`
+- ✅📱 Fases 1–5 validadas técnicamente (pruebas de Godot y SQL en GitHub); **ninguna probada en un teléfono**. APK «Dream Racing RC» en la release `godot-apk-rc` (se instala al lado).
+- ✅📱 Fase 5: desafíos del día (LOGROS, 1.ª página), metas de colección X/N, hitos de temporada, horarios rotativos, cacería para principiantes (apagada hasta publicar).
+- ✅ Fase 6: compras revisadas sin cambios (verificación con Google, recibo único, restaurar). Límites: reembolsos no se quitan solos; un desbloqueo queda en la 1.ª cuenta del juego.
+- ⛔ Migraciones 20261022, 20261023 y 20261024 **sin aplicar** (esperan autorización del dueño; aplicar 20261022 antes de publicar).
+
 ## Estabilidad (cierres nativos)
 - ✅📱 **Causa confirmada y corregida (15/10):** bucles de sonido que leían fuera de los datos (hilo de audio, `AudioStreamPlaybackWAV::decode_samples`) → `game/audio/wav_loop.gd`. Falta confirmar en el teléfono.
 - ✅📱 Los autos ya no largan marcha atrás (caja automática con el freno de mano de la largada).
