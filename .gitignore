@@ -14,3 +14,4 @@ godot/game/models/cars/*_[0-9].png
 
 # tráiler: el video final y los tramos (pesan cientos de MB; ver docs/TRAILER.md)
 trailer_out/
+test_logs/
