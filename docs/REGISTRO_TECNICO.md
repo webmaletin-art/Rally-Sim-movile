@@ -5,6 +5,28 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 16/10/2026 (19) · Versión candidata, fase 4: progresión, autos pagos, stance/diferencial (rama ccr-e7ae3f10-45afj2, NO en main) — PENDIENTE DE APK
+- **Método (pedido del dueño: pruebas cortas, nada de tests de horas):** la economía se CALCULA con `tools/econ/progression_sim.py` sobre datos reales volcados en 10 s por
+  `godot/tests/econ_dump.gd` (79 carreras con `OW.build`, 28 autos con `CarBuild.perf_of`) → `tools/econ/game_data_snapshot.txt`. Las pruebas de Godot corren con
+  `tools/test/run_test.sh <prueba> <tope>`: registro renglón por renglón en `test_logs/` y corte al llegar al tope (si se traba, lo comprobado queda escrito).
+- **Agujero encontrado (P0, demostrado en el código):** en las carreras del mapa, un resultado que no es victoria pagaba ENTERO siempre: salir 2.º (45 %) o sacar plata
+  (60 %) a propósito rendía más que ganar repetido (35 %). Granja de plata: **$45.000/h**, la actividad más rentable del juego. Arreglo (`city_events.gd → pay_mult`,
+  `LOSE_K = 0,55`): la no-victoria paga entera en el 1.er intento y × 0,55 después (2.º 25 %, plata 33 %). Ahora: $24.800/h, debajo del mejor par ganado ($27.600/h).
+- **Progresión (meta 10–15 h al primer superdeportivo sólo con lo repetible):** Veltor (clase S, $150.000): 8–11 h; Veltor GTR ($225.000): 12–16 h según el perfil
+  (nuevo 15,9 · intermedio 13,2 · avanzado 12,0). Con los premios de 1.ª vez (~$650.000–750.000 en 12–18 h) se llega antes; no se tocaron precios de autos.
+- **Travesía X:** pagaba $600–1.200 por 30–40 min (≈ $1.500/h, diez veces menos que repetir carreras). Ahora $3.000–6.000 (`rewards.gd → convoy_pay`, ≈ $7.700/h).
+- **GT3 e Hyper (pagos, US$):** medidos, eran peores en todo que un auto gratis más barato (GT3 PI 705 < Trilux GT 707; Hyper 766 < Veltor S 772). Cambios SÓLO en
+  esos dos (`vehicles.json`): GT3 = auto de pista con carga aerodinámica de fábrica (PI 745, manejo 0,43→0,52, el mejor en curvas de su grupo; el Trilux GT sigue con
+  más motor y vmax); Hyper = híbrido con carga + par 1000→1120 (PI 821, clase X, manejo 0,50; el Veltor GTR gratis sigue más veloz, potente y con mejor PI máximo).
+  Los otros 26 autos y las 79 carreras quedaron idénticos (comparación del volcado antes/después). Precios reales sin tocar.
+- **Diferencial nivel 2 ($10.000):** decía desbloquear el reparto de tracción, pero ese reglaje era libre para todos. Ahora pide «split» (candado de la fase 1); sin el
+  nivel 2 la tracción queda de fábrica. La Aventura trae diff 2: sus lecciones de reparto siguen.
+- **Stance nivel 1 ($2.500):** la caída extrema ya actuaba en la física pero no se veía y el texto era engañoso. Ahora las ruedas se inclinan (sólo lo que pasa de 2°) y
+  el texto dice la verdad (hasta ~3° dobla igual o mejor; después pierde agarre, 12° ≈ −30 % en curva).
+- **Pruebas:** `progression_rules_test` (22 OK, 1 s, en CI), `tune_lock_test` 18 OK, `rewards_test` 17 OK, `ow_events_test` 11 OK (105 s), `scripts_parse_test` OK,
+  `account_econ_test` OK. `online_test` NO se corre acá (necesita el servidor de prueba local, pedido del dueño de no levantarlo): la corre GitHub en cada compilación.
+  **Sin probar en el teléfono.**
+
 ## 16/10/2026 (18) · Versión candidata, fase 3: competencia justa (rama ccr-e7ae3f10-45afj2, NO en main) — PENDIENTE DE APK
 - **Pedido:** fase 3 del prompt maestro: récords por clase, registro del modo arcade/simulación, puesto al terminar, récords sin conexión.
 - **Antes:** una tabla por pista (`scores`) mezclaba un R2 de serie con un Bisonte de 1000 cv; sólo guardaba el id del auto; sin conexión la marca se perdía.

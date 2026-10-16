@@ -346,3 +346,27 @@ Como mucho **3 renglones en el HUD**, con prioridad: el evento que estás jugand
    **Por qué:** sin esto, las tablas, la carrera de la semana y la temporada las ganan siempre los autos tope. Cada clase con su tabla le da sentido a comprar autos distintos sin cambiar ni un precio. Además deja medido si arcade y simulación son comparables antes de decidir separarlos.
 
 Todo lo demás (ingreso por minuto, autos dominados, calendario) conviene decidirlo **después** de tener las métricas del punto I.
+
+
+---
+
+## Resultados de la implementación — fase 4 (16/10/2026, rama ccr-e7ae3f10-45afj2)
+
+Calculado con `tools/econ/progression_sim.py` (datos reales del juego volcados por `godot/tests/econ_dump.gd`; los supuestos están marcados en el script).
+
+| Actividad (perfil intermedio) | Antes | Después |
+|---|---|---|
+| Carreras del mapa repetidas (típico) | ≈ $20.000/h (inflado por el agujero) | ≈ $17.400/h |
+| Granja «2.º o plata a propósito» | **$45.000/h** (la más rentable del juego) | $24.800/h (debajo del mejor par ganado) |
+| Travesía X | ≈ $1.500/h | ≈ $7.700/h |
+| Copas repetidas · carrera rápida · drift rápido | $16.800 · $4.800 · $16.800/h | sin cambios |
+| Escapes encadenados (medido con física) | −$145.000/h | sin cambios (no hay granja) |
+
+| Hasta… (sólo con lo repetible) | Nuevo | Intermedio | Avanzado |
+|---|---|---|---|
+| Veltor (primer superdeportivo, clase S, $150.000) | 10,6 h | 8,8 h | 8,0 h |
+| Veltor GTR ($225.000) | 15,9 h | 13,2 h | 12,0 h |
+
+Autos pagos (de serie, `CarBuild.perf_of`): GT3 PI 705→745 (manejo 0,43→0,52); Hyper PI 766→821 (manejo 0,41→0,50). El Trilux GT y el Veltor GTR (gratis) siguen
+siendo más rápidos en recta: nadie necesita pagar para ganar. Mejoras: diferencial nivel 2 ahora sí desbloquea el reparto de tracción; stance nivel 1 se ve y explica
+su efecto real. Detalle: `docs/REGISTRO_TECNICO.md` → 16/10 (19).
