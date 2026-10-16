@@ -287,6 +287,8 @@ func sync() -> Dictionary:
 			corrected.emit(Tr.t("Se ajustó tu cuenta con el servidor"))
 		if pending_count() > 0:
 			_schedule(FLUSH_DELAY)
+		if online.has_method("flush_records"):
+			online.flush_records() # las marcas que quedaron sin conexión (récords por clase), sin esperar
 	changed.emit()
 	_done.emit(res)
 	return res

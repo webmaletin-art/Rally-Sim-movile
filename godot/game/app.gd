@@ -15,6 +15,7 @@ const Release := preload("res://game/data/release.gd")
 const MusicPlayer := preload("res://game/audio/music_player.gd")
 const Billing := preload("res://game/store/billing.gd")
 const Online := preload("res://game/online/online.gd")
+const ClassRecords := preload("res://game/online/class_records.gd")
 const OnlineEconomy := preload("res://game/online/online_economy.gd")
 const OnlineProfile := preload("res://game/data/online_profile.gd")
 const AccountEcon := preload("res://game/online/account_econ.gd")
@@ -194,7 +195,23 @@ func _submit_online(cfg: Dictionary, result: Dictionary) -> void:
 	var build := ""
 	if FileAccess.file_exists("res://game/build_id.txt"):
 		build = FileAccess.get_file_as_string("res://game/build_id.txt").strip_edges()
-	online.submit_score(str(cfg.get("track", "")), board, v, str(cfg.get("car", "")), int(result.get("laps", 1)), build)
+	# récords por clase (fase 3): el auto, su PI con mejoras, la clase, el nivel de ayudas y las gomas viajan con la marca; se compite contra la misma clase
+	var car := str(cfg.get("car", ""))
+	var st: Dictionary = cfg.get("state", {}) if cfg.get("state") is Dictionary else {}
+	var e := ClassRecords.meta(race.vehicles.get(car, {}) if race != null else {}, st, str(cfg.get("sim", "")))
+	e.merge({"board": board, "track": str(cfg.get("track", "")), "value": v, "car": car, "laps": int(result.get("laps", 1)), "build": build})
+	var res_ref := pending_result
+	res_ref["world"] = {"wait": true, "cls": str(e["cls"]), "pi": int(e["pi"])}
+	var r: Dictionary = await online.submit_class(e)
+	var w := {"cls": str(e["cls"]), "pi": int(e["pi"])}
+	if r.get("ok", false) and r.get("data") is Dictionary:
+		w.merge(r["data"], true)
+		w["legacy"] = bool(r.get("legacy", false))
+	elif bool(r.get("queued", false)):
+		w["queued"] = true
+	else:
+		w["fail"] = true
+	res_ref["world"] = w
 
 func _on_race_exit(back: String) -> void:
 	if back.begins_with("gate:"):

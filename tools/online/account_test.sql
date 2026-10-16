@@ -462,6 +462,27 @@ begin
   r := ta.one('{"t":"earn","amount":800,"kind":"race","ref":"t_rep"}');
   perform ta.ok((r ->> 'ok')::boolean, 'los premios repetibles de siempre se siguen pagando');
 end $$;
+-- récords por clase (20261023000000_class_records.sql): la clase la pone el servidor, cada clase tiene su tabla, el puesto y el total vuelven
+do $$
+declare r jsonb; n int;
+begin
+  r := public.submit_class_record('race', 'dream', 300.0, 'hatch', 420, 'arcade', 'street', 'E1', 1, 'rc', 'Tester');
+  perform ta.ok((r ->> 'saved')::boolean and r ->> 'cls' = 'C' and (r ->> 'rank')::int = 1 and (r ->> 'of')::int = 1, 'un tiempo con PI 420 entra a la clase C: ' || r::text);
+  r := public.submit_class_record('race', 'dream', 250.0, 'genesis', 880, 'pro', 'slick', 'E5 T3', 1, 'rc', 'Tester');
+  perform ta.ok(r ->> 'cls' = 'X' and (r ->> 'saved')::boolean, 'el mismo jugador con un auto de PI 880 tiene su marca aparte en X');
+  r := public.submit_class_record('race', 'dream', 310.0, 'hatch', 430, 'mid', 'street', '', 1, 'rc', 'Tester');
+  perform ta.ok(not (r ->> 'saved')::boolean and (r ->> 'best')::numeric = 300.0, 'un tiempo peor en la misma clase no pisa el mejor');
+  select count(*) into n from public.get_class_leaderboard('dream', 'race', 'C', 10);
+  perform ta.ok(n = 1, 'la tabla de la clase C tiene sólo lo de C');
+  select count(*) into n from public.get_class_leaderboard('dream', 'race', '', 10);
+  perform ta.ok(n = 1, 'la tabla «todas» muestra un renglón por jugador (su mejor marca)');
+  perform ta.expect_err($q$select public.submit_class_record('race', 'dream', 300.0, 'hatch', 50, '', '', '', 1, '', null)$q$, 'PI imposible', 'un PI fuera de rango se rechaza');
+  perform ta.expect_err($q$select public.submit_class_record('race', 'dream', 5.0, 'hatch', 420, '', '', '', 1, '', null)$q$, 'tiempo imposible', 'un tiempo imposible se rechaza');
+  perform ta.expect_err($q$select public.submit_class_record('race', 'dream', 300.0, 'hatch', 420, 'turbo', '', '', 1, '', null)$q$, 'ayudas', 'un nivel de ayudas desconocido se rechaza');
+  r := public.submit_class_record('owev', 'ev_test', 95.5, 'hatch', 420, 'arcade', 'street', '', 1, '', null, true);
+  perform ta.ok((select late from public.get_class_leaderboard('ow:ev_test', 'owev', 'C', 5) limit 1), 'una marca que llegó desde la cola sin conexión queda marcada «enviada después»');
+  perform ta.ok(r ->> 'cls' = 'C' and (r ->> 'rank')::int = 1, 'las carreras del mundo abierto también van por clase');
+end $$;
 reset role;
 update public.account_cfg set val = 15 where key = 'earn_ref_gap_s';
 

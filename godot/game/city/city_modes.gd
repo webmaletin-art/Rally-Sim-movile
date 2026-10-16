@@ -16,6 +16,7 @@ extends RefCounted
 
 const PoliceDriver := preload("res://game/ai/police_driver.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
+const ClassRecords := preload("res://game/online/class_records.gd")
 const Profile := preload("res://game/data/profile.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CrashLog := preload("res://game/diag/crash_log.gd")
@@ -187,7 +188,14 @@ func _send_record(board: String, id: String, value: float) -> void:
 	var on = race.get("online")
 	if on == null or not on.has_method("enabled") or not on.enabled() or not on.has_method("submit_record"):
 		return
-	var r: Dictionary = await on.submit_record(board, id, value, str(race.cfg.get("car", "")))
+	var r: Dictionary
+	if on.has_method("submit_class"): # récords por clase (fase 3)
+		var car := str(race.cfg.get("car", ""))
+		var e := ClassRecords.meta(race.vehicles.get(car, {}), race.cfg.get("state", {}) if race.cfg.get("state") is Dictionary else {}, str(race.cfg.get("sim", "")))
+		e.merge({"board": board, "track": id, "value": value, "car": car})
+		r = await on.submit_class(e)
+	else:
+		r = await on.submit_record(board, id, value, str(race.cfg.get("car", "")))
 	if r.get("ok", false) and r.get("data") is Dictionary and bool((r["data"] as Dictionary).get("saved", false)) and int((r["data"] as Dictionary).get("rank", 0)) == 1:
 		_toast(Tr.t("🌍 ¡NUEVO RÉCORD MUNDIAL!"))
 

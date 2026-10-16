@@ -8,6 +8,7 @@ extends Node
 
 const CONFIG_PATH := "res://game/online/online_config.json"
 const Release := preload("res://game/data/release.gd")
+const ClassRecords := preload("res://game/online/class_records.gd")
 const SESSION_PATH := "user://online.json"
 
 var url := ""
@@ -312,6 +313,71 @@ func submit_record(board: String, id: String, value: float, car: String) -> Dict
 	if not is_account():
 		return {"ok": false, "code": 0, "data": null, "error": "sin sesión"}
 	return await call_fn("submit_record", {"p_board": board, "p_id": id, "p_value": snappedf(value, 0.01), "p_car": car, "p_name": str(profile.d.get("name", "Piloto")) if profile != null else "Piloto"})
+
+## Marca por CLASE (fase 3, 16/10/2026): e = {board, track, value, car, pi, cls, sim, tires, upg, laps, build}. Devuelve {ok, data: {saved, best, rank, of, cls, top}}.
+## Sin conexión (o con el servidor ocupado) la marca queda en la cola del perfil y se manda después (flush_records). Si el servidor todavía no tiene la migración
+## 20261023000000_class_records.sql, va a la tabla vieja (sin clase) como siempre.
+func submit_class(e: Dictionary) -> Dictionary:
+	if not enabled():
+		return {"ok": false, "code": 0, "data": null, "error": "apagado"}
+	e["uid"] = uid
+	var r := await _send_class(e)
+	if ClassRecords.outcome(r) == "retry" and profile != null:
+		ClassRecords.enqueue(profile.d, e)
+		profile.save()
+		r["queued"] = true
+	return r
+
+func _send_class(e: Dictionary) -> Dictionary:
+	var board := str(e.get("board", ""))
+	var nm := str(profile.d.get("name", "Piloto")) if profile != null else "Piloto"
+	var r := await call_fn("submit_class_record", {"p_board": board, "p_track": str(e.get("track", "")), "p_value": snappedf(float(e.get("value", 0.0)), 0.001),
+		"p_car": str(e.get("car", "")), "p_pi": int(e.get("pi", 100)), "p_sim": str(e.get("sim", "")), "p_tires": str(e.get("tires", "")), "p_upg": str(e.get("upg", "")),
+		"p_laps": int(e.get("laps", 1)), "p_build": str(e.get("build", "")), "p_name": nm, "p_late": bool(e.get("late", false))})
+	if ClassRecords.outcome(r) != "legacy":
+		return r
+	var v := float(e.get("value", 0.0))
+	var car := str(e.get("car", ""))
+	if board == "owev":
+		r = await submit_record("owev", str(e.get("track", "")), v, car)
+	elif board == "fugitive":
+		r = await submit_record("fugitive", "fugitivo", v, car)
+	else:
+		r = await call_fn("submit_score", score_payload(str(e.get("track", "")), board, v, car, int(e.get("laps", 1)), str(e.get("build", "")), nm))
+	r["legacy"] = true
+	return r
+
+var _flushing := false
+## Manda las marcas que quedaron sin conexión (de esta cuenta). Devuelve cuántas salieron.
+func flush_records() -> int:
+	if _flushing or profile == null or not enabled() or not (profile.d.get("recQueue") is Array) or (profile.d["recQueue"] as Array).is_empty():
+		return 0
+	_flushing = true
+	var q: Array = (profile.d["recQueue"] as Array).duplicate()
+	var keep: Array = []
+	var sent := 0
+	var stop := false
+	for e in q:
+		if stop or str((e as Dictionary).get("uid", "")) != uid:
+			if str((e as Dictionary).get("uid", "")) == uid:
+				keep.append(e) # (las de otra cuenta se descartan)
+			continue
+		(e as Dictionary)["late"] = true # (en la tabla: «enviada después»)
+		var r := await _send_class(e)
+		if ClassRecords.outcome(r) == "retry":
+			keep.append(e)
+			stop = true # sin red: el resto espera a la próxima
+		else:
+			sent += 1
+	profile.d["recQueue"] = keep
+	profile.save()
+	_flushing = false
+	return sent
+
+func class_board(track: String, board: String, cls := "", limit := 50) -> Dictionary:
+	if not is_account():
+		return {"ok": false, "code": 0, "data": null, "error": "sin sesión"}
+	return await call_fn("get_class_leaderboard", {"p_track": track, "p_board": board, "p_cls": cls, "p_limit": limit})
 
 ## Prueba de conexión (para el modo desarrollador): entra, pide un ranking y cuenta las filas
 func ping() -> Dictionary:

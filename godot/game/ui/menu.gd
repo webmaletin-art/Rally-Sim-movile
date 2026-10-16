@@ -28,6 +28,7 @@ const CalibUi := preload("res://game/ui/calib_ui.gd")
 const AdvData := preload("res://game/adventure/adv_data.gd")
 const AdvRoute := preload("res://game/adventure/adv_route.gd")
 const OnlineSocial := preload("res://game/online/online_social.gd")
+const ClassRecords := preload("res://game/online/class_records.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 
 var app: Node
@@ -929,6 +930,36 @@ func _confirm_reset() -> void:
 	body.add_child(Kit.button("Cancelar", func(): go("options", null, false), true, 22))
 
 # ───────────────────────── resultados ─────────────────────────
+static func world_text(w: Dictionary) -> String:
+	if bool(w.get("wait", false)):
+		return ""
+	if bool(w.get("queued", false)):
+		return "📶 Sin conexión: tu marca (clase %s) se manda sola cuando vuelva la red." % str(w.get("cls", ""))
+	if bool(w.get("fail", false)) or int(w.get("rank", 0)) <= 0:
+		return ""
+	if bool(w.get("legacy", false)):
+		return "🌍 Ranking: %d.º" % int(w["rank"])
+	var t := "🌍 Ranking %s (PI %d): %s" % [ClassRecords.rank_text(w).split(" · ")[0], int(w.get("pi", 0)), ClassRecords.rank_text(w).get_slice(" · ", 1)]
+	if int(w["rank"]) == 1 and bool(w.get("saved", false)):
+		t += "  🏆 ¡RÉCORD DE LA CLASE!"
+	elif not bool(w.get("saved", false)):
+		t += "  (tu mejor marca de la clase sigue en pie)"
+	return t
+
+func _watch_world(wl: Label, r: Dictionary) -> void:
+	for i in 60:
+		var w: Dictionary = r.get("world", {})
+		if not bool(w.get("wait", false)):
+			var t := world_text(w)
+			wl.text = t
+			wl.visible = t != ""
+			wl.add_theme_color_override("font_color", Kit.GOLD if int(w.get("rank", 0)) == 1 else (Kit.MUTED if bool(w.get("queued", false)) else Kit.TEXT))
+			return
+		await get_tree().create_timer(0.25).timeout
+		if not is_instance_valid(wl):
+			return
+	wl.text = tr("🌍 El ranking no contestó: probá ver tu puesto en RANKING más tarde.")
+
 func _results() -> void:
 	var r: Dictionary = app.pending_result
 	title_l.text = "RESULTADO"
@@ -971,6 +1002,10 @@ func _results() -> void:
 		top.add_child(Kit.label(tr(names[med]), 28, [Kit.MUTED, Color(0.85, 0.55, 0.3), Color(0.8, 0.85, 0.92), Kit.GOLD][med]))
 	if bool(r.get("record", false)):
 		body.add_child(Kit.label("🏅 ¡NUEVO RÉCORD!", 20, Kit.GREEN))
+	if r.get("world") is Dictionary: # puesto en el ranking de su clase (fase 3): llega unos segundos después
+		var wl := Kit.label(tr("🌍 Mandando tu marca al ranking de tu clase…"), 16, Kit.MUTED)
+		body.add_child(wl)
+		_watch_world(wl, r)
 	var row := Kit.hbox(8)
 	body.add_child(row)
 	var again := Kit.button("↺ REPETIR", func(): app.start_race(cfg), true, 20, Vector2(0, 50))

@@ -12,6 +12,7 @@ const CityGps := preload("res://game/city/city_gps.gd")
 const PoliceDriver := preload("res://game/ai/police_driver.gd")
 const AiCars := preload("res://game/data/ai_cars.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
+const ClassRecords := preload("res://game/online/class_records.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const CrashLog := preload("res://game/diag/crash_log.gd")
 
@@ -468,15 +469,30 @@ func _send_record(id: String, secs: float) -> void:
 	var on = race.get("online")
 	if on == null or not on.has_method("enabled") or not on.enabled() or not on.has_method("submit_record"):
 		return
-	var res: Dictionary = await on.submit_record("owev", id, secs, str(race.cfg.get("car", "")))
+	var res: Dictionary
+	var cls := ""
+	if on.has_method("submit_class"): # récords por clase (fase 3): se compite contra autos de la misma clase
+		var car := str(race.cfg.get("car", ""))
+		var e := ClassRecords.meta(race.vehicles.get(car, {}), race.cfg.get("state", {}) if race.cfg.get("state") is Dictionary else {}, str(race.cfg.get("sim", "")))
+		e.merge({"board": "owev", "track": id, "value": secs, "car": car})
+		cls = str(e["cls"])
+		res = await on.submit_class(e)
+		if bool(res.get("queued", false)):
+			_toast(Tr.t("📶 Sin conexión: tu tiempo se manda solo cuando vuelva la red"))
+			return
+		if bool(res.get("legacy", false)):
+			cls = ""
+	else:
+		res = await on.submit_record("owev", id, secs, str(race.cfg.get("car", "")))
 	if not res.get("ok", false) or not (res.get("data") is Dictionary):
 		return
 	var d: Dictionary = res["data"]
+	var where := (Tr.t("clase %s") % cls) if cls != "" else Tr.t("mundial")
 	if int(d.get("rank", 0)) == 1 and bool(d.get("saved", false)):
-		_toast(Tr.t("🌍 ¡NUEVO RÉCORD MUNDIAL! %s") % _fmt(secs))
+		_toast(Tr.t("🌍 ¡NUEVO RÉCORD %s! %s") % [where.to_upper(), _fmt(secs)])
 	elif d.get("top") is Dictionary:
 		var tp: Dictionary = d["top"]
-		_toast(Tr.t("🌍 Récord mundial: %s de %s · vos sos %dº") % [_fmt(float(tp.get("value", 0))), str(tp.get("name", "")), int(d.get("rank", 0))])
+		_toast(Tr.t("🌍 Récord %s: %s de %s · vos sos %dº") % [where, _fmt(float(tp.get("value", 0))), str(tp.get("name", "")), int(d.get("rank", 0))])
 
 func _end() -> void:
 	for rv in rivals:

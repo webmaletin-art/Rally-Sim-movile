@@ -9,6 +9,7 @@ const CityReach := preload("res://game/city/city_reach.gd")
 const Release := preload("res://game/data/release.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const OnlineSocial := preload("res://game/online/online_social.gd")
+const ClassRecords := preload("res://game/online/class_records.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const RegionServices := preload("res://game/region/region_services.gd")
 const SpawnMap := preload("res://game/ui/spawn_map.gd")
@@ -47,6 +48,11 @@ func _has_last_pos() -> bool:
 
 const SPAWN_PLACES := [["Central · Nivel calle", "Estacionamiento Central, a nivel de la calle: salís directo a la ruta"], ["Central · Planta alta", "Estacionamiento Central, un piso arriba: bajás por la rampa"], ["Central · Subsuelo", "Estacionamiento Central, un piso abajo: subís por la rampa"]]
 
+var rank_cls := "" # ranking: clase elegida ("" = la del auto actual, "*" = todas, "H" = histórico: la tabla vieja sin clase)
+var rank_track := "lake" # ranking: circuito elegido
+## circuitos con ranking (id del servidor, nombre, tabla)
+const RANK_TRACKS := [["lake", "Lago", "race"], ["forest", "Bosque", "race"], ["quarry", "Cantera", "race"], ["asphaltLong", "Montaña", "race"], ["dream", "Vórtice", "race"],
+	["picada", "Picada", "drag"], ["drift", "Drift Plaza", "drift"]]
 var locked: Array = [] # lugares de la región a los que todavía no se llegó manejando (city/city_reach.gd): en el mapa con candado
 
 ## Lugares para aparecer, en un solo selector: la última ubicación, los 3 estacionamientos de Dream City y las estaciones de servicio de las ciudades y pueblos de la región (los más cercanos primero).
@@ -271,6 +277,24 @@ func ranking(arg = null) -> void:
 	if on == null or not on.is_account():
 		m.body.add_child(Kit.wrap(tr("Para ver el ranking iniciá sesión con tu cuenta."), 16, Kit.TEXT, 300))
 		return
+	# récords por clase (fase 3, 16/10/2026): se compite contra autos de la misma clase; «HISTÓRICO» = la tabla de antes (todos los autos mezclados)
+	if rank_cls == "":
+		var cid := str(m.profile.current_id())
+		rank_cls = str(ClassRecords.meta(m.vehicles.get(cid, {}) if m.vehicles is Dictionary else {}, m.profile.car(), "")["cls"])
+	var chips := Kit.hbox(4)
+	for c in ["*", "D", "C", "B", "A", "S", "X", "H"]:
+		var lbl: String = tr("TODAS") if c == "*" else (tr("HISTÓRICO") if c == "H" else c)
+		chips.add_child(Kit.button(lbl, func() -> void:
+			rank_cls = c
+			m.go("ranking", arg, false), c == rank_cls, 13, Vector2(0, 34)))
+	var csc := ScrollContainer.new()
+	csc.custom_minimum_size = Vector2(0, 42)
+	csc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	csc.add_child(chips)
+	m.body.add_child(csc)
+	var expl := tr("Clase %s: compiten autos con el mismo índice de rendimiento (PI).") % rank_cls if not ["*", "H"].has(rank_cls) else \
+		(tr("Todas las clases: la mejor marca de cada piloto, con su auto y su PI.") if rank_cls == "*" else tr("Histórico: las marcas de antes de las clases (todos los autos mezclados). Ya no se actualiza con esta versión."))
+	m.body.add_child(Kit.wrap(expl, 13, Kit.MUTED, 300))
 	var box := Kit.vbox(6)
 	m.body.add_child(box)
 	var sec := func(title: String) -> VBoxContainer:
@@ -283,6 +307,7 @@ func ranking(arg = null) -> void:
 		v.add_child(w)
 		return v
 	var vb: VBoxContainer = sec.call("🏆 " + tr("GANADORES DE LOS EVENTOS"))
+	var vc: VBoxContainer = sec.call("🏎 " + tr("CIRCUITOS"))
 	var vf: VBoxContainer = sec.call("🚨 " + tr("FUGITIVO · mejor racha"))
 	var vr: VBoxContainer = sec.call("🏁 " + tr("CARRERAS DEL MUNDO ABIERTO"))
 	# las carreras del mundo abierto que el jugador ya corrió (con su mejor tiempo)
@@ -301,11 +326,33 @@ func ranking(arg = null) -> void:
 	_fill_rows(vb, rw.get("data") if rw["ok"] else null, func(e: Dictionary) -> String:
 		var car := str(e.get("car", ""))
 		return "%s · %s%s · %s" % [str(e.get("name", "")), tr(str(e.get("event", ""))), (" · " + _car_name(car)) if car != "" and car != "<null>" else "", Time.get_date_string_from_unix_time(int(e.get("at", 0)))], tr("Todavía nadie ganó un evento."))
-	var rf: Dictionary = await on.leaderboard("fugitivo", "fugitive", 10)
+	# circuitos (carrera rápida, picada, drift)
+	var trow := Kit.hbox(6)
+	var tsel: Array = RANK_TRACKS[0]
+	for tk in RANK_TRACKS:
+		if str(tk[0]) == rank_track:
+			tsel = tk
+		trow.add_child(Kit.button(tr(str(tk[1])), func() -> void:
+			rank_track = str(tk[0])
+			m.go("ranking", arg, false), str(tk[0]) == rank_track, 12, Vector2(0, 34)))
+	var tsc := ScrollContainer.new()
+	tsc.custom_minimum_size = Vector2(0, 44)
+	tsc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	tsc.add_child(trow)
+	vc.add_child(tsc)
+	vc.move_child(tsc, 1)
+	var rc: Dictionary = await _board(on, str(tsel[0]), str(tsel[2]), 10)
+	if not is_instance_valid(vc):
+		return
+	_fill_rows(vc, rc.get("data") if rc["ok"] else null, func(e: Dictionary) -> String:
+		var v := float(e.get("value", 0))
+		var val := ("%d pts" % int(v)) if str(tsel[2]) == "drift" else "%d:%06.3f" % [int(v / 60.0), fmod(v, 60.0)]
+		return "%d. %s · %s · %s%s%s" % [int(e.get("rank", 0)), str(e.get("name", "")), val, _car_name(str(e.get("car", ""))), _cls_tag(e), "  ★" if bool(e.get("is_me", false)) else ""], tr("Nadie mandó una marca en esta clase todavía: ¡el primero sos vos!"))
+	var rf: Dictionary = await _board(on, "fugitivo", "fugitive", 10)
 	if not is_instance_valid(vf):
 		return
 	_fill_rows(vf, rf.get("data") if rf["ok"] else null, func(e: Dictionary) -> String:
-		return "%d. %s · %s %s" % [int(e.get("rank", 0)), str(e.get("name", "")), str(int(float(e.get("value", 0)))), tr("escapes")], tr("Todavía no hay rachas: jugá el modo Fugitivo (pausa del mundo abierto)."))
+		return "%d. %s · %s %s%s" % [int(e.get("rank", 0)), str(e.get("name", "")), str(int(float(e.get("value", 0)))), tr("escapes"), _cls_tag(e)], tr("Todavía no hay rachas: jugá el modo Fugitivo (pausa del mundo abierto)."))
 	if mine.is_empty():
 		_fill_rows(vr, [], func(_e: Dictionary) -> String: return "", tr("Corré una carrera del mundo abierto para ver su récord mundial."))
 		return
@@ -319,12 +366,27 @@ func ranking(arg = null) -> void:
 	sc.add_child(row)
 	vr.add_child(sc)
 	vr.move_child(sc, 1)
-	var rr: Dictionary = await on.leaderboard("ow:" + sel, "owev", 10)
+	var rr: Dictionary = await _board(on, "ow:" + sel, "owev", 10)
 	if not is_instance_valid(vr):
 		return
 	_fill_rows(vr, rr.get("data") if rr["ok"] else null, func(e: Dictionary) -> String:
 		var v := float(e.get("value", 0))
-		return "%d. %s · %d:%04.1f · %s%s" % [int(e.get("rank", 0)), str(e.get("name", "")), int(v / 60.0), fmod(v, 60.0), _car_name(str(e.get("car", ""))), "  ★" if bool(e.get("is_me", false)) else ""], tr("Nadie mandó un tiempo todavía: ¡el primero sos vos!"))
+		return "%d. %s · %d:%04.1f · %s%s%s" % [int(e.get("rank", 0)), str(e.get("name", "")), int(v / 60.0), fmod(v, 60.0), _car_name(str(e.get("car", ""))), _cls_tag(e), "  ★" if bool(e.get("is_me", false)) else ""], tr("Nadie mandó un tiempo todavía: ¡el primero sos vos!"))
+
+## Una tabla del ranking según la clase elegida; si el servidor todavía no tiene las tablas por clase, muestra la histórica
+func _board(on: Node, track: String, board: String, limit: int) -> Dictionary:
+	if rank_cls != "H" and on.has_method("class_board"):
+		var r: Dictionary = await on.class_board(track, board, "" if rank_cls == "*" else rank_cls, limit)
+		if ClassRecords.outcome(r) != "legacy":
+			return r
+	return await on.leaderboard(track, board, limit)
+
+## «· PI 523 B · arcade» (sólo en las tablas por clase)
+func _cls_tag(e: Dictionary) -> String:
+	if not e.has("pi"):
+		return ""
+	var sim: String = {"arcade": "arcade", "mid": "intermedio", "pro": "simulador", "custom": "personalizado", "adv": "aventura"}.get(str(e.get("sim", "")), "")
+	return " · PI %d %s%s%s" % [int(e.get("pi", 0)), str(e.get("cls", "")), (" · " + tr(sim)) if sim != "" else "", (" · " + tr("enviada después")) if bool(e.get("late", false)) else ""]
 
 func _fill_rows(v: VBoxContainer, data: Variant, fmt: Callable, empty: String) -> void:
 	var w: Label = v.get_child(v.get_child_count() - 1) as Label # (el «cargando…»)
