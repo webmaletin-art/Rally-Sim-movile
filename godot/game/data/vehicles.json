@@ -1148,6 +1148,8 @@
   "maxSteer": 0.5,
   "steerResponse": 11,
   "dragCoef": 0.92,
+  "aeroBaseF": 0.35,
+  "aeroBaseR": 0.55,
   "stabilityAssist": 0.3,
   "powerScale": 1
  },
@@ -1199,7 +1201,7 @@
    "outside": 0.4,
    "mud": 0.35
   },
-  "peakTorque": 1000,
+  "peakTorque": 1120,
   "idleRpm": 900,
   "launchRpm": 3570,
   "maxRpm": 8500,
@@ -1261,6 +1263,8 @@
   "maxSteer": 0.5,
   "steerResponse": 10.5,
   "dragCoef": 0.8,
+  "aeroBaseF": 0.35,
+  "aeroBaseR": 0.55,
   "stabilityAssist": 0.3,
   "powerScale": 1
  },
