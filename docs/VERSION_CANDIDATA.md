@@ -65,7 +65,7 @@ Es la versión para probar en el teléfono antes de decidir si se publica. Nada 
 
 | Nombre | Para qué |
 |---|---|
-| `ANDROID_KEYSTORE_BASE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` | Firma del APK y del AAB |
+| `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` | Firma del AAB de Play (clave de SUBIDA) |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Cliente del juego. La clave anónima es pública por diseño: la seguridad está en RLS y en las funciones. |
 | `SUPABASE_PROJECT_ID`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD` | Flujos «Supabase · aplicar migraciones / publicar funciones / uso». Nunca van al APK. |
 | `GOOGLE_PLAY_SERVICE_ACCOUNT` | Secreto de la función `verify-purchase`. Nunca va al APK. |
