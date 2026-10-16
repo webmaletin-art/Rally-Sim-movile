@@ -15,6 +15,7 @@ const CityEvents := preload("res://game/city/city_events.gd")
 const CitySectors := preload("res://game/city/city_sectors.gd")
 const CityReach := preload("res://game/city/city_reach.gd")
 const CityModes := preload("res://game/city/city_modes.gd")
+const CityGoal := preload("res://game/city/city_goal.gd")
 
 var race # race.gd
 var reach # CityReach
@@ -46,6 +47,8 @@ func setup(p_race) -> void:
 	reach.setup(race)
 	race.modes = CityModes.new() # modos contra la IA: Fugitivo y Caza recompensas (docs/MODOS_MUNDO_ABIERTO.md)
 	race.modes.setup(race)
+	race.goal = CityGoal.new() # «PRÓXIMO OBJETIVO», consejos de una sola vez y ayuda (docs/AUDITORIA_CICLO_DE_JUEGO.md)
+	race.goal.setup(race)
 
 func update(dt: float) -> void:
 	race.shops.update(dt)
@@ -68,3 +71,5 @@ func update(dt: float) -> void:
 		reach.update(dt)
 	if race.modes != null:
 		race.modes.update(dt)
+	if race.goal != null:
+		race.goal.update(dt)

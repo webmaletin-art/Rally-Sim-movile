@@ -518,8 +518,17 @@ func _refresh_map() -> void:
 	var m: Array = []
 	for ev in events:
 		if found(str(ev["id"])):
-			var won: bool = int(_rec(str(ev["id"])).get("wins", 0)) > 0
-			m.append({"pos": ev["start"], "name": "%s %s" % [ev["icon"], _title(ev)], "col": Color(0.35, 0.95, 0.5) if won else Color(1.0, 0.75, 0.15)})
+			var rr := _rec(str(ev["id"]))
+			var won: bool = int(rr.get("wins", 0)) > 0
+			# al tocarla en el mapa: tipo, largo, premio, tu mejor y que vale cualquier auto (auditoría 16/10/2026)
+			var info := "%s %s · %s · $%d" % [ev["icon"], _title(ev), ("%.1f km" % (float(ev.get("len", 0.0)) / 1000.0)).replace(".", ","), int(ev.get("reward", 0))]
+			if rr.has("best"):
+				info += " · " + Tr.t("tu mejor %s") % _fmt(float(rr["best"]))
+			info += " · " + Tr.t("cualquier auto")
+			m.append({"pos": ev["start"], "name": "%s %s" % [ev["icon"], _title(ev)], "col": Color(0.35, 0.95, 0.5) if won else Color(1.0, 0.75, 0.15), "info": info})
+		else:
+			# por descubrir: sólo dónde está (sin nombre ni premio)
+			m.append({"pos": ev["start"], "name": "❓", "col": Color(0.62, 0.7, 0.85), "unk": true})
 	ch.marks = m
 
 func _mark_node(ev: Dictionary) -> Node3D:

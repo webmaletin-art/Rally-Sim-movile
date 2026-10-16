@@ -1,6 +1,7 @@
 extends Control
 ## HUD de la carrera: puesto, vuelta, tiempo, cuenta regresiva, avisos y menú de pausa.
 
+const ToastQueue := preload("res://game/ui/toast_queue.gd")
 const Kit := preload("res://game/ui/ui_kit.gd")
 const TouchScroll := preload("res://game/ui/touch_scroll.gd")
 const OptionsUi := preload("res://game/ui/options_ui.gd")
@@ -40,6 +41,7 @@ var toast_l: Label
 var tick := 0.0
 var big_t := 0.0
 var toast_t := 0.0
+var toasts := ToastQueue.new()
 var pause_box: Control
 var cine_btn: Button
 var bar: ColorRect
@@ -249,10 +251,16 @@ func big(t: String, color := Color.WHITE) -> void:
 	big_l.add_theme_color_override("font_color", color)
 	big_t = 1.1
 
+## Los avisos esperan su turno (game/ui/toast_queue.gd): ya no se pisan antes de poder leerlos
 func toast(t: String, kind := "") -> void:
-	toast_l.text = t
+	if toasts.push(t, kind):
+		_show_toast(toasts.cur)
+
+func _show_toast(e: Dictionary) -> void:
+	toast_l.text = str(e.get("text", ""))
+	var kind := str(e.get("kind", ""))
 	toast_l.add_theme_color_override("font_color", Kit.GREEN if kind == "up" else (Kit.RED if kind == "down" else Color.WHITE))
-	toast_t = 2.2
+	toast_t = toasts.remaining()
 
 func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 	# el minimapa va arriba a la izquierda, debajo del cronómetro (no tapa el espejo ni los botones)
@@ -335,11 +343,16 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 
 ## Los avisos se apagan solos aunque no haya sesión que actualice el HUD (aventura, pausa)
 func _process(dt: float) -> void:
-	if toast_t > 0.0:
-		toast_t -= dt
-		toast_l.modulate.a = clampf(toast_t / 0.5, 0.0, 1.0)
-		if toast_t <= 0.0:
+	var nx := toasts.step(dt)
+	if not nx.is_empty():
+		_show_toast(nx)
+	if toasts.cur.is_empty():
+		if toast_l.text != "":
 			toast_l.text = ""
+		toast_t = 0.0
+	else:
+		toast_t = toasts.remaining()
+		toast_l.modulate.a = clampf(toast_t / 0.5, 0.0, 1.0) if float(toasts.cur.get("t", 0.0)) > 0.3 else 1.0
 
 static func _pts(v: float) -> String:
 	var n := int(roundf(v))

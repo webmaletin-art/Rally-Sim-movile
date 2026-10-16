@@ -5,6 +5,22 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 16/10/2026 (17) · Versión candidata, fase 2: descubrimiento (rama ccr-e7ae3f10-45afj2, NO en main) — PENDIENTE DE APK
+- **Pedido:** fase 2 del prompt maestro: «PRÓXIMO OBJETIVO», marcas «?» en el mapa, tutorial breve con ayuda, cola de avisos.
+- **Cola de avisos (P1):** antes cada aviso del HUD pisaba al anterior al instante (policía + premio + GPS en el mismo segundo y no se leía ninguno). `game/ui/toast_queue.gd`
+  (pura): prioridad policía > premio > información, uno nuevo de más prioridad corta sólo si el actual ya se vio 0,7 s, iguales no se repiten, tope de 4 en espera.
+  `race_hud.gd` la usa en `toast()`. Prueba `toast_queue_test` (9 OK).
+- **PRÓXIMO OBJETIVO (P1):** tarjeta chica debajo del minimapa (no tapa el volante táctil; no recibe toques salvo IR y ✕). Reglas puras en `game/city/next_goal.gd`: nafta < 15 %
+  → estación; evento del servidor en vivo; carrera del mapa descubierta sin ganar más cercana (premio, «cualquier auto», IR = GPS); carrera por descubrir; próximo auto
+  («ya te alcanza» → concesionario, o «te faltan $»); bajar un tiempo propio. Nada imposible (nunca un auto pago o de premio, nada a más de 60 km). ✕ lo saca 10 min. Se
+  esconde en carrera/persecución/modos y a más de 75 km/h sostenidos. Servicio `game/city/city_goal.gd` (sólo sin conexión). Prueba `next_goal_test` (10 OK).
+- **Tutorial breve:** 6 consejos de una vez cada uno (inicio, GPS, círculo de largada, carreras del mapa, garaje, policía), 3 líneas, se van solos a los 15 s; quedan
+  en `profile.d.tutorial`. Botón nuevo «❓ AYUDA» en la pausa del mundo abierto (resumen de cómo se gana).
+- **Marcas «?»:** las carreras sin descubrir se ven en el mapa grande como «?» (tocarla pone el GPS: «❓ Carrera por descubrir»); las descubiertas muestran tipo, km, premio,
+  tu mejor tiempo y «cualquier auto» al tocarlas.
+- **Pruebas:** `scripts_parse_test`, `city_modes_test`, `ow_events_test`, `activities_test` OK; capturas reales con el director (la tarjeta no pisa el volante).
+  **Sin probar en el teléfono.**
+
 ## 16/10/2026 (16) · Versión candidata, fase 1: economía y seguridad (rama ccr-e7ae3f10-45afj2, NO en main)
 - **Pedido del dueño:** «prompt maestro definitivo»: implementar la auditoría (docs/AUDITORIA_CICLO_DE_JUEGO.md) por fases en una rama aparte, con APK experimental que no pise el estable.
 - **APK aparte:** la rama arma «Dream Racing RC» (`com.gskorp.rallygodot.rc`, release `godot-apk-rc`, contenido `godot-content-4.7-rc`; los autos se reusan de main). Al fusionar hay que deshacer

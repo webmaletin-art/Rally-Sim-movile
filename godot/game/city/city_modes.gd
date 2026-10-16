@@ -107,9 +107,13 @@ func _online_ok() -> bool:
 
 ## La pausa: un solo botón con los eventos del momento
 func pause_buttons() -> Array:
-	return [[Tr.t("📅  EVENTOS EN VIVO"), "eventos"]] if available() else []
+	return [[Tr.t("📅  EVENTOS EN VIVO"), "eventos"], [Tr.t("❓  AYUDA"), "ayuda"]] if available() else []
 
-func toggle(_m: String) -> void:
+func toggle(m: String) -> void:
+	if m == "ayuda":
+		var g = race.get("goal")
+		_big(g.help_text() if g != null else "", 9.0)
+		return
 	_show_board()
 
 func now_server() -> float:

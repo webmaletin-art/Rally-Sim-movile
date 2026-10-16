@@ -59,6 +59,8 @@ jobs:
           timeout -k 5 600 godot --headless --script res://tests/police_test.gd
           timeout -k 5 900 godot --headless --script res://tests/escape_farm_test.gd
           timeout -k 5 300 godot --headless --script res://tests/tune_lock_test.gd
+          timeout -k 5 120 godot --headless --script res://tests/toast_queue_test.gd
+          timeout -k 5 200 godot --headless --script res://tests/next_goal_test.gd
           timeout -k 5 600 godot --headless --script res://tests/police_online_test.gd
           timeout -k 5 900 godot --headless --script res://tests/city_modes_test.gd
           timeout -k 5 900 godot --headless --script res://tests/ow_events_test.gd

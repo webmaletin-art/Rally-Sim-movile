@@ -1899,6 +1899,7 @@ var city_drift # CityDrift: la Plaza de Drift al final de la Ruta 60
 var police # CityPolice: controles policiales y persecuciones en las rutas de la región
 var modes # CityModes: modos Fugitivo y Caza recompensas (pausa del mundo abierto)
 var ow_events # CityEvents: carreras para descubrir en el mundo abierto
+var goal # CityGoal: «PRÓXIMO OBJETIVO», consejos y ayuda
 var sectors # CitySectors: barreras de obra de los sectores cerrados
 var life # CityLife: conecta la vida del mundo con Dream City (city/city_life.gd)
 var ambient # WorldAmbient: audio del mundo abierto (tránsito en 3D, clima, ecos); sólo en Dream City

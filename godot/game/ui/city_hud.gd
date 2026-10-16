@@ -340,7 +340,12 @@ func _pick(p: Vector2) -> void:
 	var bm := 30.0 / mv.scale_px()
 	for mk in marks:
 		if (mk["pos"] as Vector2).distance_to(w) < bm:
-			set_dest(mk["pos"], str(mk["name"]))
+			if mk.get("unk", false) == true:
+				set_dest(mk["pos"], Tr.t("❓ Carrera por descubrir"))
+			else:
+				set_dest(mk["pos"], str(mk["name"]))
+				if _toast_cb.is_valid() and mk.has("info"):
+					_toast_cb.call(str(mk["info"]))
 			_set_big(false)
 			return
 	# un lugar de la región (ciudad, pueblo, villa, estación o gomería)
@@ -727,9 +732,15 @@ class MapView extends Control:
 			draw_circle(sp, 7.0 if big else 5.0, col)
 			if big:
 				draw_string(f, sp + Vector2(12.0, 6.0), CityNames.t(str(p["name"])), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color.WHITE)
-		for mk in hud.marks: # carreras descubiertas: bandera de color (verde = ya ganada)
+		for mk in hud.marks: # carreras descubiertas: bandera de color (verde = ya ganada); por descubrir: «?» chico
 			var spm: Vector2 = xf * (mk["pos"] as Vector2)
 			if not Rect2(Vector2.ZERO, sz).grow(12.0).has_point(spm):
+				continue
+			if mk.get("unk", false) == true:
+				draw_circle(spm, 8.0 if big else 6.0, Color(0, 0, 0, 0.7))
+				draw_circle(spm, 6.5 if big else 4.5, mk["col"])
+				if big:
+					draw_string(f, spm + Vector2(-4.0, 5.0), "?", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.05, 0.08, 0.15))
 				continue
 			draw_rect(Rect2(spm - Vector2(7, 7), Vector2(14, 14)), Color(0, 0, 0, 0.75))
 			draw_rect(Rect2(spm - Vector2(5, 5), Vector2(10, 10)), mk["col"])
