@@ -5,6 +5,24 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 16/10/2026 (18) · Versión candidata, fase 3: competencia justa (rama ccr-e7ae3f10-45afj2, NO en main) — PENDIENTE DE APK
+- **Pedido:** fase 3 del prompt maestro: récords por clase, registro del modo arcade/simulación, puesto al terminar, récords sin conexión.
+- **Antes:** una tabla por pista (`scores`) mezclaba un R2 de serie con un Bisonte de 1000 cv; sólo guardaba el id del auto; sin conexión la marca se perdía.
+- **Servidor (migración ADITIVA `20261023000000_class_records.sql`, NO aplicada):** tabla nueva `class_scores` (una marca por jugador, pista, tabla y CLASE) con
+  auto, PI, clase, nivel de ayudas (arcade/mid/pro/custom/adv), gomas, resumen de mejoras («E3 T2 S1»), vueltas y «enviada después». `submit_class_record` valida igual
+  que antes (tiempos posibles, 40 envíos por hora, sólo cuentas con correo) y **la clase la calcula el servidor con el PI** (mismos cortes que el catálogo: D<400, C, B,
+  A, S, X≥800). `get_class_leaderboard(pista, tabla, clase)`. La tabla vieja `scores` NO se toca: el APK estable la sigue usando y el nuevo la muestra como «HISTÓRICO».
+- **Cliente:** `game/online/class_records.gd` (reglas puras), `online.gd` → `submit_class` / `flush_records` / `class_board`. Si el servidor todavía no tiene la migración,
+  la marca va a la tabla vieja como siempre (sin romper nada). **Sin conexión** queda en `profile.d.recQueue` (la mejor por pista/tabla/clase, tope 30) y sale sola
+  después de cada sincronización de la cuenta, marcada «enviada después». Las marcas no tocan plata: la cola no puede duplicar premios.
+- **Pantallas:** al terminar una carrera, «🌍 Ranking Clase B (PI 523): 3.º de 41» (o «sin conexión: se manda sola»; si no hay puesto fiable no se inventa).
+  RANKING: selector TODAS / D…X / HISTÓRICO (arranca en la clase del auto actual), sección nueva de circuitos (Lago, Bosque, Cantera, Montaña, Vórtice, Picada, Drift),
+  y cada renglón dice auto, PI, clase y nivel de ayudas. Carreras del mapa y Fugitivo también por clase.
+- **Arcade/simulación:** se REGISTRA el nivel en cada marca; las tablas NO se separan por modo (la regla pide separarlas sólo si las mediciones lo demuestran; queda
+  la columna para medirlo con datos reales).
+- **Pruebas:** `class_records_test` (24 OK: PI/clase/resumen, cola, mejor por clase, tope, reintento vs. descarte, vuelta a la tabla vieja, «enviada después», textos),
+  `account_test.sql` +10 casos (corre en GitHub con su Postgres), `scripts_parse_test` OK. **Sin probar en el teléfono ni contra el servidor real.**
+
 ## 16/10/2026 (17) · Versión candidata, fase 2: descubrimiento (rama ccr-e7ae3f10-45afj2, NO en main) — PENDIENTE DE APK
 - **Pedido:** fase 2 del prompt maestro: «PRÓXIMO OBJETIVO», marcas «?» en el mapa, tutorial breve con ayuda, cola de avisos.
 - **Cola de avisos (P1):** antes cada aviso del HUD pisaba al anterior al instante (policía + premio + GPS en el mismo segundo y no se leía ninguno). `game/ui/toast_queue.gd`
