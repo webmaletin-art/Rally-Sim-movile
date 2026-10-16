@@ -5,6 +5,7 @@ extends SceneTree
 const CityEvents := preload("res://game/city/city_events.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
 const Profile := preload("res://game/data/profile.gd")
+const CarVisual := preload("res://game/car/car_visual.gd")
 
 var fail := false
 
@@ -35,5 +36,26 @@ func _init() -> void:
 	_check(float(hy["bars"]["handling"]) > float(gtr["bars"]["handling"]), "Hyper: dobla mejor que el Veltor GTR (%.2f vs %.2f)" % [hy["bars"]["handling"], gtr["bars"]["handling"]])
 	_check(int(gtr["vmax"]) > int(hy["vmax"]) and int(gtr["hp"]) > int(hy["hp"]), "…y el Veltor GTR (gratis) sigue siendo el más veloz y potente (%d vs %d km/h)" % [gtr["vmax"], hy["vmax"]])
 	_check(int(pf.call("veltor_s")["pi"]) == 772 and int(tgt["pi"]) == 707 and int(gtr["pi"]) == 805, "los autos gratis no cambiaron (Veltor S 772, Trilux GT 707, Veltor GTR 805)")
+	# diferencial nivel 2 → reparto de tracción (fase 4: antes el reglaje era libre para todos y el nivel 2 no agregaba nada)
+	var st := Profile.new_car_state("hatch")
+	var base_fdr := float(veh["hatch"]["frontDriveRatio"])
+	st["tune"] = {"split": 0}
+	_check(CarBuild.tune_req("split") == "split" and not CarBuild.tune_unlocked("split", st["upg"]), "el reparto de tracción pide el diferencial nivel 2 (candado en el taller)")
+	_check(is_equal_approx(float(CarBuild.build_params(veh["hatch"], st)["frontDriveRatio"]), base_fdr), "sin diferencial nivel 2 un reparto guardado no cambia la física (sigue de fábrica: %.0f %% adelante)" % (base_fdr * 100.0))
+	st["upg"] = {"diff": 2}
+	_check(is_equal_approx(float(CarBuild.build_params(veh["hatch"], st)["frontDriveRatio"]), 0.0), "con diferencial nivel 2 el reparto sí cambia la física (0 % = tracción trasera)")
+	st["upg"] = {"diff": 1}
+	_check(not CarBuild.tune_unlocked("split", st["upg"]) and CarBuild.tune_unlocked("lsd", st["upg"]), "el nivel 1 desbloquea el autoblocante, no el reparto")
+	# stance nivel 1: la caída extrema existe en la física y se ve en las ruedas; con el control en 0 no cambia nada
+	var ss := Profile.new_car_state("hatch")
+	ss["upg"] = {"stance": 1}
+	ss["tune"] = {"stanceCamber": 0}
+	_check(is_equal_approx(float(CarBuild.build_params(veh["hatch"], ss)["camberF"]), -1.0), "stance comprado con el control en 0: la caída queda de fábrica (−1°)")
+	ss["tune"] = {"stanceCamber": 12}
+	var cam12 := float(CarBuild.build_params(veh["hatch"], ss)["camberF"])
+	_check(is_equal_approx(cam12, -13.0), "con 12° de stance la rueda queda en −13° (física)")
+	_check(is_zero_approx(CarVisual.camber_tilt(-1.0)) and is_zero_approx(CarVisual.camber_tilt(-2.0)) and CarVisual.camber_tilt(cam12) > deg_to_rad(10.0), "se dibuja sólo lo extremo: −1° y −2° no inclinan la rueda; −13° la inclina %.0f°" % rad_to_deg(CarVisual.camber_tilt(cam12)))
+	ss["upg"] = {}
+	_check(is_equal_approx(float(CarBuild.build_params(veh["hatch"], ss)["camberF"]), -1.0), "sin el kit stance el valor guardado no hace nada")
 	print("RESULTADO: ", "FALLA" if fail else "TODO OK")
 	quit(1 if fail else 0)

@@ -234,6 +234,8 @@ static func _span(n: Node3D, a: Vector3, b: Vector3, thick := 1.0) -> void:
 	var zv := xv.cross(y).normalized()
 	n.transform = Transform3D(Basis(xv * thick, y * l, zv * thick), a)
 
+var camber_tilt := Vector2.ZERO # inclinación visible de las ruedas (delantera, trasera) en radianes: la pone car_visual (kit stance)
+
 func sync(p: CarSnapshot, base: float, dt: float) -> void:
 	for i in 4:
 		var w: Dictionary = wheels[i]
@@ -241,6 +243,7 @@ func sync(p: CarSnapshot, base: float, dt: float) -> void:
 		steer.position.y = base - p.wheel_s[i]
 		if w["front"]:
 			steer.rotation.y = p.steerAngle
+		steer.rotation.z = signf(steer.position.x) * (camber_tilt.x if w["front"] else camber_tilt.y)
 		w["angle"] += p.wheel_omega[i] * dt
 		(w["spin"] as Node3D).rotation.x = w["angle"]
 		if w.has("strut"):

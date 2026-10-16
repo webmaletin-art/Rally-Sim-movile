@@ -200,7 +200,8 @@ static func build_params(base: Dictionary, car: Dictionary, assists := {"abs": t
 	V["clutchTime"] = float(base["clutchTime"]) * (1.0 + e["clutch"])
 	V["shiftTime"] = float(base["shiftTime"]) * (1.0 + e["shift"])
 	V["lsd"] = float(base["lsd"]) * (1.0 + e["lsd"]) * (pct.call("lsd") if has.call("lsd") else 1.0)
-	var sp := clampf(float(tu["split"]), 0.0, 100.0)
+	# reparto de tracción: lo desbloquea el diferencial nivel 2 (catálogo «unlock: split»); sin él, el de fábrica (fase 4: antes era libre para todos)
+	var sp := clampf(float(tu["split"]) if has.call("split") else float(base["frontDriveRatio"]) * 100.0, 0.0, 100.0)
 	V["frontDriveRatio"] = sp / 100.0
 	V["rearDriveRatio"] = 1.0 - sp / 100.0
 	V["driveType"] = "RWD" if sp <= 0.0 else ("FWD" if sp >= 100.0 else "AWD")

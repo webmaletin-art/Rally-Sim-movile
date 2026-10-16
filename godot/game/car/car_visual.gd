@@ -727,6 +727,10 @@ func _mesh_instances(root: Node) -> Array:
 			stack.append(c)
 	return out
 
+## Inclinación visible de la rueda (radianes) por la caída: sólo lo que pasa de 2° (camber extremo del kit stance); los autos de serie no cambian
+static func camber_tilt(cam_deg: float) -> float:
+	return deg_to_rad(maxf(0.0, -cam_deg - 2.0))
+
 ## Sincroniza con el estado de la física
 func sync_from(p: CarSnapshot, dt: float) -> void:
 	position = Vector3(p.px, p.py, p.pz)
@@ -734,7 +738,9 @@ func sync_from(p: CarSnapshot, dt: float) -> void:
 	blob.global_position = Vector3(p.px, p.py - V.comHeight + 0.05, p.pz)
 	blob.global_rotation = Vector3(0.0, p.yaw, 0.0)
 	var base := V.comHeight + V.hardpointY - V.rideOffset
+	var tilt := Vector2(camber_tilt(V.camberF), camber_tilt(V.camberR))
 	if parts != null:
+		parts.camber_tilt = tilt
 		parts.sync(p, base, dt)
 		return
 	for i in 4:
@@ -743,5 +749,6 @@ func sync_from(p: CarSnapshot, dt: float) -> void:
 		steer.position.y = base - p.wheel_s[i]
 		if w["front"]:
 			steer.rotation.y = p.steerAngle
+		steer.rotation.z = signf(steer.position.x) * (tilt.x if w["front"] else tilt.y)
 		w["angle"] += p.wheel_omega[i] * dt
 		(w["spin"] as Node3D).rotation.x = w["angle"]
