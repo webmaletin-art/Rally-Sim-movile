@@ -11,6 +11,8 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
   datos todo sigue igual que antes (comprobado). Plantilla nueva `caza_inicial`: 2 autos de clase C (pickup, SUV, Camo, Torito, Clásico 60; PI 454–536), sin empujón,
   ritmo 95 % con errores, 45 s pegado (no 60), 60 s en el mapa y sólo para autos de hasta PI 599 (lo controla el juego: el servidor no conoce el PI; límite documentado).
   Arreglo de paso: después de «hacerse el boludo» la presa volvía siempre a ritmo 112 %; ahora vuelve al suyo.
+  **`caza_inicial` queda APAGADA al aplicar** (`enabled = false`): el APK estable usa el mismo servidor y no entiende esos parámetros (soltaría la presa reforzada y
+  sin tope de PI). Se prende cuando la versión nueva sea la publicada (Table Editor → `wev_templates` → `caza_inicial` → `enabled`).
 - **Horarios rotativos:** `_wev_next_slot` (función pura, probada sola) + `params.rotate`: cada «día de evento» (empieza a las 12 UTC = 9 de Argentina, así la noche
   argentina no se parte en dos) la plantilla arranca a UNA hora de su lista. Cacería de la noche: 20–23 h AR; de la tarde: 15–18 h; principiantes: 11–14 h. Entre dos
   seguidas de la misma plantilla hay ≥ 21 h (descanso 18 h), así no se duplican ni se pisan. Las de fábrica se cambian sólo si el dueño no las tocó en el panel.

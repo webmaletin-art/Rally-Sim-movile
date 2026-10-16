@@ -498,8 +498,8 @@ begin
   perform ta.ok(mn >= interval '18 hours', 'la cacería de la noche rota y entre dos seguidas hay al menos 18 h (mínimo: ' || mn || ')');
   perform ta.ok((select count(distinct x) from unnest(hs) x) = 4, 'en 8 días pasa por las 4 horas de la lista: ' || hs::text);
   perform ta.ok(public._wev_next_slot(array[19], false, 12, '2026-10-16 18:50+00', 30) = '2026-10-17 19:00+00', 'sin rotar: si no llega al aviso, pasa al día siguiente a la misma hora');
-  perform ta.ok((select (params ->> 'boost')::numeric = 1.0 and (params ->> 'max_pi')::int = 599 and not (params -> 'pool' ? 'veltor') from public.wev_templates where id = 'caza_inicial'),
-    'la cacería accesible: autos de calle, sin empujón, tope de PI 599');
+  perform ta.ok((select (params ->> 'boost')::numeric = 1.0 and (params ->> 'max_pi')::int = 599 and not (params -> 'pool' ? 'veltor') and not enabled from public.wev_templates where id = 'caza_inicial'),
+    'la cacería accesible: autos de calle, sin empujón, tope de PI 599, y apagada hasta publicar la versión nueva (el APK estable no la entiende)');
 end $$;
 -- una temporada con un evento cumplido (contrarreloj: 30 pts) del jugador 2
 insert into public.wev_events (tpl, kind, title, starts_at, ends_at, params, reward) values

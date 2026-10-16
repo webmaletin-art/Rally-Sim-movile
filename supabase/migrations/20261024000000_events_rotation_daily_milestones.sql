@@ -5,7 +5,7 @@
 --      Las cacerías de fábrica pasan a rotar: la de la noche entre las 20 y las 23 h de Argentina, la de la tarde entre las 15 y las 18 h.
 --   2) Cacería ACCESIBLE (plantilla nueva caza_inicial): dos autos de clase C (pickup, SUV, Camo, Torito, Clásico 60), la presa sin el empujón de motor ni de
 --      agarre de las otras cacerías, más lenta y con errores (params boost/pace/errors, que lee game/city/city_modes.gd → prey_ai), 45 s pegado en vez de 60,
---      60 s en el mapa y sólo para autos de hasta PI 599 (params.max_pi, lo controla el juego). Mismo premio: el auto.
+--      60 s en el mapa y sólo para autos de hasta PI 599 (params.max_pi, lo controla el juego). Mismo premio: el auto. Queda APAGADA hasta publicar la versión nueva.
 --   3) DESAFÍOS DEL DÍA configurables: tabla game_cfg (clave → jsonb) con la fila «daily» {on, cr, n_play, n_race, tz_h}. El juego la recibe con el estado de
 --      la cuenta (account_state / account_apply, campo «dcfg»): no hay consultas nuevas. Los premios se cobran como earn kind «daily» con once = true
 --      (20261022 ya no los paga dos veces: la clave «daily:<día>:<n>» queda en account_econ.claims).
@@ -76,11 +76,13 @@ update public.wev_templates set hours_utc = array[18, 19, 20, 21], cooldown_h = 
   where id = 'caza_tarde' and hours_utc = array[19];
 
 -- ───────────── 2) cacería accesible ─────────────
-insert into public.wev_templates (id, kind, title, descr, weight, params, reward, duration_min, attempts, max_winners, notice_min, cooldown_h, hours_utc) values
+-- APAGADA al aplicar (enabled = false): el APK estable usa el mismo servidor y no conoce boost/pace/errors/max_pi (soltaría la presa reforzada y sin tope de PI).
+-- Se prende cuando la versión nueva sea la publicada: Table Editor → wev_templates → caza_inicial → enabled = true.
+insert into public.wev_templates (id, kind, title, descr, weight, params, reward, duration_min, attempts, max_winners, notice_min, cooldown_h, hours_utc, enabled) values
   ('caza_inicial', 'bounty', 'Cacería para principiantes',
    'Dos autos de calle sueltos en Dream City (cada día a otra hora, entre las 11 y las 14 de Argentina). No escapan tan rápido y se equivocan: el primero que se pegue 45 s a uno se lo lleva. Sólo con autos de hasta PI 599 (clase C o B).', 3,
    '{"n": 2, "pool": ["pickup", "suv", "camo", "torito", "clasico60"], "hold_s": 45, "map_s": 60, "boost": 1.0, "pace": 0.95, "errors": true, "max_pi": 599, "rotate": true}',
-   '{"car": true}', 20, 0, 0, 60, 18, array[14, 15, 16, 17])
+   '{"car": true}', 20, 0, 0, 60, 18, array[14, 15, 16, 17], false)
 on conflict (id) do nothing;
 
 -- ───────────── 3) desafíos del día (configuración) ─────────────
