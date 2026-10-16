@@ -5,6 +5,33 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 16/10/2026 (20) · Versión candidata, fase 5: eventos y retención (rama ccr-e7ae3f10-45afj2, NO en main) — PENDIENTE DE APK Y DE MIGRACIÓN
+- **Cacería accesible:** la presa tenía SIEMPRE +15 % de motor, +12 % de agarre, ritmo 112 % y cero errores, con autos S/A (Veltor GTR, Moust…): un R2 Turbo de serie
+  (PI 487, 209 km/h) no tenía chance. Ahora (`city_modes.gd → prey_ai / pi_ok`) el servidor puede mandar `boost`, `pace`, `errors` y `max_pi` en la plantilla; sin esos
+  datos todo sigue igual que antes (comprobado). Plantilla nueva `caza_inicial`: 2 autos de clase C (pickup, SUV, Camo, Torito, Clásico 60; PI 454–536), sin empujón,
+  ritmo 95 % con errores, 45 s pegado (no 60), 60 s en el mapa y sólo para autos de hasta PI 599 (lo controla el juego: el servidor no conoce el PI; límite documentado).
+  Arreglo de paso: después de «hacerse el boludo» la presa volvía siempre a ritmo 112 %; ahora vuelve al suyo.
+- **Horarios rotativos:** `_wev_next_slot` (función pura, probada sola) + `params.rotate`: cada «día de evento» (empieza a las 12 UTC = 9 de Argentina, así la noche
+  argentina no se parte en dos) la plantilla arranca a UNA hora de su lista. Cacería de la noche: 20–23 h AR; de la tarde: 15–18 h; principiantes: 11–14 h. Entre dos
+  seguidas de la misma plantilla hay ≥ 21 h (descanso 18 h), así no se duplican ni se pisan. Las de fábrica se cambian sólo si el dueño no las tocó en el panel.
+- **Desafíos del día** (`game/data/daily.gd`): 3 por día (terminar 2 carreras del mapa; ganar la carrera del mapa marcada —una ya descubierta, fija desde que empieza el
+  día— o cualquiera si no descubrió ninguna; terminar 2 eventos del menú). Día de Argentina (UTC−3) igual para todos. Premios $2.500 / $5.000 / $4.000 (≈ $11.500/día,
+  menos que una hora de juego). Sin compras, sin conexión. Se cobran con `earn` «daily» `once` (20261022 ya los rechaza repetidos: reinstalar o reconectar no paga dos
+  veces) y la cuenta devuelve lo cobrado hoy. Configurables desde el servidor (`game_cfg.daily`, viaja con el estado de la cuenta: **ninguna consulta nueva**).
+- **Hitos de la temporada:** 25 / 60 / 150 / 300 pts → $3.000 / $6.000 / $15.000 de vale / $20.000 (una fuga de 5 min ya da 40 pts: el jugador casual cobra algo).
+  `season_claim(id)` paga cada hito una sola vez (`wev_milestones`, clave primaria) y el juego lo pide sólo cuando la consulta de eventos que ya existía dice que hay uno
+  nuevo; el tablero muestra «próximo hito: 60 pts → + $6000».
+- **Colección:** LOGROS tiene una primera página «DESAFÍOS DEL DÍA + COLECCIÓN» (autos X/28, carreras del mapa descubiertas X/79 y ganadas X/79) y 4 metas nuevas de una
+  sola vez (Explorador 20 descubiertas $6.000, Cartógrafo 79 $25.000, Dueño del mapa 25 ganadas $20.000, Colección completa 24 autos comprables $100.000), con avance X/N.
+- **Servidor (migración ADITIVA `20261024000000_events_rotation_daily_milestones.sql`, NO aplicada):** `_wev_next_slot`, `_wev_ensure` con rotación, `caza_inicial`,
+  `game_cfg`, `_acct_json` + «dcfg», `wev_milestones`, `season_claim`, `_wev_json` + hitos. Autoprueba al aplicar + casos nuevos en `tools/online/account_test.sql`
+  (rotación 8 días, hito una sola vez, desafío del día una sola vez, configuración en el estado). Un servidor sin la migración: el juego usa la configuración de fábrica,
+  no pide hitos y la cacería es la de siempre.
+- **CI:** `build-godot.yml` con `concurrency` por rama (un push nuevo cancela la compilación anterior de la rama RC; en main no se cancela nada): había 6 corriendo a la
+  vez y la más vieja podía pisar el APK RC.
+- **Pruebas:** `events_rules_test` (24 OK, 1 s, en CI), `progression_rules_test` 22 OK, `account_econ_test` 81 OK, `rewards_test` 17 OK, `city_modes_test` 34 OK (40 s),
+  `next_goal_test` 11 OK, `scripts_parse_test` OK. Pruebas SQL: las corre GitHub («Economía online · prueba SQL»). **Sin probar en el teléfono.**
+
 ## 16/10/2026 (19) · Versión candidata, fase 4: progresión, autos pagos, stance/diferencial (rama ccr-e7ae3f10-45afj2, NO en main) — PENDIENTE DE APK
 - **Método (pedido del dueño: pruebas cortas, nada de tests de horas):** la economía se CALCULA con `tools/econ/progression_sim.py` sobre datos reales volcados en 10 s por
   `godot/tests/econ_dump.gd` (79 carreras con `OW.build`, 28 autos con `CarBuild.perf_of`) → `tools/econ/game_data_snapshot.txt`. Las pruebas de Godot corren con

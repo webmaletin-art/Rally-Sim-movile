@@ -20,6 +20,12 @@ on:
 permissions:
   contents: write
 
+# una compilación por rama: un push nuevo cancela la anterior (16/10/2026: varias seguidas corrían a la vez y la más vieja podía terminar última y
+# pisar el APK RC con una versión anterior). En main no se cancela nada a mitad de una publicación.
+concurrency:
+  group: build-godot-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 env:
   GODOT_VERSION: 4.7.2 # (15/10/2026: 4.5.1 → 4.7.2, decisión del dueño; ver docs/MIGRACION_GODOT.md → «Evaluación 15/10/2026»)
   # El contenido (content.pck + cars.pck) lo tiene que armar la MISMA versión del motor que corre el APK (los paquetes cambian de formato entre versiones): una release por versión (menor) del motor.
