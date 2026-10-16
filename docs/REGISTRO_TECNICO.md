@@ -33,6 +33,7 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
   vez y la más vieja podía pisar el APK RC.
 - **Pruebas:** `events_rules_test` (24 OK, 1 s, en CI), `progression_rules_test` 22 OK, `account_econ_test` 81 OK, `rewards_test` 17 OK, `city_modes_test` 34 OK (40 s),
   `next_goal_test` 11 OK, `scripts_parse_test` OK. Pruebas SQL: las corre GitHub («Economía online · prueba SQL»). **Sin probar en el teléfono.**
+- **GitHub Actions (16/10, 21:40 UTC):** «Build Godot APK» #212 a #218 en verde (las 85 pruebas de Godot + APK). **RC = corrida #218, commit `2ae3c00`**: `DreamRacing-RC.apk` (26,5 MB, sha256 `6f52b0e7…98fe8`) en la release `godot-apk-rc`, subido 21:09:56 UTC y sin cambios después. «Economía online · prueba SQL» #29 y #30 en verde (la #28 falló por la prueba misma: el rol de jugador no lee `wev_events`; arreglado con un ayudante). Los commits posteriores (`58ddead`, `36f23f3`, `7d4577a`, `06a0377`) sólo tocan SQL de prueba, la migración (no aplicada) y documentos: el APK RC no cambia.
 
 ## 16/10/2026 (19) · Versión candidata, fase 4: progresión, autos pagos, stance/diferencial (rama ccr-e7ae3f10-45afj2, NO en main) — PENDIENTE DE APK
 - **Método (pedido del dueño: pruebas cortas, nada de tests de horas):** la economía se CALCULA con `tools/econ/progression_sim.py` sobre datos reales volcados en 10 s por
