@@ -62,6 +62,7 @@ Así el otro lo ve con `git pull` y no se pisan.
 | B | Eventos: menú propio (tarjetas con imagen, IR AL EVENTO, SALIR DEL EVENTO), cero texto en pantalla de juego, puntito de notificación | `godot/game/city/city_modes.gd`, `godot/game/ui/race_hud.gd`, `godot/game/ui/controls.gd`, `godot/game/ui/menu_world.gd`, nuevo `godot/game/ui/events_ui.gd`, imágenes en `godot/game/ui/events/`, `godot/tests/events_rules_test.gd` | 19/10 UTC |
 | B | Cartel de la policía, talleres que se descubren al pasar, GPS, faros de noche, terreno/streaming de la región | `godot/game/city/city_police.gd`, `godot/game/ui/city_hud.gd`, `godot/game/city/city_gps.gd`, `godot/game/city/world_gps.gd`, `godot/game/region/region_world.gd`, luces del auto (se anota el archivo al encontrarlo) | 19/10 UTC |
 | B | Carreras del mundo abierto (pista en el mapa/GPS, calles cerradas con vallas, largadas lejos de talleres) y volante de la pantalla | `godot/game/city/city_events.gd`, `godot/game/world/ow_events.gd`, nuevo `godot/game/city/street_closure.gd`, `godot/game/ui/controls.gd` (volante), `godot/tests/ow_events_test.gd`, `street_closure_test.gd`, `controls_test.gd` | 19/10 UTC |
+| B | Asfalto y rayas a la misma altura que el piso de la física (ruedas «enterradas», rayas flotando) | `godot/game/track/city_track.gd`, `godot/game/region/region_data.gd`, `godot/game/city/city_world.gd` (sólo calles y rayas), `godot/game/region/region_world.gd` (sólo calles y rayas), `godot/game/fx/paper_kit.gd`, `paper.gdshader`, `paper_simple.gdshader` | 19/10 UTC |
 
 ## 5. Avisos para el otro chat
 
