@@ -59,7 +59,8 @@ Así el otro lo ve con `git pull` y no se pisan.
 
 | Chat | Sistema / tarea | Archivos | Desde (UTC) |
 |---|---|---|---|
-| — | (nada tomado) | — | — |
+| B | Eventos: menú propio (tarjetas con imagen, IR AL EVENTO, SALIR DEL EVENTO), cero texto en pantalla de juego, puntito de notificación | `godot/game/city/city_modes.gd`, `godot/game/ui/race_hud.gd`, `godot/game/ui/controls.gd`, `godot/game/ui/menu_world.gd`, nuevo `godot/game/ui/events_ui.gd`, imágenes en `godot/game/ui/events/`, `godot/tests/events_rules_test.gd` | 19/10 UTC |
+| B | Cartel de la policía, talleres que se descubren al pasar, GPS, faros de noche, terreno/streaming de la región | `godot/game/city/city_police.gd`, `godot/game/ui/city_hud.gd`, `godot/game/city/city_gps.gd`, `godot/game/city/world_gps.gd`, `godot/game/region/region_world.gd`, luces del auto (se anota el archivo al encontrarlo) | 19/10 UTC |
 
 ## 5. Avisos para el otro chat
 
