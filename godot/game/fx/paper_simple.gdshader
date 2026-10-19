@@ -22,6 +22,8 @@ uniform float bright = 1.35;
 uniform float glint = 0.0;
 uniform vec3 sun_dir = vec3(0.4, 0.6, 0.7);
 uniform vec3 glint_col : source_color = vec3(1.0, 0.93, 0.78);
+// rayas del camino: se levantan del asfalto más cuanto más lejos están de la cámara (de cerca quedan pegadas al asfalto; a lo lejos, sin parpadeo por la precisión de la profundidad). 0 = no se mueve nada
+uniform float lift_k = 0.0;
 
 varying vec3 v_col;
 varying vec2 v_guv;
@@ -36,6 +38,9 @@ void vertex() {
 	v_col = to_lin(COLOR.rgb) * bright;
 	v_guv = wp.xz * 0.45 + wp.y * 0.31;
 	v_duv = wp.xz * detail_scale;
+	if (lift_k > 0.0) {
+		VERTEX.y += min(0.4, lift_k * max(0.0, -(MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).z));
+	}
 }
 
 void fragment() {

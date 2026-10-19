@@ -20,6 +20,7 @@ var _fresh := PackedInt32Array() # rotos desde la última vez que el mundo los m
 var _dyn_hits := PackedFloat32Array() # choques del jugador con autos del tránsito desde la última consulta: índice del círculo, normal (x, z), profundidad
 var _dyn := PackedFloat32Array() # círculos de choque que se mueven (autos del tránsito): x, z, r, …
 var _mx := Mutex.new() # la física corre en hilos aparte: los objetos se tocan de a uno
+var _road_up := PackedFloat32Array() # por calle: cuánto sube el asfalto dibujado sobre su altura (CityLayout.ROAD_UP; 0 en los túneles, que tienen su propio piso)
 
 func _init() -> void:
 	city = CityLayout.new()
@@ -29,6 +30,9 @@ func _init() -> void:
 		region = rg
 		city.region = rg
 		RegionServices.install(city, rg)
+	city.prepare_verge()
+	for rd in city.roads:
+		_road_up.append(0.0 if str((rd as Dictionary)["kind"]) == "tunnel" else CityLayout.ROAD_UP)
 	cones = ConeField.new()
 	cones.setup(PackedVector2Array())
 	samples = [Vector3(0, 0, 0)]
@@ -54,15 +58,28 @@ func ground_info(x: float, z: float) -> Vector2:
 		if rp[0] > -0.05 and not (city_in and float(pr[0]) >= float(rp[0])):
 			return region.ground(x, z)
 		if not city_in:
-			return region.ground(x, z)
+			var rgd: Vector2 = region.ground(x, z)
+			var vf := city.verge_roads(x, z) # (junto a una ruta de campo de la ciudad: terraplén o cuneta, igual que la malla visible)
+			if not vf.is_empty() and CityLayout.verge_min_e(vf) > 0.0:
+				rgd.x = CityLayout.verge_height(rgd.x, vf)
+			return rgd
 	if pr[0] > -0.05:
-		return Vector2(float(pr[4]), 0.0 if float(pr[1]) <= float(pr[5]) else 2.0)
+		if float(pr[1]) <= float(pr[5]):
+			var ri := int(pr[6])
+			var up: float = _road_up[ri] if ri >= 0 and ri < _road_up.size() else 0.0
+			return Vector2(float(pr[4]) + up, 0.0) # (sobre el asfalto que se dibuja: city_world.gd)
+		return Vector2(float(pr[4]), 2.0)
 	var gh := city.height(x, z)
 	var zn := city.zone_of(x, z)
 	var vc := -1e9
 	if zn >= 2 and gh < WorldSurfaces.ROCK_H and not (z > WorldSurfaces.SAND_Z and gh < WorldSurfaces.SAND_H):
 		vc = city.verge_clearance(x, z) # sólo en el campo: a cuántos metros de la banquina de una ruta
-	return Vector2(gh, float(WorldSurfaces.outside(x, z, gh, zn, vc)))
+	var surf := float(WorldSurfaces.outside(x, z, gh, zn, vc))
+	if zn >= 2:
+		var vv := city.verge_roads(x, z) # junto a una ruta de campo: terraplén o cuneta (la misma altura que dibuja la malla)
+		if not vv.is_empty() and CityLayout.verge_min_e(vv) > 0.0:
+			gh = CityLayout.verge_height(gh, vv)
+	return Vector2(gh, surf)
 
 ## Cámara: de a hacia b (en el plano), ¿qué parte del camino está libre? 1 = toda; menos: ahí empiezan los edificios (fuera del corredor de la calle, que no sea ruta ni campo)
 func camera_clear(a: Vector2, b: Vector2) -> float:

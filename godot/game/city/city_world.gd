@@ -671,7 +671,7 @@ func _build_chunk(key: Vector2i) -> Node3D:
 	var m := ArrayMesh.new()
 	_surface(m, terr, PaperKit.material(null, 0.0, 0.2, 0.25))
 	_surface(m, rd, PaperKit.material(load(TEX + "asphalt.png") as Texture2D, 0.28, 0.22, 0.07))
-	_surface(m, mk, PaperKit.material(null, 0.0, 0.2, 0.0))
+	_surface(m, mk, PaperKit.mark_material())
 	_surface(m, tn, _tunnel_mat)
 	var mi := MeshInstance3D.new()
 	mi.mesh = m
@@ -777,9 +777,14 @@ func _ground_color(x: float, z: float, y: float) -> Color:
 ## Altura de la malla del terreno en un vértice: la del mundo, hundida donde pasa una calle de la ciudad o hay una sala del estacionamiento
 func _terrain_h(wx: float, wz: float) -> float:
 	var h := city.height(wx, wz)
+	# junto a una ruta de campo (a menos de VERGE_BW_MAX m del borde): terraplén del lado de abajo y cuneta del de arriba, la misma altura que usa la física (CityLayout.verge_height)
+	var vg := city.verge_roads(wx, wz)
+	var near_rural := not vg.is_empty() and CityLayout.verge_min_e(vg) > 0.0
+	if near_rural:
+		h = CityLayout.verge_height(h, vg)
 	# donde hay una calle el terreno se hunde un poco para que el asfalto quede por encima aunque la ladera suba al costado
 	var pr := city.probe(wx, wz)
-	if pr[6] >= 0.0:
+	if pr[6] >= 0.0 and not near_rural:
 		# el hundimiento se desvanece con la distancia al borde de la vereda (antes era todo o nada por vértice y en las banquinas se veían escalones de 16 m);
 		# bajo tierra se hunde más lejos: si no, las lomas del terreno asoman por adentro de la rampa
 		var lim := 20.0 if float(pr[4]) < -0.3 else 7.0
@@ -943,7 +948,7 @@ func _road_segment(rd: Soup, mk: Soup, si: int, ni: int, tn: Soup) -> void:
 	var nb := Vector3(mb.x, 0.0, mb.y)
 	var ka := ma.z
 	var kb := mb.z
-	var up := Vector3(0, 0.04, 0)
+	var up := Vector3(0, CityLayout.ROAD_UP, 0)
 	rd.quad_up(a - na * (hw * ka) + up, b - nb * (hw * kb) + up, b + nb * (hw * kb) + up, a + na * (hw * ka) + up, C_ASPH)
 	# veredas con cordón (más altas); no se dibujan donde cruza otra calle
 	var curb := 0.16
@@ -978,7 +983,7 @@ func _road_segment(rd: Soup, mk: Soup, si: int, ni: int, tn: Soup) -> void:
 	var junc := nj.size() > local_i and nj[local_i] != 0
 	if not junc and kind != "plaza" and kind != "bay":
 		var lw := 0.11
-		var mu := Vector3(0, 0.11, 0) # a 7 cm del asfalto: más cerca (1,5 cm) las rayas parpadeaban a la distancia (z-fighting)
+		var mu := Vector3(0, CityLayout.ROAD_UP + PaperKit.MARK_UP, 0) # a 1,2 cm del asfalto; el shader de las rayas las sube con la distancia (antes 7 cm fijos: se veían flotando y tapaban las ruedas)
 		if kind in ["major", "ring", "coast", "hill", "rural", "scenic"] and hw >= 4.0:
 			if local_i % 3 != 2: # raya del medio cortada
 				var cc := C_YEL if kind != "ring" else C_WHT

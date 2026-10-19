@@ -5,6 +5,58 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 19/10/2026 22:10 UTC · [B] Segunda tanda sobre la pantalla de juego: eventos sin letras, policía, talleres, faros, carreras del mapa, volante, altura del asfalto y terraplén (rama ccr-e7ae3f10-45afj2) — PENDIENTE DE APK
+- **Pedido del dueño (dos mensajes con capturas, 19/10):** «sigue estando mal: no quiero más letras en la pantalla de partida; sólo un puntito rojo en la pausa y en EVENTOS; un menú de eventos lindo, con fotos
+  y autos, nada genérico: lista → elegir uno → explicación con imagen → IR AL EVENTO (el GPS me lleva, incluso a otra ciudad) → pausa → SALIR DEL EVENTO». Cartel de la policía más lindo, arriba a un costado.
+  Talleres: «que no me aparezcan más; si cruzo por el taller, que se registre en el mapa». Faros que no alumbran los bordes de la calle y GPS que no anda bien. Foto en la Ruta Panorámica 70 (cuadra 37):
+  piso blanco más bajo que la ruta, «salgo volando»; tironcitos de fotogramas al cargar pueblos por la ruta. Rayas por arriba del asfalto, bordes que tapan las ruedas, ruedas enterradas. Carreras: el
+  Circuito del Puerto largaba pegado a un taller, hay que cerrar las calles dejando sólo la pista (en A→B varios caminos), mostrarla en el mapa y en el GPS. Volante: «se le pueden dar 3 vueltas y la
+  rueda se traba antes; tiene que trabarse donde se traba la rueda y girar lo que gira el volante, como un auto real». Orden permanente: trabajar a conciencia, arreglar lo obvio y avisar, preguntar lo dudoso.
+- **Cambios (cada uno con su causa):**
+  - **Eventos (`ui/events_ui.gd` nuevo, `ui/race_hud.gd`, `ui/controls.gd`, `city/city_modes.gd`, `ui/menu_world.gd`):** pantalla propia a pantalla completa con pestañas EVENTOS · NOVEDADES · AYUDA, tarjetas con imagen
+    (`ui/events/<tipo>.jpg`, 7 imágenes) y detalle con banner, descripción, CÓMO SE JUEGA, PREMIOS (con miniaturas de los autos), TU PROGRESO, «📍 IR…» y «✕ SALIR DEL EVENTO» (`event_go` / `event_cancel`). En la
+    partida no hay texto de eventos: sólo un punto rojo (`controls.badge_dot`) sobre el botón de pausa y sobre «📅 EVENTOS» cuando hay algo sin ver (`profile` ajuste `evSeen`). Sólo quedan cuadritos de lo que
+    estás corriendo (cuenta regresiva de una fuga, la barra de la cacería de cerca, etc., arriba al centro, 17 px, finos). Reemplaza la página `_events_page` y el numerito del primer paso.
+  - **Policía (`city/city_police.gd` → `PoliceBadge`):** placa de 196×46 arriba a la derecha (sirena, CONTROL POLICIAL / TE ESTÁN MIRANDO / PERSECUCIÓN, barra de tiempo; titila rojo y azul en la persecución). Antes: dos renglones de texto debajo del velocímetro.
+  - **Talleres, concesionarios y gomerías (`ui/city_hud.gd`):** ya no se muestra en el mapa lo que no pasaste; al cruzar a menos de 70 m se registra en silencio (`seen_pois`, ajuste `poiSeen`, `DISCOVER_R`). Ojo: del «pantalla verde en
+    el centro» del mensaje no está claro a qué se refiere: pregunta abierta abajo.
+  - **Faros (`city/city_clock.gd`):** el haz era un cono angosto; ahora es una malla con shader que reparte la luz hasta ±12 m (núcleo + falda) y se apaga con la distancia (3 pasadas de ajuste con capturas nocturnas).
+  - **Carreras del mundo abierto (`world/ow_events.gd`, `city/city_events.gd`, nuevo `city/street_closure.gd`, `ui/city_hud.gd`):** (1) ninguna largada a menos de 100 m de un taller, concesionario, estación, gomería o peaje (`_clear_start`:
+    el circuito rota la largada por el lazo, el A→B se acorta por adelante hasta un tercio); (2) al largar se cierran con vallas rojas y blancas con colisión las calles que salen del recorrido (ciudad: cruces con
+    `CityGps`; región: nodos de 3+ calles), se sacan al terminar o cancelar; (3) la pista se dibuja verde y gruesa en el minimapa y el mapa grande y el GPS la sigue (`set_course` / `course_at`, en un circuito dando la vuelta);
+    al tocar una carrera descubierta en el mapa se ve su recorrido antes de largar (`preview_route`).
+  - **Volante de la pantalla (`ui/controls.gd`):** el dibujo giraba hasta ±540° y la dirección ya estaba al máximo a ±180° (`wheel_rotation` ±3π contra `wheel_target = rot / π`). Ahora `WHEEL_LOCK = 0,75 π` (±135°, lo
+    mismo que ya usaban el acelerómetro y el teclado): el volante sigue al dedo 1:1, se traba donde la dirección llega al tope y vuelve al centro al mismo ritmo que la dirección. Con el dedo se necesita casi el mismo
+    recorrido que antes para el tope (133° antes, 135° ahora): el manejo no cambia, sólo desaparecen las 2,5 vueltas de más. La rueda de la cabina 3D ya seguía el ángulo real (`steerAngle × 7,5`). **No se tocó** la reducción
+    de la dirección con la velocidad (`steer_scale`): a 150 km/h el tope de la rueda es menor que a baja velocidad. Pregunta abierta abajo.
+  - **Asfalto, rayas y ruedas (`track/city_track.gd`, `region/region_data.gd`, `city/city_world.gd`, `region/region_world.gd`, `fx/paper_kit.gd`, `paper.gdshader`, `paper_simple.gdshader`, `city/city_layout.gd`):** causa confirmada
+    leyendo el código y con capturas: el asfalto se dibujaba 4 cm (ciudad) o 5–7 cm (región) arriba del piso de la física y las rayas 7 cm más arriba todavía (11–14 cm), así que las gomas quedaban metidas en el
+    asfalto y las rayas laterales las tapaban. Ahora el piso de la física sube lo mismo que el asfalto (`CityLayout.ROAD_UP`, `RegionData.road_lift`; túneles y playones sin cambio) y las rayas van a 1,2 cm del
+    asfalto con un shader que las levanta 5 cm por cada 100 m de distancia a la cámara (`lift_k`; antes los 7 cm fijos eran el parche contra el parpadeo a la distancia).
+  - **Ruta Panorámica 70 (cuadra 37) (`city/city_layout.gd`, `city_world.gd`, `city_track.gd`):** lo que se midió (`road_height_test`): la calle es una terraza a media ladera; del lado de abajo el piso natural quedaba 0,9–1,9 m más
+    abajo pegado a la banquina (escalón) y del de arriba subía como pared mientras la malla visible se hundía junto a la calle (la física seguía el terreno natural, no la malla). Ahora el terreno junto a las rutas
+    de campo (`rural`, `shortcut`, `scenic`, `hill`) sale de UNA función (`CityLayout.verge_height`) que usan la malla y la física: terraplén que baja de a poco del lado de abajo, cuneta que sube suave del de arriba,
+    mezcla por cercanía entre dos tramos a distinto nivel (horquilla). Escalón máximo en el borde 0,29 m; pendiente máxima 0,61 m por metro (antes 1,9 m de golpe); en las horquillas más cerradas (la ruta se cruza
+    con su propio tramo, 25 m entre ejes y 3 m de diferencia) queda 1,55 m por metro: hay guardarraíles. La espiral de subida y la de bajada se cruzan a ras en (2054, 1213) a 63,9 m: ahí ya no se pintan las dos
+    líneas amarillas cruzadas. **El blanco es nieve de diseño:** `WorldSurfaces.SNOW_H = 64 m`, la ruta pasa justo por esa altura ahí. Pregunta abierta abajo.
+  - **Tironcitos al cargar pueblos (`region/region_world.gd` → `_collect`):** antes se armaban 2 cuadrados por cuadro siempre; ahora 1 y un segundo sólo si el primero costó menos de 2,5 ms. **No se pudo medir en un teléfono**
+    (en la computadora `_finish` cuesta 0,3–3,6 ms): es una mejora razonable, no una causa confirmada.
+  - **GPS:** revisado con 396 rutas al azar entre ciudad, región, estaciones y pueblos: 6 sin ruta, todas con un extremo dentro de los túneles del «bolsillo» (x ≥ 75 000), que no están unidos al resto por diseño
+    (se entra por un portal con fundido); 1 rodeo. Dentro de un túnel el GPS sigue diciendo «sin ruta». Lo demás (las carreras, el ir a un evento) está arreglado arriba; el dueño no dijo qué hace mal: pregunta abierta.
+  - Textos nuevos en 5 idiomas (`tools/i18n/batches/b68_eventos_policia.py`, 45 textos).
+- **Pruebas (Godot 4.7.2 en la computadora, nada probado en un teléfono):** nuevas `street_closure_test` (13 OK: largadas, vallas, no se escapa por las calles), `road_height_test` (12 OK: asfalto = física ±0,4 mm de promedio,
+  rayas a 1,2 cm, terraplén), `events_ui_test` (19 OK), `controls_test` (20 OK, 5 nuevas del volante), `events_rules_test` (43 OK), `ow_events_test` (13 OK, 133 s), `city_modes_test` (34 OK), `city_test` (101 OK),
+  `region_junction_test`, `region_connectors_test`, `region_terrain_test`, `region_polish_test`, `region_test`, `region_threads_test`, `region_drive_test`, `open_world_access_test`, `spawn_menu_test`, `track_test`, `city_reach_test`.
+  Capturas con pantalla virtual (renderizador por software, no es el del teléfono): ruedas apoyadas en el asfalto y rayas pegadas, la Ruta Panorámica en el cruce de la cuadra 37. `street_closure_test` y `road_height_test` ya
+  están en el flujo de GitHub.
+- **Qué falta / pedirle al dueño (APK RC):** (1) pantalla de juego limpia, punto rojo, pausa → EVENTOS (tarjeta → IR AL EVENTO → GPS → SALIR); (2) placa de policía; (3) pasar cerca de un taller y mirar el mapa;
+  (4) de noche: ¿los faros alcanzan los bordes?; (5) una carrera del mapa (Circuito del Puerto): ¿larga lejos del taller?, ¿se ven las vallas?, ¿la pista verde en el mapa?, ¿el GPS la sigue?; (6) el volante: ¿se traba
+  cuando se traba la rueda?, ¿se siente igual el manejo?; (7) ruedas sobre el asfalto y rayas pegadas, de cerca y de lejos; (8) Ruta Panorámica 70 cuadra 37 y bajando por el lado del abismo; (9) tironcitos al llegar a un pueblo.
+  **Preguntas abiertas:** ¿querés la nieve sobre los 64 m (es de diseño y hoy toca la Panorámica)?; ¿a qué se refería con la «pantalla verde en el centro» de los talleres?; ¿qué hace mal el GPS (no marca, marca
+  mal, no recalcula)?; ¿querés que a alta velocidad el volante de la pantalla llegue al tope igual (hoy la dirección se reduce con la velocidad)?; ¿eventos también en el mundo compartido en tiempo real cuando se abra?
+
+---
+
 ## 19/10/2026 18:54 UTC · [B] Eventos online: sólo en el modo online y fuera de la pantalla de juego (rama ccr-e7ae3f10-45afj2) — PENDIENTE DE APK
 - **Pedido del dueño (19/10):** «la pantalla de juego está llena de letras: eventos que aparecen y no salen más, letras gigantes, hace más lento el juego y molesta.
   Los eventos van en la pausa, como en cualquier juego de carreras: pauso, miro los eventos y si quiero participo; como mucho un botoncito chiquito. Y son sólo

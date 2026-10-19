@@ -78,7 +78,7 @@ func setup(p_track, p_cw) -> void:
 func _make_materials() -> void:
 	_mat_terrain = PaperKit.material(null, 0.0, 0.2, 0.25)
 	_mat_road = PaperKit.material(load(TEX + "asphalt.png") as Texture2D, 0.28, 0.22, 0.07)
-	_mat_mark = PaperKit.material(null, 0.0, 0.2, 0.0)
+	_mat_mark = PaperKit.mark_material()
 	_mat_side = StandardMaterial3D.new()
 	_mat_side.vertex_color_use_as_albedo = true
 	_mat_side.roughness = 1.0
@@ -264,19 +264,29 @@ func _job(k: Vector2i, tier: int) -> void:
 	_done[k] = res
 	_mx.unlock()
 
+## Cuadrados que terminaron en los hilos: se arman en la escena UNO por cuadro, y un segundo sólo si el primero fue barato (< COLLECT_BUDGET_MS). Antes eran 2 por cuadro siempre:
+## en el teléfono, al llegar a un pueblo el subir la malla, los edificios y los carteles de dos cuadrados de golpe era un tironcito de fotogramas (reporte del dueño, 19/10/2026).
+const COLLECT_BUDGET_MS := 2.5
 func _collect() -> void:
-	_mx.lock()
-	var keys := _done.keys()
-	var got := {}
-	for k in keys.slice(0, 2):
-		got[k] = _done[k]
-		_done.erase(k)
-	_mx.unlock()
-	for k in got:
+	var t0 := Time.get_ticks_usec()
+	for _n in 2:
+		_mx.lock()
+		var keys := _done.keys()
+		var k: Variant = null
+		var res: Dictionary = {}
+		if not keys.is_empty():
+			k = keys[0]
+			res = _done[k]
+			_done.erase(k)
+		_mx.unlock()
+		if k == null:
+			return
 		var jb: Dictionary = _jobs[k]
 		WorkerThreadPool.wait_for_task_completion(int(jb["task"]))
 		_jobs.erase(k)
-		_finish(k, int(jb["tier"]), got[k])
+		_finish(k, int(jb["tier"]), res)
+		if float(Time.get_ticks_usec() - t0) / 1000.0 > COLLECT_BUDGET_MS:
+			return # (el resto, en el próximo cuadro)
 
 # ───────────────────────── armado de un cuadrado (en un hilo) ─────────────────────────
 func _build(k: Vector2i, tier: int) -> Dictionary:
@@ -806,7 +816,7 @@ func _road_segment(rd, mk, sd, rl, k: int) -> void:
 	if not mouth and (i < 5 or i > n - 7):
 		mouth = _near_junction(int(e[0]), mid2) or _near_junction(int(e[1]), mid2)
 	if surf == 0 and cls != "tierra" and not mouth:
-		var mu := Vector3(0, 0.07, 0)
+		var mu := Vector3(0, PaperKit.MARK_UP, 0) # (el shader de las rayas las sube con la distancia: paper_kit.gd)
 		var lw := 0.11
 		var wide := hw >= 7.0
 		if cls == "calle":

@@ -31,7 +31,14 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 - ✅📱 (15/10) Peatones sólo en la Plaza Aurora (con reja baja, chicos y paseantes) y lavando autos en los concesionarios; no llueve bajo techo (estacionamiento, rampas, túneles, gasolineras); faros desde la trompa, más largos y fuertes; capó sin brillos «arrugados» desde la cabina (`docs/REGISTRO_TECNICO.md` → 15/10 (11)).
 - 🔎 Rutas mal unidas / pasto en caminos: las pruebas de la región dan 0; falta que el dueño marque dónde lo ve. Puentes y pasos a distinto nivel: sin hacer.
 
+## Pantalla de juego y menús (19/10, [B])
+- ✅📱 Sin texto de eventos en la partida: punto rojo en la pausa y en EVENTOS; pantalla de eventos propia con tarjetas e imágenes, IR AL EVENTO (el GPS guía) y SALIR DEL EVENTO (`ui/events_ui.gd`). Placa de policía arriba a la derecha. Talleres, concesionarios y gomerías se registran en el mapa al pasar a menos de 70 m.
+- ✅📱 Faros con luz hasta los bordes de la calle (`city/city_clock.gd`). Volante de la pantalla trabado en ±135° donde la dirección llega al tope (`ui/controls.gd`).
+- ✅📱 Asfalto y piso de la física a la misma altura, rayas a 1,2 cm (ruedas ya no «enterradas»); terraplén y cuneta junto a las rutas de campo (Ruta Panorámica 70 cuadra 37). La nieve sobre 64 m es de diseño: 🔎 pregunta al dueño.
+- ✅📱 Región: 1 cuadrado por cuadro al cargar (antes 2): menos tironcitos, **sin medir en teléfono**.
+
 ## Carreras del mundo abierto
+- ✅📱 (19/10) Las carreras largan a 100 m o más de cualquier taller, se cierran las calles que salen del recorrido (vallas) y la pista se ve en el mapa y en el GPS (`city/street_closure.gd`).
 - ✅📱 79 eventos para descubrir (sprint, rally, montaña, velocidad, picada, circuito urbano, huida, persecución), en el mapa, con rivales adaptables y premios que valida el servidor (`docs/CARRERAS_MUNDO_ABIERTO.md`). Apagados en el online.
 
 ## Policía

@@ -361,6 +361,11 @@ func near_road(x: float, z: float) -> bool:
 func surface_off_road(x: float, z: float) -> int:
 	return SURF_OF_BIOME[clampi(biome_at(x, z), 0, SURF_OF_BIOME.size() - 1)]
 
+## Cuánto sube el asfalto que se dibuja (region_world.gd: altura del camino + 0.03 + _road_off) sobre la altura del camino. El piso de la física sube lo mismo, así las ruedas
+## apoyan sobre el asfalto que se ve y no 4–7 cm adentro (19/10/2026, pedido del dueño: «la rueda está un poquito enterrada en el asfalto»).
+static func road_lift(ei: int, surf: int) -> float:
+	return 0.03 + 0.004 * float(ei % 5) + (0.02 if surf == 0 else 0.0)
+
 ## Altura y superficie de la física en (x, z)
 func ground(x: float, z: float) -> Vector2:
 	var h := base_height(x, z)
@@ -369,6 +374,8 @@ func ground(x: float, z: float) -> Vector2:
 		return Vector2(h, float(surface_off_road(x, z)))
 	var hc := _carve(h, pr)
 	if pr[0] >= 0.0 and pr[4] <= pr[5]:
+		if pr[1] >= 0.0: # (un playón, calle -1, no tiene el asfalto levantado)
+			hc += road_lift(int(pr[1]), int(pr[9]))
 		return Vector2(hc, float(ROAD_SURF[clampi(int(pr[9]), 0, 2)]))
 	if pr[1] < 0.0 and pr[0] >= -0.05:
 		return Vector2(hc, 0.0)

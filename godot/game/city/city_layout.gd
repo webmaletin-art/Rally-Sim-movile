@@ -11,6 +11,7 @@ extends RefCounted
 
 const CELL := 160.0 # lado de una cuadra de carga (la unidad de la carga por trozos)
 const STEP := 8.0 # distancia entre puntos de una calle
+const ROAD_UP := 0.04 # el asfalto se dibuja 4 cm arriba de la altura de la calle: el piso de la física (city_track.gd) sube lo mismo, así las ruedas apoyan sobre el asfalto y no adentro
 const PLAZA_R := 48.0
 const PARK_R := 44.0 # radio de la calle que rodea al Parque del Drift
 const AVE := [[12.0, 1.0], [30.0, 1.0], [9.0, 2.0], [36.0, 1.0], [14.0, 2.0], [26.0, 1.0], [10.0, 2.0], [32.0, 1.0]] # por avenida: [desvío máximo (m), vueltas de curva cada 260 m]: no todas salen igual
@@ -125,6 +126,105 @@ func base_height(x: float, z: float) -> float:
 		if fd < _flat_r + 150.0:
 			h = lerpf(_flat_h, h, smoothstep(_flat_r, _flat_r + 150.0, fd)) # la plaza de drift es plana y el terreno se une a ella de a poco
 	return h
+
+## ───── Terraplén de las rutas de campo (rural, atajo, panorámica, colina) · [B] 19/10/2026
+## Reporte del dueño (Ruta Panorámica 70, cuadra 37): «el piso está más abajo que la ruta y salgo volando». La calle es una terraza a media ladera: al costado de abajo el terreno
+## natural quedaba 1–2 m más bajo pegado al borde (un escalón) y al de arriba subía como una pared; además la malla visible se hundía junto a la calle y la física seguía el terreno
+## natural, así que no coincidían. Ahora el terreno junto a estas rutas sale de UNA función (verge_height) que usan la malla (city_world._terrain_h) y el piso de la física
+## (city_track.ground_info): del lado de abajo un terraplén que baja de a poco hasta el terreno natural; del lado de arriba una cuneta que sube suave hasta la ladera.
+const VERGE_KINDS := ["rural", "shortcut", "scenic", "hill"]
+const VERGE_LEVEL := 0.25 # el borde del terraplén queda a esta altura por debajo del asfalto
+const VERGE_BW_MAX := 20.0 # hasta dónde (metros más allá de la banquina) se ablanda el terreno
+var _verge_road := PackedByteArray() # por calle: 1 = ruta de campo (se arma con prepare_verge, una vez, después de build)
+
+func prepare_verge() -> void:
+	var f := PackedByteArray()
+	f.resize(roads.size())
+	for i in roads.size():
+		f[i] = 1 if str((roads[i] as Dictionary)["kind"]) in VERGE_KINDS else 0
+	_verge_road = f
+
+## Las rutas de campo cerca de (x, z): [e0, hr0, e1, hr1, …], una pareja por cada tramo distinto (la parte más cercana de cada uno), con e = metros más allá del borde (calzada + banquina;
+## ≤ 0 = adentro) y hr = la altura del camino ahí. Vacío si no hay ninguna a menos de VERGE_BW_MAX m del borde.
+func verge_roads(x: float, z: float) -> PackedFloat64Array:
+	var out := PackedFloat64Array()
+	if _verge_road.is_empty():
+		return out
+	var ids := PackedInt32Array()
+	var kx := int(floor(x / HC))
+	var kz := int(floor(z / HC))
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			var k2 := Vector2i(kx + dx, kz + dz)
+			if not _hash.has(k2):
+				continue
+			for si in (_hash[k2] as PackedInt32Array):
+				var rid := s_road[si]
+				if _verge_road[rid] == 0:
+					continue
+				var ni := s_next[si]
+				var ax := s_x[si]
+				var az := s_z[si]
+				var ex := 0.0
+				var ez := 0.0
+				var ey := 0.0
+				if ni >= 0:
+					ex = s_x[ni] - ax
+					ez = s_z[ni] - az
+					ey = s_y[ni] - s_y[si]
+				var l2 := ex * ex + ez * ez
+				var t := 0.0
+				if l2 > 1e-6:
+					t = clampf(((x - ax) * ex + (z - az) * ez) / l2, 0.0, 1.0)
+				var ddx := ax + ex * t - x
+				var ddz := az + ez * t - z
+				var rd: Dictionary = roads[rid]
+				var e := sqrt(ddx * ddx + ddz * ddz) - float(rd["hw"]) - float(rd["sw"])
+				if e >= VERGE_BW_MAX:
+					continue
+				var j := ids.find(rid * 4096 + (si >> 5)) # (un tramo de la ruta = 32 puntos seguidos, 256 m: en una horquilla las dos ramas de la misma ruta son tramos distintos)
+				if j < 0:
+					ids.append(rid * 4096 + (si >> 5))
+					out.append(e)
+					out.append(s_y[si] + ey * t)
+				elif e < out[j * 2]:
+					out[j * 2] = e
+					out[j * 2 + 1] = s_y[si] + ey * t
+	return out
+
+## La menor distancia al borde de las rutas de verge_roads (1e9 si no hay ninguna)
+static func verge_min_e(v: PackedFloat64Array) -> float:
+	var m := 1.0e9
+	for i in range(0, v.size(), 2):
+		m = minf(m, v[i])
+	return m
+
+## Altura del terreno junto a las rutas de campo: h = el terreno natural, v = verge_roads. Cada ruta aporta su terraplén (del lado de abajo) o su cuneta (del de arriba) y se mezclan
+## por cercanía (así entre dos tramos de la misma ruta a distinto nivel, como en una horquilla, el terreno pasa de uno al otro sin un escalón). Igual a h si no hay ninguna cerca.
+## Sobre la calzada de una de ellas no se usa (ahí manda el camino).
+static func verge_height(h: float, v: PackedFloat64Array) -> float:
+	var sw := 0.0
+	var sh := 0.0
+	for i in range(0, v.size(), 2):
+		var e := maxf(v[i], 0.0)
+		var low := v[i + 1] - VERGE_LEVEL
+		var hv: float
+		if h >= low:
+			# la ladera sube del costado: una cuneta pegada a la banquina que sube suave hasta el terreno natural (ni pared ni hundimiento)
+			hv = lerpf(low, h, smoothstep(6.0, 18.0, e))
+		else:
+			# el terreno cae del costado: un terraplén que baja de a poco (más largo cuanto más abajo está el terreno)
+			var bw := clampf((low - h) * 1.7 + 6.0, 6.0, VERGE_BW_MAX)
+			hv = lerpf(low, h, smoothstep(0.0, bw, e))
+		var w := (1.0 - smoothstep(VERGE_BW_MAX - 6.0, VERGE_BW_MAX, e)) / (0.1 + e) # (con dos tramos a distinto nivel, esto hace una rampa pareja entre los dos; el aporte se apaga antes del límite)
+		sw += w
+		sh += w * hv
+	if sw <= 0.0:
+		return h
+	# lejos de todas (cerca del límite de VERGE_BW_MAX) el aporte se desvanece hacia el terreno natural: con un peso de «terreno natural» que crece con la distancia a la más cercana
+	var emin := verge_min_e(v)
+	var fade := smoothstep(VERGE_BW_MAX - 4.0, VERGE_BW_MAX, emin)
+	return lerpf(sh / sw, h, fade)
 
 ## Zona de la ciudad (decide la altura y el estilo de los edificios): 0 centro · 1 intermedio · 2 barrio · 3 costa · 4 colina · 5 afuera
 func zone_of(x: float, z: float) -> int:
@@ -671,6 +771,28 @@ func _mark_junction_samples() -> void:
 				if Vector2(pts[i].x, pts[i].z).distance_to(jp) < reach:
 					nj[i] = 1
 			roads[rid]["nj"] = nj
+	# la Ruta Panorámica se cruza a sí misma (la espiral de subida con la de bajada, a ras: las dos pasan por la misma altura): ahí tampoco se pintan las rayas del medio
+	# ([B] 19/10/2026: se veían dos líneas amarillas cruzadas en el medio de la calzada). No es un cruce con semáforos ni para el GPS: sólo se apagan las rayas.
+	var scn := road_named("Ruta Panorámica 70")
+	if scn >= 0:
+		var spts: PackedVector3Array = roads[scn]["pts"]
+		var snj: PackedByteArray = roads[scn]["nj"]
+		var sreach := float(roads[scn]["hw"]) + float(roads[scn]["sw"]) + 5.0
+		for i in range(spts.size() - 1):
+			var pa := Vector2(spts[i].x, spts[i].z)
+			var pb := Vector2(spts[i + 1].x, spts[i + 1].z)
+			for k in range(i + 12, spts.size() - 1):
+				var pc := Vector2(spts[k].x, spts[k].z)
+				if pa.distance_squared_to(pc) > 900.0:
+					continue
+				var hit2: Variant = Geometry2D.segment_intersects_segment(pa, pb, pc, Vector2(spts[k + 1].x, spts[k + 1].z))
+				if hit2 == null:
+					continue
+				var hp2: Vector2 = hit2
+				for m in spts.size():
+					if Vector2(spts[m].x, spts[m].z).distance_to(hp2) < sreach:
+						snj[m] = 1
+		roads[scn]["nj"] = snj
 
 # ───────────────────────── consultas (puras: se pueden llamar desde cualquier hilo) ─────────────────────────
 ## La calle de la superficie más cercana a p (sin las bocas de túnel ni los estacionamientos): [punto del eje, rumbo unitario de la calle, distancia] o [] si no hay ninguna a menos de max_d.

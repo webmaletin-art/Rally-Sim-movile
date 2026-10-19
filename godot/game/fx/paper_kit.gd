@@ -58,6 +58,27 @@ static func material(detail: Texture2D = null, detail_amt := 0.0, detail_scale :
 		_apply_shader(m)
 	return m
 
+## Rayas del camino (ciudad y región): papel liso que se levanta del asfalto más cuanto más lejos queda de la cámara (paper.gdshader → lift_k).
+## 19/10/2026, pedido del dueño: «las rayas se ven por arriba del asfalto y los bordes tapan las ruedas». Antes iban 7 cm fijos más arriba (con la profundidad de 24 bits, a
+## menos de eso parpadeaban a la distancia); ahora van a 1,2 cm del asfalto (MARK_UP) y el shader las sube 5 cm por cada 100 m de distancia (hasta 40 cm).
+const MARK_UP := 0.012
+const MARK_LIFT_K := 0.0005
+
+static func mark_material() -> ShaderMaterial:
+	var key := "mark|%.4f" % MARK_LIFT_K
+	if _mats.has(key):
+		return _mats[key]
+	var m := ShaderMaterial.new()
+	m.shader = SHADER
+	m.set_shader_parameter("grain", grain())
+	m.set_shader_parameter("detail_scale", 0.2)
+	m.set_shader_parameter("edge_amt", 0.0)
+	m.set_shader_parameter("lift_k", MARK_LIFT_K)
+	_mats[key] = m
+	if simple:
+		_apply_shader(m)
+	return m
+
 ## Diagnóstico (menú 📊): pasa TODOS los materiales de papel ya armados (y los que se armen después) a paper_simple.gdshader o de vuelta a paper.gdshader.
 ## Sólo cambia el shader: los parámetros de cada material se conservan y no se toca la geometría, la profundidad ni el culling.
 static func set_simple(on: bool) -> void:
