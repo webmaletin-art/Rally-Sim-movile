@@ -59,7 +59,7 @@ Así el otro lo ve con `git pull` y no se pisan.
 
 | Chat | Sistema / tarea | Archivos | Desde (UTC) |
 |---|---|---|---|
-| B | Eventos del mundo: sólo en el modo online, fuera de la pantalla de juego (pausa → EVENTOS, marca chica en el botón de pausa, eventos del día en el menú online) | `godot/game/city/city_modes.gd`, `godot/game/ui/race_hud.gd`, `godot/game/ui/controls.gd`, `godot/game/race.gd` (sólo el cableado de la pausa), `godot/game/ui/menu_world.gd` (`_start_city`, hub online), `godot/game/i18n/*.json`, `godot/tests/events_rules_test.gd` | 19/10 UTC |
+| B | Eventos del mundo: sólo en el modo online, fuera de la pantalla de juego (pausa → EVENTOS, marca chica en el botón de pausa, eventos del día en el menú online) | `godot/game/city/city_modes.gd`, `godot/game/ui/race_hud.gd`, `godot/game/ui/controls.gd`, `godot/game/race.gd` (sólo el cableado de la pausa), `godot/game/ui/menu_world.gd` (`_start_city`, hub online), `godot/game/ui/menu.gd` (1 renglón: MUNDO ABIERTO offline), `godot/game/city/city_events.gd` (sólo `_send_record`), `godot/game/i18n/*.json`, `godot/tests/events_rules_test.gd` | 19/10 UTC |
 
 ## 5. Avisos para el otro chat
 
