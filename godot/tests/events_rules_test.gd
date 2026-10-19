@@ -24,6 +24,68 @@ class FakeProfile extends RefCounted:
 		d["credits"] = int(d.get("credits", 0)) + roundi(n)
 		earns.append([roundi(n), kind, ref, extra])
 
+## carrera de mentira para city_modes: policía prendida, sin región, sin red
+class FakePolice extends RefCounted:
+	var enabled := true
+	var state := "idle"
+	var heat := 0
+	var stats := {"escapes": 0, "arrests": 0}
+
+class FakeControls extends RefCounted:
+	var badge_n := 0
+
+class FakeRace extends Node:
+	var police = FakePolice.new()
+	var cfg: Dictionary = {}
+	var online = null
+	var race_hud = null
+	var track = null
+	var cars: Array = [1]
+	var controls = FakeControls.new()
+
+func _events_ui() -> void:
+	var off := FakeRace.new()
+	off.cfg = {"car": "hatch"}
+	root.add_child(off)
+	var mo := CityModes.new()
+	mo.setup(off)
+	_check(mo.available() and not mo.events_on(), "mundo abierto OFFLINE: escapes y ayuda sí, eventos NO")
+	_check(mo.event_cards().is_empty(), "offline: la pausa no tiene tarjetas de eventos")
+	var pb := mo.pause_buttons()
+	_check(pb.size() == 1 and str(pb[0][1]) == "ayuda", "la pausa ya no tiene el botón que tiraba el cartel de eventos (sólo AYUDA)")
+	var onr := FakeRace.new()
+	onr.cfg = {"car": "hatch", "events": true}
+	root.add_child(onr)
+	var mn := CityModes.new()
+	mn.setup(onr)
+	_check(mn.events_on(), "mundo abierto desde el MODO ONLINE: eventos sí")
+	var shared := FakeRace.new()
+	shared.cfg = {"car": "hatch", "events": true, "online": true}
+	root.add_child(shared)
+	var ms := CityModes.new()
+	ms.setup(shared)
+	_check(not ms.events_on(), "mundo compartido en tiempo real: igual que antes, sin eventos de clasificación")
+	var now := mn.now_server()
+	mn.events = [
+		{"id": 1, "kind": "escape", "title": "Fuga", "starts": now + 600, "ends": now + 4000, "reward": {"credits": 5000}},
+		{"id": 2, "kind": "escape", "title": "Fuga larga", "starts": now - 60, "ends": now + 3600, "reward": {"top": [{"car": "gt3"}, 3000]}},
+		{"id": 3, "kind": "bounty", "title": "Cacería", "starts": now - 10, "ends": now - 1, "params": {"cars": ["torito"]}}]
+	var lines: Array = []
+	for e in mn.events:
+		var l: String = mn._event_tick(e, 0.1, now)
+		if l != "":
+			lines.append(l)
+	_check(lines.is_empty() and not mn._banner.visible, "en la pantalla de juego: ni carteles ni renglones de eventos que no estás jugando (%s)" % str(lines))
+	var cards := mn.event_cards()
+	_check(cards.size() == 2 and bool(cards[0]["live"]) and int(cards[0]["id"]) == 2 and not bool(cards[1]["live"]), "pausa → EVENTOS: 2 tarjetas, primero la que está en vivo (la terminada no aparece)")
+	_check(str(cards[0]["car"]) == "gt3" and CityModes.prize_car(mn.events[2]) == "torito" and str(cards[1]["car"]) == "", "la tarjeta lleva el auto del premio para la miniatura (1.º puesto, cacería) y nada si es plata")
+	_check(mn.live_count() == 1, "la marca del botón de pausa cuenta 1 evento en vivo")
+	mn._badge()
+	_check(int(onr.controls.badge_n) == 0, "sin cuenta conectada la marca no aparece")
+	mo.events = mn.events.duplicate()
+	mo._badge()
+	_check(int(off.controls.badge_n) == 0, "offline: nunca hay marca de eventos")
+
 func _init() -> void:
 	# 1) cacería: la de siempre igual que antes; la accesible sin empujón y con errores
 	var hard := CityModes.prey_ai({"n": 3})
@@ -93,5 +155,7 @@ func _init() -> void:
 	for a in preload("res://game/data/car_build.gd").catalog()["achievements"]:
 		ids.append(str(a["id"]))
 	_check(ids.has("owfind20") and ids.has("carsall") and ids.size() == 23, "las 4 metas de colección están en el catálogo de logros (%d)" % ids.size())
+	# 5) eventos sólo en el modo online y fuera de la pantalla de juego (19/10/2026, [B])
+	_events_ui()
 	print("RESULTADO: ", "FALLA" if fail else "TODO OK")
 	quit(1 if fail else 0)

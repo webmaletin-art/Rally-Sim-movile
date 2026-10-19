@@ -321,6 +321,8 @@ func _ready() -> void:
 		race_hud.restart_pressed.connect(_restart)
 		race_hud.back_to_road_pressed.connect(_back_to_road)
 		race_hud.modes_fn = func() -> Array: return modes.pause_buttons() if modes != null else []
+		race_hud.events_fn = func() -> Variant: return modes.event_cards() if modes != null and modes.events_on() else null # (sólo en el modo online)
+		race_hud.event_go_fn = func(id: int) -> String: return modes.event_go(id) if modes != null else ""
 		race_hud.mode_pressed.connect(func(m: String) -> void:
 			_toggle_pause() # se cierra la pausa y arranca (o termina) el modo
 			if modes != null:

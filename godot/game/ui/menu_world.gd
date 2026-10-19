@@ -15,6 +15,7 @@ const RegionServices := preload("res://game/region/region_services.gd")
 const SpawnMap := preload("res://game/ui/spawn_map.gd")
 
 var m # menu.gd
+var events_entry := false # el mundo se abre desde el MODO ONLINE (aunque sin tiempo real cada uno juegue en su mapa): hay eventos. Desde el menú offline, no (19/10/2026)
 
 
 func _start_city(spawn := 0) -> void:
@@ -29,7 +30,7 @@ func _start_city(spawn := 0) -> void:
 		prof = m.app.oprofile
 	var pid: String = prof.current_id()
 	prof.select(pid)
-	var cfg := {"type": "city", "track": "aurelia", "ai": 0, "sky": "day", "car": pid, "state": prof.car(), "seed": 7, "back": "home", "quick": true, "spawn": spawn, "online": online_world}
+	var cfg := {"type": "city", "track": "aurelia", "ai": 0, "sky": "day", "car": pid, "state": prof.car(), "seed": 7, "back": "home", "quick": true, "spawn": spawn, "online": online_world, "events": events_entry or m.world_online} # «events»: los eventos sólo si se entró desde el MODO ONLINE (city_modes.events_on)
 	if spawn < 0: # última ubicación
 		var lp: Array = prof.d["lastPos"]
 		cfg["resume"] = [float(lp[0]), float(lp[1]), float(lp[2])]
@@ -187,6 +188,7 @@ func online_home() -> void:
 		m.body.add_child(m.menu_button("🏙 " + tr("DREAM CITY"), tr("recorrer sin conexión"), func() -> void:
 			m.sfx.play("click")
 			m.world_online = false
+			events_entry = false
 			m.go("spawn"), true))
 		return
 	if m.app.online == null or not m.app.online.configured():
@@ -194,6 +196,7 @@ func online_home() -> void:
 		m.body.add_child(m.menu_button("🏙 " + tr("DREAM CITY"), tr("recorrer sin conexión"), func() -> void:
 			m.sfx.play("click")
 			m.world_online = false
+			events_entry = false
 			m.go("spawn"), true))
 		return
 	if not m.app.online.is_account():
@@ -246,16 +249,20 @@ func _data_hub(connected: bool) -> void:
 		m.go("online", null, false), false, 64.0))
 	var mail := str(m.app.online.email)
 	g.add_child(m.tile("gear", tr("CUENTA"), mail if mail != "" else tr("tu correo"), func() -> void: m.go("account"), false, 64.0))
+	var today := Kit.vbox(6)
+	m.body.add_child(today)
+	_today_events(today) # (se llena sola cuando contesta el servidor, sin trabar la pantalla)
 	var info := Kit.panel(10, Kit.PANEL2)
 	m.body.add_child(info)
 	var iv := Kit.vbox(3)
 	info.add_child(iv)
 	iv.add_child(Kit.label(tr("ONLINE POR AHORA · cada uno en su mundo"), 14, Kit.ACCENT))
-	for t in ["📅 " + tr("Eventos en vivo en tu mapa: los manda el servidor y compiten todos"), "🎯 " + tr("Cazarrecompensas: el primero que atrapa el auto se lo lleva"), "🚨 " + tr("Fugas: aguantá a la policía y ganá autos por unos días"), "🏁 " + tr("Contrarreloj entre ciudades y la carrera de la semana"), "🌍 " + tr("Récords mundiales de cada carrera del mapa"), "💰 " + tr("Tus créditos y autos, guardados en el servidor (sin trampas)")]:
+	for t in ["📅 " + tr("Eventos en vivo en tu mapa: los manda el servidor y compiten todos (en la pausa → EVENTOS)"), "🎯 " + tr("Cazarrecompensas: el primero que atrapa el auto se lo lleva"), "🚨 " + tr("Fugas: aguantá a la policía y ganá autos por unos días"), "🏁 " + tr("Contrarreloj entre ciudades y la carrera de la semana"), "🌍 " + tr("Récords mundiales de cada carrera del mapa"), "💰 " + tr("Tus créditos y autos, guardados en el servidor (sin trampas)")]:
 		iv.add_child(Kit.label(t, 14, Kit.TEXT))
 	m.body.add_child(m.menu_button("🏙 " + tr("JUGAR EN DREAM CITY"), tr("carreras, Fugitivo y la recompensa"), func() -> void:
 		m.sfx.play("click")
 		m.world_online = false
+		events_entry = true
 		m.go("spawn"), false))
 
 ## Aviso: el mundo online en tiempo real todavía no está
@@ -268,6 +275,7 @@ func pvp_soon() -> void:
 	m.body.add_child(m.menu_button("🏙 " + tr("JUGAR EN DREAM CITY"), tr("sin conexión con otros jugadores"), func() -> void:
 		m.sfx.play("click")
 		m.world_online = false
+		events_entry = true
 		m.go("spawn"), false))
 
 ## Ranking (por datos): ganadores de la recompensa, mejor racha del Fugitivo y récords de las carreras del mundo abierto que corriste
@@ -409,7 +417,7 @@ static func _car_name(id: String) -> String:
 ## Eventos en vivo (los manda el servidor): qué hay ahora, qué viene, premios, intentos y ganadores
 func bounty_screen() -> void:
 	m.set_title(tr("EVENTOS EN VIVO"))
-	m.body.add_child(Kit.wrap(tr("El servidor manda eventos al mapa de todos a la misma hora; cada uno los juega en su celular y el servidor decide quién ganó. Entrá a Dream City: los avisos aparecen arriba."), 15, Kit.TEXT, 300))
+	m.body.add_child(Kit.wrap(tr("El servidor manda eventos al mapa de todos a la misma hora; cada uno los juega en su celular y el servidor decide quién ganó. Entrá a Dream City desde el modo online: en la pausa → EVENTOS ves cada uno y lo marcás en el GPS."), 15, Kit.TEXT, 300))
 	var box := Kit.vbox(6)
 	m.body.add_child(box)
 	var wait_l := Kit.label(tr("cargando…"), 15, Kit.MUTED)
@@ -417,6 +425,7 @@ func bounty_screen() -> void:
 	m.body.add_child(m.menu_button("🏙 " + tr("JUGAR EN DREAM CITY"), tr("los eventos aparecen en el mapa"), func() -> void:
 		m.sfx.play("click")
 		m.world_online = false
+		events_entry = true
 		m.go("spawn"), true))
 	var on: Node = m.app.online
 	if on == null or not on.is_account():
@@ -434,36 +443,90 @@ func bounty_screen() -> void:
 	var evs: Array = d.get("events", [])
 	if evs.is_empty():
 		box.add_child(Kit.wrap(tr("Ahora no hay eventos programados: volvé en un rato."), 15, Kit.MUTED, 300))
+	var heads := {}
 	for e in evs:
-		var pnl := Kit.panel(10, Kit.PANEL2)
-		box.add_child(pnl)
-		var v := Kit.vbox(2)
-		pnl.add_child(v)
-		var st := int(e.get("starts", 0))
-		var en := int(e.get("ends", 0))
-		var icon: String = CityModes.kind_icon(str(e.get("kind", "")))
-		var when := (tr("EN VIVO · termina en %s") % _dur(en - now)) if st <= now else (tr("empieza en %s") % _dur(st - now))
-		v.add_child(Kit.label("%s %s" % [icon, tr(str(e.get("title", "")))], 18, Kit.ACCENT if st <= now else Kit.TEXT))
-		v.add_child(Kit.label(when, 14, Kit.GREEN if st <= now else Kit.GOLD))
-		v.add_child(Kit.wrap(tr(str(e.get("descr", ""))), 14, Kit.TEXT, 300))
-		var info: Array = []
-		info.append(CityModes.reward_text(e))
-		var stand := CityModes.standing_text(e)
-		if stand != "":
-			info.append(stand.trim_prefix(" · "))
-		if str(e.get("kind", "")) == "bounty":
-			var names: Array = []
-			for c in ((e.get("params", {}) as Dictionary).get("cars", []) as Array):
-				names.append(_car_name(str(c)))
-			info.append(tr("autos: %s") % ", ".join(names))
-		if int(e.get("attempts", 0)) > 0:
-			info.append(tr("intentos: %d de %d") % [int(e.get("used", 0)), int(e.get("attempts", 0))])
-		if bool(e.get("done", false)):
-			info.append("✅ " + tr("ya lo ganaste"))
-		v.add_child(Kit.wrap(" · ".join(info), 13, Kit.MUTED, 300))
-		for w in (e.get("winners", []) as Array):
-			v.add_child(Kit.label("🏆 " + str(w.get("name", "")), 14, Kit.GOLD))
+		var live := int(e.get("starts", 0)) <= now
+		if not heads.has(live): # (primero los que están en vivo, después los próximos; el servidor ya los manda en orden de hora)
+			heads[live] = true
+			box.add_child(Kit.label(("🔴 " + tr("EN VIVO")) if live else ("🕒 " + tr("PRÓXIMOS EVENTOS")), 16, Kit.GREEN if live else Kit.GOLD))
+		box.add_child(_event_card(e, now, false))
 	m.body.add_child(Kit.wrap("⏳ " + tr("Jugador contra jugador en tiempo real: próximamente."), 14, Kit.MUTED, 300))
+
+## Tarjeta de un evento (menú online y lista de eventos): miniatura del auto en juego (o el ícono del tipo), nombre, cuándo, premio y cómo vas.
+## compact: sólo lo principal (para «EVENTOS DE HOY» en la portada del modo online)
+func _event_card(e: Dictionary, now: int, compact: bool) -> Control:
+	var pnl := Kit.panel(10, Kit.PANEL2)
+	var row := Kit.hbox(10)
+	pnl.add_child(row)
+	var car := CityModes.prize_car(e)
+	var tpath := "res://game/ui/thumbs/%s.png" % car
+	if car != "" and ResourceLoader.exists(tpath):
+		var tr_ := TextureRect.new()
+		tr_.texture = load(tpath)
+		tr_.custom_minimum_size = Vector2(96, 54) if compact else Vector2(140, 79)
+		tr_.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr_.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		row.add_child(tr_)
+	else:
+		var ic := Kit.label(CityModes.kind_icon(str(e.get("kind", ""))), 34 if compact else 44, Kit.ACCENT, HORIZONTAL_ALIGNMENT_CENTER)
+		ic.custom_minimum_size = Vector2(64, 0)
+		row.add_child(ic)
+	var v := Kit.vbox(2)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(v)
+	var st := int(e.get("starts", 0))
+	var en := int(e.get("ends", 0))
+	var when := (tr("EN VIVO · termina en %s") % _dur(en - now)) if st <= now else (tr("empieza en %s") % _dur(st - now))
+	v.add_child(Kit.label("%s %s" % [CityModes.kind_icon(str(e.get("kind", ""))), tr(str(e.get("title", "")))], 16 if compact else 18, Kit.ACCENT if st <= now else Kit.TEXT))
+	v.add_child(Kit.label(when, 13 if compact else 14, Kit.GREEN if st <= now else Kit.GOLD))
+	var rw := CityModes.reward_text(e)
+	if compact:
+		if rw != "":
+			v.add_child(Kit.wrap("🎁 " + rw, 12, Kit.MUTED, 220))
+		return pnl
+	v.add_child(Kit.wrap(tr(str(e.get("descr", ""))), 14, Kit.TEXT, 260))
+	var info: Array = [rw]
+	var stand := CityModes.standing_text(e)
+	if stand != "":
+		info.append(stand.trim_prefix(" · "))
+	if str(e.get("kind", "")) == "bounty":
+		var names: Array = []
+		for c in ((e.get("params", {}) as Dictionary).get("cars", []) as Array):
+			names.append(_car_name(str(c)))
+		info.append(tr("autos: %s") % ", ".join(names))
+	if int(e.get("attempts", 0)) > 0:
+		info.append(tr("intentos: %d de %d") % [int(e.get("used", 0)), int(e.get("attempts", 0))])
+	if bool(e.get("done", false)):
+		info.append("✅ " + tr("ya lo ganaste"))
+	v.add_child(Kit.wrap(" · ".join(info), 13, Kit.MUTED, 260))
+	for w in (e.get("winners", []) as Array):
+		v.add_child(Kit.label("🏆 " + str(w.get("name", "")), 14, Kit.GOLD))
+	return pnl
+
+## «EVENTOS DE HOY» en la portada del modo online: los 3 primeros (en vivo y próximos) con su imagen; tocar «VER TODOS» abre la lista completa
+func _today_events(box: VBoxContainer) -> void:
+	var on: Node = m.app.online
+	if on == null or not on.is_account():
+		return
+	var r: Dictionary = await on.call_fn("events_current", {})
+	if not is_instance_valid(box) or not r["ok"] or not (r["data"] is Dictionary):
+		return
+	var d: Dictionary = r["data"]
+	var now := int(d.get("now", Time.get_unix_time_from_system()))
+	var evs: Array = []
+	for e in (d.get("events", []) as Array):
+		if int(e.get("ends", 0)) > now:
+			evs.append(e)
+	box.add_child(Kit.label("📅 " + tr("EVENTOS DE HOY"), 16, Kit.ACCENT))
+	if evs.is_empty():
+		box.add_child(Kit.wrap(tr("Ahora no hay eventos programados: volvé en un rato."), 14, Kit.MUTED, 300))
+		return
+	for k in mini(3, evs.size()):
+		box.add_child(_event_card(evs[k], now, true))
+	if evs.size() > 3:
+		box.add_child(Kit.button(tr("VER TODOS LOS EVENTOS (%d)") % evs.size(), func() -> void:
+			m.sfx.play("click")
+			m.go("bounty"), false, 14, Vector2(0, 40)))
 
 static func _dur(s: int) -> String:
 	return ("%d h %02d min" % [s / 3600, (s % 3600) / 60]) if s >= 3600 else ("%d min" % maxi(1, s / 60))
@@ -517,6 +580,7 @@ func _online_hub() -> void:
 	m.body.add_child(m.menu_button(tr("ENTRAR AL MUNDO ONLINE"), tr("Dream City y la región · elegí dónde aparecer"), func() -> void:
 		m.sfx.play("click")
 		m.world_online = true
+		events_entry = true
 		m.go("spawn"), true, true, 22))
 	# ── accesos (sólo lo que anda desde el menú)
 	var g := Kit.grid(2, 8, 8)
@@ -532,6 +596,7 @@ func _online_hub() -> void:
 	g.add_child(m.tile("gear", tr("CUENTA"), mail if mail != "" else tr("tu correo"), func() -> void: m.go("account"), false, 64.0))
 	g.add_child(m.tile("world", tr("DÓNDE APARECER"), tr("estacionamientos y pueblos"), func() -> void:
 		m.world_online = true
+		events_entry = true
 		m.go("spawn"), false, 64.0))
 	var gar: Button = m.tile("car", tr("MI GARAJE ONLINE"), tr("cargando…"), func() -> void:
 		m.sfx.play("click")

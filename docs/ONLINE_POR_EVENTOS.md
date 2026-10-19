@@ -14,12 +14,15 @@ así que no se gasta nada de Realtime: el plan gratis alcanza para la base de da
   - **MIS RÉCORDS:** si se mandan al ranking o no.
   - **CUENTA.**
   - **MUNDO ONLINE EN TIEMPO REAL:** pantalla «PRÓXIMAMENTE — La partida en tiempo real, jugador contra jugador, estará disponible próximamente. Se está trabajando en eso.»
-- **En Dream City** (el mismo mundo abierto de siempre), los eventos llegan solos. No hay que elegir ningún modo:
-  - un cartel grande avisa antes de que empiecen;
-  - arriba, debajo del velocímetro, un renglón muestra lo que está en juego y cuánto falta;
-  - el mapa y el GPS marcan dónde ir;
-  - cuando alguien gana, a todos les aparece «📢 Fulano ganó …».
-- En la pausa: **📅 EVENTOS EN VIVO**, un resumen de lo que hay.
+- **Portada del MODO ONLINE:** «📅 EVENTOS DE HOY», los 3 primeros (en vivo y próximos) con la miniatura del auto que se gana y «VER TODOS LOS EVENTOS».
+- **En Dream City, SÓLO si se entró desde el MODO ONLINE** (cfg `events`; [B] 19/10/2026, pedido del dueño: «el online y el offline son distintos juegos, como el GTA;
+  si en el offline aparecen los eventos, juego el offline y hago trampa»). Desde Menú → MUNDO ABIERTO (offline) no hay eventos, ni marca, ni récords al ranking.
+  - **nada de carteles en la pantalla de juego:** el botón de pausa lleva un numerito naranja con los eventos en vivo;
+  - **pausa → 📅 EVENTOS:** una tarjeta por evento (miniatura del auto o ícono, cuándo, premio, cómo vas) y «📍 IR» para marcar en el GPS la largada del
+    contrarreloj, la Plaza de Drift o la carrera de la semana;
+  - en la pantalla de juego sólo queda UN renglón chico del evento que estás jugando (cerca de la cacería, en una fuga, en la largada del contrarreloj, en la
+    plaza de drift o corriendo la carrera de la semana) y avisos cortos (empieza en 1 minuto, ganó Fulano, resultado).
+  - (antes: cartel grande al anunciar y al empezar cada evento, hasta 3 renglones fijos debajo del velocímetro y el resumen de la pausa como cartel gigante)
 
 ## Los eventos (los programa el servidor, al azar y sin amontonarse)
 | Evento | Cuándo | Qué hay que hacer | Premio |

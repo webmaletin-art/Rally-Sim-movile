@@ -98,24 +98,29 @@ func setup(p_race) -> void:
 					_towns.append([str(n[0]), q, str(n[4]) if (n as Array).size() > 4 else ""])
 	_towns.sort_custom(func(a: Array, b: Array) -> bool: return str(a[0]) < str(b[0]))
 
-## ¿Hay eventos acá? (mundo abierto sin el mundo compartido, con la policía de la región, con cuenta y conexión)
+## ¿Hay escapes que pagan y AYUDA acá? (mundo abierto sin el mundo compartido, con la policía de la región)
 func available() -> bool:
 	return race.get("police") != null and bool(race.police.enabled) and race.cfg.get("online", false) != true
+
+## ¿Hay EVENTOS acá? Sólo si el mundo se abrió desde el MODO ONLINE (cfg «events», menu_world._start_city). Pedido del dueño (19/10/2026): «el online y el offline son
+## distintos juegos, como el GTA: en el mundo abierto offline no tienen que aparecer los eventos online; si no, juego el offline y hago trampa».
+func events_on() -> bool:
+	return available() and race.cfg.get("events", false) == true
 
 func _online_ok() -> bool:
 	var on = race.get("online")
 	return on != null and on.has_method("is_account") and on.is_account() and race.cfg.get("testCar") == null
 
-## La pausa: un solo botón con los eventos del momento
+## La pausa: AYUDA (los eventos tienen su propia página en la pausa, con tarjetas: event_cards → race_hud «eventos»)
 func pause_buttons() -> Array:
-	return [[Tr.t("📅  EVENTOS EN VIVO"), "eventos"], [Tr.t("❓  AYUDA"), "ayuda"]] if available() else []
+	return [[Tr.t("❓  AYUDA"), "ayuda"]] if available() else []
 
 func toggle(m: String) -> void:
 	if m == "ayuda":
 		var g = race.get("goal")
 		_big(g.help_text() if g != null else "", 9.0)
+		_banner_t = 9.0 # (la ayuda la pidió el jugador: se queda más)
 		return
-	_show_board()
 
 func now_server() -> float:
 	return Time.get_unix_time_from_system() + _clock_off
@@ -129,7 +134,7 @@ func update(dt: float) -> void:
 		return
 	var lines: Array = []
 	_escapes(dt)
-	if _online_ok():
+	if events_on() and _online_ok():
 		_poll_t -= dt
 		if _poll_t <= 0.0 and not _busy:
 			_poll_t = POLL_SOON if _soon() else POLL_IDLE
@@ -139,8 +144,11 @@ func update(dt: float) -> void:
 			var l := _event_tick(e, dt, now)
 			if l != "":
 				lines.append(l)
+	# en la pantalla de juego sólo queda UN renglón chico: el del evento que estás jugando (cacería cerca, fuga, contrarreloj, drift, carrera de la semana);
+	# lo demás (próximos, en vivo, premios) está en la pausa → EVENTOS. Antes había hasta 3 renglones fijos y carteles gigantes que no se iban.
 	_hud.visible = not lines.is_empty()
-	_hud_l.text = "\n".join(lines.slice(0, 3))
+	_hud_l.text = str(lines[0]) if not lines.is_empty() else ""
+	_badge()
 	_bar.visible = false
 	for tg in targets:
 		if not bool(tg["done"]):
@@ -163,12 +171,13 @@ func _escapes(dt: float) -> void:
 		race.profile.earn(float(pay), "fuga")
 		race.profile.add_xp(float(pay) * 0.2)
 		race.profile.save()
-		_big(Tr.t("😎 ¡TE ESCAPASTE! + $%d · racha %d") % [pay, streak], 3.5)
+		_toast(Tr.t("😎 ¡TE ESCAPASTE! + $%d · racha %d") % [pay, streak])
 		if race.has_method("update_credits_hud"):
 			race.update_credits_hud()
 		if streak > best_streak:
 			best_streak = streak
-			_send_record("fugitive", "fugitivo", float(streak))
+			if events_on(): # (el ranking es del online: la racha del mundo offline no cuenta)
+				_send_record("fugitive", "fugitivo", float(streak))
 		_escape_event_end(true)
 		_chase_t = 0.0
 	if int(pol.stats["arrests"]) > _arr0:
@@ -278,7 +287,7 @@ func _claim_hitos(ev_id: int) -> void:
 	var r: Dictionary = await on.call_fn("season_claim", {"p_id": ev_id})
 	var d: Dictionary = r.get("data") if r.get("data") is Dictionary else {}
 	for g in (d.get("granted", []) as Array):
-		_big(Tr.t("🏅 ¡Hito de la temporada! %s") % got_text((g as Dictionary).get("reward", {})), 4.5)
+		_toast(Tr.t("🏅 ¡Hito de la temporada! %s") % got_text((g as Dictionary).get("reward", {})))
 	if not (d.get("granted", []) as Array).is_empty():
 		var acct = race.profile.get("acct")
 		if acct != null and acct.has_method("sync"):
@@ -298,13 +307,13 @@ func _event_tick(e: Dictionary, dt: float, now: float) -> String:
 	var kind := str(e.get("kind", ""))
 	var a: int = int(_announced.get(id, 0))
 	if now < st:
+		# (sin carteles: el próximo evento se ve en la pausa → EVENTOS y con la marca del botón de pausa; sólo un aviso corto al minuto de empezar)
 		if a == 0 and st - now < 1800.0:
 			_announced[id] = 1
-			_big(Tr.t("📅 %s\nEmpieza en %d min · %s") % [Tr.t(str(e["title"])), maxi(1, int((st - now) / 60.0)), reward_text(e)], 5.0)
 		elif a == 1 and st - now < 60.0:
 			_announced[id] = 2
 			_toast(Tr.t("📅 «%s» empieza en 1 minuto") % Tr.t(str(e["title"])))
-		return (Tr.t("📅 %s en %d:%02d") % [Tr.t(str(e["title"])), int(st - now) / 60, int(st - now) % 60]) if st - now < 1200.0 else ""
+		return ""
 	if now >= en:
 		if kind == "bounty":
 			_bounty_end(id, Tr.t("💨 Se fueron los autos de la cacería"))
@@ -312,8 +321,7 @@ func _event_tick(e: Dictionary, dt: float, now: float) -> String:
 			_drift_finish(e) # se termina la sesión que estaba en juego (el servidor da 2 min de gracia)
 		return ""
 	if a < 3 and kind != "bounty":
-		_announced[id] = 3
-		_big(Tr.t("📅 EN VIVO: %s\n%s\n%s") % [Tr.t(str(e["title"])), Tr.t(str(e.get("descr", ""))), reward_text(e)], 6.0)
+		_announced[id] = 3 # (antes: cartel gigante «EN VIVO» en el medio de la pantalla; ahora está en la pausa → EVENTOS)
 	match kind:
 		"bounty":
 			return _bounty_tick(e, dt, now)
@@ -339,6 +347,24 @@ static func reward_text(e: Dictionary) -> String:
 		return Tr.t("premio: el auto que atrapes")
 	var t := prize_text(r)
 	return (Tr.t("premio: %s") % t) if t != "" else ""
+
+## El auto que se puede ganar en un evento (para la miniatura de su tarjeta): el del premio, el alquilado, el del 1.º puesto o el primero de la cacería; "" si no hay
+static func prize_car(e: Dictionary) -> String:
+	var r: Dictionary = e.get("reward", {}) if e.get("reward") is Dictionary else {}
+	if r.has("top") and r["top"] is Array and not (r["top"] as Array).is_empty() and (r["top"] as Array)[0] is Dictionary:
+		r = (r["top"] as Array)[0]
+	if r.get("car") is String and str(r["car"]) != "":
+		return str(r["car"])
+	if r.get("rent") is String and str(r["rent"]) != "":
+		return str(r["rent"])
+	var cars: Variant = (e.get("params", {}) as Dictionary).get("cars", []) if e.get("params") is Dictionary else []
+	if cars is Array and not (cars as Array).is_empty():
+		var c0: Variant = (cars as Array)[0]
+		if c0 is String:
+			return c0
+		if c0 is Dictionary:
+			return str((c0 as Dictionary).get("id", (c0 as Dictionary).get("car", "")))
+	return ""
 
 ## Un premio: un número (créditos) o {credits, voucher, car, rent+days, skin, tires}
 static func prize_text(p: Variant) -> String:
@@ -399,7 +425,7 @@ func _bounty_tick(e: Dictionary, dt: float, now: float) -> String:
 	for tg in targets.duplicate():
 		if int(tg["ev"]) == id and won_slots.has(int(tg["slot"])) and not bool(tg["done"]):
 			if not bool(tg.get("mine", false)):
-				_big(Tr.t("😞 %s atrapó el %s") % [str(won_slots[int(tg["slot"])]), str(tg["name"])], 4.0)
+				_toast(Tr.t("😞 %s atrapó el %s") % [str(won_slots[int(tg["slot"])]), str(tg["name"])])
 			_drop(tg)
 	var mine := bool(e.get("done", false))
 	if int(_announced.get(id, 0)) < 3:
@@ -412,7 +438,7 @@ func _bounty_tick(e: Dictionary, dt: float, now: float) -> String:
 			if n > 0:
 				_map_t = float((e.get("params", {}) as Dictionary).get("map_s", 45))
 				_gps_t = 0.0
-				_big(Tr.t("🎯 ¡CAZARRECOMPENSAS!\n%d autos sueltos: mirá el mapa (%d s).\nEl primero que se pegue %d s a uno se lo lleva.") % [n, int(_map_t), int((e.get("params", {}) as Dictionary).get("hold_s", 60))], 6.0)
+				_toast(Tr.t("🎯 Cacería: %d autos sueltos, mirá el mapa") % n)
 		else:
 			_announced[id] = 2 # (estaba en una carrera: aparecen cuando termine)
 	var line := ""
@@ -446,7 +472,7 @@ func _bounty_tick(e: Dictionary, dt: float, now: float) -> String:
 			if ch != null and ch.has_method("clear_dest"):
 				ch.clear_dest()
 			_toast(Tr.t("🎯 Ya no se ven en el mapa: buscalos"))
-	if not best.is_empty():
+	if not best.is_empty() and (best_d < 500.0 or _map_t > 0.0): # (el renglón sólo aparece cuando estás en la cacería: con el mapa prendido o cerca de uno)
 		var hs := float((e.get("params", {}) as Dictionary).get("hold_s", 60))
 		var green := best_d < STICK_R
 		_bar.max_value = hs
@@ -728,8 +754,7 @@ func _escape_line(e: Dictionary, now: float) -> String:
 	if _esc_runs.has(int(e["id"])):
 		var held := Time.get_ticks_msec() / 1000.0 - _esc_start
 		return Tr.t("⏱ FUGA %d:%02d / %d:%02d — ¡no te dejes agarrar!") % [int(held) / 60, int(held) % 60, int(need) / 60, int(need) % 60]
-	var rem := maxf(0.0, float(e.get("ends", now)) - now)
-	return Tr.t("🚨 %s%s · quedan %dh%02d") % [Tr.t(str(e["title"])), left, int(rem) / 3600, (int(rem) % 3600) / 60]
+	return "" # (sin persecución en juego no hay renglón: la fuga está en la pausa → EVENTOS)
 
 # ───────────────────────── contrarreloj ─────────────────────────
 ## La ciudad marcada (la misma para todos: semilla del servidor) y la salida de Dream City más cercana a ella
@@ -794,6 +819,8 @@ func _reach_tick(e: Dictionary, dt: float, now: float) -> String:
 	else:
 		_reach_stop = 0.0
 	var dd := p.distance_to(_reach["start"])
+	if dd > 300.0:
+		return "" # (lejos de la largada no hay renglón: está en la pausa → EVENTOS, con el botón para marcarla en el GPS)
 	return Tr.t("🏁 %s: llegá a %s en %d:%02d · %d intentos · largada a %.1f km") % [Tr.t(str(e["title"])), str(_reach["town"]), int(limit) / 60, int(limit) % 60, maxi(0, att - used), dd / 1000.0]
 
 func _reach_begin(e: Dictionary) -> void:
@@ -966,8 +993,8 @@ static func standing_text(e: Dictionary) -> String:
 
 # ───────────────────────── carrera de la semana ─────────────────────────
 func _record_line(e: Dictionary, _now: float) -> String:
-	if weekly.is_empty() or int(weekly["ev"]) != int(e["id"]):
-		return ""
+	if weekly.is_empty() or int(weekly["ev"]) != int(e["id"]) or int(weekly.get("run", -1)) < 0:
+		return "" # (sólo mientras corrés la carrera de la semana)
 	var b: Variant = e.get("best")
 	return Tr.t("🏆 %s · tu mejor: %s") % [Tr.t(str(e["title"])), _fmt(float(b)) if b != null else "—"]
 
@@ -997,25 +1024,72 @@ func on_ow_finish(id: String, ok: bool, secs: float) -> void:
 func is_weekly(id: String) -> bool:
 	return not weekly.is_empty() and str(weekly["ow_id"]) == id
 
-# ───────────────────────── tablero (pausa) ─────────────────────────
-func _show_board() -> void:
-	if not _online_ok():
-		_big(Tr.t("📅 Los eventos en vivo necesitan conexión y tu cuenta"), 3.5)
-		return
+# ───────────────────────── tablero (pausa → EVENTOS) ─────────────────────────
+## Las tarjetas de la página EVENTOS de la pausa (race_hud.gd → _events_page): una por evento que no terminó, primero los que están en vivo.
+## Cada una: {id, kind, icon, title, descr, live, when, reward, standing, car, go}. «car» es el auto de premio (para la miniatura) y «go» si se puede marcar en el GPS.
+## Vacío si no hay eventos acá (mundo offline) o todavía no contestó el servidor.
+func event_cards() -> Array:
+	var out: Array = []
+	if not events_on():
+		return out
 	var now := now_server()
-	var lines: Array = [Tr.t("📅 EVENTOS EN VIVO")]
 	for e in events:
 		var st := float(e.get("starts", 0))
 		var en := float(e.get("ends", 0))
 		if en < now:
 			continue
-		var when := Tr.t("en vivo · termina en %s") % _dur(en - now) if st <= now else Tr.t("empieza en %s") % _dur(st - now)
-		lines.append("%s %s — %s · %s%s" % [kind_icon(str(e.get("kind", ""))), Tr.t(str(e["title"])), when, reward_text(e), standing_text(e)])
-	if lines.size() == 1:
-		lines.append(Tr.t("Ahora no hay eventos: vuelve a mirar en un rato"))
-		_poll_t = 0.0
-	lines.append(Tr.t("⏳ Tiempo real (jugador contra jugador): próximamente"))
-	_big("\n".join(lines.slice(0, 7)), 7.0)
+		var live := st <= now
+		var car := prize_car(e)
+		out.append({"id": int(e["id"]), "kind": str(e.get("kind", "")), "icon": kind_icon(str(e.get("kind", ""))), "title": Tr.t(str(e["title"])),
+			"descr": Tr.t(str(e.get("descr", ""))), "live": live, "done": bool(e.get("done", false)),
+			"when": (Tr.t("en vivo · termina en %s") % _dur(en - now)) if live else (Tr.t("empieza en %s") % _dur(st - now)),
+			"reward": reward_text(e), "standing": standing_text(e).strip_edges(), "car": car, "go": live and _go_point(e) != null})
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return bool(a["live"]) and not bool(b["live"]))
+	return out
+
+## Cuántos eventos en vivo esperan (para la marca chica del botón de pausa)
+func live_count() -> int:
+	var n := 0
+	var now := now_server()
+	for e in events:
+		if float(e.get("starts", 0)) <= now and float(e.get("ends", 0)) > now and not bool(e.get("done", false)):
+			n += 1
+	return n
+
+## La marca del botón de pausa: un numerito con los eventos en vivo (nada en el mundo offline)
+func _badge() -> void:
+	var ctl = race.get("controls")
+	if ctl != null and "badge_n" in ctl:
+		ctl.badge_n = live_count() if events_on() and _online_ok() else 0
+
+## Dónde se juega un evento (para «📍 IR»): la largada del contrarreloj, la Plaza de Drift o la carrera de la semana; null si no tiene un lugar fijo
+func _go_point(e: Dictionary) -> Variant:
+	match str(e.get("kind", "")):
+		"reach":
+			if not _reach.is_empty() and int(_reach.get("ev", -1)) == int(e["id"]):
+				return _reach["start"]
+		"drift":
+			var cd = race.get("city_drift")
+			if cd != null:
+				return cd.c
+		"record":
+			if not weekly.is_empty() and int(weekly["ev"]) == int(e["id"]):
+				var evs = race.get("ow_events")
+				if evs != null:
+					for oe in evs.events:
+						if str(oe["id"]) == str(weekly["ow_id"]):
+							return oe["start"]
+	return null
+
+## «📍 IR» de una tarjeta: marca el lugar del evento en el GPS. Devuelve el aviso para mostrar.
+func event_go(id: int) -> String:
+	var e := _find(events, id)
+	var q: Variant = _go_point(e) if not e.is_empty() else null
+	var ch = _ch()
+	if q == null or ch == null:
+		return Tr.t("Este evento no tiene un lugar fijo: se juega donde estés")
+	ch.set_dest(q, kind_icon(str(e.get("kind", ""))) + " " + Tr.t(str(e["title"])))
+	return Tr.t("📍 Marcado en el GPS")
 
 static func kind_icon(k: String) -> String:
 	return {"bounty": "🎯", "escape": "🚨", "reach": "🏁", "record": "🏆", "drift": "🌀", "season": "🏅"}.get(k, "📅")
@@ -1079,7 +1153,7 @@ func _build_hud() -> void:
 	_hud.add_child(box)
 	_hud_l = Label.new()
 	_hud_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hud_l.add_theme_font_size_override("font_size", 18)
+	_hud_l.add_theme_font_size_override("font_size", 16)
 	_hud_l.add_theme_color_override("font_color", Color(1.0, 0.92, 0.55))
 	_hud_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_hud_l.add_theme_constant_override("outline_size", 6)
@@ -1102,14 +1176,16 @@ func _build_hud() -> void:
 	_banner.anchor_right = 0.5
 	_banner.anchor_top = 0.5
 	_banner.anchor_bottom = 0.5
-	_banner.offset_left = -440.0
-	_banner.offset_right = 440.0
-	_banner.offset_top = -170.0
-	_banner.offset_bottom = 20.0
+	_banner.offset_left = -360.0 # (arriba y más chico: los resultados del evento que estás jugando no tapan el camino)
+	_banner.offset_right = 360.0
+	_banner.anchor_top = 0.0
+	_banner.anchor_bottom = 0.0
+	_banner.offset_top = 70.0
+	_banner.offset_bottom = 170.0
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_banner.add_theme_font_size_override("font_size", 28)
+	_banner.add_theme_font_size_override("font_size", 21)
 	_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 	_banner.add_theme_constant_override("outline_size", 10)
 	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1119,7 +1195,7 @@ func _build_hud() -> void:
 
 func _big(s: String, secs: float) -> void:
 	_banner.text = s
-	_banner_t = secs
+	_banner_t = minf(secs, 4.0)
 	_banner.visible = true
 
 func _toast(s: String) -> void:

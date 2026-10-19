@@ -208,6 +208,7 @@ func _run() -> void:
 	race.queue_free()
 	# eventos del servidor
 	race = _make(tr, vehicles, start.x, start.y, 0.0)
+	race.cfg["events"] = true # (los eventos son del modo online: el mundo se abrió desde ahí)
 	var srv := FakeOnline.new()
 	race.add_child(srv)
 	race.online = srv
@@ -257,6 +258,7 @@ func _run() -> void:
 	race.queue_free()
 	# fuga: cualquier persecución cuenta; aguantar chase_s y escapar (en una partida nueva)
 	race = _make(tr, vehicles, start.x, start.y, 0.0)
+	race.cfg["events"] = true
 	srv = FakeOnline.new()
 	race.add_child(srv)
 	race.online = srv

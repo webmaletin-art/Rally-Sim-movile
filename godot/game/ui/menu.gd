@@ -751,6 +751,7 @@ func _quick_hub() -> void:
 			go("quick")],
 		["world", "MUNDO ABIERTO", "Dream City y la región: manejar libre", func() -> void:
 			world_online = false
+			world_ui.events_entry = false # (el mundo abierto offline no tiene eventos online)
 			go("spawn")],
 		["road", "TRAVESÍA X", "convoy off-road de 20 km", func() -> void:
 			career.quick["fantasy"] = false

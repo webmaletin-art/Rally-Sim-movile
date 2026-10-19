@@ -31,6 +31,7 @@ var gyro_curve := 1.0 # 1 = lineal · >1 = progresiva (poco giro al principio, m
 var gyro_smooth := 15.0 # reacción del filtro (1/s): más alto = más rápido
 var use_mph := false
 var show_shot := true # botón de captura (opción «Botón de captura»)
+var badge_n := 0 # eventos online en vivo (city_modes._badge): un numerito chico sobre el botón de pausa, en vez de carteles en la pantalla
 var recording := false # grabando video (el botón se ve rojo)
 var show_speed := true # el panel de velocidad de arriba se oculta con las cámaras interiores (ya está en el tablero)
 var wheel_scale := 1.0 # tamaño del volante/barra (opción «Tamaño del volante»)
@@ -396,6 +397,11 @@ func _draw() -> void:
 		_draw_gears(rect_of("gears"), font, u)
 	_draw_round_button(rect_of("cam"), "CAM", false, Color(1.0, 0.8, 0.4), Color(0.2, 0.16, 0.08), Color(1.0, 0.82, 0.54), font, u * 0.5)
 	_draw_round_button(rect_of("pause"), "II", false, Color(0.7, 0.75, 0.85), Color(0.12, 0.14, 0.18), Color(0.8, 0.85, 0.95), font, u * 0.6)
+	if badge_n > 0: # (pausa → EVENTOS)
+		var pr := rect_of("pause")
+		var bc := pr.position + Vector2(pr.size.x * 0.88, pr.size.y * 0.12)
+		draw_circle(bc, 9.0 * u, Color(0.95, 0.45, 0.1))
+		draw_string(font, bc + Vector2(-9.0 * u, 4.5 * u), str(mini(badge_n, 9)), HORIZONTAL_ALIGNMENT_CENTER, 18.0 * u, int(12.0 * u), Color.WHITE)
 	if show_shot:
 		var sr := rect_of("shot")
 		_draw_round_button(sr, "", false, Color(0.7, 0.85, 1.0), Color(0.1, 0.15, 0.2), Color(0.8, 0.92, 1.0), font, u * 0.6)

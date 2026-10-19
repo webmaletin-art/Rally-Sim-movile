@@ -59,10 +59,11 @@ Así el otro lo ve con `git pull` y no se pisan.
 
 | Chat | Sistema / tarea | Archivos | Desde (UTC) |
 |---|---|---|---|
-| B | Eventos del mundo: sólo en el modo online, fuera de la pantalla de juego (pausa → EVENTOS, marca chica en el botón de pausa, eventos del día en el menú online) | `godot/game/city/city_modes.gd`, `godot/game/ui/race_hud.gd`, `godot/game/ui/controls.gd`, `godot/game/race.gd` (sólo el cableado de la pausa), `godot/game/ui/menu_world.gd` (`_start_city`, hub online), `godot/game/ui/menu.gd` (1 renglón: MUNDO ABIERTO offline), `godot/game/city/city_events.gd` (sólo `_send_record`), `godot/game/i18n/*.json`, `godot/tests/events_rules_test.gd` | 19/10 UTC |
+| — | (nada tomado) | — | — |
 
 ## 5. Avisos para el otro chat
 
+- [B] 19/10: los eventos del servidor (`city_modes.gd`) ahora sólo corren con `cfg.events` = true (el mundo se abrió desde el MODO ONLINE: `menu_world.events_entry`). Si armás otro camino al mundo abierto desde el online, poné `events_entry = true`. En la pantalla de juego ya no hay `_big` por anuncios: usar la pausa → EVENTOS (`event_cards`). Detalle en `docs/REGISTRO_TECNICO.md` → 19/10 [B].
 - [A] 19/10: la versión candidata está en la release `godot-apk-rc` (commit `2ae3c00`). El dueño todavía no la probó en el teléfono. Las migraciones 20261022, 20261023 y 20261024 **no están aplicadas** (esperan su autorización). La cacería `caza_inicial` queda apagada hasta publicar. Todo en `docs/VERSION_CANDIDATA.md`.
 
 ## 6. Migraciones del servidor (Supabase)

@@ -5,6 +5,42 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 19/10/2026 18:54 UTC · [B] Eventos online: sólo en el modo online y fuera de la pantalla de juego (rama ccr-e7ae3f10-45afj2) — PENDIENTE DE APK
+- **Pedido del dueño (19/10):** «la pantalla de juego está llena de letras: eventos que aparecen y no salen más, letras gigantes, hace más lento el juego y molesta.
+  Los eventos van en la pausa, como en cualquier juego de carreras: pauso, miro los eventos y si quiero participo; como mucho un botoncito chiquito. Y son sólo
+  del online: en el mundo abierto offline no tienen que aparecer (el online y el offline son distintos juegos, como el GTA); si no, juego el offline y hago trampa.
+  En el menú online, eventos del día, disponibles y próximos, con imágenes».
+- **Síntoma / causa (código):** `city_modes.gd` corría en TODO mundo abierto sin el mundo compartido (`available()`: policía prendida y `cfg.online != true`), o sea
+  también desde Menú → MUNDO ABIERTO offline (y el hub online sin tiempo real entraba con `world_online = false`: no había forma de distinguirlos). En pantalla:
+  `_event_tick` tiraba `_big` (Label de 28 px en el medio, 5–6 s) al anunciar cada evento y al empezar («📅 EN VIVO…»), y `update` dejaba hasta 3 renglones fijos
+  debajo del velocímetro con TODOS los eventos (fugas con «quedan 3h», contrarreloj «largada a 12 km», carrera de la semana…) mientras duraran (horas). La pausa
+  («📅 EVENTOS EN VIVO») mostraba el resumen como otro cartel gigante de 7 s. Además la racha del Fugitivo y los récords de las carreras del mapa se mandaban al
+  ranking online desde el mundo offline.
+- **Cambios:**
+  - `city_modes.gd`: `events_on()` = `available()` + `cfg.events`; el sondeo, los eventos, la marca y el récord del Fugitivo sólo con `events_on()`. Los escapes de la
+    policía siguen pagando en el offline (es de la policía, no del online). Sin carteles al anunciar/empezar (queda el aviso corto «empieza en 1 minuto»); la cacería,
+    el «X atrapó…», los hitos y el escape pasan a avisos cortos (`_toast`). Renglón: uno solo y sólo del evento en juego (`_bounty_tick` cerca o con mapa,
+    `_escape_line` en persecución, `_reach_tick` a < 300 m de la largada o corriendo, `_record_line` corriendo la de la semana, drift en la plaza). `_big` queda para
+    los resultados de lo que estás jugando, más chico (21 px), arriba y ≤ 4 s. Nuevas: `event_cards`, `live_count`, `_badge`, `_go_point`, `event_go`, `prize_car`.
+    Se sacó `_show_board` (el cartel de la pausa).
+  - `ui/race_hud.gd`: `events_fn` / `event_go_fn` y la página «eventos» de la pausa (`_events_page`: tarjetas con miniatura `ui/thumbs/<auto>.png`, cuándo, premio,
+    cómo vas, «📍 IR»); botón «📅 EVENTOS · N en vivo» en la pausa sólo si hay eventos acá. `ui/controls.gd`: `badge_n`, numerito naranja sobre el botón de pausa.
+    `race.gd`: el cableado (2 renglones).
+  - `ui/menu_world.gd`: `events_entry` (true desde las pantallas del modo online, false desde la de online cerrado) → `cfg.events`; «📅 EVENTOS DE HOY» en la portada
+    del online por datos (`_today_events`, 3 tarjetas + «VER TODOS»), tarjetas con imagen y secciones EN VIVO / PRÓXIMOS en la lista (`_event_card`).
+    `ui/menu.gd`: MUNDO ABIERTO offline pone `events_entry = false`. `city/city_events.gd → _send_record`: sólo con `cfg.events`.
+  - Textos nuevos en 5 idiomas (`tools/i18n/batches/b67_eventos_pausa.py`).
+- **Pruebas (Godot 4.7.2 en la computadora):** `tools/test/run_test.sh events_rules_test 60` → OK, 35 OK (11 nuevas: offline sin eventos, online con eventos,
+  compartido igual que antes, sin renglones ni cartel por eventos que no jugás, tarjetas en vivo primero, miniatura, marca). `city_modes_test` (con `cfg.events` en
+  las partes de eventos) → OK 34/34; una corrida dio FALLA en «y huyen por las calles» (la IA de la presa en 6 s) y la siguiente OK, igual que con el código de
+  antes → inestable, no es de este cambio. `escape_farm_test`, `ow_events_test`, `scripts_parse_test`, `language_test` → OK. `menu_ui_test`: las 4 FALLA de
+  «cámara libre: arrastrar…» salen igual sin este cambio (no las toqué).
+- **Qué falta / pedirle al dueño:** probar desde el APK RC: (1) Menú → MUNDO ABIERTO: ningún evento, ni numerito en la pausa; (2) MODO ONLINE → «EVENTOS DE HOY»
+  con imágenes → JUGAR EN DREAM CITY: numerito naranja en el botón de pausa, pausa → 📅 EVENTOS con las tarjetas y «📍 IR»; (3) que la pantalla de juego quede
+  limpia. Pendiente de decidir: en el mundo compartido en tiempo real (cuando se abra) siguen sin eventos de clasificación, como antes.
+
+---
+
 ## 16/10/2026 (20) · Versión candidata, fase 5: eventos y retención (rama ccr-e7ae3f10-45afj2, NO en main) — PENDIENTE DE APK Y DE MIGRACIÓN
 - **Cacería accesible:** la presa tenía SIEMPRE +15 % de motor, +12 % de agarre, ritmo 112 % y cero errores, con autos S/A (Veltor GTR, Moust…): un R2 Turbo de serie
   (PI 487, 209 km/h) no tenía chance. Ahora (`city_modes.gd → prey_ai / pi_ok`) el servidor puede mandar `boost`, `pace`, `errors` y `max_pi` en la plantilla; sin esos

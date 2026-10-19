@@ -480,6 +480,8 @@ func _finish(ok: bool, why: String) -> void:
 
 ## Récord mundial (ranking por datos, 15/10/2026): se manda el tiempo y se avisa si es el mejor del mundo o cuál es el récord a batir
 func _send_record(id: String, secs: float) -> void:
+	if race.cfg.get("events", false) != true:
+		return # (19/10/2026, pedido del dueño: el ranking es del modo online; las carreras del mundo abierto offline no mandan récords)
 	var on = race.get("online")
 	if on == null or not on.has_method("enabled") or not on.enabled() or not on.has_method("submit_record"):
 		return
