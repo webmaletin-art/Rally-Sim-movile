@@ -9,6 +9,7 @@ extends RefCounted
 
 const OW := preload("res://game/world/ow_events.gd")
 const CityGps := preload("res://game/city/city_gps.gd")
+const StreetClosure := preload("res://game/city/street_closure.gd")
 const PoliceDriver := preload("res://game/ai/police_driver.gd")
 const AiCars := preload("res://game/data/ai_cars.gd")
 const CarBuild := preload("res://game/data/car_build.gd")
@@ -59,13 +60,17 @@ var _hud: CanvasLayer
 var _hud_l: Label
 var _banner: Label
 var _banner_t := 0.0
+var _cgps # CityGps de Dream City (calles para cerrar durante la carrera)
+var _closure # StreetClosure: vallas en las calles que salen del recorrido mientras dura la carrera
+var _course_t := 0.0
 
 func setup(p_race) -> void:
 	race = p_race
 	track = race.track
 	if race.profile == null or race.cfg.get("online", false) == true or race.cfg.get("testCar") != null or race.cfg.get("owEvents", true) == false:
 		return
-	events = OW.build(track.get("region"), CityGps.new(track.city))
+	_cgps = CityGps.new(track.city)
+	events = OW.build(track.get("region"), _cgps)
 	for i in events.size():
 		var s: Vector2 = events[i]["start"]
 		var c := Vector2i(floori(s.x / 1000.0), floori(s.y / 1000.0))
@@ -212,8 +217,12 @@ func _begin(i: int) -> void:
 	cd = 3.0 if str(cur["type"]) != "huida" else 0.6
 	state = "countdown"
 	var ch = _ch()
-	if ch != null and pts.size() > 1 and str(cur["type"]) != "huida":
-		ch.set_dest(pts[pts.size() - 1], _title(cur))
+	if str(cur["type"]) != "huida" and pts.size() > 1:
+		# la pista queda a la vista (mapa y GPS) y el resto de las calles se cierra con vallas: 19/10/2026, pedido del dueño
+		if ch != null:
+			ch.set_course(pts, _title(cur))
+		_close_streets(pts)
+	_course_t = 0.0
 	for id in _marks.keys():
 		if is_instance_valid(_marks[id]):
 			(_marks[id] as Node).queue_free()
@@ -223,6 +232,18 @@ func _begin(i: int) -> void:
 	if md != null and md.has_method("on_ow_start"):
 		md.on_ow_start(str(cur["id"])) # (si es la carrera de la semana, el intento se anota en el servidor)
 	CrashLog.mark("evento", "largada %s" % cur["id"])
+
+## Cierra las calles que salen del recorrido (vallas con colisión) hasta que termine la carrera; si por algo no se pudieran poner, la carrera sigue igual
+func _close_streets(pts: PackedVector2Array) -> void:
+	_open_streets()
+	_closure = StreetClosure.new()
+	var n: int = _closure.close(track, pts, _cgps, track.get("region"))
+	CrashLog.mark("evento", "calles cerradas: %d vallas" % n)
+
+func _open_streets() -> void:
+	if _closure != null:
+		_closure.open()
+		_closure = null
 
 func _spawn_rivals() -> void:
 	rivals.clear()
@@ -290,6 +311,12 @@ func _run(dt: float, p: Vector2, sp: float) -> void:
 	# avance del jugador sobre el recorrido (para circuitos, vuelta por vuelta)
 	var proj := _project(p, _pi)
 	_pi = int(proj[0])
+	_course_t -= dt
+	if _course_t <= 0.0: # el GPS sigue desde donde vas (en un circuito, dando la vuelta)
+		_course_t = 0.8
+		var chc = _ch()
+		if chc != null:
+			chc.course_at(_pi, typ == "circuito")
 	var lap_len := float(cur.get("lap_len", total))
 	var lap_base := floorf(arc / lap_len) * lap_len if typ == "circuito" else 0.0
 	var a := lap_base + float(proj[1])
@@ -522,8 +549,10 @@ func _end() -> void:
 		pol.suspended = false
 		if str(cur.get("type", "")) == "huida" and pol.state == "chase":
 			pol._clear()
+	_open_streets()
 	var ch = _ch()
 	if ch != null:
+		ch.clear_course()
 		ch.clear_dest()
 	state = "free"
 	cur = {}
@@ -532,6 +561,10 @@ func _end() -> void:
 ## Se rehicieron los autos (taller de prueba): se cancela lo que esté en curso
 func forget() -> void:
 	rivals.clear()
+	_open_streets()
+	var ch = _ch()
+	if ch != null:
+		ch.clear_course()
 	if state != "free":
 		state = "free"
 		cur = {}
@@ -557,7 +590,7 @@ func _refresh_map() -> void:
 			if rr.has("best"):
 				info += " · " + Tr.t("tu mejor %s") % _fmt(float(rr["best"]))
 			info += " · " + Tr.t("cualquier auto")
-			m.append({"pos": ev["start"], "name": "%s %s" % [ev["icon"], _title(ev)], "col": Color(0.35, 0.95, 0.5) if won else Color(1.0, 0.75, 0.15), "info": info})
+			m.append({"pos": ev["start"], "name": "%s %s" % [ev["icon"], _title(ev)], "col": Color(0.35, 0.95, 0.5) if won else Color(1.0, 0.75, 0.15), "info": info, "route": ev["pts"]})
 		else:
 			# por descubrir: sólo dónde está (sin nombre ni premio)
 			m.append({"pos": ev["start"], "name": "❓", "col": Color(0.62, 0.7, 0.85), "unk": true})

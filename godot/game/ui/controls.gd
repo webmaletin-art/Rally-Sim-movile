@@ -56,6 +56,7 @@ var nitro_frac := 1.0
 var limited := false # limitador de vueltas (para la luz del tablero)
 
 # ── estado interno ──
+const WHEEL_LOCK := PI * 0.75 # el volante de la pantalla se traba a ±135° (con el dedo, el acelerómetro y el teclado): ahí la dirección está al máximo
 var wheel_rotation := 0.0
 var wheel_visual := 0.0
 var wheel_target := 0.0
@@ -232,8 +233,10 @@ func _touch_move(idx: int, pos: Vector2) -> void:
 			var a := atan2(pos.y - c.y, pos.x - c.x)
 			var d := wrapf(a - wheel_touch_angle, -PI, PI)
 			wheel_touch_angle = a
-			wheel_rotation = clampf(wheel_rotation + d * 1.35, -PI * 3.0, PI * 3.0)
-			wheel_target = clampf(wheel_rotation / PI, -1.0, 1.0)
+			# el volante gira EXACTAMENTE lo que gira el dedo y se traba donde la dirección llega al tope (19/10/2026, pedido del dueño: «se le podía dar 3 vueltas y la
+			# rueda se trababa antes»: antes el dibujo llegaba a ±540° y la dirección ya estaba al máximo a los ±180°)
+			wheel_rotation = clampf(wheel_rotation + d, -WHEEL_LOCK, WHEEL_LOCK)
+			wheel_target = wheel_rotation / WHEEL_LOCK
 		"slider":
 			_slider_from_x(pos.x)
 		"pedal":
@@ -350,11 +353,11 @@ func update_inputs(dt: float) -> void:
 	steer += (desired - steer) * (1.0 - exp(-dt * rate))
 	if steer_mode == "wheel":
 		if gyro_on:
-			wheel_rotation += (_gyro_steer * PI * 0.75 - wheel_rotation) * (1.0 - exp(-dt * 15.0))
+			wheel_rotation += (_gyro_steer * WHEEL_LOCK - wheel_rotation) * (1.0 - exp(-dt * 15.0))
 		elif not wheel_contact:
-			var target_rot := kb_steer * PI * 0.75 if kb_steer != 0.0 else 0.0
-			wheel_rotation += (target_rot - wheel_rotation) * (1.0 - exp(-dt * 5.5))
-		wheel_visual += (wheel_rotation - wheel_visual) * (1.0 - exp(-dt * 10.0))
+			var target_rot := kb_steer * WHEEL_LOCK if kb_steer != 0.0 else 0.0
+			wheel_rotation += (target_rot - wheel_rotation) * (1.0 - exp(-dt * rate)) # (vuelve al centro al mismo ritmo que la dirección: antes tardaba el doble)
+		wheel_visual = wheel_rotation if wheel_contact else wheel_visual + (wheel_rotation - wheel_visual) * (1.0 - exp(-dt * 30.0))
 	# pedales: el dedo manda; sin dedo, el teclado
 	if not _taken("pedal"):
 		var kg := Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP)

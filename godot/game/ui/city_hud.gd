@@ -44,6 +44,9 @@ var _big: Control
 var _toast_cb: Callable
 var _exit_warned := {}
 var arrive_r := 28.0 # a esta distancia del destino se da por llegado
+var race_route := PackedVector2Array() # el recorrido de la carrera del mundo abierto que estás corriendo (city_events.gd): se dibuja grueso en el minimapa y en el mapa grande
+var preview_route := PackedVector2Array() # el recorrido de la carrera marcada en el mapa grande (se ve antes de largar)
+var _course := false # el GPS guía por el recorrido de la carrera (no por el camino más corto al final)
 var seen_pois := {} # talleres, concesionarios y gomerías que ya pasaste de cerca: sólo esos están en el mapa (se descubren manejando; clave «c:id» o «r:x,z»)
 var _disc_t := 0.0
 const DISCOVER_R := 70.0
@@ -351,6 +354,8 @@ func _pick(p: Vector2) -> void:
 				set_dest(mk["pos"], Tr.t("❓ Carrera por descubrir"))
 			else:
 				set_dest(mk["pos"], str(mk["name"]))
+				if mk.has("route"):
+					preview_route = mk["route"] # el recorrido de esa carrera, en el mapa
 				if _toast_cb.is_valid() and mk.has("info"):
 					_toast_cb.call(str(mk["info"]))
 			_set_big(false)
@@ -387,6 +392,9 @@ func _pick(p: Vector2) -> void:
 	_set_big(false)
 
 func set_dest(p: Vector2, nm: String, quiet := false) -> void:
+	if _course:
+		return # (durante una carrera el GPS es el recorrido)
+	preview_route = PackedVector2Array()
 	dest = p
 	has_dest = true
 	route_name = nm
@@ -397,7 +405,37 @@ func set_dest(p: Vector2, nm: String, quiet := false) -> void:
 func clear_dest() -> void:
 	_clear_dest()
 
+## Carrera del mundo abierto: el GPS guía por el recorrido (no por el camino más corto hasta el final: en un circuito el final es la largada) y el mapa lo dibuja entero
+func set_course(pts: PackedVector2Array, nm: String) -> void:
+	race_route = pts
+	_course = true
+	has_dest = pts.size() > 1
+	route_name = nm
+	route = pts.duplicate()
+	if has_dest:
+		dest = pts[pts.size() - 1]
+	_mini.queue_redraw()
+
+## Dónde va el auto en el recorrido (índice): el GPS sigue desde ahí; en un circuito, dando la vuelta
+func course_at(i: int, loop: bool) -> void:
+	if not _course or race_route.size() < 2:
+		return
+	i = clampi(i, 0, race_route.size() - 2)
+	var r := race_route.slice(i)
+	if loop:
+		r.append_array(race_route.slice(0, i + 1))
+	route = r
+
+func clear_course() -> void:
+	race_route = PackedVector2Array()
+	if _course:
+		_course = false
+		_clear_dest()
+
 func _clear_dest() -> void:
+	preview_route = PackedVector2Array()
+	if _course:
+		return # (una carrera en curso se quita con clear_course)
 	has_dest = false
 	route = PackedVector2Array()
 	gps_l.text = ""
@@ -527,7 +565,9 @@ func update_hud(dt: float, car) -> void:
 			_toast_cb.call(Tr.t("%s: seguí derecho para salir de la ciudad") % CityNames.t(str(ex["name"])))
 		else:
 			_toast_cb.call(Tr.t("%s: esa ciudad abre en la próxima actualización") % CityNames.t(str(ex["name"])))
-	if has_dest:
+	if has_dest and _course:
+		_gps_text()
+	elif has_dest:
 		_off_t += step
 		_trim_route()
 		_gps_text()
@@ -764,7 +804,13 @@ class MapView extends Control:
 					wpx = maxf(wpx, 3.2 / s)
 				var col := Color(0.92, 0.94, 0.97, 0.9) if pass_i == 0 else (Color(0.42, 0.46, 0.54) if str(sg["kind"]) in ["rural", "hill", "scenic"] else Color(0.30, 0.34, 0.42))
 				draw_polyline(sg["pts"], col, wpx if big else minf(wpx, 11.0 / s), false)
-		if hud.has_dest and hud.route.size() > 1:
+		if hud.preview_route.size() > 1:
+			draw_polyline(hud.preview_route, Color(0.05, 0.12, 0.2, 0.9), 14.0 / s, false)
+			draw_polyline(hud.preview_route, Color(0.35, 0.95, 0.55), 8.0 / s, false)
+		if hud.race_route.size() > 1: # la pista de la carrera: verde y gruesa, y el GPS (naranja) va encima
+			draw_polyline(hud.race_route, Color(0.05, 0.12, 0.2, 0.95), 16.0 / s, false)
+			draw_polyline(hud.race_route, Color(0.35, 0.95, 0.55), 10.0 / s, false)
+		elif hud.has_dest and hud.route.size() > 1:
 			draw_polyline(hud.route, Color(0.05, 0.12, 0.2, 0.9), 12.0 / s, false)
 			draw_polyline(hud.route, Color(1.0, 0.72, 0.1), 7.0 / s, false)
 		draw_set_transform_matrix(Transform2D.IDENTITY)

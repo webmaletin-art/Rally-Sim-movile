@@ -40,6 +40,30 @@ func _init() -> void:
 		c.update_inputs(1.0 / 60.0)
 	check("giro antihorario → izquierda (negativo): %.2f" % c.steer, c.steer < -0.5)
 	c._touch_up(0)
+	# el volante se traba donde la dirección llega al tope (pedido del dueño, 19/10/2026: antes se le podían dar 3 vueltas con la dirección ya al máximo)
+	c._touch_down(0, ctr + Vector2(0, -wr.size.x * 0.4))
+	for i in 60: # una vuelta y media con el dedo
+		var ang3 := -PI / 2.0 + (PI * 3.0) * float(i + 1) / 60.0
+		c._touch_move(0, ctr + Vector2(cos(ang3), sin(ang3)) * wr.size.x * 0.4)
+	for i in 30:
+		c.update_inputs(1.0 / 60.0)
+	check("el volante dibujado no pasa del tope (%.0f° de %.0f°)" % [rad_to_deg(c.wheel_visual), rad_to_deg(Controls.WHEEL_LOCK)], absf(c.wheel_visual) <= Controls.WHEEL_LOCK + 0.01)
+	check("en el tope la dirección está al máximo (%.2f)" % c.steer, c.steer > 0.97)
+	c._touch_up(0)
+	for i in 120: # (suelto: vuelve al centro)
+		c.update_inputs(1.0 / 60.0)
+	# a medio giro, el dibujo marca lo mismo que la dirección (volante/tope = dirección/máximo)
+	c._touch_down(0, ctr + Vector2(0, -wr.size.x * 0.4))
+	for i in 10:
+		var ang4 := -PI / 2.0 + (PI / 4.0) * float(i + 1) / 10.0 # 45° con el dedo
+		c._touch_move(0, ctr + Vector2(cos(ang4), sin(ang4)) * wr.size.x * 0.4)
+	for i in 60:
+		c.update_inputs(1.0 / 60.0)
+	check("a 45° el volante dibujado está a 45° (%.0f°)" % rad_to_deg(c.wheel_visual), absf(rad_to_deg(c.wheel_visual) - 45.0) < 2.0)
+	check("y la dirección a 45/135 del tope (%.2f)" % c.steer, absf(c.steer - 45.0 / 135.0) < 0.03)
+	c._touch_up(0)
+	for i in 120:
+		c.update_inputs(1.0 / 60.0)
 	# PEDAL: arriba acelera, abajo frena, en el medio nada
 	var pr := c.rect_of("pedal")
 	c._touch_down(1, Vector2(pr.get_center().x, pr.position.y + pr.size.y * 0.1))

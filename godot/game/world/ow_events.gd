@@ -27,6 +27,10 @@ static func build(region, city_gps = null) -> Array:
 		_region_events(region, out)
 	if city_gps != null:
 		_city_events(city_gps, out)
+	# ninguna largada pegada a un taller, concesionario, estación o gomería (19/10/2026: «el Circuito del Puerto largaba justo donde hay un taller: mi auto entraba al taller»)
+	var pads := _pads(region, city_gps)
+	for ev in out:
+		_clear_start(ev, pads)
 	# sólo los que corren enteros por sectores abiertos (game/data/sectors.json): nada sobre una calle cortada
 	var ok: Array = []
 	for ev in out:
@@ -41,6 +45,71 @@ static func build(region, city_gps = null) -> Array:
 		if good and Sectors.is_open(pts[pts.size() - 1]):
 			ok.append(ev)
 	return ok
+
+## Los lugares donde el auto puede «entrar» o frenar (círculos de taller, concesionario, estación, gomería, peaje): una carrera no puede largar encima
+const PAD_MIN_D := 100.0 # metros de la largada a cualquiera de esos lugares
+
+static func _pads(region, city_gps) -> Array:
+	var out: Array = []
+	if city_gps != null:
+		for p in city_gps.city.pois:
+			out.append(p["front"] as Vector2)
+			out.append(p["pos"] as Vector2)
+	if region != null:
+		for p in region.pois:
+			out.append(Vector2(float(p["x"]), float(p["z"])))
+		for t in region.tolls:
+			out.append(Vector2(float(t["x"]), float(t["z"])))
+	return out
+
+static func _pad_dist(q: Vector2, pads: Array) -> float:
+	var best := 1e18
+	for pd in pads:
+		best = minf(best, (pd as Vector2).distance_squared_to(q))
+	return sqrt(best)
+
+## Corre la largada por el recorrido hasta un punto a PAD_MIN_D o más de cualquier lugar de esos (un circuito es un lazo: se rota; un tramo se acorta por adelante).
+## Si no hay ninguno (o quedaría un tramo demasiado corto) se deja como estaba.
+static func _clear_start(ev: Dictionary, pads: Array) -> void:
+	var pts: PackedVector2Array = ev["pts"]
+	if pts.size() < 3 or _pad_dist(pts[0], pads) >= PAD_MIN_D:
+		return
+	var typ := str(ev["type"])
+	if typ == "huida" or typ == "picada":
+		return # (la huida no tiene largada fija; la picada ya sale de una ruta sola)
+	if typ == "circuito":
+		var n := pts.size()
+		if (pts[0] as Vector2).distance_to(pts[n - 1]) < 6.0:
+			n -= 1 # el lazo repite el primer punto al final
+		for k in range(1, n):
+			if _pad_dist(pts[k], pads) >= PAD_MIN_D and _pad_dist(pts[(k + 1) % n], pads) >= PAD_MIN_D:
+				var np := PackedVector2Array()
+				for j in n:
+					np.append(pts[(k + j) % n])
+				np.append(np[0])
+				ev["pts"] = np
+				ev["start"] = np[0]
+				var d := (np[1] - np[0]).normalized()
+				ev["yaw"] = atan2(d.x, d.y)
+				return
+		return
+	# tramo A→B: se acorta por adelante (hasta un tercio)
+	var cum := 0.0
+	var total := float(ev["len"])
+	for k in range(1, pts.size()):
+		cum += pts[k - 1].distance_to(pts[k])
+		if cum > total * 0.33:
+			return
+		if _pad_dist(pts[k], pads) >= PAD_MIN_D:
+			var np2 := pts.slice(k)
+			if np2.size() < 3:
+				return
+			ev["pts"] = np2
+			ev["start"] = np2[0]
+			ev["len"] = maxf(total - cum, 0.0)
+			var d2 := (np2[1] - np2[0]).normalized()
+			ev["yaw"] = atan2(d2.x, d2.y)
+			return
 
 static func _region_events(region, out: Array) -> void:
 	var settle: Array = []

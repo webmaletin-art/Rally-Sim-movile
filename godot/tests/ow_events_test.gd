@@ -119,7 +119,9 @@ func _run() -> void:
 	for i in 8:
 		evs.update(0.2)
 	_check(evs.state == "countdown" and evs.rivals.size() == 3, "frenado en el círculo larga con 3 rivales (%s, %d)" % [evs.state, evs.rivals.size()])
+	_check(evs._closure != null, "al largar se arma el cierre de calles (%d vallas: una ruta de la región casi no tiene calles que salgan; los circuitos de la ciudad sí, en street_closure_test)" % (evs._closure.count if evs._closure != null else -1))
 	_drive(race, pol, evs, me, sprint["pts"], 1.05, 260.0)
+	_check(evs._closure == null, "al terminar se abren las calles otra vez")
 	var got: Array = race.profile.earned
 	print("     sprint %s: %d m, premio %s · %s" % [sprint["id"], int(sprint["len"]), str(got), evs._banner.text.replace("\n", " | ")])
 	_check(not got.is_empty() and str(got[0][1]) == "owev", "terminó el sprint con premio (%s)" % str(got))
