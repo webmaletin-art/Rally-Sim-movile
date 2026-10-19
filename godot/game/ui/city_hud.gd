@@ -44,6 +44,9 @@ var _big: Control
 var _toast_cb: Callable
 var _exit_warned := {}
 var arrive_r := 28.0 # a esta distancia del destino se da por llegado
+var seen_pois := {} # talleres, concesionarios y gomerías que ya pasaste de cerca: sólo esos están en el mapa (se descubren manejando; clave «c:id» o «r:x,z»)
+var _disc_t := 0.0
+const DISCOVER_R := 70.0
 
 func setup(p_track, toast_cb: Callable, p_profile = null) -> void:
 	track = p_track
@@ -54,6 +57,10 @@ func setup(p_track, toast_cb: Callable, p_profile = null) -> void:
 	gps = WorldGps.new(CityGps.new(city), region)
 	if profile != null:
 		refs_on = profile.setting("mapRefs") != false
+		var sp: Variant = profile.setting("poiSeen")
+		if sp is Array:
+			for k in (sp as Array):
+				seen_pois[str(k)] = true
 	if region != null:
 		for i in region.nodes.size():
 			var n: Array = region.nodes[i]
@@ -330,8 +337,8 @@ func _pick(p: Vector2) -> void:
 	var best := -1
 	var bd := 34.0 / mv.scale_px()
 	for i in city.pois.size():
-		if city.pois[i].get("region", false):
-			continue # los de la región se eligen más abajo
+		if city.pois[i].get("region", false) or not poi_known(city.pois[i]):
+			continue # los de la región se eligen más abajo; los talleres que todavía no pasaste no están en el mapa
 		var d: float = (city.pois[i]["pos"] as Vector2).distance_to(w)
 		if d < bd:
 			bd = d
@@ -361,6 +368,8 @@ func _pick(p: Vector2) -> void:
 				rpos = pl["pos"]
 		if mv.view_m() < 14000.0:
 			for pp in region.pois:
+				if not region_poi_known(pp):
+					continue
 				var pv := Vector2(float(pp["x"]), float(pp["z"]))
 				var dd2 := pv.distance_to(w)
 				if dd2 < bd2:
@@ -443,9 +452,49 @@ func _region_street() -> String:
 		txt += " → %s · %s" % [CityNames.t(str(dst[0])), (("%.1f km" % dkm) if dkm >= 1.0 else ("%d m" % int(round(float(dst[1]) / 10.0) * 10.0)))]
 	return txt
 
+## ¿Este lugar ya está en el mapa? Las estaciones de servicio, los peajes y las ciudades siempre; los talleres, concesionarios y gomerías, después de pasar de cerca
+## (pedido del dueño, 19/10/2026: «si cruzo por el taller, ya se me registra en el mapa; no hace falta que me muestre todo de entrada»)
+func poi_known(p: Dictionary) -> bool:
+	return str(p.get("shop", "")) == "" or seen_pois.has("c:" + str(p["id"]))
+
+func region_poi_known(p: Dictionary) -> bool:
+	return str(p.get("kind", "")) != "tires" or seen_pois.has(_rkey(p))
+
+static func _rkey(p: Dictionary) -> String:
+	return "r:%d,%d" % [int(float(p["x"])), int(float(p["z"]))]
+
+## Cada medio segundo: ¿pasaste a menos de DISCOVER_R de un taller, concesionario o gomería que no conocías? Queda en el mapa, en silencio (sin carteles).
+func _discover() -> void:
+	var found := false
+	for p in city.pois:
+		if str(p.get("shop", "")) == "" or p.get("region", false) or poi_known(p):
+			continue
+		if (p["pos"] as Vector2).distance_to(car_pos) < DISCOVER_R:
+			seen_pois["c:" + str(p["id"])] = true
+			found = true
+	if region != null:
+		for p in region.pois:
+			if str(p["kind"]) != "tires" or region_poi_known(p):
+				continue
+			if absf(float(p["x"]) - car_pos.x) < DISCOVER_R and absf(float(p["z"]) - car_pos.y) < DISCOVER_R and Vector2(float(p["x"]), float(p["z"])).distance_to(car_pos) < DISCOVER_R:
+				seen_pois[_rkey(p)] = true
+				found = true
+	if found:
+		_save_seen()
+		_mini.queue_redraw()
+		(_big.get_node("map") as Control).queue_redraw()
+
+func _save_seen() -> void:
+	if profile != null and profile.has_method("set_setting"):
+		profile.set_setting("poiSeen", seen_pois.keys())
+
 func update_hud(dt: float, car) -> void:
 	car_pos = Vector2(car.phys.px, car.phys.pz)
 	heading = car.phys.yaw
+	_disc_t += dt
+	if _disc_t > 0.5:
+		_disc_t = 0.0
+		_discover()
 	_t += dt
 	if _t < 0.06:
 		return
@@ -624,6 +673,8 @@ class MapView extends Control:
 				draw_string(f, sp + Vector2(rad + 5.0, 6.0), nm, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
 		if vm < 14000.0:
 			for p in hud.region.pois:
+				if not hud.region_poi_known(p):
+					continue
 				var sp2: Vector2 = xf * Vector2(float(p["x"]), float(p["z"]))
 				if not rect.has_point(sp2):
 					continue
@@ -722,7 +773,7 @@ class MapView extends Control:
 		if hud.region != null and hud.refs_on:
 			_draw_region_places(xf, f)
 		for p in (hud.city.pois if (hud.refs_on and (not big or view_m() < 6000.0)) else []):
-			if p.get("region", false):
+			if p.get("region", false) or not hud.poi_known(p):
 				continue
 			var sp: Vector2 = xf * (p["pos"] as Vector2)
 			if not Rect2(Vector2.ZERO, sz).grow(12.0).has_point(sp):

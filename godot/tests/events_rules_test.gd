@@ -32,7 +32,13 @@ class FakePolice extends RefCounted:
 	var stats := {"escapes": 0, "arrests": 0}
 
 class FakeControls extends RefCounted:
-	var badge_n := 0
+	var badge_dot := false
+	func queue_redraw() -> void:
+		pass
+
+class FakeOn extends RefCounted:
+	func is_account() -> bool:
+		return true
 
 class FakeRace extends Node:
 	var police = FakePolice.new()
@@ -42,6 +48,7 @@ class FakeRace extends Node:
 	var track = null
 	var cars: Array = [1]
 	var controls = FakeControls.new()
+	var profile = null
 
 func _events_ui() -> void:
 	var off := FakeRace.new()
@@ -52,7 +59,7 @@ func _events_ui() -> void:
 	_check(mo.available() and not mo.events_on(), "mundo abierto OFFLINE: escapes y ayuda sí, eventos NO")
 	_check(mo.event_cards().is_empty(), "offline: la pausa no tiene tarjetas de eventos")
 	var pb := mo.pause_buttons()
-	_check(pb.size() == 1 and str(pb[0][1]) == "ayuda", "la pausa ya no tiene el botón que tiraba el cartel de eventos (sólo AYUDA)")
+	_check(pb.is_empty(), "la pausa ya no tiene botones que tiren carteles (los eventos tienen su pantalla; la ayuda va adentro)")
 	var onr := FakeRace.new()
 	onr.cfg = {"car": "hatch", "events": true}
 	root.add_child(onr)
@@ -75,16 +82,34 @@ func _events_ui() -> void:
 		var l: String = mn._event_tick(e, 0.1, now)
 		if l != "":
 			lines.append(l)
-	_check(lines.is_empty() and not mn._banner.visible, "en la pantalla de juego: ni carteles ni renglones de eventos que no estás jugando (%s)" % str(lines))
+	_check(lines.is_empty(), "en la pantalla de juego: ni carteles ni renglones de eventos que no estás jugando (%s)" % str(lines))
 	var cards := mn.event_cards()
 	_check(cards.size() == 2 and bool(cards[0]["live"]) and int(cards[0]["id"]) == 2 and not bool(cards[1]["live"]), "pausa → EVENTOS: 2 tarjetas, primero la que está en vivo (la terminada no aparece)")
 	_check(str(cards[0]["car"]) == "gt3" and CityModes.prize_car(mn.events[2]) == "torito" and str(cards[1]["car"]) == "", "la tarjeta lleva el auto del premio para la miniatura (1.º puesto, cacería) y nada si es plata")
-	_check(mn.live_count() == 1, "la marca del botón de pausa cuenta 1 evento en vivo")
+	_check(not mn.has_unseen(), "sin cuenta conectada no hay puntito de notificación")
+	onr.online = FakeOn.new()
+	_check(mn.has_unseen() and bool(cards[0]["new"]) and bool(cards[1]["new"]), "con cuenta: hay eventos que no viste → puntito y tarjetas «nuevas»")
 	mn._badge()
-	_check(int(onr.controls.badge_n) == 0, "sin cuenta conectada la marca no aparece")
+	_check(bool(onr.controls.badge_dot), "el puntito se enciende en el botón de pausa (sin números ni letras)")
+	mn.mark_seen()
+	_check(not mn.has_unseen() and not bool(onr.controls.badge_dot) and not bool(mn.event_cards()[0]["new"]), "al abrir la pantalla de eventos se apaga el puntito")
+	mn.events.append({"id": 9, "kind": "drift", "title": "Desafío de drift", "starts": now - 5, "ends": now + 900, "reward": {"credits": 1000}})
+	_check(mn.has_unseen(), "un evento nuevo vuelve a encender el puntito")
+	mn.mark_seen()
+	mn.events[0]["starts"] = now - 1 # el que era «próximo» empieza: se avisa de nuevo
+	_check(mn.has_unseen(), "uno que recién empezó también avisa")
+	mn.mark_seen()
+	mn._note("📢 Fulano ganó «Cacería»")
+	_check(mn.has_unseen() and mn.notes.size() == 1, "una novedad (quién ganó) enciende el puntito y queda en NOVEDADES, sin cartel")
+	mn.mark_seen()
+	var ev9: Dictionary = mn.events[3]
+	_check(mn._event_tick(ev9, 0.1, now) == "" and bool(mn.event_cards()[0].has("go_label")), "el desafío en vivo no escribe nada en pantalla")
+	var msg: String = mn.event_cancel(9)
+	_check(msg != "" and mn._dismissed.has(9) and mn._event_tick(ev9, 0.1, now) == "", "SALIR DEL EVENTO: queda quieto, sin renglón ni intento")
+	_check(CityModes.prize_list(mn.events[1]).size() == 2 and str(CityModes.prize_list(mn.events[1])[0]["car"]) == "gt3", "los premios del 1.º, 2.º y 3.º van uno por renglón, con el auto del 1.º")
 	mo.events = mn.events.duplicate()
 	mo._badge()
-	_check(int(off.controls.badge_n) == 0, "offline: nunca hay marca de eventos")
+	_check(not bool(off.controls.badge_dot) and mo.event_cards().is_empty(), "offline: nunca hay puntito ni tarjetas")
 
 func _init() -> void:
 	# 1) cacería: la de siempre igual que antes; la accesible sin empujón y con errores

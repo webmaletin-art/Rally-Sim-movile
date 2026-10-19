@@ -181,8 +181,8 @@ func _discover(ev: Dictionary) -> void:
 	var extra := ""
 	if ev.has("gold"):
 		extra = " · " + Tr.t("oro %s") % _fmt(float(ev["gold"]))
-	_show_banner("%s %s\n%s · %s%s · %s\n%s" % [ev["icon"], Tr.t("¡CARRERA DESCUBIERTA!"), _title(ev), _km(float(ev["len"])) if float(ev["len"]) > 0.0 else Tr.t("%d s") % int(ev.get("time", 90.0)),
-		extra, Tr.t("premio $%d") % int(ev["reward"]), Tr.t("Frená en el círculo de largada para correr")], 5.5)
+	_show_banner("%s %s\n%s · %s%s · %s" % [ev["icon"], Tr.t("¡CARRERA DESCUBIERTA!"), _title(ev), _km(float(ev["len"])) if float(ev["len"]) > 0.0 else Tr.t("%d s") % int(ev.get("time", 90.0)),
+		extra, Tr.t("premio $%d") % int(ev["reward"])], 3.5)
 	CrashLog.mark("evento", "descubierto %s" % ev["id"])
 
 # ───────────────────────── largada
@@ -646,20 +646,29 @@ func _gate_update(typ: String) -> void:
 func _build_hud() -> void:
 	_hud = CanvasLayer.new()
 	_hud.layer = 3
-	var box := VBoxContainer.new()
-	box.anchor_left = 0.5
-	box.anchor_right = 0.5
-	box.offset_left = -300.0
-	box.offset_right = 300.0
-	box.offset_top = 132.0
+	# (19/10/2026) un cuadrito chico con el cronómetro de la carrera, arriba al centro bajo el velocímetro; antes era una frase de 22 px con contorno
+	var box := PanelContainer.new()
+	box.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	box.offset_left = -170.0
+	box.offset_right = 170.0
+	box.offset_top = 124.0
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var psb := StyleBoxFlat.new()
+	psb.bg_color = Color(0.04, 0.05, 0.08, 0.78)
+	psb.set_corner_radius_all(10)
+	psb.border_color = Color(1.0, 0.72, 0.2, 0.7)
+	psb.set_border_width_all(1)
+	psb.content_margin_left = 10.0
+	psb.content_margin_right = 10.0
+	psb.content_margin_top = 4.0
+	psb.content_margin_bottom = 4.0
+	box.add_theme_stylebox_override("panel", psb)
 	_hud.add_child(box)
 	_hud_l = Label.new()
 	_hud_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hud_l.add_theme_font_size_override("font_size", 22)
-	_hud_l.add_theme_color_override("font_color", Color(1.0, 0.85, 0.35))
-	_hud_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	_hud_l.add_theme_constant_override("outline_size", 6)
+	_hud_l.add_theme_font_size_override("font_size", 17)
+	_hud_l.add_theme_color_override("font_color", Color(1.0, 0.92, 0.55))
+	_hud_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(_hud_l)
 	_hud.visible = false
 	race.add_child(_hud)
@@ -670,14 +679,16 @@ func _build_hud() -> void:
 	_banner.anchor_right = 0.5
 	_banner.anchor_top = 0.5
 	_banner.anchor_bottom = 0.5
-	_banner.offset_left = -330.0
-	_banner.offset_right = 330.0
-	_banner.offset_top = -120.0
-	_banner.offset_bottom = 40.0
+	_banner.offset_left = -260.0 # (arriba, chico y corto: el resultado de una carrera no tapa el camino)
+	_banner.offset_right = 260.0
+	_banner.anchor_top = 0.0
+	_banner.anchor_bottom = 0.0
+	_banner.offset_top = 64.0
+	_banner.offset_bottom = 150.0
 	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_banner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_banner.add_theme_font_size_override("font_size", 24)
+	_banner.add_theme_font_size_override("font_size", 19)
 	_banner.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 	_banner.add_theme_constant_override("outline_size", 8)
 	var sb := StyleBoxFlat.new()
@@ -694,7 +705,7 @@ func _show_banner(txt: String, secs: float) -> void:
 	if _banner == null:
 		return
 	_banner.text = txt
-	_banner_t = secs
+	_banner_t = minf(secs, 3.5)
 	_banner.visible = true
 
 func _toast(s: String) -> void:

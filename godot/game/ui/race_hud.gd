@@ -10,6 +10,7 @@ const LabPanel := preload("res://game/ui/lab_panel.gd")
 const CityHud := preload("res://game/ui/city_hud.gd")
 const NetHud := preload("res://game/ui/net_hud.gd")
 const OnlinePanel := preload("res://game/ui/online_panel.gd")
+const EventsUi := preload("res://game/ui/events_ui.gd")
 
 signal resume_pressed
 signal restart_pressed
@@ -17,7 +18,13 @@ signal back_to_road_pressed
 signal mode_pressed(mode: String) # modos del mundo abierto (city_modes.gd)
 var modes_fn: Callable # [[texto, modo]] de los modos que se pueden prender acá
 var events_fn: Callable # tarjetas de los eventos online (city_modes.event_cards) o null si acá no hay eventos (mundo offline)
-var event_go_fn: Callable # «📍 IR»: marca en el GPS dónde se juega un evento (city_modes.event_go)
+var event_go_fn: Callable # «IR AL EVENTO»: marca en el GPS dónde se juega un evento (city_modes.event_go)
+var event_cancel_fn: Callable # «SALIR DEL EVENTO» (city_modes.event_cancel)
+var notes_fn: Callable # novedades de los eventos (city_modes.notes)
+var seen_fn: Callable # se abrió la pantalla de eventos (city_modes.mark_seen)
+var unseen_fn: Callable # ¿hay algo nuevo? (city_modes.has_unseen): puntito rojo en el botón EVENTOS de la pausa
+var help_fn: Callable # texto de la ayuda del mundo abierto
+var events_ui # ui/events_ui.gd: la pantalla de eventos (a pantalla completa, se arma la primera vez)
 signal quit_pressed
 signal tests_pressed
 signal camera_pressed
@@ -438,16 +445,27 @@ func _fill_pause() -> void:
 		var road_b := Kit.button("📍  VOLVER A LA CALLE", func(): back_to_road_pressed.emit(), false, 19, sz)
 		road_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		pause_col.add_child(road_b)
-	if city_hud != null and events_fn.is_valid(): # eventos del modo online: su propia página (nada de carteles en la pantalla de juego)
-		var cards: Variant = events_fn.call()
-		if cards is Array:
-			var live := 0
-			for c in cards:
-				if bool(c["live"]) and not bool(c["done"]):
-					live += 1
-			var ev_b := Kit.button(("📅  " + Tr.t("EVENTOS")) + ((" · " + Tr.t("%d en vivo") % live) if live > 0 else ""), func(): open_page("eventos"), live > 0, 19, sz)
-			ev_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			pause_col.add_child(ev_b)
+	if city_hud != null and events_fn.is_valid() and events_fn.call() is Array: # eventos del modo online: su pantalla propia (nada de carteles en la pantalla de juego)
+		var live := 0
+		for c in (events_fn.call() as Array):
+			if bool(c["live"]) and not bool(c["done"]):
+				live += 1
+		var ev_b := Kit.button("📅  " + Tr.t("EVENTOS") + ((" · " + Tr.t("%d en vivo") % live) if live > 0 else ""), func(): open_events(), live > 0, 19, sz)
+		ev_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pause_col.add_child(ev_b)
+		if unseen_fn.is_valid() and bool(unseen_fn.call()):
+			var dot := Control.new() # puntito rojo de «hay algo nuevo»
+			dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			dot.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+			dot.position = Vector2(-26, 8)
+			dot.draw.connect(func() -> void:
+				dot.draw_circle(Vector2(8, 8), 8.0, Color(1, 1, 1, 0.95))
+				dot.draw_circle(Vector2(8, 8), 6.0, Color(0.95, 0.16, 0.2)))
+			ev_b.add_child(dot)
+	if city_hud != null and help_fn.is_valid(): # la ayuda del mundo abierto va acá, no como cartel en la pantalla
+		var hb := Kit.button("❓  " + Tr.t("AYUDA"), func(): open_page("ayuda"), false, 19, sz)
+		hb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pause_col.add_child(hb)
 	if city_hud != null and modes_fn.is_valid(): # modos contra la IA: Fugitivo y Caza recompensas
 		var mb: Array = modes_fn.call()
 		if mb.size() >= 2:
@@ -476,6 +494,8 @@ func set_cine(on: bool) -> void:
 		cine_btn.text = "🎬  SALIR DEL MODO CINE" if on else "🎬  MODO CINE"
 
 func set_paused(on: bool) -> void:
+	if events_ui != null and events_ui.visible:
+		events_ui.visible = false # (se pausó o se siguió con la pantalla de eventos abierta: se cierra)
 	if on:
 		_fill_pause()
 		big_t = 0.0
@@ -576,53 +596,49 @@ func _opts_go(name: String, arg, push := true) -> void:
 		_cam_page()
 	elif name == "lab":
 		_lab_page()
-	elif name == "eventos":
-		_events_page()
+	elif name == "ayuda":
+		_help_page()
 	else:
 		opts.options_page(opts_body, arg)
 
 
 # ───────────────────────── eventos (sólo modo online) ─────────────────────────
-## Pedido del dueño (19/10/2026): «los eventos van en la pausa, como en cualquier juego de carreras: pauso, miro los eventos y si quiero participo».
-## Una tarjeta por evento (icono, nombre, cuándo, premio con la miniatura del auto, cómo vas) y «📍 IR» para marcar en el GPS dónde se juega.
-func _events_page() -> void:
-	opts_title.text = Tr.t("EVENTOS")
-	var cards: Variant = events_fn.call() if events_fn.is_valid() else null
-	if not (cards is Array) or (cards as Array).is_empty():
-		opts_body.add_child(Kit.wrap(Tr.t("Ahora no hay eventos: volvé a mirar en un rato."), 16, Kit.MUTED, 300))
-		return
-	for c in cards:
-		var card := Kit.panel(10)
-		opts_body.add_child(card)
-		var row := Kit.hbox(10)
-		card.add_child(row)
-		var tpath := "res://game/ui/thumbs/%s.png" % str(c["car"])
-		if str(c["car"]) != "" and ResourceLoader.exists(tpath):
-			var tr_ := TextureRect.new()
-			tr_.texture = load(tpath)
-			tr_.custom_minimum_size = Vector2(120, 68)
-			tr_.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tr_.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			row.add_child(tr_)
-		else:
-			row.add_child(Kit.label(str(c["icon"]), 40, Kit.ACCENT))
-		var col := Kit.vbox(2)
-		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(col)
-		col.add_child(Kit.label(str(c["icon"]) + "  " + str(c["title"]), 19, Kit.ACCENT))
-		col.add_child(Kit.label(("🔴 " if bool(c["live"]) else "🕒 ") + str(c["when"]) + ("  ·  ✔ " + Tr.t("ya lo hiciste") if bool(c["done"]) else ""), 14, Kit.GREEN if bool(c["live"]) else Kit.MUTED))
-		if str(c["descr"]) != "":
-			col.add_child(Kit.wrap(str(c["descr"]), 13, Kit.TEXT, 260))
-		if str(c["reward"]) != "":
-			col.add_child(Kit.wrap("🎁 " + str(c["reward"]), 13, Kit.GOLD, 260))
-		if str(c["standing"]) != "":
-			col.add_child(Kit.label(str(c["standing"]), 13, Kit.TEXT))
-		if bool(c["go"]) and event_go_fn.is_valid():
-			var ev_id := int(c["id"])
-			col.add_child(Kit.button("📍  " + Tr.t("IR (marcar en el GPS)"), func() -> void:
-				var msg: String = event_go_fn.call(ev_id)
-				toast(msg)
-				resume_pressed.emit(), false, 15, Vector2(0, 40)))
+## La pantalla EVENTOS (ui/events_ui.gd) a pantalla completa: tarjetas con imagen, detalle, IR AL EVENTO / SALIR DEL EVENTO, novedades y ayuda.
+## Pedido del dueño (19/10/2026): nada de eventos como letras en la pantalla de juego; se mira acá, desde la pausa.
+func open_events(tab := "eventos") -> void:
+	if events_ui == null:
+		events_ui = EventsUi.new()
+		events_ui.cards_fn = func() -> Array:
+			var r: Variant = events_fn.call() if events_fn.is_valid() else []
+			return r if r is Array else []
+		events_ui.notes_fn = func() -> Array: return (notes_fn.call() if notes_fn.is_valid() else [])
+		events_ui.seen_fn = func() -> void:
+			if seen_fn.is_valid():
+				seen_fn.call()
+		events_ui.help_fn = func() -> String: return str(help_fn.call()) if help_fn.is_valid() else ""
+		events_ui.closed.connect(func() -> void:
+			pause_box.visible = true
+			_fill_pause())
+		events_ui.go_pressed.connect(func(id: int) -> void:
+			var msg: String = str(event_go_fn.call(id)) if event_go_fn.is_valid() else ""
+			if msg == "":
+				events_ui.refresh(Tr.t("Este evento no tiene un lugar fijo: se juega donde estés"))
+				return
+			events_ui.visible = false
+			resume_pressed.emit() # se cierra la pausa y se sigue manejando con el GPS puesto
+			toast(msg))
+		events_ui.cancel_pressed.connect(func(id: int) -> void:
+			var msg: String = str(event_cancel_fn.call(id)) if event_cancel_fn.is_valid() else ""
+			events_ui.refresh(msg))
+		add_child(events_ui)
+	pause_box.visible = false
+	events_ui.open(tab)
+
+## La ayuda del mundo abierto (página de la pausa)
+func _help_page() -> void:
+	opts_title.text = Tr.t("AYUDA")
+	var t: String = str(help_fn.call()) if help_fn.is_valid() else ""
+	opts_body.add_child(Kit.wrap(t.replace("❓ AYUDA\n", ""), 16, Kit.TEXT, 300))
 
 # ───────────────────────── ajuste de cámara ─────────────────────────
 ## Por cada cámara: distancia (más atrás o más adelante), altura, lado y campo de visión. Se guarda en el perfil.

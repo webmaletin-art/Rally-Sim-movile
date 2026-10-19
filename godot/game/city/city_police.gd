@@ -88,8 +88,7 @@ var station_pose: Array = []
 var stats := {"chases": 0, "arrests": 0, "escapes": 0}
 var siren: AudioStreamPlayer3D
 var _hud: CanvasLayer
-var _hud_l: Label
-var _hud_bar: ProgressBar
+var _badge: PoliceBadge # el indicador de la policía: una placa chica arriba a la derecha (no una frase en el medio de la pantalla)
 var online := false
 var group := 1 # jugadores juntos (uno mismo incluido)
 var nearby_fn: Callable # online: posiciones (Vector2) de los otros jugadores conocidos (remote_cars.positions)
@@ -668,31 +667,77 @@ func _build_station() -> void:
 	root.add_child(pole)
 	track.world_node.add_child(root)
 
+## La placa de la policía (19/10/2026, pedido del dueño: «el cartel de policía hacelo más lindito y ponelo arriba a la derecha»): una sirena que parpadea, una palabra
+## y una barra. Tres estados: control adelante (amarillo), te están mirando (la barra sube hasta que arranca la cacería) y persecución (rojo y azul, la barra es el arresto).
+class PoliceBadge extends Control:
+	var kind := "" # "", "armed", "rage", "chase"
+	var title := ""
+	var sub := ""
+	var val := 0.0
+	var t := 0.0
+
+	func _init() -> void:
+		custom_minimum_size = Vector2(196, 46)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		offset_left = -210.0
+		offset_right = -14.0
+		offset_top = 58.0
+		offset_bottom = 104.0
+
+	func _process(dt: float) -> void:
+		if is_visible_in_tree() and kind == "chase":
+			t += dt
+			queue_redraw()
+
+	func _draw() -> void:
+		var f := ThemeDB.fallback_font
+		var flash := int(t / 0.3) % 2 == 0
+		var col := Color(1.0, 0.82, 0.25)
+		if kind == "rage":
+			col = Color(1.0, 0.82, 0.25).lerp(Color(1.0, 0.4, 0.3), clampf(val, 0.0, 1.0))
+		elif kind == "chase":
+			col = Color(1.0, 0.3, 0.3) if flash else Color(0.4, 0.6, 1.0)
+		var r := Rect2(Vector2.ZERO, size)
+		draw_style_box(_box(Color(0.04, 0.05, 0.08, 0.82), col.darkened(0.15)), r)
+		# sirena: una barra de luces con dos focos
+		var ic := Vector2(24.0, 21.0)
+		draw_rect(Rect2(ic - Vector2(14.0, 3.0), Vector2(28.0, 6.0)), Color(0.15, 0.17, 0.22))
+		var c1 := Color(1.0, 0.25, 0.25)
+		var c2 := Color(0.35, 0.55, 1.0)
+		if kind != "chase":
+			c1 = col
+			c2 = col.darkened(0.5)
+		elif not flash:
+			var tmp := c1
+			c1 = c2
+			c2 = tmp
+		draw_circle(ic + Vector2(-7.0, -5.0), 6.5, c1.darkened(0.55))
+		draw_circle(ic + Vector2(-7.0, -5.0), 5.0, c1)
+		draw_circle(ic + Vector2(7.0, -5.0), 6.5, c2.darkened(0.55))
+		draw_circle(ic + Vector2(7.0, -5.0), 5.0, c2)
+		draw_string(f, Vector2(48.0, 20.0), title, HORIZONTAL_ALIGNMENT_LEFT, size.x - 56.0, 15, Color.WHITE)
+		if sub != "":
+			draw_string(f, Vector2(48.0, 34.0), sub, HORIZONTAL_ALIGNMENT_LEFT, size.x - 56.0, 11, Color(0.75, 0.8, 0.88))
+		# barra
+		var bar := Rect2(Vector2(10.0, size.y - 8.0), Vector2(size.x - 20.0, 4.0))
+		draw_rect(bar, Color(1, 1, 1, 0.12))
+		if kind != "armed":
+			draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(val, 0.0, 1.0), bar.size.y)), col)
+
+	static func _box(bg: Color, border: Color) -> StyleBoxFlat:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = bg
+		sb.set_corner_radius_all(11)
+		sb.border_color = border
+		sb.set_border_width_all(2)
+		return sb
+
 func _build_hud() -> void:
 	_hud = CanvasLayer.new()
 	_hud.layer = 3
-	var box := VBoxContainer.new()
-	box.anchor_left = 0.5
-	box.anchor_right = 0.5
-	box.offset_left = -230.0
-	box.offset_right = 230.0
-	box.offset_top = 132.0 # (debajo del velocímetro de arriba al centro)
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_hud.add_child(box)
-	_hud_l = Label.new()
-	_hud_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_hud_l.add_theme_font_size_override("font_size", 20)
-	_hud_l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	_hud_l.add_theme_constant_override("outline_size", 6)
-	box.add_child(_hud_l)
-	_hud_bar = ProgressBar.new()
-	_hud_bar.custom_minimum_size = Vector2(0, 10)
-	_hud_bar.max_value = 1.0
-	_hud_bar.show_percentage = false
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = Color(0.95, 0.2, 0.2)
-	_hud_bar.add_theme_stylebox_override("fill", fill)
-	box.add_child(_hud_bar)
+	_badge = PoliceBadge.new()
+	_hud.add_child(_badge)
 	_hud.visible = false
 	race.add_child(_hud)
 
@@ -702,25 +747,26 @@ func _hud_update() -> void:
 	match state:
 		"armed":
 			_hud.visible = true
-			_hud_bar.visible = false
-			_hud_l.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3))
-			_hud_l.text = Tr.t("⚠ CONTROL POLICIAL ADELANTE · %d m") % int(Vector2(race.cars[0].phys.px, race.cars[0].phys.pz).distance_to(checkpoints[cp]["p"])) \
-				+ ("" if not online else "\n" + (Tr.t("¡Vienen en grupo: la policía no deja pasar a nadie!") if implacable() else Tr.t("Pasá a menos de %d km/h o te persiguen") % int(SLOW_KMH)))
+			_badge.kind = "armed"
+			_badge.title = Tr.t("CONTROL POLICIAL")
+			_badge.val = 0.0
+			var d := int(Vector2(race.cars[0].phys.px, race.cars[0].phys.pz).distance_to(checkpoints[cp]["p"]))
+			_badge.sub = Tr.t("a %d m") % d if not online else (Tr.t("¡en grupo: no dejan pasar!") if implacable() else Tr.t("pasá a menos de %d km/h") % int(SLOW_KMH))
 		"chase":
 			_hud.visible = true
-			_hud_bar.visible = true
-			_hud_bar.value = bust
-			_hud_l.add_theme_color_override("font_color", Color(1.0, 0.4, 0.35) if int(_flash / 0.3) % 2 == 0 else Color(0.5, 0.65, 1.0))
-			var esc := "" if lose_t <= 0.5 else ("  ·  " + Tr.t("escapando %d/%d s") % [int(lose_t), int(ESCAPE_T)])
-			_hud_l.text = Tr.t("🚨 PERSECUCIÓN · %d 🚓 · nivel %d") % [units.size(), heat + 1] + esc
+			_badge.kind = "chase"
+			_badge.title = Tr.t("PERSECUCIÓN")
+			_badge.val = bust
+			_badge.sub = Tr.t("%d patrulleros · nivel %d") % [units.size(), heat + 1] + ("" if lose_t <= 0.5 else "  ·  " + Tr.t("escapando %d/%d") % [int(lose_t), int(ESCAPE_T)])
 		_:
-			# desmadre: la barra aparece cuando la policía ya te está mirando
+			# desmadre: la placa aparece cuando la policía ya te está mirando
 			_hud.visible = rage > 0.3
 			if _hud.visible:
-				_hud_bar.visible = true
-				_hud_bar.value = minf(rage, 1.0)
-				_hud_l.add_theme_color_override("font_color", Color(1.0, 0.85, 0.3) if rage < 0.8 else Color(1.0, 0.45, 0.35))
-				_hud_l.text = Tr.t("👮 LA POLICÍA TE ESTÁ MIRANDO")
+				_badge.kind = "rage"
+				_badge.title = Tr.t("TE ESTÁN MIRANDO")
+				_badge.sub = ""
+				_badge.val = minf(rage, 1.0)
+	_badge.queue_redraw()
 
 func _toast(t: String) -> void:
 	if race.race_hud != null:

@@ -323,6 +323,13 @@ func _ready() -> void:
 		race_hud.modes_fn = func() -> Array: return modes.pause_buttons() if modes != null else []
 		race_hud.events_fn = func() -> Variant: return modes.event_cards() if modes != null and modes.events_on() else null # (sólo en el modo online)
 		race_hud.event_go_fn = func(id: int) -> String: return modes.event_go(id) if modes != null else ""
+		race_hud.event_cancel_fn = func(id: int) -> String: return modes.event_cancel(id) if modes != null else ""
+		race_hud.notes_fn = func() -> Array: return modes.notes if modes != null else []
+		race_hud.seen_fn = func() -> void:
+			if modes != null:
+				modes.mark_seen()
+		race_hud.unseen_fn = func() -> bool: return modes != null and modes.has_unseen()
+		race_hud.help_fn = func() -> String: return modes.help_text() if modes != null and modes.available() else ""
 		race_hud.mode_pressed.connect(func(m: String) -> void:
 			_toggle_pause() # se cierra la pausa y arranca (o termina) el modo
 			if modes != null:

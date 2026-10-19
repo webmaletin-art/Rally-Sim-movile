@@ -210,70 +210,54 @@ func _apply_weather() -> void:
 # Ahora el haz se arma desde el paragolpes (z = 0 del haz = la trompa de cada auto), es más largo (42 m), más ancho y más fuerte, y race.gd lo
 # acomoda (place_beam) DESPUÉS de mover los autos.
 const BEAM_N := 8 # alturas del piso cada 6 m (0 … 42 m)
+## 19/10/2026 (dueño: «las luces no alumbran bien por los bordes de la calle»): el haz eran dos barras blancas de borde duro (triángulos con color por vértice) y nada a los costados.
+## Ahora es una grilla plana con un sombreador que calcula la luz de cada faro: un charco que nace en el paragolpes, es más fuerte a unos metros, se abre con la distancia hasta
+## cubrir el ancho de la calle y se apaga suave hacia el fondo y hacia los costados (sin bordes duros). Sigue siendo un solo mesh aditivo (sin luces dinámicas ni sombras).
 func _build_beam() -> void:
+	var cols := 25 # de −12 a +12 m (cada 1 m)
+	var rows := 22 # de 0 a 42 m (cada 2 m)
 	var v := PackedVector3Array()
-	var c := PackedColorArray()
-	# dos conos de luz por faro, uno dentro del otro: el de afuera es ancho y suave (se apaga hacia el borde y hacia el fondo) y el de adentro, más angosto, concentra la luz;
-	# más un charco de luz delante del paragolpes. Todo es un solo mesh aditivo plano (sin luces dinámicas, sin sombras).
-	for side_v in [-0.7, 0.7]:
-		var side: float = side_v
-		for layer in 2:
-			var w0 := 0.45 if layer == 0 else 0.25 # medio ancho cerca del faro
-			var w1 := 5.2 if layer == 0 else 2.2 # medio ancho al final
-			var zf := 42.0 if layer == 0 else 30.0
-			var ow := side * (2.8 if layer == 0 else 1.6) # el haz se abre un poco hacia afuera
-			var a_n := 0.75 if layer == 0 else 0.8
-			var near_a := Vector3(side - w0, 0.0, 0.15)
-			var near_b := Vector3(side + w0, 0.0, 0.15)
-			var mid_a := Vector3(side + ow * 0.35 - (w0 + (w1 - w0) * 0.4), 0.0, zf * 0.42)
-			var mid_b := Vector3(side + ow * 0.35 + (w0 + (w1 - w0) * 0.4), 0.0, zf * 0.42)
-			var far_a := Vector3(side + ow - w1, 0.0, zf)
-			var far_b := Vector3(side + ow + w1, 0.0, zf)
-			var cn := Color(1, 0.96, 0.84, a_n * 0.55 if layer == 0 else a_n)
-			var cm := Color(1, 0.96, 0.84, a_n * 0.45)
-			var cf := Color(1, 0.96, 0.84, 0.0)
-			# bordes de afuera transparentes: el haz se difumina hacia los costados
-			var cn_e := Color(1, 0.96, 0.84, 0.0)
-			var cm_e := Color(1, 0.96, 0.84, 0.0)
-			v.append_array(PackedVector3Array([near_a, near_b, (mid_a + mid_b) * 0.5, near_a, (mid_a + mid_b) * 0.5, mid_a, near_b, mid_b, (mid_a + mid_b) * 0.5,
-				mid_a, (mid_a + mid_b) * 0.5, (far_a + far_b) * 0.5, mid_a, (far_a + far_b) * 0.5, far_a, mid_b, far_b, (far_a + far_b) * 0.5,
-				(mid_a + mid_b) * 0.5, mid_b, (far_a + far_b) * 0.5]))
-			c.append_array(PackedColorArray([cn, cn, cm, cn_e, cm, cm_e, cn_e, cm_e, cm,
-				cm_e, cm, cf, cm_e, cf, cf, cm_e, cf, cf,
-				cm, cm_e, cf]))
-	# charco delante del paragolpes (la luz que cae sobre el piso justo adelante de los faros): de 0,5 a 7,5 m
-	for k in 12:
-		var a0 := TAU * float(k) / 12.0
-		var a1 := TAU * float(k + 1) / 12.0
-		v.append(Vector3(0.0, 0.0, 4.0))
-		v.append(Vector3(cos(a0) * 3.6, 0.0, 4.0 + sin(a0) * 3.5))
-		v.append(Vector3(cos(a1) * 3.6, 0.0, 4.0 + sin(a1) * 3.5))
-		c.append(Color(1, 0.95, 0.82, 0.38))
-		c.append(Color(1, 0.95, 0.82, 0.0))
-		c.append(Color(1, 0.95, 0.82, 0.0))
+	var idx := PackedInt32Array()
+	for r in rows + 1:
+		for c in cols:
+			v.append(Vector3(float(c - (cols - 1) / 2), 0.0, float(r) * 2.0))
+	for r in rows:
+		for c in cols - 1:
+			var a := r * cols + c
+			idx.append_array(PackedInt32Array([a, a + 1, a + cols, a + 1, a + cols + 1, a + cols]))
 	var m := ArrayMesh.new()
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = v
-	arr[Mesh.ARRAY_COLOR] = c
+	arr[Mesh.ARRAY_INDEX] = idx
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	_beam_mat = ShaderMaterial.new()
 	var sh := Shader.new()
-	# el haz se apoya en el terreno: la altura del piso a 0, 6, 12… 42 m adelante llega por uniforme y el vértice se sube o baja (antes quedaba plano y se metía bajo el asfalto en las subidas)
+	# el haz se apoya en el terreno: la altura del piso a 0, 6, 12… 42 m adelante llega por uniforme y el vértice se sube o baja (si no se metía bajo el asfalto en las subidas)
 	sh.code = """shader_type spatial;
 render_mode unshaded, blend_add, cull_disabled, depth_draw_never;
 uniform float hs[8];
 uniform float k = 1.0;
-varying vec4 vc;
+varying vec2 lp;
 void vertex() {
+	lp = VERTEX.xz;
 	float zf = clamp(VERTEX.z / 6.0, 0.0, 6.999);
 	int i = int(zf);
 	VERTEX.y += mix(hs[i], hs[i + 1], zf - float(i)) + 0.12;
-	vc = COLOR;
+}
+float lobe(float x, float cx, float hw) {
+	float t = (x - cx) / hw;
+	return exp(-t * t * 1.3);
 }
 void fragment() {
-	ALBEDO = vc.rgb;
-	ALPHA = vc.a * k;
+	float z = max(lp.y, 0.0);
+	float core = lobe(lp.x, -0.7, 0.8 + 0.11 * z) + lobe(lp.x, 0.7, 0.8 + 0.11 * z); // cada faro: un cono angosto que se abre
+	float skirt = lobe(lp.x, -0.7, 4.4 + 0.42 * z) + lobe(lp.x, 0.7, 4.4 + 0.42 * z); // y una falda ancha: la luz llega a los bordes de la calle
+	float along = smoothstep(0.0, 5.5, z) * pow(1.0 - clamp(z / 42.0, 0.0, 1.0), 1.05); // nace en el paragolpes, se apaga hacia el fondo
+	float edge = 1.0 - smoothstep(9.0, 12.0, abs(lp.x)); // y hacia los costados de la grilla
+	float I = (core * 0.20 + skirt * 0.30) * along * edge;
+	ALBEDO = vec3(1.0, 0.95, 0.82) * I;
+	ALPHA = k;
 }
 """
 	_beam_mat.shader = sh

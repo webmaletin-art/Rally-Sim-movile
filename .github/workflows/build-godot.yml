@@ -70,6 +70,7 @@ jobs:
           timeout -k 5 200 godot --headless --script res://tests/class_records_test.gd
           timeout -k 5 60 godot --headless --script res://tests/progression_rules_test.gd
           timeout -k 5 60 godot --headless --script res://tests/events_rules_test.gd
+          timeout -k 5 60 godot --headless --script res://tests/events_ui_test.gd
           timeout -k 5 600 godot --headless --script res://tests/police_online_test.gd
           timeout -k 5 900 godot --headless --script res://tests/city_modes_test.gd
           timeout -k 5 900 godot --headless --script res://tests/ow_events_test.gd
