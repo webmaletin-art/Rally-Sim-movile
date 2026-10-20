@@ -64,6 +64,7 @@ jobs:
           timeout -k 5 600 godot --headless --script res://tests/scripts_parse_test.gd
           timeout -k 5 120 godot --headless --script res://tests/crash_log_test.gd
           timeout -k 5 600 godot --headless --script res://tests/police_test.gd
+          timeout -k 5 300 godot --headless --script res://tests/police_jurisdiction_test.gd
           timeout -k 5 900 godot --headless --script res://tests/escape_farm_test.gd
           timeout -k 5 300 godot --headless --script res://tests/tune_lock_test.gd
           timeout -k 5 120 godot --headless --script res://tests/toast_queue_test.gd
@@ -113,6 +114,7 @@ jobs:
           timeout -k 5 600 godot --headless --script res://tests/paper_test.gd
           timeout -k 5 600 godot --headless --script res://tests/release_test.gd
           timeout -k 5 600 godot --headless --script res://tests/menu_ui_test.gd -- --menu --noconsent
+          timeout -k 5 150 godot --headless --script res://tests/workshop_ui_test.gd -- --menu --noconsent
           timeout -k 5 150 godot --headless --script res://tests/public_build_test.gd -- --menu --noconsent
           timeout -k 5 60 godot --headless --script res://tests/nick_account_test.gd
           timeout -k 5 90 godot --headless --script res://tests/calib_pick_test.gd

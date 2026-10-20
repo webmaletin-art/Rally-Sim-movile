@@ -110,6 +110,15 @@ var _rage_quiet := 0.0
 var _rage_t := 0.0
 var _broken_n := -1
 var _warned := 0
+## Jurisdicción y reconocimiento (20/10/2026, pedido del dueño): «la policía debe dejar de seguirme si llegué a otra ciudad porque ya no tiene jurisdicción; si vuelvo me esperan; si cambio de
+## auto no me reconocen y puedo volver tranquilo, esa ruta queda libre».
+## · Una persecución que salió de un control de ruta (route_chase) termina al entrar a una ciudad o pueblo (o a Dream City): los patrulleros de la ruta no tienen jurisdicción ahí.
+##   El control queda armado: si volvés por la misma ruta, te esperan. Las persecuciones de los eventos, del modo Fugitivo y del desmadre (dentro de la ciudad) no se cortan así.
+## · Cada control recuerda con qué auto persiguió por última vez (memory): con otro auto —u otra pintura— no te reconocen, no se arma y esa ruta queda libre para ese auto.
+var route_chase := false
+var memory: Dictionary = {} # clave del control ("x_z" en decenas de metros) → firma del auto ("id|color") con el que lo pasaron la última vez
+var _settle_names: Array = []
+var _known_toast := ""
 
 func setup(p_race) -> void:
 	race = p_race
@@ -124,6 +133,12 @@ func setup(p_race) -> void:
 	for n in region.nodes:
 		if int(n[3]) in SETTLE_KINDS:
 			_settle.append(Vector2(float(n[1]), float(n[2])))
+			_settle_names.append(str(n[4]))
+	var prof = race.get("profile")
+	if prof != null and prof.get("d") is Dictionary:
+		var saved: Variant = (prof.get("d") as Dictionary).get("police_mem", {})
+		if saved is Dictionary:
+			memory = (saved as Dictionary).duplicate()
 	online = race.cfg.get("online", false) == true
 	station_pose = track.nearest_road_pose(STATION, 0.0)
 	_build_station()
@@ -166,10 +181,49 @@ func _near_cp(p: Vector2) -> int:
 		for dz in range(-1, 2):
 			for i in _cells.get(c0 + Vector2i(dx, dz), []):
 				var d: float = (checkpoints[i]["p"] as Vector2).distance_to(p)
-				if d < bd and not cool.has(i):
+				if d < bd and not cool.has(i) and _recognized(i, d):
 					bd = d
 					best = i
 	return best
+
+## Firma del auto del jugador: su modelo y el color de la carrocería (cambiar de auto o repintarlo despista a la policía)
+func car_sig() -> String:
+	var vid := str(race.cfg.get("car", ""))
+	var st: Variant = race.cfg.get("state")
+	var body := ""
+	if st is Dictionary and (st as Dictionary).get("paint") is Dictionary:
+		body = str(((st as Dictionary)["paint"] as Dictionary).get("body", "")).to_lower()
+	return "%s|%s" % [vid, body]
+
+func _cp_key(i: int) -> String:
+	var q: Vector2 = checkpoints[i]["p"]
+	return "%d_%d" % [roundi(q.x / 10.0), roundi(q.y / 10.0)]
+
+## ¿Este control te reconoce? Sí si nunca persiguió a nadie o si la última vez fue a este mismo auto. d = distancia al control (para avisar una sola vez cuando te dejan pasar)
+func _recognized(i: int, d := -1.0) -> bool:
+	var k := _cp_key(i)
+	if not memory.has(k) or str(memory[k]) == car_sig():
+		return true
+	if d >= 0.0 and d < ARM_R * 0.5 and _known_toast != k:
+		_known_toast = k
+		_toast(Tr.t("🕶 Con este auto no te reconocen: esta ruta no te busca"))
+		CrashLog.mark("policia", "control sin reconocer el auto")
+	return false
+
+func _remember(i: int) -> void:
+	memory[_cp_key(i)] = car_sig()
+	var prof = race.get("profile")
+	if prof != null and prof.get("d") is Dictionary:
+		(prof.get("d") as Dictionary)["police_mem"] = memory
+		if prof.has_method("save"):
+			prof.call("save")
+
+## La ciudad o el pueblo donde está p (−1 si no está en ninguno): ahí la policía de la ruta no tiene jurisdicción
+func _settlement_at(p: Vector2) -> int:
+	for i in _settle.size():
+		if (_settle[i] as Vector2).distance_to(p) < SETTLE_R:
+			return i
+	return -1
 
 func update(dt: float) -> void:
 	if not enabled or race.cars.is_empty():
@@ -205,6 +259,8 @@ func update(dt: float) -> void:
 				if online and sqrt(me.vx * me.vx + me.vz * me.vz) * 3.6 < SLOW_KMH and not implacable():
 					_let_pass()
 				else:
+					route_chase = true
+					_remember(cp)
 					_start_chase(me)
 		"chase":
 			_chase(dt, p, me)
@@ -456,6 +512,11 @@ func _chase(dt: float, p: Vector2, me) -> void:
 			_join_checkpoint(c, me)
 	var sp := sqrt(me.vx * me.vx + me.vz * me.vz)
 	chase_m += sp * dt
+	if route_chase and chase_t > 3.0:
+		var si := _settlement_at(p)
+		if si >= 0 or p.length() < CITY_R:
+			_jurisdiction_end(_settle_names[si] if si >= 0 else "Dream City")
+			return
 	if online and not implacable() and chase_m > LENIENT_M:
 		_toast(Tr.t("😮‍💨 La policía abandona: a los que andan solos los siguen un par de km"))
 		_escaped()
@@ -538,6 +599,7 @@ static func bust_rate(kmh: float, d_min: float) -> float:
 ## Evento «Huida» (carreras del mundo abierto): la persecución arranca ya, con patrulleros detrás (fuera de la vista) y uno de frente
 func event_chase(me, level: int) -> void:
 	_clear()
+	route_chase = false
 	heat = clampi(level, 0, 3)
 	var p := Vector2(me.px, me.pz)
 	var fwd := Vector2(sin(me.yaw), cos(me.yaw))
@@ -548,6 +610,16 @@ func event_chase(me, level: int) -> void:
 			_spawn(Vector2(pose[0], pose[1]), float(pose[2]), ROLES[k % ROLES.size()])
 	cp = _near_cp(p) if _near_cp(p) >= 0 else 0
 	_start_chase(me)
+
+## Llegaste a una ciudad o pueblo: los patrulleros de la ruta se quedan afuera (sin jurisdicción). El control sigue armado: si volvés con este auto, te esperan.
+func _jurisdiction_end(place: String) -> void:
+	stats["escapes"] += 1
+	rage = 0.0
+	_toast(Tr.t("🏙 Llegaste a %s: la policía de la ruta ya no tiene jurisdicción. Si volvés, te esperan") % place)
+	CrashLog.mark("policia", "fin de jurisdicción en %s · %.0f s" % [place, chase_t])
+	if cp >= 0:
+		cool[cp] = 25.0 # (que no se arme otra vez en la entrada del pueblo; después queda esperando)
+	_clear()
 
 func _escaped() -> void:
 	stats["escapes"] += 1
@@ -626,6 +698,7 @@ func _clear() -> void:
 	cp = -1
 	bust = 0.0
 	lose_t = 0.0
+	route_chase = false
 
 ## Se rehicieron los autos de la carrera (taller de prueba, cambio de auto): los patrulleros ya no están en la lista
 func forget() -> void:
@@ -635,6 +708,7 @@ func forget() -> void:
 	cp = -1
 	bust = 0.0
 	lose_t = 0.0
+	route_chase = false
 
 func _siren_on() -> void:
 	if units.is_empty() or race.get("audio") == null:

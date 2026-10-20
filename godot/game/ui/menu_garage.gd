@@ -414,7 +414,7 @@ func _workshop() -> void:
 		5: _ws_body(id, st)
 
 ## Cómo cambia el auto con la vista previa o el reglaje: potencia, peso, velocidad, 0-100 y las barras (lo que sube en verde y lo que baja en rojo)
-func _fill_stats(box: VBoxContainer, id: String, sa: Dictionary, sb: Dictionary) -> void:
+func _fill_stats(box: VBoxContainer, id: String, sa: Dictionary, sb: Dictionary, compact := false) -> void:
 	for c in box.get_children():
 		c.queue_free()
 	var pa := CarBuild.perf_of(CarBuild.build_params(m.vehicles[id], sa))
@@ -439,6 +439,8 @@ func _fill_stats(box: VBoxContainer, id: String, sa: Dictionary, sb: Dictionary)
 		var dec: int = r[5]
 		var diff := b - a
 		var changed := absf(diff) > (0.04 if dec > 0 else 0.5)
+		if compact and not changed and str(r[0]) != "Nivel (PI)":
+			continue # (la barra fija de arriba sólo muestra lo que cambia: lo que da la mejora, sin desplazar)
 		var good := (diff > 0.0) == better
 		var col := Kit.MUTED if not changed else (Color(0.45, 0.9, 0.5) if good else Color(1.0, 0.45, 0.4))
 		var row := Kit.hbox(6)
@@ -492,7 +494,7 @@ func _pv_bar(id: String, st: Dictionary, price: int, with_stats: bool, buy: Call
 	if with_stats:
 		var sb := Kit.vbox(2)
 		col.add_child(sb)
-		_fill_stats(sb, id, st, _pv_state(id, st))
+		_fill_stats(sb, id, st, _pv_state(id, st), true)
 	return box
 
 func _after_change() -> void:
@@ -532,9 +534,8 @@ func _ws_parts(id: String) -> void:
 	var u2: Dictionary = ups[up_cat]
 	var uid := str(u2["id"])
 	right.add_child(Kit.label("%s %s" % [u2["icon"], u2["name"]], 20, Kit.ACCENT))
-	var il := Kit.wrap(str(u2["info"]), 13, Kit.MUTED, 150)
-	il.max_lines_visible = 5
-	il.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	var il := Kit.wrap(tr(str(u2["info"])), 14, Kit.MUTED, 260) # (la tarjeta de lo que da la mejora se lee completa: antes se cortaba a 5 líneas y había que desplazar)
+	il.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right.add_child(il)
 	var cur_lvl := int(m.profile.upgrade_level(id, uid))
 	var levels: Array = u2["levels"]
@@ -557,7 +558,7 @@ func _ws_parts(id: String) -> void:
 		right.add_child(b)
 	if not pv.is_empty() and str(pv["kind"]) == "upg" and str(pv["key"]) == uid:
 		var pl := int(pv["lvl"])
-		right.add_child(_pv_bar(id, m.profile.d["owned"][id], int(levels[pl].get("cost", 0)), true, func() -> void: _buy_upgrade(id, uid, pl)))
+		m.pinned.add_child(_pv_bar(id, m.profile.d["owned"][id], int(levels[pl].get("cost", 0)), true, func() -> void: _buy_upgrade(id, uid, pl)))
 
 func _buy_upgrade(id: String, uid: String, lvl: int) -> void:
 	if m.profile.buy_upgrade(id, uid, lvl):
@@ -606,7 +607,7 @@ func _ws_tires(id: String, st: Dictionary) -> void:
 	if not pv.is_empty() and str(pv["kind"]) == "tire":
 		var ptid := str(pv["key"])
 		var pcost := int(CarBuild.tire(ptid).get("cost", 0))
-		m.body.add_child(_pv_bar(id, st, pcost, true, func() -> void:
+		m.pinned.add_child(_pv_bar(id, st, pcost, true, func() -> void:
 			if m.profile.buy_tires(id, ptid):
 				m.sfx.play("buy")
 				_after_change()
@@ -677,7 +678,7 @@ func _ws_part_grid(id: String, st: Dictionary, cat: String) -> void:
 		g.add_child(b)
 	if not pv.is_empty() and str(pv["kind"]) == "part" and str(pv["cat"]) == cat:
 		var ppid := str(pv["key"])
-		m.body.add_child(_pv_bar(id, st, int(PartCatalog.part(ppid).get("price", 0)), false, func() -> void:
+		m.pinned.add_child(_pv_bar(id, st, int(PartCatalog.part(ppid).get("price", 0)), false, func() -> void:
 			var r: Dictionary = m.profile.buy_part(id, ppid, m.vehicles)
 			if bool(r["ok"]):
 				m.sfx.play("buy")
@@ -745,7 +746,7 @@ func _draft_update_bar(id: String, st: Dictionary) -> void:
 func _draft_bar(id: String, st: Dictionary, with_test: bool) -> void:
 	_draft_sync(id, st)
 	var box := Kit.panel(8, Kit.PANEL2)
-	m.body.add_child(box)
+	m.pinned.add_child(box) # (arriba y fija: el APLICAR se ve siempre, sin desplazar la lista)
 	var col := Kit.vbox(6)
 	box.add_child(col)
 	draft_lbl = Kit.label("", 15, Kit.GOLD)
@@ -1061,7 +1062,7 @@ func _ws_styles(id: String, st: Dictionary, paint: Dictionary) -> void:
 		g.add_child(b)
 	if cos_pick != "" and Cosmetics.item(cos_pick).has("preset"):
 		var it2 := Cosmetics.item(cos_pick)
-		m.body.add_child(_cos_buy_bar(id, it2, func() -> void:
+		m.pinned.add_child(_cos_buy_bar(id, it2, func() -> void:
 			PaintPresets.apply(draft_paint, it2["preset"])
 			draft_paint["number"] = str((it2["preset"] as Dictionary).get("number", "77"))
 			_draft_refresh(id, st)))
@@ -1091,7 +1092,7 @@ func _ws_cosmetic(id: String, st: Dictionary, kind: String) -> void:
 		g.add_child(b)
 	if cos_pick != "" and not Cosmetics.owns(st, cos_pick) and list.any(func(x) -> bool: return str(x["id"]) == cos_pick):
 		var it2 := Cosmetics.item(cos_pick)
-		m.body.add_child(_cos_buy_bar(id, it2, func() -> void: _cos_equip(id, st, kind, str(it2["id"]))))
+		m.pinned.add_child(_cos_buy_bar(id, it2, func() -> void: _cos_equip(id, st, kind, str(it2["id"]))))
 
 func _cos_equip(id: String, st: Dictionary, kind: String, cid: String) -> void:
 	var key := "interior" if kind == "interior" else "steer"

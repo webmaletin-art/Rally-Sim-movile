@@ -439,7 +439,14 @@ func _unhandled_input(ev: InputEvent) -> void:
 
 ## Abre una pantalla. Cada una arma su contenido dentro del panel de la izquierda.
 var adv_car_shown := false
+var pinned: VBoxContainer # franja fija arriba del contenido (COMPRAR / APLICAR de las piezas del taller): no se va con el desplazamiento de la lista
+var _last_scroll: ScrollContainer
 func go(name: String, arg = null, push := true) -> void:
+	# la misma pantalla que se rearma (elegir una llanta en el taller, cambiar de pestaña interna…): la lista queda donde estaba, no salta arriba
+	# (pedido del dueño, 20/10/2026: «elijo una rueda y la lista salta»)
+	var keep_v := 0
+	if not push and name == screen and arg == screen_arg and _last_scroll != null and is_instance_valid(_last_scroll):
+		keep_v = int(_last_scroll.scroll_vertical)
 	if name == "home":
 		garage.shop = ""
 		garage.dealer = ""
@@ -501,10 +508,17 @@ func go(name: String, arg = null, push := true) -> void:
 			head.visible = false # el dinero y el nivel van en la esquina de arriba a la derecha
 	_apply_view_shift()
 	update_credits()
+	pinned = Kit.vbox(6)
+	pinned.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pinned.visible = false # (sólo se ve cuando alguna pantalla le pone una barra: así no suma separación en las demás)
+	var pin_ref := pinned
+	pinned.child_entered_tree.connect(func(_c: Node) -> void: pin_ref.visible = true)
+	col.add_child(pinned)
 	var sc := TouchScroll.new() # red de seguridad: las pantallas están armadas para entrar sin desplazar
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_child(sc)
+	_last_scroll = sc
 	body = Kit.vbox(8)
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sc.add_child(body)
@@ -550,8 +564,18 @@ func go(name: String, arg = null, push := true) -> void:
 		_: _home()
 	if chrome_on and screen == name: # (la tienda de la calle abre el concesionario con un go() adentro: ése ya armó su marco)
 		_chrome_finish(name)
+	if keep_v > 0:
+		_restore_scroll.call_deferred(sc, keep_v)
 	if name == "home":
 		offer_calibration() # configuración gráfica automática: la primera vez (después del aviso legal y de la cuenta)
+
+## Devuelve el desplazamiento de una lista que se rearmó (hasta que el contenedor mide el contenido hace falta un par de cuadros)
+func _restore_scroll(sc: ScrollContainer, v: int) -> void:
+	for k in 3:
+		await get_tree().process_frame
+		if not is_instance_valid(sc):
+			return
+		sc.scroll_vertical = v
 
 ## Antes de largar una carrera se elige el nivel de simulación (arcade / intermedio / simulador total / personalizado)
 ## Mundo abierto: Dream City, a recorrer libre con el auto elegido (antes se elige el nivel de simulación)
