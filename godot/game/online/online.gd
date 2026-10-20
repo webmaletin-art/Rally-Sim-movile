@@ -56,6 +56,19 @@ func enabled() -> bool:
 static func headers(key: String, bearer: String) -> PackedStringArray:
 	return PackedStringArray(["apikey: " + key, "Authorization: Bearer " + (bearer if bearer != "" else key), "Content-Type: application/json", "Accept: application/json"])
 
+## El nombre que se le manda al servidor: sólo el que el jugador ELIGIÓ (nickSet). Sin elegir —un teléfono nuevo que todavía no trajo el de su cuenta— va vacío y el servidor se queda con el que ya tiene
+## (todas las funciones de la base aceptan vacío). Antes cualquier envío mandaba el «Piloto» del perfil nuevo y pisaba el nombre de la cuenta (20/10/2026).
+static func net_name(p: RefCounted) -> String:
+	if p == null or p.d.get("nickSet", false) != true:
+		return ""
+	return str(p.d.get("name", ""))
+
+## El nombre que trae la tabla players (un pedido GET) → "" si no hay fila o la respuesta no es la esperada
+static func parse_name(data: Variant) -> String:
+	if not (data is Array) or (data as Array).is_empty() or not ((data as Array)[0] is Dictionary):
+		return ""
+	return str(((data as Array)[0] as Dictionary).get("name", "")).strip_edges()
+
 ## Carga para submit_score (la función de la base valida todo de nuevo)
 static func score_payload(track: String, board: String, value: float, car: String, laps: int, build: String, name: String) -> Dictionary:
 	return {"p_track": track, "p_board": board, "p_value": snappedf(value, 0.001), "p_car": car, "p_laps": laps, "p_build": build, "p_name": name}
@@ -207,6 +220,24 @@ static func error_result(raw: String, extra := {}) -> Dictionary:
 func is_account() -> bool:
 	return email != ""
 
+var _name_pushed := "" # cuenta + nombre que ya se dejaron en el servidor en esta sesión
+
+## Deja el apodo elegido en la cuenta (una vez por sesión y por nombre): así otro teléfono lo trae en vez de pedir uno nuevo. Usa set_player_name, la función de la base hecha para esto.
+func push_name() -> void:
+	var nm := net_name(profile)
+	if nm == "" or not is_account() or _name_pushed == uid + "|" + nm:
+		return
+	_name_pushed = uid + "|" + nm
+	call_fn("set_player_name", {"p_name": nm}) # (sin esperar)
+
+## El nombre de piloto que la cuenta ya tiene en el servidor (la tabla players es de lectura pública: la misma de los rankings, el chat y los eventos). "" si no se pudo leer.
+## El apodo es de la CUENTA, no del teléfono: en otro teléfono se trae de acá (OnlineSocial.adopt_nick) en vez de pedir uno nuevo.
+func fetch_name() -> String:
+	if not is_account() or uid.length() != 36 or not await sign_in():
+		return ""
+	var r := await request(HTTPClient.METHOD_GET, "/rest/v1/players?id=eq.%s&select=name" % uid, null, token)
+	return parse_name(r["data"]) if r["ok"] else ""
+
 ## Crea la cuenta (usuario nuevo con correo y contraseña). Devuelve {ok, text, confirm}.
 ## confirm = true si el servidor pide confirmar el correo antes de usarla. «text» es la clave en español para traducir (con «arg» si lleva %s).
 func create_account(mail: String, pw: String) -> Dictionary:
@@ -290,8 +321,7 @@ func _clear_session() -> void:
 func submit_score(track: String, board: String, value: float, car: String, laps: int, build: String) -> Dictionary:
 	if not enabled() or board == "":
 		return {"ok": false, "code": 0, "data": null, "error": "apagado"}
-	var nm := str(profile.d.get("name", "Piloto"))
-	return await call_fn("submit_score", score_payload(track, board, value, car, laps, build, nm))
+	return await call_fn("submit_score", score_payload(track, board, value, car, laps, build, net_name(profile)))
 
 func leaderboard(track: String, board: String, limit := 50) -> Dictionary:
 	if not is_account():
@@ -312,7 +342,7 @@ func fetch_flags() -> Dictionary:
 func submit_record(board: String, id: String, value: float, car: String) -> Dictionary:
 	if not is_account():
 		return {"ok": false, "code": 0, "data": null, "error": "sin sesión"}
-	return await call_fn("submit_record", {"p_board": board, "p_id": id, "p_value": snappedf(value, 0.01), "p_car": car, "p_name": str(profile.d.get("name", "Piloto")) if profile != null else "Piloto"})
+	return await call_fn("submit_record", {"p_board": board, "p_id": id, "p_value": snappedf(value, 0.01), "p_car": car, "p_name": net_name(profile)})
 
 ## Marca por CLASE (fase 3, 16/10/2026): e = {board, track, value, car, pi, cls, sim, tires, upg, laps, build}. Devuelve {ok, data: {saved, best, rank, of, cls, top}}.
 ## Sin conexión (o con el servidor ocupado) la marca queda en la cola del perfil y se manda después (flush_records). Si el servidor todavía no tiene la migración
@@ -330,7 +360,7 @@ func submit_class(e: Dictionary) -> Dictionary:
 
 func _send_class(e: Dictionary) -> Dictionary:
 	var board := str(e.get("board", ""))
-	var nm := str(profile.d.get("name", "Piloto")) if profile != null else "Piloto"
+	var nm := net_name(profile)
 	var r := await call_fn("submit_class_record", {"p_board": board, "p_track": str(e.get("track", "")), "p_value": snappedf(float(e.get("value", 0.0)), 0.001),
 		"p_car": str(e.get("car", "")), "p_pi": int(e.get("pi", 100)), "p_sim": str(e.get("sim", "")), "p_tires": str(e.get("tires", "")), "p_upg": str(e.get("upg", "")),
 		"p_laps": int(e.get("laps", 1)), "p_build": str(e.get("build", "")), "p_name": nm, "p_late": bool(e.get("late", false))})

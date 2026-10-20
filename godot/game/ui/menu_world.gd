@@ -203,8 +203,17 @@ func online_home() -> void:
 		_online_options()
 		return
 	if m.profile.d.get("nickSet", false) != true:
-		m.go("nick", null, false)
-		return
+		# el apodo es de la CUENTA: en otro teléfono se trae el que ya elegiste (pedido del dueño, 20/10/2026: «si abro mi cuenta en otro celu me hace poner un nombre nuevo»)
+		var wait := Kit.label("● " + tr("Conectando…"), 14, Kit.MUTED)
+		m.body.add_child(wait)
+		var restored: bool = OnlineSocial.adopt_nick(m.profile, await m.app.online.fetch_name())
+		if not is_instance_valid(wait) or not is_instance_valid(m.body) or m.screen != "online":
+			return # (el jugador se fue de esta pantalla)
+		wait.queue_free()
+		if not restored:
+			m.go("nick", null, false)
+			return
+	m.app.online.push_name() # (el apodo de este teléfono también queda en la cuenta, por si lo eligió antes de que se guardara ahí)
 	var flags: Dictionary = await m.app.online.fetch_flags() # ¿el tiempo real está habilitado en el servidor? (app_flags.pvp)
 	if not is_instance_valid(m.body):
 		return
@@ -739,6 +748,8 @@ func nick_screen() -> void:
 		m.profile.d["name"] = t
 		m.profile.d["nickSet"] = true
 		m.profile.save()
+		if m.app.online != null:
+			m.app.online.push_name() # el nombre queda en la cuenta: otro teléfono lo trae en vez de pedir uno nuevo
 		m.go("online", null, false)
 	m.body.add_child(Kit.button("✔ " + tr("CONFIRMAR"), ok, true, 22, Vector2(0, 60)))
 	m.body.add_child(msg)

@@ -69,6 +69,8 @@ func _status() -> void:
 	m.body.add_child(Kit.label("✔ Cuenta activa", 24, Kit.GREEN))
 	m.body.add_child(Kit.label(on.email, 18, Kit.TEXT))
 	m.body.add_child(Kit.wrap("Tus marcas del ranking van con tu nombre de piloto. Para entrar desde otro teléfono usá «Iniciar sesión» con este correo.", 14, Kit.MUTED, 300))
+	if Release.dev(m.profile): # (sólo en la versión candidata) con el modo desarrollador los créditos y los autos son del teléfono: en otro teléfono se ve lo que tiene la cuenta en el servidor
+		m.body.add_child(Kit.wrap("🛠 Modo desarrollador activo: los créditos y los autos de este teléfono son sólo de este teléfono, NO de tu cuenta. En otro teléfono vas a ver lo que tiene tu cuenta en el servidor. Apagá el modo desarrollador en Acerca de para usar los de tu cuenta.", 13, Kit.GOLD, 300))
 	var acc: Node = m.app.account
 	if acc != null and acc.is_active():
 		var st := Kit.wrap(str(acc.status_text()), 14, Kit.MUTED, 300)

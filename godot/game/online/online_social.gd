@@ -56,6 +56,20 @@ static func nick_error(n: String) -> String:
 			return "Ese nombre no está permitido. Elegí otro."
 	return ""
 
+## El apodo es de la CUENTA: si este teléfono todavía no tiene uno elegido, se adopta el que la cuenta ya tiene en el servidor (`server_name`, ver Online.fetch_name). true si se adoptó.
+## No se adopta lo vacío, el «Piloto» que el servidor pone solo ni un nombre que el juego no permite: en esos casos se pide uno (pedido del dueño, 20/10/2026: «si abro mi cuenta en otro celu
+## me hace poner un nombre nuevo»).
+static func adopt_nick(p: RefCounted, server_name: String) -> bool:
+	if p == null or p.d.get("nickSet", false) == true:
+		return false
+	var nm := server_name.strip_edges()
+	if nm == "" or nm == "Piloto" or nick_error(nm) != "":
+		return false
+	p.d["name"] = nm
+	p.d["nickSet"] = true
+	p.save()
+	return true
+
 func player_name() -> String:
 	return str(profile.d.get("name", "Piloto")) if profile != null else "Piloto"
 

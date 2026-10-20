@@ -78,7 +78,7 @@ func enter_online() -> bool:
 		return false
 	if eco == null:
 		eco = OnlineEconomy.new(online)
-	if not await eco.sync(str(profile.d.get("name", "Piloto"))):
+	if not await eco.sync(Online.net_name(profile)):
 		return false
 	oprofile = OnlineProfile.new(profile, eco)
 	return true
