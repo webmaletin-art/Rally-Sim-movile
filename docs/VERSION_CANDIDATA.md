@@ -205,6 +205,15 @@ Está en la misma rama y en el mismo APK RC. Detalle y causas: `docs/REGISTRO_TE
 
 **Auto «Ren…»:** pendiente de que el dueño diga cuál es (no hay ninguno con ese nombre).
 
+### 9 ter. Lo que se sumó después (20/10/2026, 2.º mensaje del dueño) — detalle en `docs/REGISTRO_TECNICO.md` → 20/10 11:00
+
+| Qué | Para mirar en el teléfono |
+|---|---|
+| El modo desarrollador y «COPIAR REGISTRO» existen sólo en la RC | En la RC (el APK ya instalado recibe el cambio solo, sin reinstalar): Acerca de → la versión es un botón (siete toques = modo desarrollador) y «COPIAR REGISTRO» está en Acerca de y en Opciones → Sonido. **En la versión pública (main / Play) no hay nada de eso.** |
+| Práctica de la Ruta de los Sueños desde Carrera rápida | Terminá una etapa en práctica y mirá en AVENTURA que el avance (etapa, puntos, habilidades) quede como estaba; en la estación dice «práctica: no se guarda». |
+| El nombre del jugador viaja con la cuenta | Con la misma cuenta en otro celular: MODO ONLINE ya no pide el nombre (si el nombre de la cuenta nunca llegó al servidor, la primera vez lo pide). |
+| Las monedas en otro celular | Contame qué número ves en cada celular y si en el primero estaba el modo desarrollador: con el modo desarrollador los créditos son del teléfono (en «Tu cuenta» ahora lo dice). |
+
 ## 10. Antes de publicar (pasos manuales, en orden)
 
 1. Probar el RC en el teléfono (sección 9) y en uno más, si hay.

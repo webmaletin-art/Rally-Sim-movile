@@ -4,6 +4,12 @@
 
 **Estado:** hecho y probado con Postgres de verdad (`tools/online/account_test.sql`), con la función de borde de compras (`tools/online/verify_purchase_test.mjs`) y con el cliente (`godot/tests/account_econ_test.gd`, `login_wall_test.gd`). **Falta que el dueño aplique la migración y publique la función** (ver «Puesta en marcha»). Hasta entonces las compilaciones de prueba (APK) siguen jugando con el progreso local (el cliente se da cuenta de que el servidor no tiene las funciones y no bloquea el juego); la versión de Play **no entra** sin el servidor actualizado.
 
+## El apodo y el modo desarrollador en otro teléfono (20/10/2026)
+- **El apodo de piloto es de la cuenta:** en un teléfono sin apodo elegido se trae el de la cuenta (`Online.fetch_name()` lee la fila de `players`, que ya era de lectura pública; `OnlineSocial.adopt_nick()` la adopta) en vez de pedir uno nuevo, y se deja en la cuenta con `set_player_name`
+  (`Online.push_name()`). Mientras no haya apodo elegido no se manda «Piloto» (`Online.net_name()`): el servidor se queda con el nombre que tiene. Prueba: `nick_account_test`.
+- **Los créditos y autos de la cuenta viven en el servidor y vuelven en cualquier teléfono** (`account_econ`; en el modo online además `online_wallets`, 25.000 al crear la cuenta). Con el **modo desarrollador** (sólo en la versión candidata) son del teléfono: no están en la cuenta,
+  y en otro teléfono se ve lo que de verdad tiene la cuenta. Al iniciar sesión en un teléfono se reemplaza lo local de ESE teléfono por lo de la cuenta (`AccountEcon.on_login`).
+
 ## Cómo funciona
 
 ```

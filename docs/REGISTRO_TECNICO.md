@@ -5,6 +5,46 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 20/10/2026 11:00 UTC · [B] Quinta tanda (2.º mensaje del dueño): versión pública sin herramientas de desarrollo, la práctica de la Aventura no pisa la Aventura de pago y el nombre del jugador viaja con la cuenta (rama ccr-e7ae3f10-45afj2) — PENDIENTE DE APK
+- **Pedido del dueño (20/10, 2.º mensaje):** «Los modos versión desarrollador y copiar registro que está en audio queda sólo en la apk Dream Racing RC. No en main, la que se va a publicar: no debe quedar nada raro en el apk
+  pública. Revisá que si en carrera rápida juego las etapas de aventura esas se desbloquean en el modo aventura que es de pago. El online: si abro mi cuenta en otro celu me hace poner nuevo nombre y se borran todas mis monedas.»
+- **1. Versión pública sin herramientas de desarrollo (`data/release.gd` → `internal()`, `internal_for()`, `CHANNEL_FILE`; `ui/menu_about.gd`; `ui/options_ui.gd`; `ui/menu_garage.gd`; `app.gd`; `.github/workflows/build-godot.yml`):**
+  - **Causa:** `Release.dev()` valía `not store() and ajuste dev`: en cualquier APK que no fuera el AAB de Play —incluida la APK de main— siete toques en la versión de «Acerca de» activaban el modo desarrollador (todos los autos, $5.000.000,
+    nafta y peajes gratis, tiempo real abierto, autos especiales) y «COPIAR REGISTRO» estaba siempre (Acerca de y Opciones → Sonido). Además `menu_garage.gd` (piezas de desarrollo) y `app.gd` (marcas al ranking) leían el ajuste «dev» directo.
+  - **Cambio:** `Release.internal()` = el editor o la versión candidata marcada; Google Play (`store`) nunca. `dev()` exige `internal()`. En la versión pública: la versión es sólo un texto (sin los siete toques), sin «COPIAR REGISTRO» en
+    Acerca de ni en Opciones → Sonido, y un perfil que haya quedado con dev = true no libera nada (la cuenta del servidor manda y pisa lo local en el primer ingreso). Las dos lecturas sueltas del ajuste pasan por `Release.dev()`.
+    **El marcador** `game/build_channel.txt` («rc») lo escribe el flujo `build-godot.yml` (paso «Marcar la versión candidata») SÓLO si la rama no es main; no está en el repositorio, así que aunque esta rama se fusione a main la versión
+    pública nunca lo trae (no hay que acordarse de deshacer nada) y el AAB de Play ni pasa por ese flujo. Va en el contenido, no en el APK liviano: el APK RC que ya está instalado lo recibe solo, **sin reinstalar**.
+  - **Pruebas:** `public_build_test` (nueva, 28 OK): la regla (editor / marcador / store), el marcador fuera del repositorio y sólo fuera de main, «Acerca de» y Opciones → Sonido en versión pública y candidata, ocho toques que no activan nada,
+    el perfil con dev = true inerte y que nadie más lea el ajuste «dev». `menu_ui_test` sigue comprobando que en el editor (= candidata) «COPIAR REGISTRO» está y copia.
+- **2. Carrera rápida → Ruta de los Sueños (práctica) y la Aventura de pago (`adventure/adventure.gd`, `adventure/adv_hud.gd`):**
+  - **Lo que ya estaba bien:** el selector «Etapa» de la Carrera rápida se limita a `Release.adventure_limit` (las 5 libres sin el paquete): no hay forma de correr una etapa de pago desde ahí.
+  - **Causa del error encontrado:** `Adventure._save()` hacía `profile.d["adv"] = st` aunque `st` fuera el estado descartable de la práctica (`AdvData.practice`): al terminar una etapa en práctica (o tocar «GUARDAR Y SALIR») el avance REAL de la
+    Aventura se reemplazaba por el de la práctica: podía adelantarlo (saltear etapas y sumar puntos) o borrarlo (habilidades, ajuste, mejores tiempos, puntos). Además `_finish_adventure()` (última etapa, sólo con la Aventura comprada) daba el DR Bisonte XR
+    y $20.000 también en práctica.
+  - **Cambio:** `_save()` no guarda nunca durante la práctica; `_finish_adventure()` en práctica no entrega nada y muestra «PRÁCTICA TERMINADA»; en la estación de una práctica el panel dice «Avance: práctica: no se guarda» (sin puntos ni «avance guardado»), el botón
+    es «SALIR» y el de la última etapa «TERMINAR LA PRÁCTICA». Textos en 5 idiomas (`tools/i18n/batches/b72_practica.py`).
+  - **Pruebas:** `practice_test` (+7 comprobaciones sobre un `Adventure` con carrera y HUD de mentira): la práctica avanza SU estado, el avance real queda idéntico (etapa, puntos, habilidades), no cobra, terminar la última etapa no da el auto ni el premio
+    y la Aventura de verdad sigue guardando y cobrando. **Demostrado que fallan con el código anterior** (3 fallas: avance pisado, premio final entregado y pantalla final sin aviso).
+- **3. El nombre del jugador y las monedas en otro celular (`online/online.gd`, `online/online_social.gd`, `ui/menu_world.gd`, `app.gd`, `ui/menu_account.gd`):**
+  - **Causa del nombre:** el apodo sólo vivía en el perfil del teléfono (`nickSet`): `online_home()` mandaba a la pantalla del nombre en cada teléfono nuevo, y todas las llamadas al servidor mandaban el nombre local (el «Piloto» del perfil nuevo si no se había
+    elegido) y el servidor guarda lo último que llega (`_ensure_player`), así que el otro teléfono pisaba el nombre de la cuenta. `set_player_name`, la función de la base hecha para esto, no la usaba nadie.
+  - **Cambio (sin tocar el servidor):** `Online.fetch_name()` lee la fila de la cuenta en `players` (lectura pública que ya existía); `OnlineSocial.adopt_nick()` la adopta si este teléfono no eligió nombre (no adopta vacío, «Piloto», nombres cortos
+    o no permitidos); `online_home()` la trae antes de pedir un nombre; `Online.net_name()`: sin apodo elegido no se manda «Piloto» (va vacío y el servidor se queda con el que tiene; todas las funciones lo aceptan); `Online.push_name()` deja el apodo
+    en la cuenta con `set_player_name` al elegirlo y al entrar al online (una vez por sesión).
+  - **Las monedas:** **no encontré ningún camino, en el cliente ni en el SQL, que borre créditos de la cuenta.** El servidor es el dueño (`account_econ` para los créditos y autos, `online_wallets` para los «Créditos online»: 25.000 al crearla) y al iniciar sesión
+    en un teléfono se trae lo de la cuenta. Lo que sí hace que se vea «borrado»: (a) **con el modo desarrollador** (sólo en la candidata) los créditos y autos son del teléfono —los $5.000.000 del modo desarrollador nunca llegaron al servidor— y en otro teléfono
+    se ve lo que de verdad tiene la cuenta (una cuenta nueva trae $5.000 y el auto de partida); (b) al iniciar sesión en un teléfono se reemplaza lo local de ESE teléfono por lo de la cuenta (por diseño, `AccountEcon.on_login`). Agregué en «Tu cuenta» un aviso
+    cuando el modo desarrollador está activo (b73). **Falta que el dueño cuente qué pasó exactamente** (qué número veía en cada celular, si en el primero estaba el modo desarrollador y qué APK usaba cada uno).
+  - **Pruebas:** `nick_account_test` (nueva, 19 OK): la lectura de la fila, adoptar / no adoptar, no pisar el apodo de este teléfono, lo que se manda al servidor y que ningún envío use el nombre suelto. La llamada de red no se probó (no se levantan servidores).
+- **Pruebas locales (Godot 4.7.2):** `scripts_parse_test`, `practice_test` (16), `adv_rules_test`, `release_test`, `account_econ_test` (80), `login_wall_test`, `online_profile_test`, `class_records_test`, `police_online_test`, `events_ui_test`, `language_test`,
+  `public_build_test`, `spawn_menu_test`, `nick_account_test` en verde. **`menu_ui_test` falla 4 comprobaciones de «cámara libre» en esta computadora, también sobre el HEAD limpio (sin mis cambios): acá la ventana sin pantalla mide 64×64 y el toque que arma la prueba (82 % del ancho) cae fuera del auto; en GitHub pasa (corrida #229). Es del entorno de esta máquina, no de este cambio.**
+- **Qué falta / qué pedirle al dueño:** (1) el relato exacto de las monedas (arriba); (2) probar en el APK RC: Acerca de, Opciones → Sonido, modo desarrollador con siete toques (tiene que seguir andando en la RC), una práctica de la Ruta de los Sueños desde Carrera rápida
+  terminando una etapa y mirando que la Aventura quede como estaba, y entrar al modo online desde otro celular con la misma cuenta (¿ya no pide el nombre?; si el nombre de la cuenta nunca llegó al servidor, la primera vez lo pide); (3) antes de publicar: abrir «Acerca de» en el AAB de la
+  prueba interna de Play y comprobar que no hay modo desarrollador ni «COPIAR REGISTRO» (`docs/PLAY_STORE.md`).
+
+---
+
 ## 20/10/2026 05:30 UTC · [B] Cuarta tanda (versión para publicar): huecos entre edificios, cuadras que se arman en un hilo, veredas planas, policía, nivel de simulación, circuitos y GPS de carreras, calidad automática, aventura y menús (rama ccr-e7ae3f10-45afj2) — PENDIENTE DE APK
 - **Pedido del dueño (20/10, con 2 capturas de «NIVEL DE SIMULACIÓN» a 17/16 FPS):** (1) cerrar con valla, cartel o colisión invisible los huecos entre edificios («el jugador no puede entrar entre
   los edificios»; parques y plazas cerrados, **no cerrar Drift**); (2) «en rutas hacia otros pueblos hace tirones y baja mucho el FPS, necesito fluidez»; la vereda de 75 cm: «un plano nomás, sin polígonos, sin

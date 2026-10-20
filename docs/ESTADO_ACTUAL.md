@@ -19,7 +19,7 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 - ✅📱 **Frame reducido apagado** (15/10 tarde): la calibración se cerraba al activarlo en dos teléfonos y con los dos motores. Ahora sólo baja la ESCALA 3D; la opción «Resolución de frame» no se muestra.
 - ✅📱 Descarga del APK liviano (13/0 = tiempo agotado: había un tope de 30 s para TODA la descarga): sin tope, vigilante de trabas, sigue con Range, reintenta solo. **Hay que reinstalar el APK.**
 - 🔎 Motor: evaluado Godot 4.7.2 (ver `docs/MIGRACION_GODOT.md` → «Evaluación 15/10/2026»); 4.5.1 sigue en `main`.
-- ✅ «COPIAR REGISTRO» en Acerca de y en Opciones → Sonido.
+- ✅ «COPIAR REGISTRO» en Acerca de y en Opciones → Sonido, **sólo en la versión candidata** (la pública no lo trae: `Release.internal()`).
 
 ## Mundo abierto y región
 - ✅ Dream City + región de ~2.700 km (rutas, pueblos, estaciones, peajes, GPS, mapa). 📱 retoques del 13/10.
@@ -53,6 +53,11 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 - ✅📱 **Menús:** texto que baja la letra en vez de cortarse con «…»; «Acerca de» con enlaces web a privacidad, términos y borrado de cuenta.
 - 🔎 **Auto «Ren…»:** no existe un auto con ese nombre; sus cabinas más rotas son Strix Vandal RS y Chakal Dune R. Falta que el dueño diga cuál.
 - ✅ **SQL:** 21 migraciones aplicadas en orden y repetidas en un Postgres 16 local (`ECONOMIA_ONLINE_TEST OK`, `CUENTA_TEST OK`). ⛔ Siguen sin aplicar 20261022 → 20261023 → 20261024 hasta el OK del dueño.
+
+## Versión pública vs versión candidata, práctica de la Aventura y nombre online (20/10, [B] 5.ª tanda) — `docs/REGISTRO_TECNICO.md` → 20/10 11:00
+- ✅📱 **La versión pública (main y Google Play) no trae modo desarrollador ni «COPIAR REGISTRO»:** `Release.internal()` = editor o versión candidata marcada (`game/build_channel.txt`, que escribe el flujo sólo fuera de main); `Release.dev()` lo exige. En la RC todo sigue igual (`public_build_test`).
+- ✅📱 **Carrera rápida → Ruta de los Sueños (práctica) ya no pisa el avance real de la Aventura ni da el DR Bisonte XR/$20.000 de la última etapa** (`Adventure._save()` y `_finish_adventure()`); las etapas de pago nunca se pudieron elegir ahí (`practice_test`, demostrado que fallaba antes).
+- ✅📱 **El apodo viaja con la cuenta:** en otro celular se trae el nombre que ya tiene la cuenta (`Online.fetch_name`, `OnlineSocial.adopt_nick`) en vez de pedir uno nuevo, y sin apodo elegido no se manda «Piloto» (pisaba el de la cuenta). `nick_account_test`. 🔎 **Las monedas «borradas»:** no hay ningún camino que borre créditos de la cuenta; falta el relato exacto del dueño (¿modo desarrollador en el primer celular? ¿cuál número veía?).
 
 ## Carreras del mundo abierto
 - ✅📱 (19/10) Las carreras largan a 100 m o más de cualquier taller, se cierran las calles que salen del recorrido (vallas) y la pista se ve en el mapa y en el GPS (`city/street_closure.gd`).

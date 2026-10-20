@@ -27,6 +27,11 @@ la cumbre (final con dos jefes: La Sombra y El Lobo Blanco).
   Si lo pasás pelea un rato; la IA se abre cuando tiene un auto al lado (nunca cierra la puerta).
 - Habilidades: Curvas, Aceleración, Frenada, Control, Resistencia (hasta 5; el nivel n cuesta n puntos; 5 puntos por etapa).
 
+## Práctica desde Carrera rápida (20/10/2026)
+Carrera rápida → Ruta de los Sueños corre una etapa en **práctica**: un estado descartable (`AdvData.practice`) y, si se quiere, con el auto propio. La práctica **no guarda nada y no paga nada**: `Adventure._save()` no escribe
+`profile.d["adv"]` mientras haya práctica (antes lo pisaba: se adelantaba o se perdía el avance real), `_finish_adventure()` no entrega el DR Bisonte XR ni los $20.000, y el panel de la estación dice «práctica: no se guarda».
+El selector de etapa de la práctica se limita a `Release.adventure_limit` (las 5 libres sin el paquete de aventura). Prueba: `practice_test`.
+
 ## Pruebas
 `tests/adv_route_test.gd` (la ruta no se cruza), `tests/adv_sim_test.gd` (cada etapa con la IA), `tests/adv_fork_test.gd`
 (las bifurcaciones se pueden manejar por los dos caminos). Argumentos de prueba: `--adv=K[:fracción]`, `--advgo`, `--auto`,
