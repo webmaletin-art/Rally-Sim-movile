@@ -60,7 +60,9 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
     «Aventura completa» lo dicen. **Pruebas:** `adv_rules_test` (9 OK, nueva), `release_test` (21 OK).
   - **Menús y compras (`ui/ui_kit.gd` → `fit_label`; `ui/menu.gd`; `ui/menu_about.gd`; `store/products.gd`):** nada de texto cortado con «…» en las tarjetas, botones y selectores (la letra baja hasta 10 px); «Acerca de» ya
     no manda a «docs/PRIVACIDAD.md del repositorio»: tiene botones para abrir en la web la privacidad, los términos y cómo eliminar la cuenta (las direcciones de la ficha de Google Play); la descripción de «Juego
-    completo» se acortó para que no se corte.
+    completo» se acortó para que no se corte. **Opciones (revisadas con capturas en español, `tests/_menu_shots.gd`):** el valor de cada selector también baja la letra (antes «Automática (perfil calibrado)» se veía
+    «utomática (perfil calibrad»); rótulos largos acortados («Vida del mundo (tráfico y ambiente)», «Clima del mundo (nubes, niebla y lluvia)», «Audio simple (por si el juego se cierra)»); el título de cada página de
+    Opciones se traduce (en inglés quedaba «GRÁFICOS»); «Idioma» dice «6 idiomas» en vez de la lista que se cortaba. Textos nuevos en `tools/i18n/batches/b71_opciones_cortas.py`.
 - **Pruebas de cierre (Godot 4.7.2 en la computadora; nada probado en un teléfono):** se repitió acá TODA la lista de `build-godot.yml` en el orden del flujo (99 entradas, 33 minutos en una
   computadora de 4 núcleos): las 99 en verde, sin errores de script ni de análisis en ningún registro (mi contador marcó «FALLA=1» en `rewards_test` sólo porque su última línea dice «FALLAS: 0»).
   Nuevas: `city_leaks_test` (8 OK), `city_stream_test` (11), `police_bust_test` (11), `adv_rules_test` (9), `sim_level_test` (13); cambiadas: `release_test` (21), `autotune_test` (82),

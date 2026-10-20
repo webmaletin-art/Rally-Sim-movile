@@ -48,7 +48,7 @@ const OPTION_CATS := [["graficos", "🖥", "Gráficos", "calidad, resolución, �
 	["sonido", "🔊", "Sonido", "volúmenes y voz del copiloto"], ["manejo", "🎮", "Manejo", "caja, dirección, vibración"],
 	["inclinacion", "📱", "Inclinación", "volante con el acelerómetro"], ["controles", "🕹", "Controles", "volante y pedal en pantalla"],
 	["camara", "🎥", "Cámara", "cámara al empezar"], ["efectos", "✨", "Efectos", "Lente Rally y efectos 2.0"],
-	["idioma", "🌐", "Idioma", "español, English, português, français, italiano, Deutsch"], ["captura", "📷", "Captura", "botón, calidad y grabaciones"]]
+	["idioma", "🌐", "Idioma", "6 idiomas"], ["captura", "📷", "Captura", "botón, calidad y grabaciones"]]
 ## [categoría, clave, título, valores, etiquetas]
 const OPTION_LIST := [
 	["graficos", "gfxMode", "Configuración gráfica", ["auto", "manual"], ["Automática (perfil calibrado)", "Manual"]],
@@ -56,8 +56,8 @@ const OPTION_LIST := [
 	["graficos", "quality", "Calidad general", ["auto", "low", "mid", "high"], ["Automática", "Baja", "Media", "Alta"]],
 	["graficos", "res", "Resolución del 3D", [0, 0.35, 0.5, 0.7, 1.0], ["Automática", "35%", "50%", "70%", "100%"]],
 	["graficos", "showFps", "Mostrar FPS (cuadros por segundo)", [false, true], ["No", "Sí"]],
-	["graficos", "worldLife", "Vida del mundo (tráfico y ambiente; apagala si el teléfono anda lento)", [true, false], ["Sí", "No"]],
-	["graficos", "worldWeather", "Clima del mundo (nubes, niebla y lluvia según la hora; en Dream City)", [true, false], ["Sí", "No"]],
+	["graficos", "worldLife", "Vida del mundo (tráfico y ambiente)", [true, false], ["Sí", "No"]],
+	["graficos", "worldWeather", "Clima del mundo (nubes, niebla y lluvia)", [true, false], ["Sí", "No"]],
 	["graficos", "trees", "Árboles", ["auto", 0, 1500, 3000, 6000], ["Según la calidad", "Ninguno", "Pocos", "Normales", "Muchos"]],
 	["graficos", "shadowsQ", "Sombras", ["auto", false, true], ["Según la calidad", "No", "Sí"]],
 	["graficos", "textures", "Calidad de texturas", ["auto", "low", "mid", "high"], ["Automática", "Baja", "Media", "Alta"]],
@@ -75,7 +75,7 @@ const OPTION_LIST := [
 	["sonido", "volGear", "Caja de cambios", [0, 50, 100, 140], ["Silencio", "Bajo", "Normal", "Fuerte"]],
 	["sonido", "musicMode", "Música", ["menu", "always", "off"], ["Sólo en los menús", "También jugando", "Apagada"]],
 	["sonido", "volMusic", "Volumen de la música", [0, 10, 25, 40, 60, 80], ["Silencio", "Muy bajo", "Bajo (radio)", "Medio", "Alto", "Muy alto"]],
-	["sonido", "simpleAudio", "Audio simple (sólo motor; sirve si el juego se cierra solo)", [false, true], ["No", "Sí"]],
+	["sonido", "simpleAudio", "Audio simple (por si el juego se cierra)", [false, true], ["No", "Sí"]],
 	["sonido", "copilot", "Voz del copiloto (campeonato)", [false, true], ["No", "Sí"]],
 	["manejo", "gearbox", "Caja de cambios", ["auto", "manual"], ["Automática", "Manual"]],
 	["manejo", "steerMode", "Dirección", ["wheel", "slider"], ["Volante", "Barra"]],
@@ -108,7 +108,7 @@ func options_page(body: VBoxContainer, cat = null) -> void:
 		return
 	for c in OPTION_CATS:
 		if c[0] == cat:
-			_title(str(c[2]).to_upper())
+			_title(tr(str(c[2])).to_upper())
 	if cat == "idioma":
 		_language_page(body)
 		return

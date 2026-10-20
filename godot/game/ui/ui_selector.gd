@@ -35,8 +35,8 @@ func _init(p_title: String, p_values: Array, p_cur, p_fmt: Callable, p_cb: Calla
 	row.add_child(la)
 	val_l = Kit.label("", 19, Kit.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	val_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	val_l.clip_text = true
 	val_l.custom_minimum_size.x = 40
+	Kit.fit_label(val_l, 12) # «Automática (perfil calibrado)» baja la letra en vez de cortarse por los dos lados
 	row.add_child(val_l)
 	var ra := Kit.label("▶", 18, Kit.ACCENT)
 	ra.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -45,6 +45,7 @@ func _init(p_title: String, p_values: Array, p_cur, p_fmt: Callable, p_cb: Calla
 
 func _refresh() -> void:
 	val_l.text = str(fmt.call(values[idx])) if fmt.is_valid() else str(values[idx])
+	Kit.fit_label_now(val_l)
 
 func step(d: int) -> void:
 	if values.is_empty():
