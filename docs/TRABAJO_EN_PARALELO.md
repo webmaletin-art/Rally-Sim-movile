@@ -59,6 +59,7 @@ Así el otro lo ve con `git pull` y no se pisan.
 
 | Chat | Sistema / tarea | Archivos | Desde (UTC) |
 |---|---|---|---|
+| B | Cuarta tanda del dueño (versión para publicar): huecos entre edificios, veredas planas, fluidez (tirones al ir a otros pueblos), configuración gráfica automática, barra de arresto de la policía, nivel de simulación (pausa sin reglajes, ángulo de dirección), GPS en carreras del mundo abierto, auto «Ren…», aventura (ruedas y 5 etapas libres), menús y opciones, precios de Play y SQL | `godot/game/city/city_layout.gd`, `city_world.gd`, `city_police.gd`, `city_hud` (`ui/city_hud.gd`), `godot/game/track/city_track.gd`, `godot/game/race.gd`, `godot/game/ui/race_hud.gd`, `godot/game/ui/menu*.gd` (menú de nivel de simulación y opciones; `menu.gd` sólo lo que haga falta, se anota acá), `godot/game/data/release.gd` (sólo etapas libres de la aventura y precios), `godot/game/car/tire_wear.gd`, la calibración gráfica (`godot/game/diag/`), `godot/game/region/region_world.gd` (streaming), docs | 20/10 UTC |
 
 ## 5. Avisos para el otro chat
 
