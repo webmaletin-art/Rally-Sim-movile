@@ -902,10 +902,13 @@ func _update_hud(_dt: float) -> void:
 	hud.set_cars(L)
 
 func _show_station() -> void:
-	hud.show_station(station_tab, {"stage": stage, "time": result.get("time", time), "margin": result.get("margin", 0.0), "vmax": result.get("vmax", vmax), "station": station_name, "limit": Release.adventure_limit(r.profile)}, st)
+	hud.show_station(station_tab, {"stage": stage, "time": result.get("time", time), "margin": result.get("margin", 0.0), "vmax": result.get("vmax", vmax), "station": station_name, "limit": Release.adventure_limit(r.profile),
+		"practice": not AdvData.practice.is_empty()}, st)
 
+## Guarda el avance de la Aventura. La PRÁCTICA de Carrera rápida (estado descartable, AdvData.practice) NO se guarda nunca: `st` es ese estado y guardarlo pisaría el avance real
+## (podía adelantarlo —saltear etapas y puntos— o borrarlo) y regalaría lo que es de la Aventura de pago (pedido del dueño, 20/10/2026).
 func _save() -> void:
-	if r.profile != null:
+	if r.profile != null and AdvData.practice.is_empty():
 		r.profile.d["adv"] = st
 		r.profile.save()
 
@@ -1046,6 +1049,9 @@ func _restart_at_station() -> void:
 
 func _finish_adventure() -> void:
 	st["done"] = true
+	if not AdvData.practice.is_empty():
+		hud.show_final({"practice": true}) # en la práctica de Carrera rápida no se entrega el DR Bisonte XR ni el premio: son de la Aventura
+		return
 	_save()
 	if r.profile != null:
 		var pf: RefCounted = r.profile

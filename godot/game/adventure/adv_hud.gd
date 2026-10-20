@@ -515,6 +515,7 @@ func show_brief(stage: int, rival: Dictionary, retry: bool) -> void:
 func show_station(tab: String, data: Dictionary, st: Dictionary) -> void:
 	var stage: int = data["stage"]
 	var last := stage >= AdvRoute.STAGES.size() - 1
+	var practice: bool = bool(data.get("practice", false))
 	var body := _panel("⛽ " + str(data.get("station", "ESTACIÓN")), 0.6)
 	var tabs := Kit.hbox(6)
 	body.add_child(tabs)
@@ -530,7 +531,13 @@ func show_station(tab: String, data: Dictionary, st: Dictionary) -> void:
 			g.columns = 2
 			g.add_theme_constant_override("h_separation", 24)
 			body.add_child(g)
-			for kv in [["Tiempo", Kit.fmt_time(float(data["time"]))], ["Ventaja sobre el rival", "%d m" % int(data["margin"])], ["Velocidad máxima", "%d km/h" % int(data["vmax"])], ["Puntos de habilidad", "+%d" % AdvData.POINTS_PER_STAGE], ["Avance guardado", "✔"]]:
+			var rows: Array = [["Tiempo", Kit.fmt_time(float(data["time"]))], ["Ventaja sobre el rival", "%d m" % int(data["margin"])], ["Velocidad máxima", "%d km/h" % int(data["vmax"])]]
+			if practice: # (Carrera rápida → Ruta de los Sueños: nada de esto es de la Aventura)
+				rows.append(["Avance", "práctica: no se guarda"])
+			else:
+				rows.append(["Puntos de habilidad", "+%d" % AdvData.POINTS_PER_STAGE])
+				rows.append(["Avance guardado", "✔"])
+			for kv in rows:
 				g.add_child(Kit.label(str(kv[0]), 19, Kit.MUTED))
 				g.add_child(Kit.label(str(kv[1]), 19, Kit.TEXT))
 			var d: Dictionary = st["damage"]
@@ -553,13 +560,17 @@ func show_station(tab: String, data: Dictionary, st: Dictionary) -> void:
 		"skills":
 			skills_page(body, st)
 	var capped := (stage + 1) >= int(data.get("limit", 99)) and not last
+	var exit_label := "SALIR" if practice else "💾 GUARDAR Y SALIR" # (la práctica no guarda nada)
 	if capped:
-		_text(body, "🎉 ¡Terminaste las etapas gratis! Desbloqueá la aventura completa en Compras (menú principal) para seguir: tu avance queda guardado.", 18, Kit.GOLD)
-		_row_buttons(body, [["💾 GUARDAR Y SALIR", "save_quit", true]])
+		if practice:
+			_text(body, "🎉 ¡Terminaste las etapas gratis de la práctica! La aventura completa se desbloquea en Compras (menú principal).", 18, Kit.GOLD)
+		else:
+			_text(body, "🎉 ¡Terminaste las etapas gratis! Desbloqueá la aventura completa en Compras (menú principal) para seguir: tu avance queda guardado.", 18, Kit.GOLD)
+		_row_buttons(body, [[exit_label, "save_quit", true]])
 	elif last:
-		_row_buttons(body, [["🏆 TERMINAR LA AVENTURA", "finish", true]])
+		_row_buttons(body, [["🏁 TERMINAR LA PRÁCTICA" if practice else "🏆 TERMINAR LA AVENTURA", "finish", true]])
 	else:
-		_row_buttons(body, [["▶ CONTINUAR A LA ETAPA %d" % (stage + 2), "next", true], ["💾 GUARDAR Y SALIR", "save_quit"]])
+		_row_buttons(body, [["▶ CONTINUAR A LA ETAPA %d" % (stage + 2), "next", true], [exit_label, "save_quit"]])
 
 const TUNE_KEYS := ["split", "pressF", "pressR", "height", "springF", "springR", "bump", "rebound", "arbF", "arbR", "bias", "lsd", "final"]
 const TIRES := ["street", "sport", "slick", "gravel", "mud"]
@@ -698,6 +709,12 @@ func show_lost(rival_name: String) -> void:
 
 func show_final(data: Dictionary) -> void:
 	var body := _panel("", 0.62)
+	if bool(data.get("practice", false)): # práctica de Carrera rápida: sin el auto ni el premio de la Aventura
+		body.add_child(Kit.label("🏁 ¡PRÁCTICA TERMINADA!", 40, Kit.GOLD))
+		body.add_child(Kit.label("Corriste la Ruta de los Sueños en práctica", 26, Kit.TEXT))
+		_text(body, "El DR Bisonte XR y el premio de la Ruta de los Sueños se ganan sólo en la Aventura.", 20)
+		_row_buttons(body, [["VOLVER AL MENÚ", "quit", true]])
+		return
 	body.add_child(Kit.label("🏆 ¡LO LOGRASTE!", 44, Kit.GOLD))
 	body.add_child(Kit.label("Completaste la Ruta de los Sueños", 28, Kit.TEXT))
 	_text(body, "Le ganaste a La Sombra y al Lobo Blanco en la cumbre. El DR Bisonte XR, con su pintura negra de campaña, ya está en tu garaje.", 20)
