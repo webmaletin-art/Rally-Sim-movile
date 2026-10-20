@@ -283,7 +283,7 @@ func _process(_dt: float) -> void:
 			ring.visible = not in_pocket and bool(diag["veg"]) and bool(diag["horizon"]) and rk < 0.5
 			ring.global_position = Vector3(cam.global_position.x, 0.0, cam.global_position.z)
 			ring.scale = Vector3(view_k, 1.0, view_k)
-	update_around(cam.global_position, 1)
+	update_around(cam.global_position, 4, ASSEMBLE_MS)
 	_redraw_broken()
 	var nd := 0
 	while not _diag_todo.is_empty() and nd < 3:
@@ -301,12 +301,16 @@ func _process(_dt: float) -> void:
 ## Los objetos que acaban de romperse: se arma de nuevo la malla de objetos de su cuadra (lo roto queda tirado)
 ## ¿Se dibuja (y choca) este tipo de objeto de la calle con los interruptores de diagnóstico actuales?
 func _diag_type_on(pt: int) -> bool:
+	return _diag_type_on_d(pt, diag)
+
+## Lo mismo con una copia de los interruptores (la cuenta de una cuadra corre en un hilo y no lee el diccionario que cambia el menú)
+func _diag_type_on_d(pt: int, dg: Dictionary) -> bool:
 	if pt == CityProps.TREE or pt == CityProps.RTREE:
-		return bool(diag["trees"])
+		return bool(dg["trees"])
 	if pt in DIAG_VEG:
-		return bool(diag["veg"])
+		return bool(dg["veg"])
 	if pt in DIAG_DECOR:
-		return bool(diag["decor"])
+		return bool(dg["decor"])
 	return true
 
 ## Prende o apaga un sistema del mundo para el diagnóstico (trees, buildings, veg, decor, asphalt, dirt, terrain, horizon)
@@ -430,18 +434,19 @@ func _redraw_broken() -> void:
 func _trees_instance(key: Vector2i) -> Node3D:
 	return TreeSprites.build(tree_items(key), view_k)
 
-## La lista de árboles de una cuadra (x, y, z, especie, escala, giro, tinte: ver TreeSprites.item)
-func tree_items(key: Vector2i) -> Array:
+## La lista de árboles de una cuadra (x, y, z, especie, escala, giro, tinte: ver TreeSprites.item). Sólo cuentas (se calcula en un hilo): brk = los objetos rotos (por defecto, los de ahora)
+func tree_items(key: Vector2i, brk: Variant = null) -> Array:
 	var items: Array = []
 	if not city.props_in.has(key):
 		return items
+	var broken: Dictionary = track.broken if brk == null else brk
 	for id in (city.props_in[key] as PackedInt32Array):
 		var t := int(city.prop_type[id])
 		var x: float = city.prop_x[id]
 		var z: float = city.prop_z[id]
 		var sd: float = city.prop_seed[id]
 		if t == CityProps.TREE:
-			if track.broken.has(id):
+			if broken.has(id):
 				continue
 			var sp := TreeSprites.pick(x, z, sd, z > COAST_Z)
 			items.append(TreeSprites.item(x, city.prop_y[id], z, sp, clampf((6.5 + 3.0 * fposmod(sd * 13.7, 1.0)) / TreeSprites.height_of(sp), 0.55, 1.25), city.prop_yaw[id], sd))
@@ -482,15 +487,14 @@ func _road_tree(id: int, x: float, z: float, sd: float, items: Array) -> void:
 
 ## Malla de los objetos de la calle de una cuadra (una sola llamada de dibujo; se ve a ~150 m) y sus círculos de choque
 func _props_instance(key: Vector2i) -> MeshInstance3D:
+	_ensure_signals()
+	return _props_node(_props_data(key, track.broken, diag))
+
+## Los arreglos de los objetos de la calle de una cuadra: objetos (v, c, a y n: normales y UV2 ya hechas), luces (gv, gc) y lámparas de los semáforos (sv, sc, suv). Sólo cuentas, sin nodos ni
+## recursos: corre en un hilo (brk = copia de los objetos rotos, dg = copia de los interruptores de diagnóstico). Vacío si la cuadra no tiene objetos.
+func _props_data(key: Vector2i, brk: Dictionary, dg: Dictionary) -> Dictionary:
 	if not city.props_in.has(key):
-		return null
-	if signals == null:
-		signals = city.traffic_signals()
-		signal_mat = ShaderMaterial.new()
-		signal_mat.shader = SIGNAL_SHADER
-		signal_mat.set_shader_parameter("cycle", signals.CYCLE)
-		signal_mat.set_shader_parameter("green", signals.GREEN)
-		signal_mat.set_shader_parameter("yellow", signals.YELLOW)
+		return {}
 	var sv := PackedVector3Array()
 	var sc := PackedColorArray()
 	var suv := PackedVector2Array()
@@ -499,34 +503,42 @@ func _props_instance(key: Vector2i) -> MeshInstance3D:
 	var gv := PackedVector3Array()
 	var gc := PackedColorArray()
 	for id in (city.props_in[key] as PackedInt32Array):
-		var fallen: Vector2 = track.broken.get(id, Vector2.ZERO)
+		var fallen: Vector2 = brk.get(id, Vector2.ZERO)
 		var pt := int(city.prop_type[id])
 		if pt == CityProps.RTREE or (pt == CityProps.TREE and fallen == Vector2.ZERO):
 			continue # los árboles sanos son imágenes (_trees_instance)
-		if not _diag_type_on(pt):
+		if not _diag_type_on_d(pt, dg):
 			continue
 		CityProps.emit(int(city.prop_type[id]), city.prop_x[id], city.prop_y[id], city.prop_z[id], city.prop_yaw[id], city.prop_seed[id], fallen, v, c, gv, gc)
 		if int(city.prop_type[id]) == CityProps.LIGHT and fallen == Vector2.ZERO and signals.head_info.has(id):
 			var hi: Vector2 = signals.head_info[id]
 			CityProps.emit_signal_lamps(city.prop_x[id], city.prop_y[id], city.prop_z[id], city.prop_yaw[id], hi.x, hi.y, sv, sc, suv)
 	if v.is_empty():
+		return {}
+	return {"arr": PaperKit.surface_arrays(v, c), "gv": gv, "gc": gc, "sv": sv, "sc": sc, "suv": suv}
+
+## La malla (y sus luces y lámparas) de _props_data, lista para la escena
+func _props_node(pd: Dictionary) -> MeshInstance3D:
+	if pd.is_empty():
 		return null
 	var m := ArrayMesh.new()
-	PaperKit.add_surface(m, v, c, PaperKit.material(null, 0.0, 0.2, 0.3))
+	PaperKit.add_arrays(m, pd["arr"], PaperKit.material(null, 0.0, 0.2, 0.3))
 	var mi := MeshInstance3D.new()
 	mi.name = "props"
 	mi.mesh = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.visibility_range_end = 190.0 * maxf(view_k, 0.6)
+	var gv: PackedVector3Array = pd["gv"]
 	if not gv.is_empty():
-		mi.add_child(_glow_instance(gv, gc, mi.visibility_range_end))
+		mi.add_child(_glow_instance(gv, pd["gc"], mi.visibility_range_end))
+	var sv: PackedVector3Array = pd["sv"]
 	if not sv.is_empty():
 		var sm := ArrayMesh.new()
 		var arr := []
 		arr.resize(Mesh.ARRAY_MAX)
 		arr[Mesh.ARRAY_VERTEX] = sv
-		arr[Mesh.ARRAY_COLOR] = sc
-		arr[Mesh.ARRAY_TEX_UV] = suv
+		arr[Mesh.ARRAY_COLOR] = pd["sc"]
+		arr[Mesh.ARRAY_TEX_UV] = pd["suv"]
 		sm.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 		sm.surface_set_material(0, signal_mat)
 		var si := MeshInstance3D.new()
@@ -536,6 +548,17 @@ func _props_instance(key: Vector2i) -> MeshInstance3D:
 		si.visibility_range_end = mi.visibility_range_end
 		mi.add_child(si)
 	return mi
+
+## Los semáforos funcionales y su material (una sola vez, en el hilo principal: los hilos de las cuadras sólo leen de acá)
+func _ensure_signals() -> void:
+	if signals != null:
+		return
+	signals = city.traffic_signals()
+	signal_mat = ShaderMaterial.new()
+	signal_mat.shader = SIGNAL_SHADER
+	signal_mat.set_shader_parameter("cycle", signals.CYCLE)
+	signal_mat.set_shader_parameter("green", signals.GREEN)
+	signal_mat.set_shader_parameter("yellow", signals.YELLOW)
 
 ## Hora del mundo para los semáforos (la pone el reloj de la ciudad una vez por cuadro)
 func set_signal_time(t: float) -> void:
@@ -601,34 +624,83 @@ func _unregister_props(key: Vector2i) -> void:
 		if CityProps.RADIUS[int(city.prop_type[id])] > 0.0 and not track.broken.has(id):
 			track.remove_prop(id, city.prop_x[id], city.prop_z[id])
 
-## Arma las cuadras de alrededor de p (hasta max_new por llamada) y borra las lejanas
+## Cada cuadra se calcula en un hilo (_chunk_data: sólo cuentas, sin nodos ni recursos) y el cuadro principal sólo la sube a la escena, en pasos cortos (_assemble_a: terreno, calles y edificios;
+## _assemble_b: objetos, árboles y choques; después, de a uno por cuadro, los locales, las estaciones y los autos de las vidrieras). El hilo arma una cuadra a la vez: en un teléfono de pocos núcleos
+## no le saca tiempo al dibujo. Antes cada cuadra se armaba entera en el cuadro en que entraba en el radio (12 a 60 ms en la PC, de 3 a 6 veces más en un teléfono): al ir fuerte por las rutas
+## era un tirón cada pocos segundos (reporte del dueño, 20/10/2026). warm() sigue armando todo de golpe (la carga de la pista y los viajes, con la pantalla negra).
+const ASSEMBLE_MS := 2.5 # lo que se gasta por cuadro en subir cuadras a la escena (siempre se hace al menos un paso)
+const NO_KEY := Vector2i(1 << 30, 1 << 30)
+var _job_key := NO_KEY # la cuadra que calcula el hilo ahora (NO_KEY = ninguna)
+var _job_id := -1
+var _job_out: Dictionary = {} # lo que calculó el hilo (se lee recién cuando terminó)
+# (Las cuentas de una cuadra llenan memorias al usarse: CityLayout._obst y _ribbons, _first_cache, _cap_chunks. Por eso corre UNA sola a la vez: o en el hilo o en el principal, y el principal
+# espera a que el hilo termine antes de armar una por su cuenta, ver _chunk_data_main. Sin un Mutex: si un error de script cortara el hilo a la mitad, un Mutex quedaría tomado para siempre.)
+var _ready_q: Array = [] # [clave, datos] ya calculadas: falta subirlas a la escena
+var _pend_b: Array = [] # [raíz, clave, datos] con la malla base ya subida: faltan los objetos y los árboles
+var _extras_q: Array = [] # [raíz, Callable] de los locales y los autos de las vidrieras: uno por cuadro
+var _pending := {} # claves que están en el hilo o en la cola (todavía sin raíz)
+var _bad := {} # cuadras cuyo armado falló (no se reintenta cada cuadro)
+var _deferring := false # los locales de la cuadra se dejan para los cuadros siguientes (_later)
+var _ck := Vector2i.ZERO
+var _rad := 3
+
+var threaded := true # false = como antes (cada cuadra se arma entera en el hilo principal): una válvula de escape para las pruebas y por si algún teléfono se llevara mal con los hilos
+
+## Arma las cuadras de alrededor de p y borra las lejanas. max_new = cuántos pasos de subida a la escena por llamada como máximo (se corta antes si pasa budget_ms)
 func update_around(p: Vector3, max_new: int, budget_ms := -1.0) -> void:
 	var budget := _frame_budget_ms if budget_ms < 0.0 else budget_ms
-	var ck := city.chunk_of(p.x, p.z)
-	var rad := maxi(2, int(round(float(radius) * view_k)))
+	_ck = city.chunk_of(p.x, p.z)
+	_rad = maxi(2, int(round(float(radius) * view_k)))
+	_ensure_shared()
+	if not threaded:
+		if _job_id >= 0:
+			_take_job()
+		while _assemble_step():
+			pass
+		var t1 := Time.get_ticks_usec()
+		var n1 := 0
+		for k in _wanted(p, _ck, _rad):
+			if n1 >= max_new:
+				break
+			chunks[k] = _build_chunk(k)
+			add_child(chunks[k])
+			built_total += 1
+			n1 += 1
+			if float(Time.get_ticks_usec() - t1) / 1000.0 > budget:
+				break
+		_unload_far(_ck, _rad)
+		return
+	_poll_job()
+	if _job_id < 0:
+		for k in _wanted(p, _ck, _rad):
+			_start_job(k)
+			break
+	var t0 := Time.get_ticks_usec()
+	var made := 0
+	while made < max_new and _assemble_step():
+		made += 1
+		if float(Time.get_ticks_usec() - t0) / 1000.0 > budget:
+			break
+	_unload_far(_ck, _rad)
+
+## Las cuadras que faltan armar alrededor de la cuadra ck, de la más cercana a la más lejana
+func _wanted(p: Vector3, ck: Vector2i, rad: int) -> Array:
 	var want: Array = []
 	for dx in range(-rad, rad + 1):
 		for dz in range(-rad, rad + 1):
 			var k := Vector2i(ck.x + dx, ck.y + dz)
-			if not chunks.has(k):
-				if region_world != null and not CityLayout.in_pocket(p.x):
-					var qx := (float(k.x) + 0.5) * CityLayout.CELL
-					var qz := (float(k.y) + 0.5) * CityLayout.CELL
-					if qx * qx + qz * qz > 3750.0 * 3750.0:
-						continue # más allá lo arma la región
-				want.append(k)
+			if chunks.has(k) or _pending.has(k) or _bad.has(k):
+				continue
+			if region_world != null and not CityLayout.in_pocket(p.x):
+				var qx := (float(k.x) + 0.5) * CityLayout.CELL
+				var qz := (float(k.y) + 0.5) * CityLayout.CELL
+				if qx * qx + qz * qz > 3750.0 * 3750.0:
+					continue # más allá lo arma la región
+			want.append(k)
 	want.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return (a - ck).length_squared() < (b - ck).length_squared())
-	var t0 := Time.get_ticks_usec()
-	var made := 0
-	for k in want:
-		if made >= max_new:
-			break
-		chunks[k] = _build_chunk(k)
-		add_child(chunks[k])
-		built_total += 1
-		made += 1
-		if float(Time.get_ticks_usec() - t0) / 1000.0 > budget:
-			break
+	return want
+
+func _unload_far(ck: Vector2i, rad: int) -> void:
 	for k in chunks.keys():
 		var kk: Vector2i = k
 		if maxi(absi(kk.x - ck.x), absi(kk.y - ck.y)) > rad + 1:
@@ -639,9 +711,106 @@ func update_around(p: Vector3, max_new: int, budget_ms := -1.0) -> void:
 			(chunks[kk] as Node3D).queue_free()
 			chunks.erase(kk)
 
+## Lo que los hilos de las cuadras sólo leen y se arma una vez, en el hilo principal: los semáforos y sus materiales, y las piezas de papel de la vegetación
+func _ensure_shared() -> void:
+	_ensure_signals()
+	PieceBatch.warm(CityProps.FLOWER_PIECES + CityProps.PIECES)
+	TreeSprites.ensure() # (las 48 imágenes de los árboles: 50 a 100 ms la primera vez)
+
+func _start_job(k: Vector2i) -> void:
+	_job_key = k
+	_job_out = {}
+	_pending[k] = true
+	_job_id = WorkerThreadPool.add_task(_job_run.bind(k, track.broken.duplicate(), diag.duplicate()), false, "cuadra de Dream City")
+
+func _job_run(k: Vector2i, brk: Dictionary, dg: Dictionary) -> void:
+	_job_out = _chunk_data(k, brk, dg)
+
+## ¿Terminó el hilo? Si terminó, su cuadra pasa a la cola de subida
+func _poll_job() -> void:
+	if _job_id >= 0 and WorkerThreadPool.is_task_completed(_job_id):
+		_take_job()
+
+func _take_job() -> void:
+	WorkerThreadPool.wait_for_task_completion(_job_id)
+	_job_id = -1
+	var out := _job_out
+	_job_out = {}
+	_ready_q.append([_job_key, out if not out.is_empty() else null]) # (sin datos: el hilo falló y la cuadra se arma en el principal; el error queda en el registro)
+	_job_key = NO_KEY
+
+func _exit_tree() -> void:
+	if _job_id >= 0:
+		WorkerThreadPool.wait_for_task_completion(_job_id) # (el hilo usa este objeto: no se puede borrar mientras corre)
+		_job_id = -1
+		_job_key = NO_KEY
+		_job_out = {}
+	_ready_q.clear()
+	_pending.clear() # (si el mundo vuelve a entrar al árbol, las cuadras que faltan se piden de nuevo)
+
+## Un paso de subida a la escena, el más urgente primero (false si no queda nada): los objetos de una cuadra ya subida, una cuadra nueva (terreno, calles y edificios) o un local
+func _assemble_step() -> bool:
+	while not _pend_b.is_empty():
+		var pb: Array = _pend_b.pop_front()
+		var broot: Node3D = pb[0]
+		if not is_instance_valid(broot) or chunks.get(pb[1]) != broot:
+			continue # (la cuadra ya se borró)
+		_assemble_b(broot, pb[1], pb[2], true)
+		return true
+	while not _ready_q.is_empty():
+		var rq: Array = _ready_q.pop_front()
+		var k: Vector2i = rq[0]
+		_pending.erase(k)
+		if chunks.has(k) or maxi(absi(k.x - _ck.x), absi(k.y - _ck.y)) > _rad + 1:
+			continue # (ya está o quedó lejos mientras se calculaba)
+		var d: Variant = rq[1]
+		if d == null:
+			d = _chunk_data_main(k)
+		if not (d is Dictionary) or (d as Dictionary).is_empty():
+			_bad[k] = true # (falló dos veces: se deja sin armar en vez de reintentar en cada cuadro)
+			continue
+		var root := _assemble_a(k, d)
+		chunks[k] = root
+		add_child(root)
+		built_total += 1
+		_pend_b.append([root, k, d])
+		return true
+	while not _extras_q.is_empty():
+		var ex: Array = _extras_q.pop_front()
+		if is_instance_valid(ex[0]):
+			_deferring = true
+			(ex[1] as Callable).call()
+			_deferring = false
+			return true
+	return false
+
+var _primed := false
+
+## Arma un auto de vidriera y lo tira: la primera vez se inicializan los catálogos y las piezas compartidas (~25 ms en la PC); mejor con la pantalla de carga que en medio de un cuadro
+func _prime_display() -> void:
+	if _primed:
+		return
+	_primed = true
+	var car := _display_car("hatch")
+	if car != null:
+		car.free()
+
 ## Arma ya todas las de alrededor (la carga de la pista, antes de empezar)
 func warm(p: Vector3) -> void:
-	update_around(p, 999, 1e9)
+	_ensure_shared()
+	_prime_display()
+	if _job_id >= 0:
+		_take_job()
+	_ck = city.chunk_of(p.x, p.z)
+	_rad = maxi(2, int(round(float(radius) * view_k)))
+	var guard := 0
+	while _assemble_step() and guard < 100000:
+		guard += 1 # (lo que ya estaba en camino se sube entero)
+	for k in _wanted(p, _ck, _rad):
+		chunks[k] = _build_chunk(k)
+		add_child(chunks[k])
+		built_total += 1
+	_unload_far(_ck, _rad)
 	if region_world != null:
 		region_world.warm(p)
 
@@ -656,9 +825,22 @@ func stats() -> Dictionary:
 	return {"chunks": chunks.size(), "tris": tris, "built": built_total}
 
 # ───────────────────────── una cuadra ─────────────────────────
+## Una cuadra entera, ya (sin hilos): lo que usa warm() y lo que arma el principal si el hilo falló
 func _build_chunk(key: Vector2i) -> Node3D:
-	var root := Node3D.new()
-	root.name = "c%d_%d" % [key.x, key.y]
+	_ensure_shared()
+	var d := _chunk_data_main(key)
+	var root := _assemble_a(key, d)
+	_assemble_b(root, key, d, false)
+	return root
+
+func _chunk_data_main(key: Vector2i) -> Dictionary:
+	if _job_id >= 0:
+		_take_job() # el hilo termina primero (nunca corren las dos cuentas a la vez)
+	return _chunk_data(key, track.broken, diag)
+
+## Todo lo que sale de la geometría de la ciudad: las sopas de triángulos (terreno, calles, rayas, túnel, edificios), los arreglos de los objetos y la lista de árboles. Sólo cuentas: se puede
+## correr en un hilo (brk = los objetos rotos, dg = los interruptores del diagnóstico: en el hilo van copias). Nada de nodos ni recursos (el motor de dibujo se toca sólo desde el principal).
+func _chunk_data(key: Vector2i, brk: Dictionary, dg: Dictionary) -> Dictionary:
 	var x0 := float(key.x) * CityLayout.CELL
 	var z0 := float(key.y) * CityLayout.CELL
 	var terr := Soup.new()
@@ -668,7 +850,18 @@ func _build_chunk(key: Vector2i) -> Node3D:
 	var tn := Soup.new()
 	_roads(rd, mk, key, tn)
 	var bl := Soup.new()
-	var specials := _buildings(bl, key)
+	var pois := _buildings_soup(bl, key)
+	return {"terr": terr, "rd": rd, "mk": mk, "tn": tn, "bl": bl, "pois": pois, "props": _props_data(key, brk, dg), "trees": tree_items(key, brk), "brk": brk.size(), "dg": dg}
+
+## Paso 1 de la subida a la escena: el terreno, las calles y los edificios de la cuadra
+func _assemble_a(key: Vector2i, d: Dictionary) -> Node3D:
+	var root := Node3D.new()
+	root.name = "c%d_%d" % [key.x, key.y]
+	var terr: Soup = d["terr"]
+	var rd: Soup = d["rd"]
+	var mk: Soup = d["mk"]
+	var tn: Soup = d["tn"]
+	var bl: Soup = d["bl"]
 	var m := ArrayMesh.new()
 	_surface(m, terr, PaperKit.material(null, 0.0, 0.2, 0.25))
 	_surface(m, rd, PaperKit.material(load(TEX + "asphalt.png") as Texture2D, 0.28, 0.22, 0.07))
@@ -697,40 +890,71 @@ func _build_chunk(key: Vector2i) -> Node3D:
 		bi.name = "buildings"
 		bi.visible = bool(diag["buildings"])
 		root.add_child(bi)
-	for sp in specials:
-		root.add_child(sp)
-	var pi := _props_instance(key)
+	return root
+
+## Paso 2: los objetos de la calle, los árboles, los círculos de choque y los locales (con defer, los locales y las vidrieras se van armando uno por cuadro)
+func _assemble_b(root: Node3D, key: Vector2i, d: Dictionary, defer: bool) -> void:
+	var pd: Dictionary = d["props"]
+	var items: Array = d["trees"]
+	if int(d["brk"]) != track.broken.size() or d["dg"] != diag:
+		pd = _props_data(key, track.broken, diag) # (se rompió algo o se movió un interruptor mientras se calculaba)
+		items = tree_items(key)
+	var pi := _props_node(pd)
 	if pi != null:
-		root.add_child(pi)
-	var ti := _trees_instance(key)
+		if root.get_node_or_null("props") == null: # (si se rompió algo antes de que llegue este paso, _redraw_broken ya lo armó)
+			root.add_child(pi)
+		else:
+			pi.free()
+	var ti := TreeSprites.build(items, view_k)
 	if ti != null:
-		ti.visible = bool(diag["trees"])
-		root.add_child(ti)
+		if root.get_node_or_null("trees") == null:
+			ti.visible = bool(diag["trees"])
+			root.add_child(ti)
+		else:
+			ti.free()
 	_register_props(key)
+	var was := _deferring
+	_deferring = defer
+	for pb in d["pois"]:
+		var b: Dictionary = pb
+		_later(root, func() -> void: root.add_child(_shop_front(b)))
 	for mo in city.mouths:
 		if city.chunk_of((mo["pos"] as Vector2).x, (mo["pos"] as Vector2).y) == key:
-			root.add_child(_mouth(mo))
+			var mm: Dictionary = mo
+			_later(root, func() -> void: root.add_child(_mouth(mm)))
 	for st in city.stations:
 		if not st.get("region", false) and city.chunk_of((st["center"] as Vector2).x, (st["center"] as Vector2).y) == key:
-			root.add_child(_station(st))
+			var sd: Dictionary = st
+			_later(root, func() -> void: root.add_child(_station(sd)))
 	for tl in city.tolls:
 		if not tl.get("region", false) and city.chunk_of((tl["pos"] as Vector2).x, (tl["pos"] as Vector2).y) == key:
-			root.add_child(_toll(tl))
+			var td: Dictionary = tl
+			_later(root, func() -> void: root.add_child(_toll(td)))
 	for h in city.halls:
 		if city.chunk_of((h["pos"] as Vector2).x, (h["pos"] as Vector2).y) == key:
-			root.add_child(_hall(h))
+			var hd: Dictionary = h
+			_later(root, func() -> void: root.add_child(_hall(hd)))
 	if not city.garage.is_empty() and city.chunk_of((city.garage["p"] as Vector2).x, (city.garage["p"] as Vector2).y) == key:
-		root.add_child(_garage_sign())
+		_later(root, func() -> void: root.add_child(_garage_sign()))
 	for l in city.links:
 		if str(l["label"]) != "" and city.chunk_of((l["label_pos"] as Vector2).x, (l["label_pos"] as Vector2).y) == key:
-			root.add_child(_link_label(l))
+			var ld: Dictionary = l
+			_later(root, func() -> void: root.add_child(_link_label(ld)))
 	for ex in city.exits:
 		if str(ex.get("to", "")) == "region":
 			continue # la ruta sigue por la región: sin portón, sin cartel y sin nada que choque
 		if city.chunk_of((ex["pos"] as Vector2).x, (ex["pos"] as Vector2).y) == key:
-			root.add_child(_gate(ex))
-			_gate_circles(ex, true)
-	return root
+			var ed: Dictionary = ex
+			_gate_circles(ed, true) # (los círculos de choque enseguida: el portón se dibuja cuando le toca)
+			_later(root, func() -> void: root.add_child(_gate(ed)))
+	_deferring = was
+
+## Algo de la cuadra que se arma ahora (cuadra sin hilos) o en uno de los cuadros que siguen (_extras_q)
+func _later(root: Node3D, c: Callable) -> void:
+	if _deferring:
+		_extras_q.append([root, c])
+	else:
+		c.call()
 
 func _surface(m: ArrayMesh, s: Soup, mat: Material) -> void:
 	if s.v.size() == 0:
@@ -1009,10 +1233,8 @@ func _road_segment(rd: Soup, mk: Soup, si: int, ni: int, tn: Soup) -> void:
 	var kb := mb.z
 	var up := Vector3(0, CityLayout.ROAD_UP, 0)
 	rd.quad_up(a - na * (hw * ka) + up, b - nb * (hw * kb) + up, b + nb * (hw * kb) + up, a + na * (hw * ka) + up, C_ASPH)
-	# veredas con cordón (más altas). Cada tramo se recorta contra las calzadas de las otras calles y las esquinas redondeadas (CityLayout.clip_obstacles): la vereda termina en el
-	# cordón del cruce y no se mete en la calle de al lado (antes se salteaba entera si su medio caía en otra calle y quedaban escalones y cuñas)
-	var curb := CityLayout.CURB
-	var cu := Vector3(0, curb, 0)
+	# veredas: un plano a 1 cm del asfalto (sin cordón). Cada tramo se recorta contra las calzadas de las otras calles y las esquinas redondeadas (CityLayout.clip_obstacles): la vereda
+	# termina donde empieza el cruce y no se mete en la calle de al lado (antes se salteaba entera si su medio caía en otra calle y quedaban escalones y cuñas)
 	var side_col := C_SIDE
 	if kind == "rural" or kind == "shortcut" or kind == "scenic":
 		side_col = WorldSurfaces.side_color(C_RURAL_SIDE, (a.y + b.y) * 0.5) # (con nieve, la banquina no es tierra limpia)
@@ -1103,36 +1325,11 @@ func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
 	var t := clampf((p - a).dot(ab) / l2, 0.0, 1.0) if l2 > 1.0e-9 else 0.0
 	return p.distance_to(a + ab * t)
 
-## Un pedazo de vereda (ya recortado): la losa a la altura del cordón y la cara vertical del cordón en los bordes que miran a la calzada (los del lado de afuera y los costados
-## que tocan a la vereda del tramo vecino no llevan). quad = el cuadrilátero original del tramo: e0a, e0b (junto a la calzada), e1b, e1a (afuera).
-func _sidewalk_part(rd: Soup, part: PackedVector2Array, a: Vector3, b: Vector3, col: Color, quad: PackedVector2Array) -> void:
-	var curb := CityLayout.CURB
-	var up := CityLayout.ROAD_UP
+## Un pedazo de vereda (ya recortado): un plano a 1 cm del asfalto, sin cordón ni cara vertical (pedido del dueño, 20/10/2026: «un plano nomás, sin polígonos, sin altura»).
+## quad = el cuadrilátero original del tramo (ya no hace falta para el cordón: se deja el parámetro por las llamadas).
+func _sidewalk_part(rd: Soup, part: PackedVector2Array, a: Vector3, b: Vector3, col: Color, _quad: PackedVector2Array) -> void:
 	var yf := func(q: Vector2) -> float: return _y_on(q, a, b)
-	_flat(rd, part, yf, curb, col)
-	var n := part.size()
-	for i in n:
-		var p := part[i]
-		var q := part[(i + 1) % n]
-		var m := (p + q) * 0.5
-		if p.distance_to(q) < 0.05:
-			continue
-		# el lado de afuera (e1) y los costados (e0a–e1a, e0b–e1b) del cuadrilátero original no llevan cordón
-		if _seg_dist(m, quad[2], quad[3]) < 0.03 or _seg_dist(m, quad[1], quad[2]) < 0.03 or _seg_dist(m, quad[3], quad[0]) < 0.03:
-			continue
-		var d := (q - p).normalized()
-		var outv := Vector2(d.y, -d.x)
-		if Geometry2D.is_point_in_polygon(m + outv * 0.1, part):
-			outv = -outv
-		var pb := Vector3(p.x, float(yf.call(p)) + up, p.y)
-		var qb := Vector3(q.x, float(yf.call(q)) + up, q.y)
-		var pt := Vector3(p.x, float(yf.call(p)) + curb, p.y)
-		var qt := Vector3(q.x, float(yf.call(q)) + curb, q.y)
-		var qn := (qb - pb).cross(qt - pb)
-		if qn.x * outv.x + qn.z * outv.y > 0.0:
-			rd.quad(pb, qb, qt, pt, C_CURB)
-		else:
-			rd.quad(qb, pb, pt, qt, C_CURB)
+	_flat(rd, part, yf, CityLayout.CURB, col)
 
 ## Una raya entre los desplazamientos o0 y o1 (a la derecha del eje) del tramo a → b, recortada contra las calzadas ajenas con medio ancho ≥ min_hw (−1 = contra todas)
 func _mark_part(mk: Soup, a: Vector3, b: Vector3, na: Vector3, nb: Vector3, o0: float, o1: float, dy: float, col: Color, obst: Array, min_hw: float) -> void:
@@ -1160,14 +1357,21 @@ func _jit(c: Color, k: float) -> Color:
 # ───────────────────────── edificios ─────────────────────────
 func _buildings(s: Soup, key: Vector2i) -> Array:
 	var specials: Array = []
+	for b in _buildings_soup(s, key):
+		specials.append(_shop_front(b))
+	return specials
+
+## Las paredes y los techos de la cuadra (en la sopa s); devuelve los edificios con local (los frentes se arman aparte, en el principal). Sólo cuentas.
+func _buildings_soup(s: Soup, key: Vector2i) -> Array:
+	var pois: Array = []
 	_slabs(s, key)
 	if not city.buildings.has(key):
-		return specials
+		return pois
 	for b in city.buildings[key]:
 		_box_building(s, b)
 		if b.has("poi"):
-			specials.append(_shop_front(b))
-	return specials
+			pois.append(b)
+	return pois
 
 func _box_building(s: Soup, b: Dictionary) -> void:
 	var cen := Vector2(b["x"], b["z"])
@@ -2046,30 +2250,62 @@ func _showroom(b: Dictionary, p: Dictionary) -> Node3D:
 	var disp: Array = Shops.get_shop(str(b["show"])).get("display", [])
 	var spots := [[Vector3(-hw + 3.4, 0.2, -4.6), 0.62], [Vector3(-gap - 3.1, 0.2, -4.4), 0.62], [Vector3((gap + hw) * 0.5, 0.42, -4.5), -0.7]]
 	for i in mini(disp.size(), spots.size()):
-		var car := _display_car(str(disp[i]))
-		if car == null:
-			continue
+		var vid := str(disp[i])
 		var sp: Array = spots[i]
-		var at: Vector3 = sp[0]
-		if i == 2:
-			var tb := MeshInstance3D.new()
-			var cy := CylinderMesh.new()
-			cy.top_radius = 3.0
-			cy.bottom_radius = 3.1
-			cy.height = 0.22
-			cy.radial_segments = 24
-			tb.mesh = cy
-			var tm := StandardMaterial3D.new()
-			tm.albedo_color = Color(0.16, 0.16, 0.18)
-			tm.metallic = 0.6
-			tm.roughness = 0.25
-			tb.material_override = tm
-			tb.transform = xf * Transform3D(Basis.IDENTITY, Vector3(at.x, 0.31, at.z))
-			root.add_child(tb)
-		var vp = car.get_meta("vp")
-		car.transform = xf * Transform3D(Basis(Vector3.UP, float(sp[1])), at + Vector3(0, float(vp.comHeight) - float(vp.rideOffset), 0))
-		root.add_child(car)
+		var ii := i
+		if _deferring:
+			_prefetch_display(vid)
+		_later(root, func() -> void: _showroom_car(root, vid, ii, sp, xf)) # (cada auto es un modelo entero: se arma en su propio cuadro)
 	return root
+
+## Las rutas de los modelos que usa el auto vid de una vidriera (el liviano de la carrera)
+func _display_models(vid: String) -> Array:
+	if _veh_cache.is_empty():
+		_veh_cache = JSON.parse_string(FileAccess.get_file_as_string("res://game/data/vehicles.json"))
+	var vt := str((_veh_cache.get(vid, {}) as Dictionary).get("visualType", ""))
+	if CarVisualS.has_own_model(vt):
+		return ["res://game/models/cars/%s_lo.glb" % vt]
+	return ["res://game/models/volt_body_lo.glb", "res://game/models/volt_wheel_lo.glb"]
+
+## Cargar el modelo de un auto es lo más caro de armar una vidriera (~35 ms en la PC, el resto ~1,5 ms): se pide en un hilo apenas aparece la cuadra y el auto se arma cuando ya está listo
+func _prefetch_display(vid: String) -> void:
+	for pth in _display_models(vid):
+		if ResourceLoader.exists(pth):
+			ResourceLoader.load_threaded_request(pth)
+
+func _display_loading(vid: String) -> bool:
+	for pth in _display_models(vid):
+		if ResourceLoader.load_threaded_get_status(pth) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			return true
+	return false
+
+## Un auto de la vidriera (el tercero va sobre una tarima)
+func _showroom_car(root: Node3D, vid: String, i: int, sp: Array, xf: Transform3D, tries := 0) -> void:
+	if _deferring and tries < 900 and _display_loading(vid):
+		_extras_q.append([root, func() -> void: _showroom_car(root, vid, i, sp, xf, tries + 1)]) # (el modelo todavía se está leyendo: se prueba de nuevo en el cuadro que sigue)
+		return
+	var car := _display_car(vid)
+	if car == null:
+		return
+	var at: Vector3 = sp[0]
+	if i == 2:
+		var tb := MeshInstance3D.new()
+		var cy := CylinderMesh.new()
+		cy.top_radius = 3.0
+		cy.bottom_radius = 3.1
+		cy.height = 0.22
+		cy.radial_segments = 24
+		tb.mesh = cy
+		var tm := StandardMaterial3D.new()
+		tm.albedo_color = Color(0.16, 0.16, 0.18)
+		tm.metallic = 0.6
+		tm.roughness = 0.25
+		tb.material_override = tm
+		tb.transform = xf * Transform3D(Basis.IDENTITY, Vector3(at.x, 0.31, at.z))
+		root.add_child(tb)
+	var vp = car.get_meta("vp")
+	car.transform = xf * Transform3D(Basis(Vector3.UP, float(sp[1])), at + Vector3(0, float(vp.comHeight) - float(vp.rideOffset), 0))
+	root.add_child(car)
 
 ## Un auto del catálogo con la pintura de fábrica, quieto (modelo liviano, el de los rivales)
 func _display_car(vid: String) -> Node3D:

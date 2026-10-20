@@ -20,6 +20,11 @@ static func _piece(id: String) -> Array:
 	_src[id] = [v, c, h]
 	return _src[id]
 
+## Carga de una vez las piezas ids (en el hilo principal): las cuentas de las cuadras corren en hilos y esta memoria se llena al usarse, así que ahí sólo se lee
+static func warm(ids: Array) -> void:
+	for id in ids:
+		_piece(str(id))
+
 ## Pone la pieza id en (pos), girada yaw, con una altura final de height metros (0 = tamaño original)
 static func add(id: String, pos: Vector3, yaw: float, height: float, v: PackedVector3Array, c: PackedColorArray, base_xf := Transform3D.IDENTITY, tint := 1.0) -> void:
 	var s := _piece(id)

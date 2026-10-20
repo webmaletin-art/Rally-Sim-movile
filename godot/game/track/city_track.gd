@@ -78,13 +78,11 @@ func ground_info(x: float, z: float) -> Vector2:
 			return Vector2(float(pr[4]) + up, 0.0) # (sobre el asfalto que se dibuja: city_world.gd)
 		if up <= 0.0:
 			return Vector2(float(pr[4]), 2.0) # (túnel)
-		# la vereda / banquina: a la altura del cordón con que se dibuja (CityLayout.CURB), con una rampita de 25 cm desde el asfalto. Antes la física las dejaba a la altura del
-		# asfalto y las ruedas quedaban hundidas 16 cm en el cordón (reporte del dueño, 19/10/2026)
-		var ramp := clampf((float(pr[1]) - float(pr[5])) / 0.25, 0.0, 1.0)
+		# la vereda / banquina es un plano a 1 cm del asfalto (CityLayout.CURB = ROAD_UP + 1 cm): sin cordón ni escalón, igual que se dibuja (pedido del dueño, 20/10/2026)
 		var sv := 2.0
 		if ri >= 0 and ri < _road_rural.size() and _road_rural[ri] == 1 and WorldSurfaces.snow_side(float(pr[4])):
 			sv = float(WorldSurfaces.SNOW) # la banquina nevada de una ruta de campo es nieve, no tierra limpia
-		return Vector2(float(pr[4]) + lerpf(up, CityLayout.CURB, ramp), sv)
+		return Vector2(float(pr[4]) + CityLayout.CURB, sv)
 	var gh := city.height(x, z)
 	if pr[6] >= 0.0:
 		gh = city.dense_ground(gh, pr) # junto a las calles de la ciudad: a ras del asfalto, como la malla

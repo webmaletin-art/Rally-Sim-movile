@@ -10,6 +10,7 @@ const STREET_TREES := ["tree_birch", "tree_tree", "tree_sassafras", "tree_quakin
 const ROAD_TREES := ["alamo", "pino", "sc_pine", "tree_tree", "tree_birch", "tree_lombardy_poplar", "sc_cypress", "tree_sassafras", "arbol_hoja_ancha", "tree_quaking_aspen"]
 const PALMS := ["palmera", "sc_palm_tree", "tree_palm_tree", "sc_coconut_tree"]
 const FLOWER_PIECES := ["flor_roja", "flor_amarilla", "flor_violeta", "flor_blanca", "flor_naranja", "margarita"] # radio de choque de cada tipo (m)
+const PIECES := ["pasto_alto", "pasto", "arbusto", "arbusto_flores", "bush_flower_box", "bush_plant_box"] # el resto de las piezas de papel que se juntan en las mallas (PieceBatch.warm las carga antes de que arranquen los hilos)
 const TYPE_NAMES := ["farola", "árbol", "semáforo", "bolardo", "monumento", "pilar", "auto estacionado"]
 const SOLID_FROM := 4 # desde este tipo no se rompen (los de radio 0 son solo adorno)
 

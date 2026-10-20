@@ -33,6 +33,10 @@ static var _mesh_b: ArrayMesh
 static var _mesh_c: ArrayMesh
 static var _tone := Vector3.ONE
 
+## Texturas, materiales y mallas de los árboles, ya (se arman una vez; CityWorld las pide antes de empezar a andar para que no se carguen en medio de un cuadro)
+static func ensure() -> void:
+	_ensure()
+
 ## Texturas, materiales y mallas: se arman una sola vez y las comparten todas las cuadras
 static func _ensure() -> void:
 	if _tex != null:

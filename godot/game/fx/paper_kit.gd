@@ -121,9 +121,13 @@ static func glint_material(sun_dir: Vector3, amt := 1.0) -> ShaderMaterial:
 
 ## Agrega a una malla una superficie de caras de color liso (verts: 3 puntos por cara · cols: un color por vértice, igual en los tres)
 static func add_surface(m: ArrayMesh, verts: PackedVector3Array, cols: PackedColorArray, mat: Material = null) -> void:
+	add_arrays(m, surface_arrays(verts, cols), mat)
+
+## Los arreglos de la superficie (vértices, normales de cada cara, colores y la UV2 de papel): sólo cuentas, sin recursos, así que se puede calcular en un hilo y subir la malla después con add_arrays
+static func surface_arrays(verts: PackedVector3Array, cols: PackedColorArray) -> Array:
 	var n := verts.size()
 	if n == 0:
-		return
+		return []
 	var uv2 := PackedVector2Array()
 	uv2.resize(n)
 	var nrm := PackedVector3Array()
@@ -142,6 +146,12 @@ static func add_surface(m: ArrayMesh, verts: PackedVector3Array, cols: PackedCol
 	arr[Mesh.ARRAY_NORMAL] = nrm
 	arr[Mesh.ARRAY_COLOR] = cols
 	arr[Mesh.ARRAY_TEX_UV2] = uv2
+	return arr
+
+## Sube a la malla los arreglos de surface_arrays (vacíos = nada)
+static func add_arrays(m: ArrayMesh, arr: Array, mat: Material = null) -> void:
+	if arr.is_empty():
+		return
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	m.surface_set_material(m.get_surface_count() - 1, mat if mat != null else material())
 

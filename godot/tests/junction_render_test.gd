@@ -127,7 +127,8 @@ func _init() -> void:
 				bad_mark += 1
 				if first_bad == "":
 					first_bad = "raya en (%.0f, %.0f)" % [cen2.x, cen2.y]
-	_check(built >= 10 and n_side > 500 and n_curb > 200, "cuadras armadas: %d · triángulos de vereda %d · de cordón %d · de rayas %d (%.1f s)" % [built, n_side, n_curb, n_mark, float(Time.get_ticks_msec() - t0) / 1000.0])
+	_check(built >= 10 and n_side > 500, "cuadras armadas: %d · triángulos de vereda %d · de rayas %d (%.1f s)" % [built, n_side, n_mark, float(Time.get_ticks_msec() - t0) / 1000.0])
+	_check(n_curb == 0, "las veredas son un plano: ninguna cara de cordón (%d)" % n_curb)
 	_check(n_nan == 0, "ningún vértice con altura o posición inválida (%d)" % n_nan)
 	_check(bad_side == 0, "ninguna vereda cae adentro de una calzada (%d, %s)" % [bad_side, first_bad])
 	_check(bad_mark == 0, "ninguna raya pasa por arriba de dos calzadas a la vez (%d, %s)" % [bad_mark, first_bad])
@@ -156,7 +157,35 @@ func _init() -> void:
 		var g: float = track.ground_info(q.x, q.y).x
 		var want: float = (city.s_y[si] + city.s_y[ni]) * 0.5 + CityLayout.CURB
 		worst_sw = maxf(worst_sw, absf(g - want))
-	_check(n_sw > 100 and worst_sw < 0.02, "el piso de la física sobre la vereda está a la altura del cordón (%d puntos, peor diferencia %.1f mm)" % [n_sw, worst_sw * 1000.0])
+	_check(n_sw > 100 and worst_sw < 0.02, "el piso de la física sobre la vereda está a la altura del plano de la vereda (%d puntos, peor diferencia %.1f mm)" % [n_sw, worst_sw * 1000.0])
+	# sin escalón al pasar del asfalto a la vereda (y de la vereda al asfalto): el piso cambia menos de 2 cm en 20 cm de ancho (a 200 km/h un cordón de 16 cm era un salto)
+	var n_edge := 0
+	var worst_step := 0.0
+	for tries in 600:
+		var si3: int = rng.randi() % city.s_x.size()
+		var rd3: Dictionary = city.roads[city.s_road[si3]]
+		var ni3: int = city.s_next[si3]
+		if ni3 < 0 or float(rd3["sw"]) < 1.0 or not city.is_dense_road(int(city.s_road[si3])):
+			continue
+		var a4 := Vector2(city.s_x[si3], city.s_z[si3])
+		var b4 := Vector2(city.s_x[ni3], city.s_z[ni3])
+		if (b4 - a4).length() < 1.0:
+			continue
+		var d4 := (b4 - a4).normalized()
+		var n4 := Vector2(-d4.y, d4.x)
+		var m4 := (a4 + b4) * 0.5
+		var hw4 := float(rd3["hw"])
+		var inside := m4 + n4 * (hw4 - 0.1)
+		var outside := m4 + n4 * (hw4 + 0.1)
+		if _roads_over(city, outside, int(city.s_road[si3])) > 0 or city.on_fillet(outside.x, outside.y):
+			continue
+		var p_in: PackedFloat64Array = city.probe(inside.x, inside.y)
+		var p_out: PackedFloat64Array = city.probe(outside.x, outside.y)
+		if int(p_in[6]) != int(city.s_road[si3]) or int(p_out[6]) != int(city.s_road[si3]) or float(p_out[0]) < 0.0:
+			continue
+		n_edge += 1
+		worst_step = maxf(worst_step, absf(track.ground_info(inside.x, inside.y).x - track.ground_info(outside.x, outside.y).x))
+	_check(n_edge > 100 and worst_step < 0.02, "el borde del asfalto no tiene escalón: peor salto %.1f mm en %d puntos" % [worst_step * 1000.0, n_edge])
 	var fl_ok := 0
 	var fl_n := 0
 	for f in city.fillets:

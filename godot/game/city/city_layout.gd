@@ -236,6 +236,14 @@ const DENSE_KINDS := ["major", "minor", "alley", "ring", "plaza"]
 var _wq := PackedFloat32Array() # 8 números por cuadrilátero (A, B, C, D en sentido antihorario)
 var _wcells: Dictionary = {} # Vector2i (16 m) -> PackedInt32Array de cuadriláteros que tocan esa celda
 var _dense_road := PackedByteArray() # por calle: 1 = calle de la ciudad (la pared son los edificios)
+## Huecos entre edificios (20/10/2026, pedido del dueño: «los huecos entre edificios no se pueden abrir: el jugador no puede entrar entre los edificios; si hace falta, colisión invisible, así no
+## gastamos recursos del teléfono»). Con la pared hecha sólo de edificios (arriba) cada lugar de la línea de edificación SIN losa quedaba abierto y el auto se metía adentro de las manzanas
+## (medido: 289 bolsillos, 100 000 m²). _close_gaps recorre lo que las losas no cubren y cierra con una pared que no se dibuja (sólo choca) todo lo que NO sea: una calle que cruza, un
+## lugar especial (concesionario, taller: tienen su propia pared y su entrada), una estación (se carga nafta) ni una zona abierta del Drift (Plaza y Parque del Drift). Las plazas y parques
+## que no son del Drift (la Plaza Aurora) quedan cerrados.
+const GAP_WALL_T := 3.0 # espesor (m) de cada pared de relleno, hacia atrás de la línea de edificación
+var _gap_quads := PackedFloat32Array() # 8 números por cuadrilátero (A, B, C, D), igual que _wq
+var gap_wall_len := 0.0 # metros de pared de relleno (estadística)
 
 func prepare_walls() -> void:
 	_dense_road.resize(roads.size())
@@ -263,6 +271,8 @@ func prepare_walls() -> void:
 			var w2: float = float(bd["w"]) * 0.5
 			var d2: float = float(bd["d"]) * 0.5
 			_add_wall_quad(cen - tg * w2 - nm * d2, cen + tg * w2 - nm * d2, cen + tg * w2 + nm * d2, cen - tg * w2 + nm * d2)
+	for gi in range(0, _gap_quads.size(), 8):
+		_add_wall_quad(Vector2(_gap_quads[gi], _gap_quads[gi + 1]), Vector2(_gap_quads[gi + 2], _gap_quads[gi + 3]), Vector2(_gap_quads[gi + 4], _gap_quads[gi + 5]), Vector2(_gap_quads[gi + 6], _gap_quads[gi + 7]))
 
 func _add_wall_quad(a: Vector2, b: Vector2, c: Vector2, d: Vector2) -> void:
 	# sentido antihorario (área con signo positiva)
@@ -356,7 +366,9 @@ func _quad_push(x: float, z: float, r: float, qi: int) -> Vector3:
 ##  · en cada cruce, la unión de las calzadas se «cierra» con un radio (FILLET_R): lo que se agrega es la esquina redondeada del pavimento (fillets);
 ##  · las veredas y las rayas de cada tramo se recortan contra las calzadas de las otras calles y contra esas esquinas (clip_obstacles): la vereda termina en el cordón del cruce y
 ##    la raya no pasa por arriba de otra calzada. El piso de la física sigue lo mismo (ground_info: la vereda a la altura del cordón, la esquina como asfalto).
-const CURB := 0.16 # la vereda se dibuja a esta altura sobre el eje de la calle (el asfalto, a ROAD_UP)
+## 20/10/2026, pedido del dueño («la vereda, que sea un plano nomás, sin polígonos, sin altura: necesito fluidez, no más saltos al andar fuerte»): la vereda y la banquina son un plano a 1 cm
+## del asfalto (sin cordón ni escalón: ni caras verticales para dibujar ni un salto de 16 cm al cruzarla a velocidad). Antes 16 cm de cordón con su cara vertical.
+const CURB := 0.05 # la vereda se dibuja a esta altura sobre el eje de la calle (el asfalto, a ROAD_UP = 0,04)
 const FILLET_R := 4.5
 var fillets: Array = [] # PackedVector2Array por esquina redondeada
 var _fcells: Dictionary = {} # Vector2i (16 m) -> PackedInt32Array de esquinas que tocan esa celda
@@ -643,6 +655,7 @@ func build() -> void:
 	_place_garage()
 	_place_dealers()
 	_place_facades()
+	_close_station_lots()
 	_place_props()
 	_place_roadside()
 	_place_guardrails()
@@ -1383,7 +1396,7 @@ var slabs: Dictionary = {} # Vector2i (cuadra) -> Array de losas {pts: PackedVec
 var slab_count := 0
 
 ## ¿El punto cae dentro del corredor (calzada + vereda + margen) de alguna calle que no sea own, o de un lugar especial o zona abierta?
-func _blocked_line(x: float, z: float, own: int, roads_only := false) -> bool:
+func _blocked_line(x: float, z: float, own: int, roads_only := false, body_only := false) -> bool:
 	var kx := int(floor(x / HC))
 	var kz := int(floor(z / HC))
 	for dx in range(-1, 2):
@@ -1405,7 +1418,11 @@ func _blocked_line(x: float, z: float, own: int, roads_only := false) -> bool:
 				var l2 := ex * ex + ez * ez
 				var t := 0.0
 				if l2 > 1e-6:
-					t = clampf(((x - ax) * ex + (z - az) * ez) / l2, 0.0, 1.0)
+					var tt := ((x - ax) * ex + (z - az) * ez) / l2
+					t = clampf(tt, 0.0, 1.0)
+					# sólo el cuerpo de la calle, sin la media luna que la rodea más allá de su punta (una calle que empieza o termina adentro de la vereda de otra no cruza su línea de edificación)
+					if body_only and ((tt < 0.0 and s_prev[si] < 0) or (tt > 1.0 and s_next[ni] < 0)):
+						continue
 				var ddx := ax + ex * t - x
 				var ddz := az + ez * t - z
 				var rd: Dictionary = roads[rid]
@@ -1465,6 +1482,7 @@ func _place_facades() -> void:
 		var sw := float(rd["sw"])
 		var off := hw + sw + LINE_GAP
 		var n := pts.size()
+		_cap_dead_ends(ri)
 		for side in [-1.0, 1.0]:
 			var sdv: float = side
 			var away := PackedVector2Array()
@@ -1482,6 +1500,7 @@ func _place_facades() -> void:
 				# solo el lado de afuera: la plaza es un parque abierto y la rodean los edificios
 				var p0 := Vector2(pts[0].x, pts[0].z) - (rd["center"] as Vector2)
 				if away[0].dot(p0) < 0.0:
+					_close_gaps(ri, pts, away, off, []) # el lado de adentro (la plaza): cerrado, salvo la Plaza y el Parque del Drift
 					continue
 			var blocked: Array = []
 			var line: Array = []
@@ -1517,8 +1536,158 @@ func _place_facades() -> void:
 					cur_a = -1.0
 			if cur_a >= 0.0:
 				runs.append([cur_a, float(n - 1)])
+			var covered: Array = []
 			for r in runs:
-				_slabs_in_run(kind, pts, away, off, float(r[0]), float(r[1]), sdv)
+				covered.append_array(_slabs_in_run(kind, pts, away, off, float(r[0]), float(r[1]), sdv))
+			_close_gaps(ri, pts, away, off, covered)
+
+## ¿El punto cae adentro de la huella de un lugar especial (sin el margen de la vidriera)?
+func _point_in_special(x: float, z: float, margin := 0.3) -> bool:
+	var ok_key := Vector2i(int(floor(x / OCC)), int(floor(z / OCC)))
+	for ox in range(-1, 2):
+		for oz in range(-1, 2):
+			var kk := Vector2i(ok_key.x + ox, ok_key.y + oz)
+			if not _occ.has(kk):
+				continue
+			for c in (_occ[kk] as Array):
+				var yw := float(c[2])
+				var dx := x - float(c[0])
+				var dz := z - float(c[1])
+				if absf(dx * sin(yw) + dz * cos(yw)) < float(c[3]) * 0.5 + margin and absf(dx * cos(yw) - dz * sin(yw)) < float(c[4]) * 0.5 + margin:
+					return true
+	return false
+
+## ¿Hay que cerrar con una pared este punto de la línea de edificación? No si es una calle que cruza (se pasa por ahí), un lugar especial (concesionario, taller: pared y entrada propias),
+## una estación de servicio o una zona abierta del Drift. Sí en cualquier otro hueco: entre edificios, esquinas sin losa, manzanas angostas y la Plaza Aurora.
+func _gap_needs_wall(q: Vector2, ri: int) -> bool:
+	if _blocked_line(q.x, q.y, ri, true, true):
+		return false
+	if _point_in_special(q.x, q.y, 0.3):
+		return false # (sólo adentro de la huella: los costados de un concesionario o un taller sí se cierran)
+	for oa in open_areas:
+		if q.distance_to(oa["pos"]) < float(oa.get("nb", oa["r"])):
+			return not (oa.get("station", false) == true or oa.get("dark", false) == true or str(oa["name"]).contains("Drift"))
+	return true
+
+## Los tramos [desde, hasta] (parámetro de la línea) de un hueco donde hace falta pared: se mira cada ~2 m y los bordes se afinan por bisección
+func _gap_runs(ri: int, pts: PackedVector3Array, away: PackedVector2Array, off: float, ta: float, tb: float) -> Array:
+	var out: Array = []
+	var steps := maxi(1, int(ceil((tb - ta) / 0.25)))
+	var prev_t := ta
+	var prev_need := _gap_needs_wall((_line_pt(pts, away, off, ta)[0] as Vector2), ri)
+	var start := ta if prev_need else -1.0
+	for k in range(1, steps + 1):
+		var t := minf(ta + (tb - ta) * float(k) / float(steps), tb)
+		var need := _gap_needs_wall((_line_pt(pts, away, off, t)[0] as Vector2), ri)
+		if need != prev_need:
+			var lo := prev_t
+			var hi := t
+			for it in 6:
+				var mid := (lo + hi) * 0.5
+				if _gap_needs_wall((_line_pt(pts, away, off, mid)[0] as Vector2), ri) == prev_need:
+					lo = mid
+				else:
+					hi = mid
+			var edge := (lo + hi) * 0.5
+			if prev_need:
+				out.append([start, edge])
+				start = -1.0
+			else:
+				start = edge
+		prev_t = t
+		prev_need = need
+	if prev_need and start >= 0.0:
+		out.append([start, tb])
+	return out
+
+## Una pared a lo ancho del final de una calle sin salida (los callejones que entran a una manzana): antes la pared del corredor la cerraba y ahora el auto seguía de largo hacia el interior
+func _cap_dead_ends(ri: int) -> void:
+	var rd: Dictionary = roads[ri]
+	if not (str(rd["kind"]) in DENSE_KINDS) or str(rd["name"]).contains("Drift"):
+		return
+	var pts: PackedVector3Array = rd["pts"]
+	var n := pts.size()
+	if n < 3:
+		return
+	var off := float(rd["hw"]) + float(rd["sw"]) + LINE_GAP
+	for e in 2:
+		var pe := Vector2(pts[0].x, pts[0].z) if e == 0 else Vector2(pts[n - 1].x, pts[n - 1].z)
+		var pi := Vector2(pts[1].x, pts[1].z) if e == 0 else Vector2(pts[n - 2].x, pts[n - 2].z)
+		if pe.distance_to(Vector2(pts[0].x, pts[0].z) if e == 1 else Vector2(pts[n - 1].x, pts[n - 1].z)) < 6.0:
+			continue # una calle que cierra sobre sí misma (anillo)
+		var dir := (pe - pi).normalized()
+		if _blocked_line(pe.x, pe.y, ri, true, true):
+			continue # termina adentro del corredor de otra calle: es un cruce
+		var nrm := Vector2(-dir.y, dir.x)
+		var c0 := pe + dir * LINE_GAP
+		var a := c0 - nrm * off
+		var b := c0 + nrm * off
+		_gap_quads.append_array(PackedFloat32Array([a.x, a.y, b.x, b.y, b.x + dir.x * GAP_WALL_T, b.y + dir.y * GAP_WALL_T, a.x + dir.x * GAP_WALL_T, a.y + dir.y * GAP_WALL_T]))
+		gap_wall_len += 2.0 * off
+
+## Los playones de las gasolineras (varios círculos que se pisan, pegados a la calle): se entra desde la calle y se sale por ahí; el resto del borde del playón da al interior de la manzana y se
+## cierra con una pared que no se dibuja
+func _close_station_lots() -> void:
+	for st in stations:
+		var circles: Array = st["circles"]
+		var R := float(st["r"])
+		for ci in circles.size():
+			var cc: Vector2 = circles[ci]
+			var steps := maxi(12, int(ceil(TAU * R / 2.0)))
+			var prev := cc + Vector2(R, 0.0)
+			var prev_ok := _lot_edge_needs_wall(prev, circles, R)
+			for k in range(1, steps + 1):
+				var ang := TAU * float(k) / float(steps)
+				var cur := cc + Vector2(cos(ang), sin(ang)) * R
+				var cur_ok := _lot_edge_needs_wall(cur, circles, R)
+				if prev_ok and cur_ok:
+					var nm := ((prev + cur) * 0.5 - cc).normalized()
+					_gap_quads.append_array(PackedFloat32Array([prev.x, prev.y, cur.x, cur.y, cur.x + nm.x * GAP_WALL_T, cur.y + nm.y * GAP_WALL_T, prev.x + nm.x * GAP_WALL_T, prev.y + nm.y * GAP_WALL_T]))
+					gap_wall_len += prev.distance_to(cur)
+				prev = cur
+				prev_ok = cur_ok
+
+## ¿Este punto del borde de un playón necesita pared? No si queda adentro de otro círculo del mismo playón ni adentro del corredor de una calle (por ahí se entra)
+func _lot_edge_needs_wall(q: Vector2, circles: Array, R: float) -> bool:
+	for oc in circles:
+		if q.distance_to(oc) < R - 0.4:
+			return false
+	var pr := probe(q.x, q.y)
+	if float(pr[6]) >= 0.0 and float(pr[0]) > -0.5:
+		return false
+	return true
+
+## Cierra los huecos de la línea de edificación de una calle de la ciudad (lo que las losas `covered` no cubren)
+func _close_gaps(ri: int, pts: PackedVector3Array, away: PackedVector2Array, off: float, covered: Array) -> void:
+	if not (str((roads[ri] as Dictionary)["kind"]) in DENSE_KINDS):
+		return
+	if str((roads[ri] as Dictionary)["name"]).contains("Drift"):
+		return # el Parque del Drift se maneja por adentro
+	covered.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+	var cur := 0.0
+	var gaps: Array = []
+	for c in covered:
+		if float(c[0]) > cur + 0.02:
+			gaps.append([cur, float(c[0])])
+		cur = maxf(cur, float(c[1]))
+	if cur < float(pts.size() - 1) - 0.02:
+		gaps.append([cur, float(pts.size() - 1)])
+	for g in gaps:
+		for r in _gap_runs(ri, pts, away, off, float(g[0]), float(g[1])):
+			var u0: float = r[0]
+			var u1: float = r[1]
+			var steps := maxi(1, int(ceil((u1 - u0) / 0.5)))
+			var prev: Array = _line_pt(pts, away, off, u0)
+			for k in range(1, steps + 1):
+				var cu: Array = _line_pt(pts, away, off, u0 + (u1 - u0) * float(k) / float(steps))
+				var a: Vector2 = prev[0]
+				var b: Vector2 = cu[0]
+				if a.distance_squared_to(b) > 0.0004:
+					var na: Vector2 = prev[2]
+					var nb: Vector2 = cu[2]
+					_gap_quads.append_array(PackedFloat32Array([a.x, a.y, b.x, b.y, b.x + nb.x * GAP_WALL_T, b.y + nb.y * GAP_WALL_T, a.x + na.x * GAP_WALL_T, a.y + na.y * GAP_WALL_T]))
+					gap_wall_len += a.distance_to(b)
+				prev = cu
 
 ## Fondo libre de una losa: hasta dónde se puede ir hacia atrás desde cada punto del frente sin pisar el corredor de ninguna calle
 func _free_depth(pts: PackedVector3Array, away: PackedVector2Array, depth: float) -> float:
@@ -1574,13 +1743,15 @@ func _edge_t(pts: PackedVector3Array, away: PackedVector2Array, off: float, i: i
 				lo = mid
 	return hi if to_free else lo
 
-func _slabs_in_run(kind: String, pts: PackedVector3Array, away: PackedVector2Array, off: float, ta: float, tb: float, sdv: float) -> void:
+func _slabs_in_run(kind: String, pts: PackedVector3Array, away: PackedVector2Array, off: float, ta: float, tb: float, sdv: float) -> Array:
 	if tb - ta < 0.05:
-		return
+		return []
 	var cur := ta
 	var run_slabs: Array = []
 	var last_h := 0.0
+	var covered: Array = []
 	while cur < tb - 0.001:
+		var seg_a := cur # (de dónde a dónde, en parámetro de la línea, cubre esta losa: _close_gaps cierra lo que no cubre ninguna)
 		var mid_pt: Array = _line_pt(pts, away, off, minf(cur + 1.0, tb))
 		var mp: Vector2 = mid_pt[0]
 		var zone := zone_of(mp.x, mp.y)
@@ -1621,7 +1792,7 @@ func _slabs_in_run(kind: String, pts: PackedVector3Array, away: PackedVector2Arr
 		if house:
 			hh = clampf(hh, 3.2, 9.6)
 		var slab := {"pts": spts, "away": saway, "h": hh, "wall": (OLD_WALLS if kind == "alley" else WALLS)[_rng.randi() % (OLD_WALLS if kind == "alley" else WALLS).size()],
-			"roof": ROOFS[_rng.randi() % ROOFS.size()], "seed": _rng.randf(), "depth": float(st["depth"]), "house": house, "hp": 0.0, "hn": 0.0, "zone": zone}
+			"roof": ROOFS[_rng.randi() % ROOFS.size()], "seed": _rng.randf(), "depth": float(st["depth"]), "house": house, "hp": 0.0, "hn": 0.0, "zone": zone, "ta": seg_a, "tb": t}
 		if skip:
 			run_slabs.append(null)
 			continue
@@ -1654,6 +1825,8 @@ func _slabs_in_run(kind: String, pts: PackedVector3Array, away: PackedVector2Arr
 		arr.append(sl)
 		slabs[key] = arr
 		slab_count += 1
+		covered.append([float(sl["ta"]), float(sl["tb"])])
+	return covered
 
 # ───────────────────────── gasolineras y peajes ─────────────────────────
 ## Las gasolineras ocupan el lugar de un edificio: un playón abierto (varios círculos que se pisan, así se maneja por adentro) pegado a la calle, con techo sobre las islas de surtidores,
