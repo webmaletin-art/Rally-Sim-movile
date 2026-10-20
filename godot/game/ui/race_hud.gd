@@ -57,6 +57,9 @@ var bar: ColorRect
 var bar_fill: ColorRect
 var minimap: Control
 var city_hud: Control # mundo abierto: minimapa que gira, mapa grande y GPS
+var lights_text_fn: Callable # texto del botón de los faros de la pausa (city_clock.lights_label)
+var lights_cycle_fn: Callable # cambia entre automáticas, encendidas y apagadas
+var external_menu := false # otro panel (el taller de prueba, race.gd) tapa la pantalla: el HUD del mapa se esconde
 var net_hud: Control # Red de rutas: minimapa que gira, estación más cercana y volver a la estación
 var opts: RefCounted
 var opts_box: Control
@@ -275,6 +278,8 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 	# el minimapa va arriba a la izquierda, debajo del cronómetro (no tapa el espejo ni los botones)
 	minimap.position = Vector2(14.0, 100.0)
 	tick += dt
+	if city_hud != null:
+		city_hud.set_menu_open(pause_box.visible or external_menu or (opts_box != null and opts_box.visible) or (events_ui != null and events_ui.visible))
 	if city_hud != null and not car_list.is_empty():
 		city_hud.update_hud(dt, car_list[0])
 	if net_hud != null and not car_list.is_empty():
@@ -445,6 +450,14 @@ func _fill_pause() -> void:
 		var road_b := Kit.button("📍  VOLVER A LA CALLE", func(): back_to_road_pressed.emit(), false, 19, sz)
 		road_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		pause_col.add_child(road_b)
+	if city_hud != null and lights_text_fn.is_valid() and str(lights_text_fn.call()) != "": # faros: automáticos, encendidos o apagados
+		var lights_hold := []
+		var lights_b := Kit.button(str(lights_text_fn.call()), func() -> void:
+			lights_cycle_fn.call()
+			(lights_hold[0] as Button).text = str(lights_text_fn.call()), false, 19, sz)
+		lights_hold.append(lights_b)
+		lights_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pause_col.add_child(lights_b)
 	if city_hud != null and events_fn.is_valid() and events_fn.call() is Array: # eventos del modo online: su pantalla propia (nada de carteles en la pantalla de juego)
 		var live := 0
 		for c in (events_fn.call() as Array):

@@ -88,7 +88,7 @@ var station_pose: Array = []
 var stats := {"chases": 0, "arrests": 0, "escapes": 0}
 var siren: AudioStreamPlayer3D
 var _hud: CanvasLayer
-var _badge: PoliceBadge # el indicador de la policía: una placa chica arriba a la derecha (no una frase en el medio de la pantalla)
+var _badge: PoliceBadge # el indicador de la policía: una placa chica arriba a la izquierda, junto al cronómetro (no una frase en el medio de la pantalla)
 var online := false
 var group := 1 # jugadores juntos (uno mismo incluido)
 var nearby_fn: Callable # online: posiciones (Vector2) de los otros jugadores conocidos (remote_cars.positions)
@@ -679,11 +679,12 @@ class PoliceBadge extends Control:
 	func _init() -> void:
 		custom_minimum_size = Vector2(196, 46)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		set_anchors_preset(Control.PRESET_TOP_RIGHT)
-		offset_left = -210.0
-		offset_right = -14.0
-		offset_top = 58.0
-		offset_bottom = 104.0
+		# arriba a la izquierda, al lado del cronómetro: a la derecha (debajo de los botones de pausa y cámara) los tapaban y los tapaban a ellos (captura del dueño, 19/10/2026)
+		set_anchors_preset(Control.PRESET_TOP_LEFT)
+		offset_left = 226.0
+		offset_right = 422.0
+		offset_top = 14.0
+		offset_bottom = 60.0
 
 	func _process(dt: float) -> void:
 		if is_visible_in_tree() and kind == "chase":

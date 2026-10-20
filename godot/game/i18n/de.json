@@ -3050,5 +3050,8 @@
 "📅 «%s» empieza en 1 minuto": "📅 „%s“ beginnt in 1 Minute",
 "📢 %s ganó «%s»%s": "📢 %s hat „%s“ gewonnen%s",
 "😎 ¡TE ESCAPASTE! + $%d · racha %d": "😎 DU BIST ENTKOMMEN! + $%d · Serie %d",
-"😞 %s atrapó el %s": "😞 %s hat den %s geschnappt"
+"😞 %s atrapó el %s": "😞 %s hat den %s geschnappt",
+"LUCES: AUTOMÁTICAS": "LICHT: AUTOMATISCH",
+"LUCES: ENCENDIDAS": "LICHT: AN",
+"LUCES: APAGADAS": "LICHT: AUS"
 }

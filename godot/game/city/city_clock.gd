@@ -3,6 +3,7 @@ extends RefCounted
 ## ambiente, niebla) que se recalculan 8 veces por segundo, sin luces dinámicas ni sombras nuevas. De noche se prenden las ventanas (en el shader de las fachadas), las lámparas de la calle
 ## (mallas aditivas con charcos de luz) y los faros del auto (un haz plano aditivo sobre el piso).
 
+const Tr := preload("res://game/i18n/tr.gd")
 const WorldWeather := preload("res://game/world/world_weather.gd")
 const DAY_SECONDS := 960.0
 const START_HOUR := 9.0
@@ -165,8 +166,37 @@ func _apply() -> void:
 	if race.track != null and race.track.world_node != null:
 		race.track.world_node.set_night(night)
 	if _beam != null:
-		_beam.visible = night > 0.08
-		_beam_mat.set_shader_parameter("k", clampf(night * 0.9, 0.0, 0.85)) # (antes 0,55: «alumbran poco»)
+		var lk := _lights_k()
+		_beam.visible = lk > 0.02
+		_beam_mat.set_shader_parameter("k", lk) # (antes 0,55: «alumbran poco»)
+
+## Faros: AUTO (se prenden al anochecer, no de día: antes arrancaban con el primer atardecer), ENCENDIDAS o APAGADAS a mano (pedido del dueño, 19/10/2026: «de día las luces están
+## prendidas, dame un botoncito para apagarlas»). Se elige en la pausa y queda guardado en el perfil.
+func lights_mode() -> String:
+	var m: Variant = race.profile.setting("lights") if race.profile != null else null
+	return str(m) if str(m) in ["on", "off"] else "auto"
+
+func _lights_k() -> float:
+	match lights_mode():
+		"off":
+			return 0.0
+		"on":
+			return maxf(clampf(night * 0.9, 0.0, 0.85), 0.4)
+	return clampf((night - 0.2) * 1.2, 0.0, 0.85)
+
+func lights_label() -> String:
+	match lights_mode():
+		"off":
+			return "💡  " + Tr.t("LUCES: APAGADAS")
+		"on":
+			return "💡  " + Tr.t("LUCES: ENCENDIDAS")
+	return "💡  " + Tr.t("LUCES: AUTOMÁTICAS")
+
+func cycle_lights() -> void:
+	var nx: String = {"auto": "on", "on": "off", "off": "auto"}[lights_mode()]
+	if race.profile != null:
+		race.profile.set_setting("lights", nx)
+	_apply()
 
 ## Clima del mundo (Etapa 17) sobre la hora del día: nubes (menos sol, cielo gris), niebla (se acorta la vista), lluvia (gotas, calle mojada y menos agarre)
 func _apply_weather() -> void:

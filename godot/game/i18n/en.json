@@ -3059,5 +3059,8 @@
 "📅 «%s» empieza en 1 minuto": "📅 \"%s\" starts in 1 minute",
 "📢 %s ganó «%s»%s": "📢 %s won \"%s\"%s",
 "😎 ¡TE ESCAPASTE! + $%d · racha %d": "😎 YOU ESCAPED! + $%d · streak %d",
-"😞 %s atrapó el %s": "😞 %s caught the %s"
+"😞 %s atrapó el %s": "😞 %s caught the %s",
+"LUCES: AUTOMÁTICAS": "LIGHTS: AUTO",
+"LUCES: ENCENDIDAS": "LIGHTS: ON",
+"LUCES: APAGADAS": "LIGHTS: OFF"
 }

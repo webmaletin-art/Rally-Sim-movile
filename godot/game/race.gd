@@ -330,6 +330,10 @@ func _ready() -> void:
 				modes.mark_seen()
 		race_hud.unseen_fn = func() -> bool: return modes != null and modes.has_unseen()
 		race_hud.help_fn = func() -> String: return modes.help_text() if modes != null and modes.available() else ""
+		race_hud.lights_text_fn = func() -> String: return clock.lights_label() if clock != null else ""
+		race_hud.lights_cycle_fn = func() -> void:
+			if clock != null:
+				clock.cycle_lights()
 		race_hud.mode_pressed.connect(func(m: String) -> void:
 			_toggle_pause() # se cierra la pausa y arranca (o termina) el modo
 			if modes != null:
@@ -1238,29 +1242,39 @@ func _convoy_pose(rank: int, from_idx := 0) -> Array:
 	var side := 0.9 if rank % 2 == 0 else -0.9
 	return [sm.x + l.x * side, sm.z + l.z * side, atan2(t.x, t.z), i]
 
-func _rebuild_cars() -> void:
+## Rehace los autos (taller de prueba, cambio de autos). only_player: mundo abierto, sólo se cambia el auto del jugador: la sesión, el GPS, la policía, los eventos y los demás autos
+## siguen como estaban (antes el taller de prueba rehacía TODO: «al modificar la suspensión el auto hace un respawn y el GPS aparece arriba del menú», reporte del dueño 19/10/2026)
+func _rebuild_cars(only_player := false) -> void:
 	_finish_physics()
-	if police != null:
-		police.forget() # los patrulleros son autos de la lista: se rehacen sólo los de la parrilla
-	if ow_events != null:
-		ow_events.forget()
-	if modes != null:
-		modes.forget()
+	if only_player and not cars.is_empty():
+		cars[0].visual.queue_free()
+		cars.remove_at(0)
+	else:
+		only_player = false
+		if police != null:
+			police.forget() # los patrulleros son autos de la lista: se rehacen sólo los de la parrilla
+		if ow_events != null:
+			ow_events.forget()
+		if modes != null:
+			modes.forget()
+		for c in cars:
+			c.visual.queue_free()
+		cars.clear()
 	if fx != null:
 		fx.reset()
-	for c in cars:
-		c.visual.queue_free()
-	cars.clear()
 	cockpit = null
 	var setups := _car_setups()
 	cars_n = setups.size()
-	rival_info.clear()
+	if not only_player:
+		rival_info.clear()
 	var s0 := 0
 	if menu_mode and cfg.get("seg") is Array:
 		s0 = int(floor(float(cfg["seg"][0]) * float(track.n)))
 	if view_at >= 0.0 and track is RouteTrack:
 		s0 = int(floor(view_at * float(track.n)))
 	for i in cars_n:
+		if only_player and i > 0:
+			break
 		var su: Dictionary = setups[i]
 		var d: Dictionary = su["params"]
 		var paint: Color = su["paint"]
@@ -1268,7 +1282,8 @@ func _rebuild_cars() -> void:
 		var route := track is RouteTrack
 		var car_view = (player_view() if (adv_mode and i == 0) else track.make_view()) if route else track
 		var car := Car.new(car_view, VehicleParams.from_dict(d), i == 0, lo, paint, su["rim"], str(su.get("finish", "gloss")), (cfg.get("state", {}) as Dictionary).get("mods", {}) if i == 0 and cfg.get("state") is Dictionary else {})
-		rival_info.append({"name": su["name"], "color": paint})
+		if not only_player:
+			rival_info.append({"name": su["name"], "color": paint})
 		for a in OS.get_cmdline_user_args():
 			if a.begins_with("--livery=") and i == 0:
 				su["livery"] = int(a.substr(9)) # prueba: rotulado del auto del jugador
@@ -1343,7 +1358,10 @@ func _rebuild_cars() -> void:
 			car.wall = wall_dist()
 			if i == 0:
 				assist_view = track.make_view()
-		cars.append(car)
+		if only_player:
+			cars.insert(0, car)
+		else:
+			cars.append(car)
 		if auto_player and i == 0 and route:
 			car.driver = AIDriver.new(track.make_view(), car.phys, {"skill": 0.95})
 		if auto_player and i == 0 and track is NetTrack:
@@ -1362,6 +1380,8 @@ func _rebuild_cars() -> void:
 		controls.has_nitro = cars[0].phys.V.nitroCap > 0.0
 	cam_ready = false
 	fx_hold = 1.5
+	if only_player:
+		return # (la sesión del mundo abierto sigue: no se arma otra)
 	_start_session()
 
 ## Cuenta regresiva + vueltas + meta (solo con el menú; la escena de pruebas anda libre)
@@ -2511,6 +2531,8 @@ func _edit_controls_done(saved: bool) -> void:
 func _show_tests(on := true) -> void:
 	hud.visible = on
 	hud.set_process_input(on)
+	if race_hud != null:
+		race_hud.external_menu = on
 	if on:
 		hud.open = true
 		# el panel ocupa la pantalla: el menú de pausa se esconde hasta cerrarlo
@@ -2617,11 +2639,23 @@ func _lab_apply() -> void:
 	var keep := track is DriftTrack or str(cfg.get("type", "")) == "free"
 	var ph = cars[0].phys
 	var pose := [ph.px, ph.pz, ph.yaw]
+	var vel := [ph.vx, ph.vz, ph.yawRate]
+	var omega: Array = []
+	for wi in 4:
+		omega.append(float(ph.wheels[wi].omega))
 	if cam_rig != null:
 		cam_index = cam_rig.index
-	_rebuild_cars()
+	var city_world_on := track is CityTrack and session is CitySession
+	_rebuild_cars(city_world_on) # (mundo abierto: sólo el auto del jugador; lo demás sigue igual)
 	if keep and not cars.is_empty():
 		cars[0].place(pose[0], pose[1], pose[2])
+		if city_world_on:
+			cars[0].phys.vx = vel[0] # sigue con la velocidad y el giro que traía: nada de «volver a aparecer»
+			cars[0].phys.vz = vel[1]
+			cars[0].phys.yawRate = vel[2]
+			for wi in 4:
+				cars[0].phys.wheels[wi].omega = omega[wi] # (las ruedas siguen girando: sin esto el auto arrancaría patinando)
+			cars[0].restart_history(sim_t)
 		if session is DriftSession:
 			session.cd = minf(session.cd, 0.2) # sin cuenta regresiva de nuevo
 	race_hud.toast(Tr.t("🔧 Ajuste aplicado"))

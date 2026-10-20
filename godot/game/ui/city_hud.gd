@@ -246,24 +246,29 @@ func _layout_big() -> void:
 
 func _set_big(on: bool) -> void:
 	big = on
-	_big.visible = on
-	_mini.visible = not on
-	street_l.visible = not on
-	gps_l.visible = not on
-	if on:
+	_apply_vis()
+
+## Hay un menú abierto (pausa, opciones, eventos, taller de prueba): el minimapa, el nombre de la calle y el GPS no se dibujan encima. Antes sólo se escondían al pausar: al volver del taller
+## de prueba (que rehacía el HUD y lo dejaba arriba de todo) o de una página de la pausa quedaban sobre el menú (reporte del dueño, 19/10/2026).
+var menu_open := false
+func set_menu_open(on: bool) -> void:
+	if on == menu_open:
+		return
+	menu_open = on
+	_apply_vis()
+
+func _apply_vis() -> void:
+	_big.visible = big and not menu_open
+	_mini.visible = not big and not menu_open
+	street_l.visible = not big and not menu_open
+	gps_l.visible = not big and not menu_open
+	if big and not menu_open:
 		_layout_big()
 		_center_big()
 		(_big.get_node("map") as Control).queue_redraw()
 
-## En la pausa se esconde el minimapa y el GPS (se veían tapando el menú)
 func set_paused(on: bool) -> void:
-	if on:
-		_mini.visible = false
-		street_l.visible = false
-		gps_l.visible = false
-		_big.visible = false
-	else:
-		_set_big(big)
+	set_menu_open(on)
 
 var _tp := {} # dedos apoyados en el mapa grande: índice -> posición
 var _pinch_d := 0.0
