@@ -47,7 +47,10 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
     tiempo real (pregunta abierta).
 - **Pruebas (Godot 4.7.2 en la computadora, nada probado en un teléfono):** nuevas `junction_render_test` (8 OK: esquinas, vereda y rayas sin pisar otra calzada, piso de la vereda a ±0 mm, esquina como asfalto
   108 de 108), `city_terrain_test` (6 OK: terreno bajo el asfalto en 25 026 puntos, banquina con nieve), `city_walls_test` (8), `lab_city_test` (24); y las existentes `road_height_test` (12), `city_test` (101),
-  `surfaces_test` (9), `region_terrain_test` (8), etc. (ver abajo la lista final de la corrida). Las dos nuevas están en el flujo de GitHub.
+  `surfaces_test` (9), `region_test` (19), `region_drive_test` (14), `open_world_access_test` (30), `region_junction_test` (6), `region_connectors_test` (4), `region_terrain_test` (8), `region_polish_test` (10),
+  `city_modes_test` (34) y `world_budget_test` (11): todas en verde en la computadora (Godot 4.7.2). Las dos nuevas están en el flujo de GitHub.
+  **Costo de armar una cuadra** (en la computadora, 49 cuadras del centro): mediana 23 ms y promedio 36 ms contra 15 ms y 29 ms antes de recortar veredas y rayas (+8 ms por cuadra); las cuadras más lentas
+  (130–190 ms, edificios y árboles) son las mismas que antes. En el teléfono no se midió: si se nota un tironcito al avanzar por la ciudad, es el primer lugar a mirar (`city_world._road_segment`, `_clip_all`).
 - **Qué falta / pedirle al dueño (APK RC):** (1) recorrer Avenida 2 y 3 (cuadras 3 y 6) y las esquinas: ¿ya nada invisible?, ¿el finito de drift contra un edificio?; (2) taller de prueba en el mundo abierto: ¿sin
   respawn y sin el mapa arriba del menú?; (3) ruedas en el cordón y el borde del asfalto; (4) esquinas redondas, veredas y rayas en los cruces (de día y de noche); (5) GPS: pasarse una calle, ¿da ruta nueva rápido?;
   (6) luces: AUTO/ENCENDIDAS/APAGADAS en la pausa; (7) Ruta Panorámica en la X y por encima de 59 m: ¿la banquina nevada se ve bien?; (8) caminos de la colina: ¿se ve limpia la ruta?; (9) placa de policía.
