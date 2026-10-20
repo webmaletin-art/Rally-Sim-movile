@@ -59,6 +59,7 @@ Así el otro lo ve con `git pull` y no se pisan.
 
 | Chat | Sistema / tarea | Archivos | Desde (UTC) |
 |---|---|---|---|
+| B | Sexta tanda («último retoque» antes de fusionar a `main`, con autorización expresa del dueño): calles de Dream City y rutas (tierra/pasto/rampa/colisiones invisibles), diálogo de CALIDAD GRÁFICA, taller (aplicar/comprar en cada ficha, lista de ruedas, tarjeta de mejoras), sin alerones ni Nitro, cabina del monoplaza y buggy, nivel de simulación en la pausa, sin «Taller de prueba» en la pausa, policía por jurisdicción, volante real (Simulación total / PERSONALIZADO), precios por pares + sincronía de compras con el servidor, **Modo de prueba** (pista de Drift mejorada), guías (SQL, qué falta, Play Console) | `godot/game/city/*`, `godot/game/world/*`, `godot/game/ui/{race_hud,controls,calib_ui,menu_garage,menu,options_ui}.gd`, `godot/game/car/*`, `godot/game/race.gd`, `godot/game/data/{catalog.json,release.gd,profile.gd}`, `tools/online/online_catalog.json`, `supabase/migrations/…120000*`, `.github/workflows/build-godot.yml` (sólo al fusionar), `docs/*` | 2026-10-20 12:00 |
 
 ## 5. Avisos para el otro chat
 
