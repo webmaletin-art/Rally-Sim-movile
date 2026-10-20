@@ -1042,7 +1042,7 @@ func _has_cap_roads(x0: float, z0: float) -> bool:
 	if _cap_chunks.is_empty():
 		_cap_chunks[Vector2i(1 << 30, 1 << 30)] = false # (marca de «ya armado»)
 		for si in city.s_x.size():
-			if city.s_next[si] < 0 or city._verge_road[city.s_road[si]] == 0:
+			if city.s_next[si] < 0 or not city.cap_sample(si):
 				continue
 			var px: float = city.s_x[si]
 			var pz: float = city.s_z[si]
@@ -1067,8 +1067,8 @@ func _city_caps(ox: float, oz: float, step: float, w: int, cap: PackedFloat32Arr
 				seen[si] = true
 				var rid: int = city.s_road[si]
 				var ni: int = city.s_next[si]
-				if ni < 0 or city._verge_road[rid] == 0:
-					continue
+				if ni < 0 or not city.cap_sample(si):
+					continue # (rutas de campo, costanera y tramos nivelados en un cruce: la malla de 16 m podía quedar por encima de la calzada)
 				var a := Vector2(city.s_x[si], city.s_z[si])
 				var b := Vector2(city.s_x[ni], city.s_z[ni])
 				var seg_len := a.distance_to(b)

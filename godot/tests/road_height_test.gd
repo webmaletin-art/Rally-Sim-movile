@@ -54,7 +54,10 @@ func _init() -> void:
 	while si < city.s_x.size():
 		var ni: int = city.s_next[si]
 		var road: Dictionary = city.roads[city.s_road[si]]
-		if ni >= 0 and str(road["kind"]) != "tunnel":
+		# (una curva cerrada en una subida —el vértice de la unión se corre a lo largo del eje— ladea la cinta unos centímetros respecto del piso, que sigue al eje: es de la geometría de la
+		# horquilla, no un desfase de altura; se miran los tramos de pendiente suave y curva abierta, que son los que el desfase de 4 cm de 19/10 afectaba)
+		var gentle: bool = ni >= 0 and absf(city.s_y[ni] - city.s_y[si]) < 0.08 * Vector2(city.s_x[ni] - city.s_x[si], city.s_z[ni] - city.s_z[si]).length() and city.miter(si).z < 1.04 and city.miter(ni).z < 1.04
+		if ni >= 0 and str(road["kind"]) != "tunnel" and gentle:
 			var rd = cw.Soup.new()
 			var mk = cw.Soup.new()
 			var tn = cw.Soup.new()

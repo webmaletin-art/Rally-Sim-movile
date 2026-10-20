@@ -323,13 +323,24 @@ func _terrain(s, x0: float, z0: float, step: float, tier: int) -> void:
 	y0.resize(w * w)
 	for iz in w:
 		for ix in w:
-			var hw := rg.height_w(x0 + float(ix - 1) * step, z0 + float(iz - 1) * step)
-			y0[iz * w + ix] = hw.x - 0.1 - drop * hw.y
+			var wx := x0 + float(ix - 1) * step
+			var wz := z0 + float(iz - 1) * step
+			var hw := rg.height_w(wx, wz)
+			var yy := hw.x - 0.1 - drop * hw.y
+			# junto a una ruta de campo de la CIUDAD (Ruta 20/40/60/80, los atajos, la Panorámica) la malla de la ciudad ya lleva el terraplén / la cuneta (CityLayout.verge_height): esta malla, que cubre
+			# la misma zona, baja igual (por debajo de la de la ciudad) en vez de seguir el terreno natural
+			var vg: PackedFloat64Array = rg.city.verge_roads(wx, wz)
+			if not vg.is_empty() and CityLayout.verge_min_e(vg) > 0.0:
+				yy = minf(yy, CityLayout.verge_height(hw.x, vg) - 0.1 - drop * hw.y)
+			y0[iz * w + ix] = yy
 	# el terreno nunca tapa la calzada: donde la malla (de 8, 16 o 32 m) quedaría por encima de un camino, los vértices más altos del triángulo se bajan
 	var cap := PackedFloat32Array()
 	cap.resize(w * w)
 	cap.fill(1.0e9)
 	_road_caps(x0 - step, z0 - step, step, w, y0, cap)
+	# ... también por encima de las rutas de campo de la ciudad, que esta malla no conoce (20/10/2026, reporte del dueño: «la ruta vuelve a tener pasto en asfalto», Ruta 40 cuadra 11 y Ruta 80 cuadra 13:
+	# entre los 2 y los 2,25 km la región ya se dibuja pero sus caminos todavía no empiezan; su terreno, sin corte, tapaba el lado de la ladera de la calzada y la banquina)
+	cw._city_caps(x0 - step, z0 - step, step, w, cap, y0)
 	var hs := PackedFloat32Array()
 	hs.resize((n + 1) * (n + 1))
 	for iz in n + 1:

@@ -32,8 +32,8 @@ func _init() -> void:
 		city.region = rg
 		RegionServices.install(city, rg)
 	city.prepare_verge()
+	city.prepare_fillets() # (primero las esquinas: las paredes de relleno se recortan contra ellas)
 	city.prepare_walls()
-	city.prepare_fillets()
 	for rd in city.roads:
 		_road_up.append(0.0 if str((rd as Dictionary)["kind"]) == "tunnel" else CityLayout.ROAD_UP)
 		_road_rural.append(1 if str((rd as Dictionary)["kind"]) in ["rural", "shortcut", "scenic"] else 0)

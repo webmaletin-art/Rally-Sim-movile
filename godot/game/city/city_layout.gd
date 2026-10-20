@@ -32,7 +32,7 @@ const RINGS := [130.0, 260.0, 390.0, 520.0, 650.0, 780.0, 910.0, 1040.0]
 const COAST_R := 1120.0
 const RURAL_END := 2300.0
 const EXIT_TO := {20: "adventure", 40: "region", 60: "plaza", 80: "region"} # las salidas abiertas: la Ruta 20 sigue por la Ruta de los Sueños (Aventura); la Ruta 60 termina en la Plaza de Drift (está ahí mismo: no hay otro mapa); las rutas 40 y 80 siguen por la región hasta la circunvalación (sin portón ni cartel: la ruta sigue)
-const WORLD_VERSION := 6 # sube cuando cambia el mapa (la «última ubicación» guardada de una versión anterior ya no sirve)
+const WORLD_VERSION := 7 # sube cuando cambia el mapa (la «última ubicación» guardada de una versión anterior ya no sirve)
 const DRIFT_GATE := 0.996 # la abertura de la plaza donde entra la ruta (coseno del ángulo: unos 8 m a cada lado)
 const DRIFT_R := 90.0 # radio de la Plaza de Drift, al final de la Ruta 60
 const HILL_C := Vector2(-1086.0, -1086.0) # centro de la colina (al noroeste)
@@ -136,6 +136,7 @@ const VERGE_KINDS := ["rural", "shortcut", "scenic", "hill"]
 const VERGE_LEVEL := -0.02 # el borde del terraplén queda a esta altura por debajo del eje de la calle (negativo = 2 cm arriba: a ras de la banquina, que se dibuja 16 cm arriba)
 const VERGE_BW_MAX := 20.0 # hasta dónde (metros más allá de la banquina) se ablanda el terreno
 var _verge_road := PackedByteArray() # por calle: 1 = ruta de campo (se arma con prepare_verge, una vez, después de build)
+var _road_base := PackedInt32Array() # por calle: índice de su primer punto de muestra (s_x…)
 
 func prepare_verge() -> void:
 	var f := PackedByteArray()
@@ -182,9 +183,10 @@ func verge_roads(x: float, z: float) -> PackedFloat64Array:
 				var e := sqrt(ddx * ddx + ddz * ddz) - float(rd["hw"]) - float(rd["sw"])
 				if e >= VERGE_BW_MAX:
 					continue
-				var j := ids.find(rid * 4096 + (si >> 5)) # (un tramo de la ruta = 32 puntos seguidos, 256 m: en una horquilla las dos ramas de la misma ruta son tramos distintos)
+				var grp := rid * 4096 + ((si - _road_base[rid]) >> 5) # (un tramo de la ruta = 32 puntos seguidos, 256 m, contados desde el primer punto de ESA calle: en una horquilla las dos ramas de la misma ruta son tramos distintos, y agregar puntos a otras calles no mueve los cortes)
+				var j := ids.find(grp)
 				if j < 0:
-					ids.append(rid * 4096 + (si >> 5))
+					ids.append(grp)
 					out.append(e)
 					out.append(s_y[si] + ey * t)
 				elif e < out[j * 2]:
@@ -271,8 +273,85 @@ func prepare_walls() -> void:
 			var w2: float = float(bd["w"]) * 0.5
 			var d2: float = float(bd["d"]) * 0.5
 			_add_wall_quad(cen - tg * w2 - nm * d2, cen + tg * w2 - nm * d2, cen + tg * w2 + nm * d2, cen - tg * w2 + nm * d2)
+	_corr = {}
 	for gi in range(0, _gap_quads.size(), 8):
-		_add_wall_quad(Vector2(_gap_quads[gi], _gap_quads[gi + 1]), Vector2(_gap_quads[gi + 2], _gap_quads[gi + 3]), Vector2(_gap_quads[gi + 4], _gap_quads[gi + 5]), Vector2(_gap_quads[gi + 6], _gap_quads[gi + 7]))
+		_add_gap_wall(PackedVector2Array([Vector2(_gap_quads[gi], _gap_quads[gi + 1]), Vector2(_gap_quads[gi + 2], _gap_quads[gi + 3]), Vector2(_gap_quads[gi + 4], _gap_quads[gi + 5]), Vector2(_gap_quads[gi + 6], _gap_quads[gi + 7])]))
+
+var _corr: Dictionary = {} # punto -> el corredor (calzada + vereda) de ese tramo (corridor_poly)
+
+## El corredor (calzada + vereda) del tramo que sale del punto si: el mismo cuadrilátero que ribbon_poly pero con el ancho de la vereda; vacío si no hay tramo o es un túnel
+func corridor_poly(si: int) -> PackedVector2Array:
+	if _corr.has(si):
+		return _corr[si]
+	var out := PackedVector2Array()
+	var ni: int = s_next[si]
+	var rd: Dictionary = roads[s_road[si]]
+	if ni >= 0 and Vector2(s_x[ni] - s_x[si], s_z[ni] - s_z[si]).length() >= 0.05 and str(rd["kind"]) != "tunnel":
+		var half := float(rd["hw"]) + float(rd["sw"])
+		var ma := miter(si)
+		var mb := miter(ni)
+		var a := Vector2(s_x[si], s_z[si])
+		var b := Vector2(s_x[ni], s_z[ni])
+		var na := Vector2(ma.x, ma.y)
+		var nb := Vector2(mb.x, mb.y)
+		out = PackedVector2Array([a - na * (half * ma.z), b - nb * (half * mb.z), b + nb * (half * mb.z), a + na * (half * ma.z)])
+	_corr[si] = out
+	return out
+
+## Pared de relleno (20/10/2026, tarde; reporte del dueño: «siguen habiendo colisión invisible»): el relleno de _close_gaps / _cap_dead_ends / _close_station_lots cierra la línea de edificación,
+## pero en la boca de una calle, en una esquina o en una curva se metía adentro de una calle o de una vereda (medido: 572 de 2347 paredes, hasta 23 m² en la salida de las avenidas de la plaza).
+## Ahora se recorta contra el corredor de TODAS las calles (calzada + vereda) y contra las esquinas redondeadas: queda sólo lo que está afuera, donde sí iría un edificio.
+func _add_gap_wall(q: PackedVector2Array) -> void:
+	var parts: Array = [q]
+	var box := poly_box(q)
+	var seen := {}
+	# (las muestras de las calles cuyo corredor llega hasta acá pueden estar a una celda de distancia: un tramo de 8 m con su ancho llega a ~13 m)
+	for kx in range(int(floor((box.position.x - 16.0) / HC)), int(floor((box.end.x + 16.0) / HC)) + 1):
+		for kz in range(int(floor((box.position.y - 16.0) / HC)), int(floor((box.end.y + 16.0) / HC)) + 1):
+			var lst: Variant = _hash.get(Vector2i(kx, kz))
+			if lst == null:
+				continue
+			for sj in (lst as PackedInt32Array):
+				if seen.has(sj):
+					continue
+				seen[sj] = true
+				var cp := corridor_poly(sj)
+				if cp.is_empty() or not poly_box(cp).intersects(box):
+					continue
+				parts = _cut_parts(parts, cp)
+				if parts.is_empty():
+					return
+	for f in fillets_in(box):
+		parts = _cut_parts(parts, f)
+		if parts.is_empty():
+			return
+	for part in parts:
+		var pp: PackedVector2Array = part
+		if pp.size() == 4:
+			_add_wall_quad(pp[0], pp[1], pp[2], pp[3])
+			continue
+		var idx := Geometry2D.triangulate_polygon(pp)
+		for i in range(0, idx.size(), 3):
+			var a := pp[idx[i]]
+			var b := pp[idx[i + 1]]
+			var c := pp[idx[i + 2]]
+			if absf((b - a).cross(c - a)) < 0.002:
+				continue
+			_add_wall_quad(a, b, c, (a + c) * 0.5) # (un triángulo es un cuadrilátero con un vértice sobre un lado)
+
+## Lo que queda de los polígonos `parts` después de sacarles el polígono `cut`
+static func _cut_parts(parts: Array, cut: PackedVector2Array) -> Array:
+	var cb := poly_box(cut)
+	var next: Array = []
+	for p in parts:
+		var pp: PackedVector2Array = p
+		if not poly_box(pp).intersects(cb):
+			next.append(pp)
+			continue
+		for r in Geometry2D.clip_polygons(pp, cut):
+			if not Geometry2D.is_polygon_clockwise(r) and poly_area(r) > 0.02:
+				next.append(r)
+	return next
 
 func _add_wall_quad(a: Vector2, b: Vector2, c: Vector2, d: Vector2) -> void:
 	# sentido antihorario (área con signo positiva)
@@ -541,7 +620,8 @@ func dense_ground(h: float, pr: PackedFloat64Array) -> float:
 	var w := smoothstep(-lim - 9.0, -lim + 3.0, float(pr[0]))
 	return lerpf(h, minf(h, float(pr[4]) - 0.03), w)
 
-## Altura del eje de la calle más cercana a q (para las esquinas redondeadas)
+## Altura del eje de la calle más cercana a q (para las esquinas redondeadas): la del punto del eje más cercano (interpolada entre los dos puntos del tramo, no la del punto de muestra más
+## cercano: en una ladera eso daba escalones de 0,2–0,5 m en las esquinas de los cruces)
 func road_y_near(q: Vector2) -> float:
 	var best := 1.0e18
 	var by := height(q.x, q.y)
@@ -555,10 +635,24 @@ func road_y_near(q: Vector2) -> float:
 			for si in (_hash[k2] as PackedInt32Array):
 				if str((roads[s_road[si]] as Dictionary)["kind"]) == "tunnel":
 					continue
-				var d := Vector2(s_x[si], s_z[si]).distance_squared_to(q)
+				var ni := s_next[si]
+				var ax := s_x[si]
+				var az := s_z[si]
+				var t := 0.0
+				var ey := 0.0
+				if ni >= 0:
+					var ex := s_x[ni] - ax
+					var ez := s_z[ni] - az
+					var l2 := ex * ex + ez * ez
+					if l2 > 1.0e-9:
+						t = clampf(((q.x - ax) * ex + (q.y - az) * ez) / l2, 0.0, 1.0)
+					ey = s_y[ni] - s_y[si]
+				var cx := ax + (s_x[ni] - ax) * t if ni >= 0 else ax
+				var cz := az + (s_z[ni] - az) * t if ni >= 0 else az
+				var d := Vector2(cx, cz).distance_squared_to(q)
 				if d < best:
 					best = d
-					by = s_y[si]
+					by = s_y[si] + ey * t
 	return by
 
 ## ¿El punto está en una esquina redondeada (asfalto)?
@@ -601,7 +695,8 @@ func clip_obstacles(si: int) -> Array:
 					var poly := ribbon_poly(sj)
 					if poly.is_empty() or not poly_box(poly).intersects(box):
 						continue
-					out.append({"poly": poly, "hw": float((roads[rj] as Dictionary)["hw"]), "fil": false})
+					# (una plaza o un parque redondo recorta las rayas de cualquier calle que lo cruza, aunque su calzada sea más angosta: la avenida 2 atraviesa el Parque del Drift)
+					out.append({"poly": poly, "hw": 99.0 if str((roads[rj] as Dictionary)["kind"]) == "plaza" else float((roads[rj] as Dictionary)["hw"]), "fil": false})
 		for f in fillets_in(box):
 			out.append({"poly": f, "hw": 99.0, "fil": true})
 	_obst[si] = out
@@ -647,6 +742,7 @@ func build() -> void:
 	_make_roads()
 	_index()
 	_mark_junction_samples()
+	_level_junctions()
 	for ex in exits:
 		ex["to"] = str(EXIT_TO.get(int(ex["num"]), "")) # a qué otro mapa lleva la Salida ("" = todavía cerrada)
 	_place_pois()
@@ -987,6 +1083,7 @@ func _make_roads() -> void:
 	_sample_road(id, "Ruta Panorámica 70", 70, "scenic", 4.6, 3.6, _scenic_plan())
 	id += 1
 	id = _make_tunnels(id)
+	_weld_loose_ends()
 
 ## Trazado de la Ruta Panorámica: waypoints suavizados (Chaikin) con ondulación; arranca 2,5 m antes del extremo de la costanera para cruzarla y termina antes de x = 3000 (el bolsillo plano de los túneles)
 const SCENIC_C := Vector2(1950.0, 880.0) # centro de la sierra: el camino la rodea en espiral subiendo
@@ -1082,6 +1179,9 @@ func _index() -> void:
 func _index_road(ri: int) -> void:
 	var pts: PackedVector3Array = roads[ri]["pts"]
 	var base := s_x.size()
+	if _road_base.size() <= ri:
+		_road_base.resize(ri + 1)
+	_road_base[ri] = base
 	for i in pts.size():
 		s_x.append(pts[i].x)
 		s_y.append(pts[i].y)
@@ -1175,6 +1275,214 @@ func _mark_junction_samples() -> void:
 					if Vector2(spts[m].x, spts[m].z).distance_to(hp2) < sreach:
 						snj[m] = 1
 		roads[scn]["nj"] = snj
+
+## ───── Bocas de calle y cruces a la misma altura · [B] 20/10/2026 (sexta tanda)
+## Reporte del dueño con capturas: «hay pedazos de tierra en la calle, retazos de tierra en esquinas, una rampa invisible en un cruce de la Ruta 80 (cuadra 4)». Dos causas del mapa:
+##  · Las avenidas 2, 4 y 8 y varias calles chicas EMPEZABAN SUELTAS, a 1–10 m de la calzada de la calle donde desembocan (la Plaza Aurora, la calle 40 del casco viejo, la calle 80 de la grilla):
+##    la vereda de la otra calle cruzaba la boca como una franja beige y quedaban huecos de terreno. Ahora el extremo se prolonga hasta pasar el eje de la otra calle (_weld_loose_ends).
+##  · Cada calle copia la altura del terreno a lo largo de su eje y es PLANA de lado a lado; en una ladera, dos calles que se cruzan quedan a distinta altura en la zona donde se pisan
+##    (hasta 0,8 m en los cruces de los atajos con las rutas y de la avenida 3 con la costanera): el auto subía una rampa que no se ve. Ahora la calle que termina (o la más angosta)
+##    pasa el cruce a la altura de la otra y vuelve a su perfil de a poco (_level_junctions).
+var s_lv := PackedByteArray() # por punto de muestra: 1 = su altura se movió al nivelar un cruce (el terreno de la ciudad recorta la malla bajo esos tramos: ver CityWorld._city_caps)
+
+## ¿El tramo que sale de este punto de muestra cambió de altura al nivelar un cruce?
+func level_sample(si: int) -> bool:
+	return si < s_lv.size() and s_lv[si] != 0
+
+## ¿La malla del terreno tiene que recortarse bajo el tramo que sale de este punto? (CityWorld._city_caps) Las rutas de campo, la costanera —una calle que sigue la costa y no se hunde
+## en el terreno como las del centro— y los tramos que se nivelaron en un cruce (ahí la calzada ya no sigue la ladera y la malla de 16 m podía quedar por encima).
+func cap_sample(si: int) -> bool:
+	var rid: int = s_road[si]
+	return (rid < _verge_road.size() and _verge_road[rid] != 0) or str((roads[rid] as Dictionary)["kind"]) == "coast" or level_sample(si)
+
+const WELD_KINDS := ["major", "minor", "alley"]
+const WELD_PARALLEL := 0.85 # coseno del ángulo (unos 32°) desde el cual dos calles que se tocan se consideran la misma calle que sigue
+const WELD_MAX := 12.0 # un extremo suelto a más de esto (m, medido hasta el borde de la calzada de la otra calle) se deja como calle sin salida (con su pared)
+const LEVEL_BLEND := 50.0 # m en los que las calles de un cruce vuelven a su altura de siempre (lo bastante largo para que la pendiente no suba de golpe)
+
+## Dónde un rayo (desde p hacia dir, hasta max_len m) toca el eje de otra calle (no túnel ni bahía): [punto, metros hasta ahí, id de la calle, rumbo unitario de la calle ahí] o [] si no toca ninguna
+func _ray_hit_axis(p: Vector2, dir: Vector2, own: int, max_len: float) -> Array:
+	var best := 1.0e18
+	var out: Array = []
+	var far := p + dir * max_len
+	for rj in roads.size():
+		if rj == own:
+			continue
+		var o: Dictionary = roads[rj]
+		var ok := str(o["kind"])
+		if ok == "tunnel" or ok == "bay":
+			continue
+		var op: PackedVector3Array = o["pts"]
+		for i in op.size() - 1:
+			var a := Vector2(op[i].x, op[i].z)
+			var b := Vector2(op[i + 1].x, op[i + 1].z)
+			var hit: Variant = Geometry2D.segment_intersects_segment(p, far, a, b)
+			if hit == null:
+				continue
+			var d := p.distance_to(hit as Vector2)
+			if d < best:
+				best = d
+				out = [hit, d, rj, (b - a).normalized()]
+	return out
+
+## Prolonga hasta la calle de al lado los extremos de avenidas y calles que quedaban sueltos a pocos metros de su calzada. Sigue en el mismo sentido que ya llevaba la calle: el primer
+## eje que cruza dentro de WELD_MAX m de borde a borde. Si no hay (la calle pasa de largo, o termina lejos), se deja como calle sin salida, con su pared.
+func _weld_loose_ends() -> void:
+	for ri in roads.size():
+		var rd: Dictionary = roads[ri]
+		if not (str(rd["kind"]) in WELD_KINDS):
+			continue
+		for e in 2:
+			for _it in 2: # (dos pasadas: una calle que cruza dos calles pegadas, como una calzada doble, pasa las dos)
+				var pts: PackedVector3Array = rd["pts"]
+				var cum: PackedFloat32Array = rd["cum"]
+				var n := pts.size()
+				if n < 3:
+					break
+				var pe := Vector2(pts[0].x, pts[0].z) if e == 0 else Vector2(pts[n - 1].x, pts[n - 1].z)
+				var pn := Vector2(pts[1].x, pts[1].z) if e == 0 else Vector2(pts[n - 2].x, pts[n - 2].z)
+				var out_dir := (pe - pn).normalized() # (hacia afuera de la calle: el sentido en que sigue)
+				var hit := _ray_hit_axis(pe, out_dir, ri, WELD_MAX + 12.0)
+				if hit.is_empty():
+					break
+				var other_hw := float((roads[int(hit[2])] as Dictionary)["hw"])
+				var reach: float = float(hit[1])
+				if reach > other_hw + WELD_MAX:
+					break # queda lejos: es una calle sin salida (con su pared)
+				if absf(out_dir.dot(hit[3] as Vector2)) > WELD_PARALLEL:
+					break # la otra calle sigue casi en la misma dirección: es la continuación de esta (la calle 100 y la 101), no un cruce
+				# (un extremo que termina ADENTRO de la calzada de la otra pero sin pasar su eje —la avenida 7 arrancaba 0,5 m antes del eje del anillo de la plaza— tampoco forma cruce: sin esquinas
+				# redondeadas y con las rayas del eje pintadas encima de la otra calzada; se prolonga igual)
+				# se llega al eje de la otra calle y se pasa un poco (adentro de su calzada): el cruce queda marcado
+				var tip: Vector2 = (hit[0] as Vector2) + out_dir * minf(2.0, other_hw * 0.5)
+				var added := pe.distance_to(tip)
+				var np := Vector3(tip.x, height(tip.x, tip.y), tip.y)
+				var pts2 := pts.duplicate()
+				var cum2 := cum.duplicate()
+				if added <= STEP:
+					# la prolongación es corta: se corre el último punto (un tramo nuevo de 2 m dejaba la «media luna» del punto siguiente metida 8 m adentro de la plaza y abría su pared)
+					if e == 0:
+						pts2[0] = np
+						for i in range(1, cum2.size()):
+							cum2[i] = cum[i] + added
+					else:
+						pts2[n - 1] = np
+						cum2[n - 1] = cum[n - 1] + added
+				elif e == 0:
+					pts2 = PackedVector3Array([np])
+					pts2.append_array(pts)
+					cum2 = PackedFloat32Array([0.0])
+					for c in cum:
+						cum2.append(c + added)
+				else:
+					pts2.append(np)
+					cum2.append(cum[cum.size() - 1] + added)
+				rd["pts"] = pts2
+				rd["cum"] = cum2
+				roads[ri] = rd
+
+## Altura del eje de la calle ri en el punto del eje más cercano a p (interpolada entre los dos puntos del tramo)
+func _axis_y_near(ri: int, p: Vector2) -> float:
+	var pts: PackedVector3Array = roads[ri]["pts"]
+	var best := 1.0e18
+	var by := 0.0
+	for i in pts.size() - 1:
+		var a := Vector2(pts[i].x, pts[i].z)
+		var b := Vector2(pts[i + 1].x, pts[i + 1].z)
+		var ab := b - a
+		var l2 := ab.length_squared()
+		var t := clampf((p - a).dot(ab) / l2, 0.0, 1.0) if l2 > 1.0e-9 else 0.0
+		var d := p.distance_squared_to(a + ab * t)
+		if d < best:
+			best = d
+			by = lerpf(pts[i].y, pts[i + 1].y, t)
+	return by
+
+## Cruces a la misma altura: cada cruce es una explanada plana (la altura del eje de la calle principal en el cruce) de un radio que cubre las dos calzadas y sus banquinas, y las dos calles
+## vuelven a su altura de siempre en LEVEL_BLEND m. Así donde las dos calzadas se pisan hay UNA sola altura (no la suma de dos planos distintos). Sólo donde hace falta: si las dos calles ya
+## están a menos de 6 cm de esa altura en todo el cruce (el centro de la ciudad es una meseta) no se toca nada.
+func _level_junctions() -> void:
+	s_lv.resize(s_x.size())
+	# 1) los cruces que hay que nivelar: [posición, altura, radio de la explanada, calles]
+	var act: Array = []
+	for j in junctions:
+		var ra: int = int((j["roads"] as Array)[0])
+		var rb: int = int((j["roads"] as Array)[1])
+		if str((roads[ra] as Dictionary)["kind"]) == "tunnel" or str((roads[rb] as Dictionary)["kind"]) == "tunnel":
+			continue
+		var jp: Vector2 = j["pos"]
+		var major := ra
+		if float((roads[rb] as Dictionary)["hw"]) > float((roads[ra] as Dictionary)["hw"]) + 0.01:
+			major = rb
+		var minor := rb if major == ra else ra
+		if str((roads[major] as Dictionary)["kind"]) == "bay":
+			major = minor
+		var yj := _axis_y_near(major, jp)
+		# (la explanada cubre el cuadrado donde se pisan las dos calzadas más las esquinas redondeadas: medio ancho de la más ancha + 4 m. Más grande, en una ladera del 4 % la calle principal
+		# tenía que subir o bajar un metro de golpe en el borde de la explanada y quedaban pendientes del 15 %)
+		var pad := maxf(float((roads[ra] as Dictionary)["hw"]), float((roads[rb] as Dictionary)["hw"])) + 4.0
+		var worst := 0.0
+		for rid in [ra, rb]:
+			var rp: PackedVector3Array = (roads[rid] as Dictionary)["pts"]
+			for i in rp.size():
+				if Vector2(rp[i].x, rp[i].z).distance_to(jp) < pad + STEP:
+					worst = maxf(worst, absf(rp[i].y - yj))
+		if worst >= 0.06: # (si ya están parejas no se toca: el centro de la ciudad es una meseta)
+			act.append([jp, yj, pad, [ra, rb]])
+	# 1b) los cruces que se pisan (dos calles que desembocan en la misma otra a pocos metros, una calle con su bahía…) forman UNA sola explanada: centro en el medio, altura promedio
+	var merged := true
+	while merged:
+		merged = false
+		for k in act.size():
+			for m in range(k + 1, act.size()):
+				var ak: Array = act[k]
+				var am: Array = act[m]
+				var d := (ak[0] as Vector2).distance_to(am[0] as Vector2)
+				if d >= float(ak[2]) + float(am[2]):
+					continue
+				var c := ((ak[0] as Vector2) + (am[0] as Vector2)) * 0.5
+				var rr: Array = (ak[3] as Array).duplicate()
+				for r in (am[3] as Array):
+					if not rr.has(r):
+						rr.append(r)
+				act[k] = [c, (float(ak[1]) + float(am[1])) * 0.5, maxf(float(ak[2]), float(am[2])) + d * 0.5, rr]
+				act.remove_at(m)
+				merged = true
+				break
+			if merged:
+				break
+	# 2) cada explanada se mezcla con sus calles hasta la mitad de lo que la separa de la más cercana (así dos explanadas nunca se pisan: cada una queda exactamente plana)
+	for k in act.size():
+		var jk: Array = act[k]
+		var blend := LEVEL_BLEND
+		for m in act.size():
+			if m == k:
+				continue
+			var jm: Array = act[m]
+			var free := (jk[0] as Vector2).distance_to(jm[0] as Vector2) - float(jk[2]) - float(jm[2])
+			blend = minf(blend, maxf(free * 0.5, 4.0))
+		for rid in (jk[3] as Array):
+			var pts: PackedVector3Array = (roads[rid] as Dictionary)["pts"]
+			var base := 0
+			for si in s_x.size():
+				if s_road[si] == rid:
+					base = si
+					break
+			var moved := false
+			for i in pts.size():
+				var e := Vector2(pts[i].x, pts[i].z).distance_to(jk[0] as Vector2)
+				if e >= float(jk[2]) + blend:
+					continue
+				var ny := lerpf(pts[i].y, float(jk[1]), 1.0 - smoothstep(float(jk[2]), float(jk[2]) + blend, e))
+				if absf(ny - pts[i].y) > 0.002:
+					pts[i] = Vector3(pts[i].x, ny, pts[i].z)
+					s_y[base + i] = ny
+					s_lv[base + i] = 1
+					if i > 0:
+						s_lv[base + i - 1] = 1 # (el tramo que llega a un punto movido también cambió)
+					moved = true
+			if moved:
+				(roads[rid] as Dictionary)["pts"] = pts
 
 # ───────────────────────── consultas (puras: se pueden llamar desde cualquier hilo) ─────────────────────────
 ## La calle de la superficie más cercana a p (sin las bocas de túnel ni los estacionamientos): [punto del eje, rumbo unitario de la calle, distancia] o [] si no hay ninguna a menos de max_d.
