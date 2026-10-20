@@ -582,25 +582,45 @@ func update_hud(dt: float, car) -> void:
 				_toast_cb.call(Tr.t("🏁 ¡Llegaste a %s!") % route_name)
 			_clear_dest()
 			return
-		if _off_t > 1.2 and _route_dist() > 24.0:
+		# se salió de la ruta (doblaste mal, te pasaste, agarraste otra calle): ruta nueva enseguida. Antes se medía la distancia contra el primer punto de la ruta, que _trim_route
+		# pega al auto en cada cuadro: daba siempre 0 y el GPS no rehacía la ruta hasta que el auto estaba a más de 40 m (varias cuadras después) — reporte del dueño, 19/10/2026
+		if _off_t > 0.45 and _route_dev() > 14.0:
 			_off_t = 0.0
 			_reroute()
 
-## La línea del GPS arranca en el auto: lo que ya pasaste se borra a medida que avanzás
+## La línea del GPS arranca donde estás parado (el punto de la ruta más cercano al auto): lo que ya pasaste se borra a medida que avanzás
 func _trim_route() -> void:
 	if route.size() < 3:
 		return
-	var bi := 0
+	var bi := -1
 	var bd := 1e9
-	for i in mini(route.size(), 40):
-		var d := route[i].distance_to(car_pos)
+	var bp := Vector2.ZERO
+	for i in range(0, mini(route.size() - 1, 40)):
+		var a := route[i]
+		var ab := route[i + 1] - a
+		var l2 := ab.length_squared()
+		var t := clampf((car_pos - a).dot(ab) / l2, 0.0, 1.0) if l2 > 0.0001 else 0.0
+		var p := a + ab * t
+		var d := car_pos.distance_to(p)
 		if d < bd:
 			bd = d
 			bi = i
-	if bi >= 1 and bd < 40.0:
-		route = route.slice(bi)
-	if route.size() > 1 and bd < 40.0:
-		route[0] = car_pos
+			bp = p
+	if bi >= 0 and bd < 40.0:
+		var nr := PackedVector2Array([bp]) # (sobre la calle: antes se pegaba al auto y la desviación daba siempre 0)
+		nr.append_array(route.slice(bi + 1))
+		route = nr
+
+## Cuánto se desvió el auto de la ruta: distancia a los primeros tramos que vienen
+func _route_dev() -> float:
+	var bd := 1e9
+	for i in range(0, mini(route.size() - 1, 8)):
+		var a := route[i]
+		var ab := route[i + 1] - a
+		var l2 := ab.length_squared()
+		var t := clampf((car_pos - a).dot(ab) / l2, 0.0, 1.0) if l2 > 0.0001 else 0.0
+		bd = minf(bd, car_pos.distance_to(a + ab * t))
+	return bd if bd < 1e8 else _route_dist()
 
 ## distancia del auto al punto más cercano de la ruta
 func _route_dist() -> float:

@@ -97,5 +97,64 @@ func _run() -> void:
 	_check(clk.lights_mode() == "off" and not clk._beam.visible, "APAGADAS: apagados aunque sea de noche")
 	clk.cycle_lights()
 	_check(clk.lights_mode() == "auto" and clk._beam.visible and clk.lights_label().contains("AUTOM"), "vuelve a AUTOMÁTICAS (%s)" % clk.lights_label())
+	# GPS: si el auto se sale de la ruta, la ruta nueva sale enseguida (antes recién a más de 40 m: varias cuadras después)
+	var city = race.track.city
+	var A := Vector2.ZERO
+	for si0 in range(1000, city.s_x.size(), 3):
+		A = Vector2(city.s_x[si0], city.s_z[si0])
+		if A.length() < 600.0 and str(city.roads[city.s_road[si0]]["kind"]) in ["major", "minor"]:
+			break
+	var dest := Vector2.ZERO
+	for pi in city.pois.size():
+		var q: Vector2 = city.pois[pi]["front"]
+		if q.distance_to(A) > 500.0 and q.distance_to(A) < 900.0:
+			dest = q
+			break
+	race.cars[0].place(A.x, A.y, 0.0)
+	race.cars[0].restart_history(race.sim_t)
+	ch.update_hud(0.1, race.cars[0])
+	ch.clear_dest()
+	ch.set_dest(dest, "prueba", true)
+	_check(dest != Vector2.ZERO and ch.route.size() > 10, "GPS: ruta hasta el destino (%d puntos)" % ch.route.size())
+	var old_route: PackedVector2Array = ch.route.duplicate()
+	# siguiendo la ruta (un punto cada ~16 m, 0,1 s por punto) la ruta se va acortando y nunca se rehace (sin falsos desvíos)
+	var shrink_ok := true
+	var last_n: int = ch.route.size()
+	var worst_dev := 0.0
+	for k in range(1, 12):
+		race.cars[0].place(old_route[k].x, old_route[k].y, 0.0)
+		race.cars[0].restart_history(race.sim_t)
+		for kk in 3:
+			ch.update_hud(0.09, race.cars[0])
+		worst_dev = maxf(worst_dev, ch._route_dev())
+		if ch.route.size() > last_n:
+			shrink_ok = false # (se rehízo: la ruta nueva no es más corta)
+		last_n = ch.route.size()
+	_check(shrink_ok and worst_dev < 6.0, "GPS: siguiendo la ruta no se rehace (desvío máximo %.1f m)" % worst_dev)
+	ch.clear_dest()
+	ch.set_dest(dest, "prueba", true)
+	old_route = ch.route.duplicate()
+	race.cars[0].place(A.x, A.y, 0.0)
+	race.cars[0].restart_history(race.sim_t)
+	ch.update_hud(0.1, race.cars[0])
+	# otra calle, a 40–300 m de la ruta
+	var B := Vector2.ZERO
+	for k in range(0, city.s_x.size(), 7):
+		var q2 := Vector2(city.s_x[k], city.s_z[k])
+		if q2.length() > 800.0 or q2.x > 70000.0:
+			continue
+		var dmin := 1e9
+		for rp in old_route:
+			dmin = minf(dmin, rp.distance_to(q2))
+		if dmin > 40.0 and dmin < 300.0 and q2.distance_to(A) < 700.0:
+			B = q2
+			break
+	_check(B != Vector2.ZERO, "GPS: hay una calle apartada para probar el desvío")
+	race.cars[0].place(B.x, B.y, 0.0)
+	race.cars[0].restart_history(race.sim_t)
+	for k in 14: # 1,2 s manejando por la calle equivocada
+		ch.update_hud(0.09, race.cars[0])
+	_check(ch.route.size() > 3 and ch._route_dev() < 14.0, "GPS: a los 1,2 s ya hay una ruta nueva desde donde estás (desvío %.1f m)" % ch._route_dev())
+	_check(ch.route != old_route, "GPS: la ruta cambió")
 	race.queue_free()
 	quit(1 if fail else 0)
