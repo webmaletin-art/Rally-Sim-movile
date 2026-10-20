@@ -477,114 +477,6 @@
 			]
 		},
 		{
-			"category": "spoiler",
-			"id": "spoiler_gt",
-			"price": 1800,
-			"shop": "paint",
-			"vehicles": [
-				"pickup",
-				"truck",
-				"genesis",
-				"hatch",
-				"suv",
-				"buggy",
-				"muscle",
-				"gt",
-				"gt3",
-				"hyper",
-				"camo",
-				"torito",
-				"clasico60",
-				"kodiak",
-				"titan",
-				"rally80",
-				"kl5",
-				"trilux",
-				"trilux_s",
-				"trilux_gt",
-				"veltor",
-				"veltor_s",
-				"veltor_gtr",
-				"hatch2",
-				"pro_gt",
-				"moust",
-				"police",
-				"strix"
-			]
-		},
-		{
-			"category": "spoiler",
-			"id": "spoiler_duck",
-			"price": 900,
-			"shop": "paint",
-			"vehicles": [
-				"pickup",
-				"truck",
-				"genesis",
-				"hatch",
-				"suv",
-				"buggy",
-				"muscle",
-				"gt",
-				"gt3",
-				"hyper",
-				"camo",
-				"torito",
-				"clasico60",
-				"kodiak",
-				"titan",
-				"rally80",
-				"kl5",
-				"trilux",
-				"trilux_s",
-				"trilux_gt",
-				"veltor",
-				"veltor_s",
-				"veltor_gtr",
-				"hatch2",
-				"pro_gt",
-				"moust",
-				"police",
-				"strix"
-			]
-		},
-		{
-			"category": "spoiler",
-			"id": "spoiler_rally",
-			"price": 2600,
-			"shop": "paint",
-			"vehicles": [
-				"pickup",
-				"truck",
-				"genesis",
-				"hatch",
-				"suv",
-				"buggy",
-				"muscle",
-				"gt",
-				"gt3",
-				"hyper",
-				"camo",
-				"torito",
-				"clasico60",
-				"kodiak",
-				"titan",
-				"rally80",
-				"kl5",
-				"trilux",
-				"trilux_s",
-				"trilux_gt",
-				"veltor",
-				"veltor_s",
-				"veltor_gtr",
-				"hatch2",
-				"pro_gt",
-				"moust",
-				"police",
-				"strix"
-			]
-		},
-		{
 			"category": "front_bumper",
 			"id": "front_splitter",
 			"price": 1100,
@@ -1026,26 +918,26 @@
 		{
 			"id": "engine",
 			"name": "Taller de Motor",
-			"x": 210.7,
-			"z": 210.5
+			"x": 208.9,
+			"z": 202.8
 		},
 		{
 			"id": "gearbox",
 			"name": "Taller de Transmisión",
-			"x": -119.5,
-			"z": 131.2
+			"x": -115.6,
+			"z": 116.7
 		},
 		{
 			"id": "susp",
 			"name": "Suspensión y Frenos",
-			"x": -151.9,
-			"z": -90.8
+			"x": -142.5,
+			"z": -86.0
 		},
 		{
 			"id": "wheels",
 			"name": "Taller de Ruedas",
-			"x": 121.4,
-			"z": -128.1
+			"x": 119.0,
+			"z": -121.7
 		},
 		{
 			"id": "tune_b",
@@ -1056,8 +948,8 @@
 		{
 			"id": "dealer_rally",
 			"name": "Rally & 4x4 del Puerto",
-			"x": -427.9,
-			"z": -36.0
+			"x": -413.7,
+			"z": -41.6
 		},
 		{
 			"id": "dealer_classic",
@@ -1226,18 +1118,6 @@
 			"shop": "tune_a"
 		},
 		{
-			"category": "nitro",
-			"level": 1,
-			"price": 8000,
-			"shop": "engine"
-		},
-		{
-			"category": "nitro",
-			"level": 2,
-			"price": 15000,
-			"shop": "engine"
-		},
-		{
 			"category": "stance",
 			"level": 1,
 			"price": 2500,
@@ -1261,7 +1141,7 @@
 				"livery": 11.0,
 				"rim": "#23262b"
 			},
-			"price": 34000,
+			"price": 32000,
 			"starter": false
 		},
 		{
@@ -1274,7 +1154,7 @@
 				"livery": 11.0,
 				"rim": "#1b1d22"
 			},
-			"price": 60000,
+			"price": 58000,
 			"starter": false
 		},
 		{
@@ -1287,7 +1167,7 @@
 				"livery": 11.0,
 				"rim": "#15161a"
 			},
-			"price": 190000,
+			"price": 187000,
 			"starter": false
 		},
 		{
@@ -1313,7 +1193,7 @@
 				"livery": 11.0,
 				"rim": "#1b1d22"
 			},
-			"price": 38000,
+			"price": 43000,
 			"starter": false
 		},
 		{
@@ -1326,7 +1206,7 @@
 				"livery": 11.0,
 				"rim": "#f2f2f2"
 			},
-			"price": 50000,
+			"price": 58000,
 			"starter": false
 		},
 		{
@@ -1339,7 +1219,7 @@
 				"livery": 11.0,
 				"rim": "#2a2d33"
 			},
-			"price": 56000,
+			"price": 58000,
 			"starter": false
 		},
 		{
@@ -1352,7 +1232,7 @@
 				"livery": 11.0,
 				"rim": "#c0c5cc"
 			},
-			"price": 72000,
+			"price": 89000,
 			"starter": false
 		},
 		{
@@ -1365,7 +1245,7 @@
 				"livery": 11.0,
 				"rim": "#c9a24b"
 			},
-			"price": 130000,
+			"price": 135000,
 			"starter": false
 		},
 		{
@@ -1378,7 +1258,7 @@
 				"livery": 11.0,
 				"rim": "#c0c5cc"
 			},
-			"price": 260000,
+			"price": 240000,
 			"starter": false
 		},
 		{
@@ -1391,7 +1271,7 @@
 				"livery": 11.0,
 				"rim": "#2a2d33"
 			},
-			"price": 46000,
+			"price": 43000,
 			"starter": false
 		},
 		{
@@ -1404,7 +1284,7 @@
 				"livery": 11.0,
 				"rim": "#c9ccd2"
 			},
-			"price": 18000,
+			"price": 21000,
 			"starter": false
 		},
 		{
@@ -1417,7 +1297,7 @@
 				"livery": 11.0,
 				"rim": "#c9ccd2"
 			},
-			"price": 30000,
+			"price": 32000,
 			"starter": false
 		},
 		{
@@ -1430,7 +1310,7 @@
 				"livery": 11.0,
 				"rim": "#1b1d22"
 			},
-			"price": 44000,
+			"price": 43000,
 			"starter": false
 		},
 		{
@@ -1456,7 +1336,7 @@
 				"livery": 11.0,
 				"rim": "#d4a017"
 			},
-			"price": 64000,
+			"price": 58000,
 			"starter": false
 		},
 		{
@@ -1469,7 +1349,7 @@
 				"livery": 11.0,
 				"rim": "#c0c5cc"
 			},
-			"price": 98000,
+			"price": 89000,
 			"starter": false
 		},
 		{
@@ -1482,7 +1362,7 @@
 				"livery": 11.0,
 				"rim": "#2a2d33"
 			},
-			"price": 78000,
+			"price": 89000,
 			"starter": false
 		},
 		{
@@ -1495,7 +1375,7 @@
 				"livery": 11.0,
 				"rim": "#c0c5cc"
 			},
-			"price": 104000,
+			"price": 89000,
 			"starter": false
 		},
 		{
@@ -1508,7 +1388,7 @@
 				"livery": 11.0,
 				"rim": "#ffc300"
 			},
-			"price": 118000,
+			"price": 135000,
 			"starter": false
 		},
 		{
@@ -1521,7 +1401,7 @@
 				"livery": 11.0,
 				"rim": "#c0c5cc"
 			},
-			"price": 150000,
+			"price": 135000,
 			"starter": false
 		},
 		{
@@ -1534,7 +1414,7 @@
 				"livery": 11.0,
 				"rim": "#2a2d33"
 			},
-			"price": 185000,
+			"price": 187000,
 			"starter": false
 		},
 		{
@@ -1547,7 +1427,7 @@
 				"livery": 11.0,
 				"rim": "#00b4d8"
 			},
-			"price": 225000,
+			"price": 240000,
 			"starter": false
 		},
 		{
@@ -1560,7 +1440,7 @@
 				"livery": 11.0,
 				"rim": "#e6e7ea"
 			},
-			"price": 24000,
+			"price": 21000,
 			"starter": false
 		},
 		{
@@ -1573,7 +1453,7 @@
 				"livery": 11.0,
 				"rim": "#1b1d22"
 			},
-			"price": 92000,
+			"price": 89000,
 			"starter": false
 		},
 		{
@@ -1586,7 +1466,7 @@
 				"livery": 11.0,
 				"rim": "#1b1d22"
 			},
-			"price": 205000,
+			"price": 187000,
 			"starter": false
 		},
 		{
@@ -1599,7 +1479,7 @@
 				"livery": 11.0,
 				"rim": "#c0c5cc"
 			},
-			"price": 140000,
+			"price": 135000,
 			"starter": false
 		},
 		{
@@ -1612,7 +1492,7 @@
 				"livery": 11.0,
 				"rim": "#1b1d22"
 			},
-			"price": 170000,
+			"price": 187000,
 			"starter": false
 		}
 	]

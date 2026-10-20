@@ -1226,7 +1226,6 @@ class DisplayPanel extends Control:
 	var gear_txt := "N"
 	var rpm_frac := 0.0
 	var up_frac := 0.85
-	var nitro_frac := -1.0
 	var blink := false
 	var rpm_val := 0.0
 	var mph := false
@@ -1254,8 +1253,6 @@ class DisplayPanel extends Control:
 		var bc := Color(1, 0.18, 0.24) if over else (Color(1, 0.8, 0.1) if rpm_frac > up_frac * 0.85 else Color(0.23, 0.63, 1.0))
 		draw_rect(Rect2(7, 88, 242.0 * clampf(rpm_frac, 0, 1), 13), bc)
 		draw_string(f, Vector2(10, 99), "%d rpm" % int(rpm_val), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(0.91, 0.95, 1.0))
-		if nitro_frac >= 0.0:
-			draw_rect(Rect2(7, 104, 242.0 * clampf(nitro_frac, 0, 1), 5), Color(0.22, 0.78, 1.0))
 
 
 # ───────────────────────── hoja de notas del copiloto ─────────────────────────
@@ -1420,16 +1417,14 @@ func update_cabin(dt: float, p: CarSnapshot, in_handbrake: bool, time: float) ->
 		dp.rpm_val = p.rpm
 		dp.rpm_frac = p.rpm / _max_rpm
 		dp.up_frac = _up_frac
-		dp.nitro_frac = (p.nitro / _nitro_cap) if _nitro_cap > 0.0 else -1.0
 		dp.blink = int(time * 12.0) % 2 == 0
 		dp.queue_redraw()
 		disp_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 var _max_rpm := 8000.0
 var _up_frac := 0.85
-var _nitro_cap := 0.0
 
-func set_engine(max_rpm: float, shift_up_rpm: float, nitro_cap: float) -> void:
+func set_engine(max_rpm: float, shift_up_rpm: float) -> void:
 	_max_rpm = max_rpm
 	_up_frac = shift_up_rpm / max_rpm
 	if cluster_face != null:
@@ -1437,7 +1432,6 @@ func set_engine(max_rpm: float, shift_up_rpm: float, nitro_cap: float) -> void:
 		cluster_face.up_frac = _up_frac
 		cluster_face.queue_redraw()
 		cluster_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
-	_nitro_cap = nitro_cap
 
 ## Posición y mirada de la cámara interior, en el marco del habitáculo. mode: "onboard" | "rearcabin"
 ## Vibración de la cámara de adentro (x, y en metros). La usa camera_local y la prueba tests/cabin_shake_test.gd.

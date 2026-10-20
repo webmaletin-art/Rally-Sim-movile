@@ -35,6 +35,13 @@ signal cam_step(d: int) # cambiar de cámara desde el panel de ajuste (−1 ante
 signal camadj_changed # se movió una barra del ajuste de cámara (race.gd lo guarda)
 signal lab_changed # se movió una barra del taller de prueba (race.gd rearma el auto)
 signal lab_reset
+signal sim_changed(id: String) # se eligió otro nivel de simulación desde la pausa (race.gd lo aplica)
+var sim_fn: Callable # nivel de simulación actual («arcade», «mid», «pro», «custom»); vacío = acá no se puede cambiar (la Aventura lo fija)
+## Niveles de simulación (los mismos de la pantalla que se ve antes de largar: menu.gd)
+const SIM_LEVELS := [["arcade", "ARCADE", "ABS, tracción y estabilidad altas y ayuda de trazada fuerte: el auto perdona casi todo."],
+	["mid", "INTERMEDIO", "Ayudas medias y ayuda de trazada suave: un manejo equilibrado."],
+	["pro", "SIMULADOR TOTAL", "Sin ayudas: sin ABS, sin control de tracción, sin estabilidad ni ayuda de trazada. Manejás vos."],
+	["custom", "PERSONALIZADO", "Elegís cada ayuda a gusto."]]
 
 var session: RefCounted
 var cfg: Dictionary
@@ -74,7 +81,8 @@ var opts_scroll: ScrollContainer
 var online_panel # online_panel.gd: chat, jugadores, amigos, reportes y mercado (sólo en el mundo online)
 var convoy: RefCounted # ai/convoy.gd (Travesía X) o null
 var rig: RefCounted # CameraRig del jugador (null en la aventura, que tiene sus propias cámaras)
-var lab_on := false # ¿hay taller de prueba? (prueba de autos, Carrera rápida y drift)
+var opts_on := false # ¿OPCIONES, ajuste de cámara y modificar controles en la pausa? (Carrera rápida, prueba de un auto y Modo de prueba)
+var lab_on := false # ¿hay taller de prueba (reglajes) en la pausa? Sólo el Modo de prueba (20/10/2026, pedido del dueño: el taller es del garaje y de los talleres del mundo, no de la pausa)
 var lab: Dictionary = {} # estado del auto de la prueba
 var lab_defs: Dictionary = {}
 var lab_tab: Array = [0]
@@ -432,11 +440,15 @@ func _fill_pause() -> void:
 	var cam_b := Kit.button("🎥  CÁMARA", func(): camera_pressed.emit(), false, 19, sz)
 	var adj_b: Button = null
 	# configuraciones, reglajes y demás: sólo en la Carrera rápida y las pruebas de vehículos (lab_on); en copas, eventos y Aventura la pausa queda limpia y nada pisa lo elegido al empezar (pedido del dueño, 20/10/2026)
-	if rig != null and lab_on:
+	if rig != null and opts_on:
 		adj_b = Kit.button("📐  AJUSTAR CÁMARA", func(): open_page("camadj"), false, 19, sz)
 	pair.call(cam_b, adj_b)
 	cine_btn = Kit.button("🎬  MODO CINE", func(): cine_pressed.emit(), false, 19, sz)
-	pair.call(cine_btn, Kit.button("⚙  OPCIONES", func(): open_options(), false, 19, sz) if lab_on else null)
+	pair.call(cine_btn, Kit.button("⚙  OPCIONES", func(): open_options(), false, 19, sz) if opts_on else null)
+	if sim_fn.is_valid() and str(sim_fn.call()) != "": # el nivel de simulación se puede cambiar en cualquier modo (menos la Aventura): «el jugador puede arrepentirse» (pedido del dueño, 20/10/2026)
+		var sim_b := Kit.button("🎮  " + Tr.t("NIVEL DE SIMULACIÓN") + " · " + Tr.t(_sim_name(str(sim_fn.call()))), func(): open_page("sim"), false, 19, sz)
+		sim_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pause_col.add_child(sim_b)
 	if online_panel != null:
 		var on_b := Kit.button("🌐  ONLINE  ·  CHAT, JUGADORES, MERCADO", func(): open_page("on_home"), true, 19, sz)
 		on_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -486,12 +498,12 @@ func _fill_pause() -> void:
 			pair.call(Kit.button(str(mb[0][0]), func(): mode_pressed.emit(str(mb[0][1])), false, 19, sz), Kit.button(str(mb[1][0]), func(): mode_pressed.emit(str(mb[1][1])), false, 19, sz))
 		elif mb.size() == 1:
 			pair.call(Kit.button(str(mb[0][0]), func(): mode_pressed.emit(str(mb[0][1])), false, 19, sz), null)
-	if lab_on:
+	if opts_on:
 		var ed_b := Kit.button("🕹  MODIFICAR CONTROLES", func(): edit_controls_pressed.emit(), false, 19, sz)
 		ed_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		pause_col.add_child(ed_b)
-	if lab_on:
-		var lb := Kit.button("🔧  TALLER DE PRUEBA  (grip, suspensión, potencia…)", func(): open_page("lab"), false, 19, sz)
+	if lab_on: # (sólo el Modo de prueba: ahí los reglajes son parte de lo que se prueba)
+		var lb := Kit.button("🔧  REGLAJES  (grip, suspensión, potencia…)", func(): open_page("lab"), false, 19, sz)
 		lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		pause_col.add_child(lb)
 	pair.call(Kit.button("↺  REINICIAR", func(): restart_pressed.emit(), false, 19, sz), Kit.button("✕  SALIR", func(): quit_pressed.emit(), false, 19, sz))
@@ -611,6 +623,8 @@ func _opts_go(name: String, arg, push := true) -> void:
 		_cam_page()
 	elif name == "lab":
 		_lab_page()
+	elif name == "sim":
+		_sim_page()
 	elif name == "ayuda":
 		_help_page()
 	else:
@@ -648,6 +662,51 @@ func open_events(tab := "eventos") -> void:
 		add_child(events_ui)
 	pause_box.visible = false
 	events_ui.open(tab)
+
+## Nombre del nivel de simulación (para el botón de la pausa)
+func _sim_name(id: String) -> String:
+	for lv in SIM_LEVELS:
+		if str(lv[0]) == id:
+			return str(lv[1])
+	return "PERSONALIZADO"
+
+## Nivel de simulación dentro de la partida: los cuatro de siempre; al elegir uno se aplica en el momento (el auto sigue donde está). En PERSONALIZADO se ven las ayudas debajo.
+func _sim_page() -> void:
+	opts_title.text = Tr.t("NIVEL DE SIMULACIÓN")
+	var cur := str(sim_fn.call()) if sim_fn.is_valid() else ""
+	opts_body.add_child(Kit.wrap(Tr.t("Podés cambiarlo cuando quieras: se aplica en el momento y el auto sigue donde está."), 14, Kit.MUTED, 200))
+	for lv in SIM_LEVELS:
+		var id: String = lv[0]
+		var on := cur == id
+		var b := Kit.button("", Callable(), on, 20, Vector2(0, 92))
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var v := Kit.vbox(2)
+		v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		v.offset_left = 12
+		v.offset_right = -12
+		v.offset_top = 6
+		v.alignment = BoxContainer.ALIGNMENT_CENTER
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var dark := Color(0.05, 0.06, 0.08)
+		v.add_child(Kit.label(Tr.t(str(lv[1])) + ("  ✔" if on else ""), 19, dark if on else Kit.TEXT))
+		var dl := Kit.label(Tr.t(str(lv[2])), 12, dark if on else Kit.MUTED)
+		dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		dl.custom_minimum_size.x = 150
+		dl.max_lines_visible = 3
+		v.add_child(dl)
+		b.add_child(v)
+		b.pressed.connect(func() -> void:
+			if Kit.scroll_moved:
+				Kit.scroll_moved = false
+				return
+			if opts != null and opts.sfx != null:
+				opts.sfx.play("click")
+			sim_changed.emit(id)
+			_opts_go("sim", null, false))
+		opts_body.add_child(b)
+	if cur == "custom" and opts != null:
+		opts.options_page(opts_body, "fisica")
+		opts_title.text = Tr.t("NIVEL DE SIMULACIÓN")
 
 ## La ayuda del mundo abierto (página de la pausa)
 func _help_page() -> void:

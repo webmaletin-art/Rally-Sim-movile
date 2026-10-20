@@ -24,7 +24,7 @@ func _init() -> void:
 	var ck := Cockpit.new(str(V.visualType), Color(0.75, 0.08, 0.1), Color(1.0, 0.5, 0.1), trim)
 	ck.position = Vector3(0, -V.comHeight + V.rideOffset, 0)
 	vis.add_child(ck)
-	ck.set_engine(V.maxRpm, V.shiftUpRpm, 0.0)
+	ck.set_engine(V.maxRpm, V.shiftUpRpm)
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.55, 0.65, 0.78)

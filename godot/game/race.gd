@@ -141,7 +141,6 @@ var drag_mode := false # picada: caja manual obligatoria, ventana de cambio en l
 var drag_rpm := 0.0 # vueltas del cuadro anterior (antes de que el cambio las baje)
 var drag_shifts := 0
 var drag_perfect := 0
-var nitro_test := false
 var world: SubViewport # el mundo 3D se dibuja acá, a menor resolución que la pantalla (el HUD queda nítido)
 var view_rect: TextureRect
 var res_scale := 0.5
@@ -403,8 +402,11 @@ func _ready() -> void:
 		sfx.volume = float(profile.setting("volume")) / 100.0
 		race_hud.setup_options(profile, sfx)
 		race_hud.options_changed.connect(_apply_live_settings)
-		if not adv_mode and not pb_active and (cfg.get("testCar", false) == true or cfg.get("quick", false) == true):
+		if not adv_mode and not pb_active and (cfg.get("testCar", false) == true or cfg.get("quick", false) == true or cfg.get("test", false) == true):
 			_lab_init()
+		if not adv_mode: # el nivel de simulación se cambia desde la pausa en cualquier modo, menos la Aventura (que lo fija)
+			race_hud.sim_fn = func() -> String: return str(cfg.get("sim", profile.setting("simLevel")))
+			race_hud.sim_changed.connect(_on_sim_changed)
 	if audiorec_path != "":
 		audiorec = AudioEffectRecord.new()
 		AudioServer.add_bus_effect(0, audiorec)
@@ -894,11 +896,12 @@ func wall_dist() -> float:
 	return rail_off() - 1.0
 
 ## Niveles de simulación (se eligen antes de largar): ayudas del auto del jugador
+## «wheel» = el volante de la pantalla: 0 = el de siempre (un cuarto de vuelta de tope a tope hacia cada lado), 50 = real al 50 % (vuelta y media), 100 = real (tres vueltas hacia cada lado)
 const SIM_PRESETS := {
-	"arcade": {"abs": true, "tc": 80.0, "stab": 90.0, "line": 60.0},
-	"mid": {"abs": true, "tc": 50.0, "stab": 30.0, "line": 25.0},
-	"pro": {"abs": false, "tc": 0.0, "stab": 0.0, "line": 0.0},
-	"adv": {"abs": true, "tc": 30.0, "stab": 20.0, "line": 0.0}, # aventura: simulación total con un poco de ayuda
+	"arcade": {"abs": true, "tc": 80.0, "stab": 90.0, "line": 60.0, "wheel": 0},
+	"mid": {"abs": true, "tc": 50.0, "stab": 30.0, "line": 25.0, "wheel": 0},
+	"pro": {"abs": false, "tc": 0.0, "stab": 0.0, "line": 0.0, "wheel": 100}, # simulador total: volante real, hay que girarlo con los dedos como uno de verdad
+	"adv": {"abs": true, "tc": 30.0, "stab": 20.0, "line": 0.0, "wheel": 0}, # aventura: simulación total con un poco de ayuda
 }
 
 func _sim_assists() -> Dictionary:
@@ -906,7 +909,7 @@ func _sim_assists() -> Dictionary:
 	if SIM_PRESETS.has(lv):
 		return SIM_PRESETS[lv]
 	# personalizado: «steer» = ángulo de dirección en % (0 = el del auto, con su reglaje); lo elegido al empezar es lo único que manda (pedido del dueño, 20/10/2026)
-	var sa := {"abs": profile.setting("abs") == true, "tc": float(profile.setting("tc")), "stab": float(profile.setting("stab")), "line": float(profile.setting("lineAssist"))}
+	var sa := {"abs": profile.setting("abs") == true, "tc": float(profile.setting("tc")), "stab": float(profile.setting("stab")), "line": float(profile.setting("lineAssist")), "wheel": int(profile.setting("wheelReal"))}
 	var st = profile.setting("steerAngle")
 	sa["steer"] = clampf(float(st) if st != null else 0.0, 0.0, 130.0)
 	return sa
@@ -919,12 +922,23 @@ static func with_steer_angle(prm: Dictionary, pst: Dictionary, steer_pct: float)
 	var tune_pct := float((pst.get("tune", {}) as Dictionary).get("steer", 100.0))
 	prm["maxSteer"] = float(prm["maxSteer"]) / maxf(tune_pct, 1.0) * minf(steer_pct, 130.0)
 
+## El jugador eligió otro nivel de simulación en la pausa (cualquier modo menos la Aventura): se aplica en el momento y queda como el último elegido
+func _on_sim_changed(id: String) -> void:
+	if str(cfg.get("sim", profile.setting("simLevel"))) == id:
+		return
+	cfg["sim"] = id
+	profile.set_setting("simLevel", id)
+	profile.save()
+	_apply_assists()
+	if race_hud != null:
+		race_hud.toast("🎮 " + Tr.t(race_hud._sim_name(id)))
+
 ## Cambio de una ayuda en las opciones: el nivel pasa a «personalizado» conservando los valores del nivel anterior en las otras
 func _assist_changed(key: String) -> void:
 	var lv := str(cfg.get("sim", profile.setting("simLevel")))
 	if SIM_PRESETS.has(lv):
 		var P: Dictionary = SIM_PRESETS[lv]
-		var map := {"abs": "abs", "tc": "tc", "stab": "stab", "lineAssist": "line"}
+		var map := {"abs": "abs", "tc": "tc", "stab": "stab", "lineAssist": "line", "wheelReal": "wheel"}
 		for k in map:
 			if k != key:
 				profile.set_setting(k, P[map[k]] if k == "abs" else int(P[map[k]]))
@@ -1172,9 +1186,6 @@ func _car_setups() -> Array:
 	var out: Array = []
 	if not menu_mode:
 		var d: Dictionary = vehicles["t1plus"].duplicate()
-		if nitro_test:
-			d["nitroCap"] = 8.0
-			d["nitroBoost"] = 0.35
 		d["camberF"] = -1.0
 		d["camberR"] = -0.5
 		d["toeF"] = 0.0
@@ -1350,7 +1361,7 @@ func _rebuild_cars(only_player := false) -> void:
 			car.visual.set_clear_glass(cockpit.crew_out)
 			cockpit.position = Vector3(0, -Vp.comHeight + Vp.rideOffset, 0)
 			car.visual.add_child(cockpit)
-			cockpit.set_engine(Vp.maxRpm, Vp.shiftUpRpm, Vp.nitroCap)
+			cockpit.set_engine(Vp.maxRpm, Vp.shiftUpRpm)
 			cockpit.raining = weather_name == "lluvia"
 			weather.set_cabin(cockpit) # la lluvia y la nieve no caen adentro del habitáculo
 			cockpit.set_inside(false, false)
@@ -1391,7 +1402,6 @@ func _rebuild_cars(only_player := false) -> void:
 	if not cars.is_empty():
 		cars[0].phys.manual = manual_gearbox
 		controls.manual = manual_gearbox
-		controls.has_nitro = cars[0].phys.V.nitroCap > 0.0
 	cam_ready = false
 	fx_hold = 1.5
 	if only_player:
@@ -2313,7 +2323,7 @@ func _apply_live_settings(key: String) -> void:
 				life.apply_setting(key)
 		"particles":
 			fx.intensity = _particle_level() / 10.0
-		"abs", "tc", "stab", "lineAssist":
+		"abs", "tc", "stab", "lineAssist", "steerAngle", "wheelReal":
 			_assist_changed(key)
 		"recal":
 			controls.recalibrate_gyro()
@@ -2349,6 +2359,14 @@ func _apply_assists() -> void:
 	V.tractionControl = float(sa["tc"]) > 0.0
 	V.tcSlip = float(vehicles[str(cfg["car"])]["tcSlip"]) * (1.6 - float(sa["tc"]) / 100.0)
 	V.stabilityAssist = float(sa["stab"]) / 100.0
+	# el ángulo de dirección también cambia con el nivel (PERSONALIZADO: «Ángulo de dirección»; los demás, el del auto): se vuelve a calcular con el nivel de ahora
+	var pst: Dictionary = lab_state if not lab_state.is_empty() else cfg["state"]
+	var prm: Dictionary = CarBuild.build_params(vehicles[str(cfg["car"])], pst, {"abs": sa["abs"], "tc": sa["tc"], "stab": sa["stab"]})
+	with_steer_angle(prm, pst, float(sa.get("steer", 0.0)))
+	V.maxSteer = float(prm["maxSteer"])
+	if controls != null:
+		controls.wheel_real = int(sa.get("wheel", 0)) # (el volante de la pantalla depende del nivel: ver controls.gd)
+		controls.steer_pct = float(sa.get("steer", 0.0))
 
 func _apply_controls_settings() -> void:
 	manual_gearbox = str(profile.setting("gearbox")) == "manual" or drag_mode
@@ -2365,6 +2383,9 @@ func _apply_controls_settings() -> void:
 	controls.use_mph = str(profile.setting("units")) == "mph"
 	controls.wheel_scale = float(profile.setting("wheelSize")) / 100.0
 	controls.pedal_scale = float(profile.setting("pedalSize")) / 100.0
+	var sa_w := _sim_assists()
+	controls.wheel_real = int(sa_w.get("wheel", 0))
+	controls.steer_pct = float(sa_w.get("steer", 0.0))
 	var lay: Variant = profile.setting("ctrlLayout")
 	controls.layout = (lay as Dictionary).duplicate(true) if lay is Dictionary else {}
 	if controls.gyro_on:
@@ -2641,7 +2662,8 @@ func _lab_init() -> void:
 		cfg["lab_orig"] = lab_orig
 	race_hud.lab = base
 	race_hud.lab_defs = CarBuild.default_tune(vehicles[str(cfg["car"])])
-	race_hud.lab_on = true
+	race_hud.opts_on = true # OPCIONES, ajuste de cámara y controles en la pausa
+	race_hud.lab_on = cfg.get("test", false) == true # los reglajes sólo en el Modo de prueba (en el resto el taller es el del garaje y el de los talleres del mundo)
 
 ## Rearma el auto con los ajustes nuevos. En drift y en las pruebas libres queda donde estaba; en una carrera vuelve a la parrilla.
 func _lab_apply() -> void:
@@ -2781,9 +2803,6 @@ func _on_option(key: String, value) -> void:
 		"gyro":
 			controls.gyro_on = int(value) == 1
 			controls.recalibrate_gyro()
-		"nitro":
-			nitro_test = int(value) == 1
-			_rebuild_cars()
 		"weather":
 			weather.apply(str(value))
 			audio.rain(str(value) == "lluvia")
@@ -2889,10 +2908,8 @@ func _step_physics(dt: float) -> void:
 	pl.in_brake = controls.brake
 	pl.in_steer = controls.steer
 	pl.in_handbrake = controls.handbrake
-	pl.in_nitro = controls.nitro
 	if fuel != null and fuel.blocks_throttle():
 		pl.in_throttle = 0.0 # sin nafta (o cargando) el auto no acelera
-		pl.in_nitro = false
 	if menu_mode and session != null and session.state == "run" and assist_view != null:
 		var la := float(_sim_assists()["line"]) / 100.0
 		# con el auto casi parado la ayuda no gira el volante (antes se veía el volante torcido en la largada)
@@ -2903,11 +2920,9 @@ func _step_physics(dt: float) -> void:
 		pl.in_throttle = 0.0 # en la largada el auto está frenado hasta el "¡YA!"
 		pl.in_brake = 1.0
 		pl.in_handbrake = true
-		pl.in_nitro = false
 	elif session != null and session.state == "done":
 		pl.in_throttle = 0.0
 		pl.in_brake = maxf(controls.brake, 0.4)
-		pl.in_nitro = false
 	if controls.shift != 0:
 		pl.in_shift = controls.shift
 	if adv != null:
@@ -3215,7 +3230,7 @@ func _frame(dt: float) -> void:
 		var vv = cars[0].phys.V
 		controls.shift_lo = Drag.LO * float(vv.shiftUpRpm) / float(vv.maxRpm)
 		controls.shift_hi = minf(1.0, Drag.HI * float(vv.shiftUpRpm) / float(vv.maxRpm))
-	lens.update(dt, controls.speed_kmh, 1.0 if controls.nitro else 0.0)
+	lens.update(dt, controls.speed_kmh, 0.0)
 	if menu_mode and not paused:
 		_haptics(dt, p, pl_impact)
 	if audio_on and not paused:

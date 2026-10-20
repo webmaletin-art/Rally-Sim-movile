@@ -37,7 +37,8 @@ func _init() -> void:
 	check(not PartCatalog.parts_in("spoiler").has("dev_spoiler_wing") and PartCatalog.parts_in("spoiler", true).has("dev_spoiler_wing"), "las piezas de prueba quedan ocultas")
 	var fit_all := true
 	var vehs_all: Array = ["pickup", "truck", "hatch", "suv", "buggy", "muscle", "gt", "gt3", "hyper"]
-	for cat in ["spoiler", "front_bumper", "rear_bumper", "side_skirt"]:
+	check(PartCatalog.parts_in("spoiler").is_empty(), "no se vende ningún alerón (pedido del dueño, 20/10/2026)")
+	for cat in ["front_bumper", "rear_bumper", "side_skirt"]:
 		check(not PartCatalog.parts_in(cat).is_empty(), "hay piezas de estética en %s" % cat)
 		for pid in PartCatalog.parts_in(cat):
 			for vid in vehs_all:

@@ -97,15 +97,10 @@ func _init() -> void:
 	c._touch_up(4)
 	c.update_inputs(1.0 / 60.0)
 	check("tocar la mitad de abajo = bajar un cambio", c.shift == -1)
-	# NITRO
-	c.has_nitro = true
-	c._touch_down(5, c.rect_of("nitro").get_center())
-	check("nitro mientras se mantiene", c.nitro)
-	c._touch_up(5)
-	check("nitro se apaga al soltar", not c.nitro)
+	# (el nitro se sacó del juego, 20/10/2026: no hay botón N₂O)
+	check("no hay botón de nitro entre los controles", not ("nitro" in Controls.ITEMS) and not ("nitro" in c._active_items()))
 	# modo barra
 	c.manual = false
-	c.has_nitro = false
 	c.steer_mode = "slider"
 	var sr := c.rect_of("slider")
 	c._touch_down(6, Vector2(sr.position.x + sr.size.x * 0.9, sr.get_center().y))
@@ -113,4 +108,36 @@ func _init() -> void:
 		c.update_inputs(1.0 / 60.0)
 	check("barra hacia la derecha: %.2f" % c.steer, c.steer > 0.6)
 	c._touch_up(6)
+	# VOLANTE REAL (20/10/2026, pedido del dueño: «en simulación total, un volante real: dar los giros con los dedos de verdad; con el ángulo de dirección en 130 tengo que dar más vueltas»)
+	c.steer_mode = "wheel"
+	c.wheel_real = 0
+	c.steer_pct = 0.0
+	check("Arcade: el volante se traba a ±135° (%.0f°)" % rad_to_deg(c.wheel_lock()), absf(c.wheel_lock() - Controls.WHEEL_LOCK) < 0.001)
+	c.wheel_real = 100
+	check("Real 100 %%: tope a ±540° (%.0f°)" % rad_to_deg(c.wheel_lock()), absf(rad_to_deg(c.wheel_lock()) - 540.0) < 0.5)
+	c.wheel_real = 50
+	check("Real 50 %%: la mitad del volante real, ±270° (%.0f°)" % rad_to_deg(c.wheel_lock()), absf(rad_to_deg(c.wheel_lock()) - 270.0) < 0.5)
+	c.wheel_real = 100
+	c.steer_pct = 130.0
+	check("Real 100 %% con el ángulo de dirección en 130 %%: más vueltas (%.0f°)" % rad_to_deg(c.wheel_lock()), absf(rad_to_deg(c.wheel_lock()) - 540.0 * 1.3) < 0.5)
+	c.steer_pct = 0.0
+	# girar 135° con el dedo: en Arcade es el tope; en el volante real es sólo un cuarto de la dirección
+	c.wheel_real = 100
+	c._touch_down(0, ctr + Vector2(0, -wr.size.x * 0.4))
+	for i in 30:
+		var ang5 := -PI / 2.0 + (PI * 0.75) * float(i + 1) / 30.0
+		c._touch_move(0, ctr + Vector2(cos(ang5), sin(ang5)) * wr.size.x * 0.4)
+	for i in 60:
+		c.update_inputs(1.0 / 60.0)
+	check("Real 100 %%: 135° con el dedo = sólo un cuarto de la dirección (%.2f)" % c.steer, absf(c.steer - 0.25) < 0.03)
+	for i in 120: # tres vueltas con el dedo: llega al tope y ahí se queda
+		var ang6 := -PI / 2.0 + PI * 0.75 + (PI * 6.0) * float(i + 1) / 120.0
+		c._touch_move(0, ctr + Vector2(cos(ang6), sin(ang6)) * wr.size.x * 0.4)
+	for i in 60:
+		c.update_inputs(1.0 / 60.0)
+	check("Real 100 %%: con vueltas de verdad la dirección llega al máximo (%.2f) y el dibujo no pasa del tope (%.0f°)" % [c.steer, rad_to_deg(c.wheel_visual)], c.steer > 0.97 and absf(c.wheel_visual) <= c.wheel_lock() + 0.01)
+	c._touch_up(0)
+	for i in 240:
+		c.update_inputs(1.0 / 60.0)
+	check("Real 100 %%: al soltar el volante vuelve al centro (%.3f)" % c.steer, absf(c.steer) < 0.02)
 	quit(1 if fails > 0 else 0)

@@ -125,7 +125,7 @@ static func tune_change_count(draft: Dictionary, saved: Dictionary, defs: Dictio
 
 static func effects_of(upg: Dictionary) -> Dictionary:
 	var e := {}
-	for k in ["power", "rpm", "inertia", "mass", "com", "yaw", "brake", "freq", "arb", "damp", "travel", "clutch", "shift", "lsd", "aeroF", "aeroR", "drag", "nitro", "nitroBoost", "steer", "vgov"]:
+	for k in ["power", "rpm", "inertia", "mass", "com", "yaw", "brake", "freq", "arb", "damp", "travel", "clutch", "shift", "lsd", "aeroF", "aeroR", "drag", "steer", "vgov"]:
 		e[k] = 0.0
 	for u in catalog()["upgrades"]:
 		var lvl := int(upg.get(u["id"], 0))
@@ -210,9 +210,6 @@ static func build_params(base: Dictionary, car: Dictionary, assists := {"abs": t
 	V["aeroF"] = float(base.get("aeroBaseF", 0.0)) + e["aeroF"] * (float(tu["aeroF"]) / 50.0 if has.call("aero") else 0.0) # (aeroBase: carga aerodinámica de fábrica, p. ej. el monoplaza)
 	V["aeroR"] = float(base.get("aeroBaseR", 0.0)) + e["aeroR"] * (float(tu["aeroR"]) / 60.0 if has.call("aero") else 0.0)
 	V["dragCoef"] = float(base["dragCoef"]) * (1.0 + e["drag"] * (0.5 + float(tu["aeroR"]) / 120.0 if has.call("aero") else 0.0))
-	# nitro
-	V["nitroCap"] = e["nitro"]
-	V["nitroBoost"] = e["nitroBoost"]
 	# neumáticos
 	var tr := tire(str(car.get("tires", "street")))
 	V["tireId"] = tr["id"]

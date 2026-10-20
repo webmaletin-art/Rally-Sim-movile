@@ -67,6 +67,7 @@ const OPTION_LIST := [
 	["fisica", "stab", "Estabilidad", [0, 30, 60, 100], ["Apagada", "Baja", "Media", "Alta"]],
 	["fisica", "lineAssist", "Ayuda de trazada (el auto te ayuda a doblar)", [0, 25, 50, 75, 100], ["Sin ayuda", "Suave", "Media", "Fuerte", "Máxima"]],
 	["fisica", "steerAngle", "Ángulo de dirección (cuánto doblan las ruedas)", [0, 70, 80, 90, 100, 110, 120, 130], ["Según el auto", "70%", "80%", "90%", "100%", "110%", "120%", "130%"]],
+	["fisica", "wheelReal", "Volante de la pantalla (cuántas vueltas hay que darle)", [0, 50, 100], ["Arcade (un cuarto de vuelta)", "Real 50 % (media vuelta)", "Real 100 % (vuelta y media)"]],
 	["sonido", "volume", "Volumen general", [0, 30, 60, 80, 100], ["Silencio", "Bajo", "Medio", "Alto", "Máximo"]],
 	["sonido", "volEngine", "Motor", [0, 50, 75, 100, 130], ["Silencio", "Bajo", "Medio", "Normal", "Fuerte"]],
 	["sonido", "volSurf", "Gomas y tierra", [0, 15, 30, 50, 80], ["Silencio", "Muy bajo", "Normal", "Fuerte", "Muy fuerte"]],

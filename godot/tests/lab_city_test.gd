@@ -87,18 +87,24 @@ func _run() -> void:
 	ch.clear_course()
 	hud.update_hud(0.2, 1, race.cars)
 	_check(not ch.in_course() and ch.gps_l.visible, "al terminar la carrera el GPS vuelve a ser el de siempre")
-	# pausa: las configuraciones y los reglajes sólo en la Carrera rápida y las pruebas de vehículos (lab_on); en copas, eventos y Aventura la pausa queda limpia (pedido del dueño, 20/10/2026)
-	_check(hud.lab_on, "Carrera rápida: la pausa lleva el taller de prueba")
+	# pausa: OPCIONES y controles sólo en la Carrera rápida y las pruebas (opts_on); el taller de prueba (reglajes) ya no está en la pausa: sólo en el Modo de prueba (lab_on) — «el taller es del garaje y de los talleres del mundo»
+	# (pedido del dueño, 20/10/2026); en copas, eventos y Aventura la pausa queda limpia
+	_check(hud.opts_on and not hud.lab_on, "Carrera rápida: la pausa lleva OPCIONES y controles, pero no el taller de prueba")
 	hud._fill_pause()
 	await process_frame
 	var ptx := _buttons_text(hud.pause_col)
-	_check(ptx.contains("OPCIONES") and ptx.contains("TALLER DE PRUEBA") and ptx.contains("MODIFICAR CONTROLES"), "Carrera rápida: OPCIONES, TALLER DE PRUEBA y MODIFICAR CONTROLES están en la pausa")
-	hud.lab_on = false
+	_check(ptx.contains("OPCIONES") and ptx.contains("MODIFICAR CONTROLES") and not ptx.contains("TALLER") and not ptx.contains("REGLAJES"), "Carrera rápida: OPCIONES y MODIFICAR CONTROLES están en la pausa; TALLER DE PRUEBA y REGLAJES no")
+	hud.opts_on = false
 	hud._fill_pause()
 	await process_frame
 	ptx = _buttons_text(hud.pause_col)
-	_check(not ptx.contains("OPCIONES") and not ptx.contains("TALLER") and not ptx.contains("MODIFICAR") and not ptx.contains("AJUSTAR") and ptx.contains("SEGUIR") and ptx.contains("CÁMARA") and ptx.contains("REINICIAR"), "copas, eventos y Aventura: la pausa sin configuraciones ni reglajes (queda seguir, cámara, cine, reiniciar y salir)")
-	hud.lab_on = true
+	_check(not ptx.contains("OPCIONES") and not ptx.contains("TALLER") and not ptx.contains("REGLAJES") and not ptx.contains("MODIFICAR") and not ptx.contains("AJUSTAR") and ptx.contains("SEGUIR") and ptx.contains("CÁMARA") and ptx.contains("REINICIAR"), "copas, eventos y Aventura: la pausa sin configuraciones ni reglajes (queda seguir, cámara, cine, reiniciar y salir)")
+	hud.lab_on = true # (el Modo de prueba: ahí sí están los reglajes)
+	hud._fill_pause()
+	await process_frame
+	_check(_buttons_text(hud.pause_col).contains("REGLAJES"), "Modo de prueba: la pausa lleva los REGLAJES")
+	hud.lab_on = false
+	hud.opts_on = true
 	hud._fill_pause()
 	await process_frame
 	# faros: automáticos (de día apagados, de noche prendidos), encendidos a mano y apagados a mano

@@ -45,7 +45,6 @@ var _opts := {
 	"steer": [0, ["volante", "barra"]],
 	"gearbox": [0, ["auto", "manual"]],
 	"gyro": [0, [0, 1]],
-	"nitro": [0, [0, 1]],
 	"weather": [0, ["dia", "nublado", "lluvia", "atardecer", "ocaso"]],
 }
 
@@ -75,8 +74,8 @@ func _layout() -> void:
 	_buttons.append({"id": "bench", "rect": Rect2(10, 56, 150, 44), "label": "PRUEBA"})
 	_buttons.append({"id": "copy", "rect": Rect2(10, 106, 150, 44), "label": "INFORME"})
 	_buttons.append({"id": "recal", "rect": Rect2(10, 156, 150, 44), "label": "CALIBRAR"})
-	var keys := ["cars", "trees", "pilots", "shadows", "hi", "threads", "res", "steer", "gearbox", "gyro", "nitro", "weather", "lens", "track"]
-	var names := {"cars": "Autos", "trees": "Árboles", "pilots": "Pilotos", "shadows": "Sombras", "hi": "Modelo alto", "threads": "Hilos", "res": "Resolución", "steer": "Dirección", "gearbox": "Caja", "gyro": "Acelerómetro", "nitro": "Nitro", "weather": "Clima", "lens": "Lente", "track": "Pista"}
+	var keys := ["cars", "trees", "pilots", "shadows", "hi", "threads", "res", "steer", "gearbox", "gyro", "weather", "lens", "track"]
+	var names := {"cars": "Autos", "trees": "Árboles", "pilots": "Pilotos", "shadows": "Sombras", "hi": "Modelo alto", "threads": "Hilos", "res": "Resolución", "steer": "Dirección", "gearbox": "Caja", "gyro": "Acelerómetro", "weather": "Clima", "lens": "Lente", "track": "Pista"}
 	for i in keys.size():
 		var col := i / 5
 		var row := i % 5
@@ -187,7 +186,7 @@ func _draw() -> void:
 		if id.begins_with("opt:"):
 			var key := id.substr(4)
 			var val = option_value(key)
-			lab += ": " + (("sí" if int(val) == 1 else "no") if key in ["pilots", "shadows", "hi", "threads", "gyro", "nitro"] else ((("auto" if float(val) == 0.0 else "%d%%" % int(float(val) * 100.0))) if key == "res" else str(val)))
+			lab += ": " + (("sí" if int(val) == 1 else "no") if key in ["pilots", "shadows", "hi", "threads", "gyro"] else ((("auto" if float(val) == 0.0 else "%d%%" % int(float(val) * 100.0))) if key == "res" else str(val)))
 		var fs := 18 if (id.begins_with("opt:") or id == "bench" or id == "copy") else 18
 		draw_string(font, Vector2(r.position.x + 6, r.position.y + r.size.y * 0.62), lab, HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 8, fs, Color(1, 1, 1, 0.9 if id != "toggle" else 0.55))
 	if open:

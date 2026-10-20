@@ -4,6 +4,7 @@ extends RefCounted
 
 const Kit := preload("res://game/ui/ui_kit.gd")
 const Tr := preload("res://game/i18n/tr.gd")
+const TouchScroll := preload("res://game/ui/touch_scroll.gd")
 
 static func _modal(parent: Node, width := 880.0) -> Array:
 	var dim := ColorRect.new()
@@ -40,13 +41,17 @@ static func notice(parent: Node, on_continue: Callable) -> Control:
 ## `info` (opcional): texto extra por calidad (los FPS medidos); `measured`: true si `suggested` sale de la medición («recomendada»); `on_measure`: botón «MEDIR AUTOMÁTICAMENTE».
 ## `order` (opcional): en qué orden se muestran (la recomendada primero, después la 60 FPS y las demás).
 static func pick(parent: Node, presets: Array, suggested: int, on_pick: Callable, info := {}, measured := false, on_measure := Callable(), order := []) -> Control:
-	var m := _modal(parent, 940.0)
-	var dim: Control = m[0]
-	var col: VBoxContainer = m[1]
-	col.add_child(Kit.label("⚙ " + Tr.t("CALIDAD GRÁFICA"), 30, Kit.ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
-	col.add_child(Kit.wrap(Tr.t("Elegí la calidad con la que querés jugar. Si el juego anda lento, bajala; si anda fluido, probá una más alta."), 18, Kit.TEXT, 860))
-	var grid := Kit.grid(2, 10, 10)
-	col.add_child(grid)
+	# 20/10/2026, reporte del dueño: «la pantalla de calidad gráfica no entra, no me deja hacer scroll y no veo el resto del texto». Ahora: 3 columnas (entra todo en 1280×576),
+	# el título y el botón de medir quedan FIJOS y lo del medio se desliza con el dedo si hiciera falta (aunque el dedo empiece sobre un botón).
+	var sh := _sheet(parent, 1180.0)
+	var dim: Control = sh["dim"]
+	var head: VBoxContainer = sh["head"]
+	var body: VBoxContainer = sh["body"]
+	var foot: VBoxContainer = sh["foot"]
+	head.add_child(Kit.label("⚙ " + Tr.t("CALIDAD GRÁFICA"), 26, Kit.ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
+	head.add_child(Kit.wrap(Tr.t("Elegí la calidad con la que querés jugar. Si el juego anda lento, bajala; si anda fluido, probá una más alta."), 16, Kit.TEXT, 700))
+	var grid := Kit.grid(3, 10, 8)
+	body.add_child(grid)
 	var idx: Array = order if order.size() == presets.size() else range(presets.size())
 	for i in idx:
 		var P: Dictionary = presets[i]
@@ -55,21 +60,62 @@ static func pick(parent: Node, presets: Array, suggested: int, on_pick: Callable
 			t += "  ★ " + Tr.t("recomendada" if measured else "sugerida")
 		var b := Kit.button(t, func() -> void:
 			dim.queue_free()
-			on_pick.call(i), i == suggested, 22, Vector2(420, 58))
-		var box := Kit.vbox(4)
+			on_pick.call(i), i == suggested, 19, Vector2(0, 48))
+		b.clip_text = true
+		var box := Kit.vbox(3)
+		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		box.add_child(b)
-		box.add_child(Kit.wrap(Tr.t(str(P["d"])), 14, Kit.MUTED, 420))
+		box.add_child(Kit.wrap(Tr.t(str(P["d"])), 13, Kit.MUTED, 120))
 		if info.has(i):
-			box.add_child(Kit.label(str(info[i]), 15, Kit.GOLD if i == suggested else Kit.TEXT))
+			box.add_child(Kit.label(str(info[i]), 14, Kit.GOLD if i == suggested else Kit.TEXT))
 		grid.add_child(box)
 	if measured:
-		col.add_child(Kit.wrap(Tr.t("Medimos el rendimiento en el centro de Dream City, el lugar más pesado: la recomendada es la más linda que corre fluida en este teléfono (en el resto del mapa anda mejor); «60 FPS» baja todo hasta correr a 60."), 15, Kit.TEXT, 860))
-	col.add_child(Kit.wrap(Tr.t("Podés cambiarla cuando quieras en OPCIONES → GRÁFICOS (también cada opción por separado)."), 15, Kit.MUTED, 860))
+		body.add_child(Kit.wrap(Tr.t("Medimos el rendimiento en el centro de Dream City, el lugar más pesado: la recomendada es la más linda que corre fluida en este teléfono (en el resto del mapa anda mejor); «60 FPS» baja todo hasta correr a 60."), 14, Kit.TEXT, 700))
+	body.add_child(Kit.wrap(Tr.t("Podés cambiarla cuando quieras en OPCIONES → GRÁFICOS (también cada opción por separado)."), 14, Kit.MUTED, 700))
 	if on_measure.is_valid():
-		col.add_child(Kit.button("📏 " + Tr.t("MEDIR AUTOMÁTICAMENTE"), func() -> void:
+		foot.add_child(Kit.button("📏 " + Tr.t("MEDIR AUTOMÁTICAMENTE"), func() -> void:
 			dim.queue_free()
-			on_measure.call(), false, 17, Vector2(0, 48)))
+			on_measure.call(), false, 17, Vector2(0, 44)))
 	return dim
+
+## Hoja de tamaño acotado a la pantalla: `head` (título) y `foot` (botones) fijos arriba y abajo; `body` en el medio, con scroll de dedo si no entra.
+## El alto del scroll sigue al del contenido (hasta lo que entra en la pantalla): si todo entra, no hay nada que deslizar.
+static func _sheet(parent: Node, width := 940.0) -> Dictionary:
+	var dim := ColorRect.new()
+	dim.color = Color(0.02, 0.03, 0.05, 0.97)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	parent.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.add_child(center)
+	var panel := Kit.panel(22)
+	panel.custom_minimum_size = Vector2(width, 0)
+	center.add_child(panel)
+	var col := Kit.vbox(8)
+	panel.add_child(col)
+	var head := Kit.vbox(6)
+	col.add_child(head)
+	var sc := TouchScroll.new()
+	sc.custom_minimum_size = Vector2(0, 80)
+	col.add_child(sc)
+	var body := Kit.vbox(8)
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(body)
+	var foot := Kit.vbox(6)
+	col.add_child(foot)
+	var fit := func() -> void:
+		if not is_instance_valid(dim) or not dim.is_inside_tree():
+			return
+		var room := dim.get_viewport_rect().size.y - 22.0 * 1.4 - 2.0 - 16.0 - 28.0 # (márgenes del panel, separaciones y un borde de pantalla)
+		room -= head.get_combined_minimum_size().y + foot.get_combined_minimum_size().y
+		sc.custom_minimum_size.y = clampf(body.get_combined_minimum_size().y, 80.0, maxf(room, 80.0))
+	body.minimum_size_changed.connect(fit)
+	head.minimum_size_changed.connect(fit)
+	foot.minimum_size_changed.connect(fit)
+	dim.resized.connect(fit)
+	fit.call_deferred()
+	return {"dim": dim, "head": head, "body": body, "foot": foot, "scroll": sc}
 
 ## Progreso de la calibración. Devuelve {root, res, perf, quality, bar} para actualizar los textos
 static func progress(parent: Node) -> Dictionary:

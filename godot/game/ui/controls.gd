@@ -4,7 +4,7 @@ extends Control
 ##  · BARRA de dirección (modo alternativo): se desliza el dedo a izquierda/derecha.
 ##  · PEDAL único: arriba de la mitad acelera, abajo de la mitad frena.
 ##  · TIRA DE CAMBIOS (caja manual): deslizar 30 px = un cambio, o tocar ▲ / ▼.
-##  · FRENO DE MANO y NITRO (mantener apretado).
+##  · FRENO DE MANO (mantener apretado).
 ##  · ACELERÓMETRO: inclinar el teléfono como un volante (con calibración).
 ## Todo se dimensiona en "unidades HTML" (u = alto de pantalla / 393): así el tamaño relativo es el mismo que en la versión web.
 ## Multitáctil: cada dedo queda asignado al control que tocó primero.
@@ -22,7 +22,6 @@ signal edit_done(saved: bool) # se cerró el modo «Modificar controles» (saved
 # ── opciones (las carga el juego) ──
 var steer_mode := "wheel" # "wheel" | "slider"
 var manual := false
-var has_nitro := false
 var gyro_on := false
 var gyro_invert := false
 var gyro_sens := 50.0 # 0..130 → cuánto hay que inclinar
@@ -43,7 +42,6 @@ var steer := 0.0 # -1 izquierda … +1 derecha (igual que en la versión HTML)
 var gas := 0.0
 var brake := 0.0
 var handbrake := false
-var nitro := false
 var shift := 0 # -1 / 0 / +1: cambio pedido este cuadro (ya consumido de la cola)
 
 # ── datos para el tablero ──
@@ -52,12 +50,23 @@ var gear_text := "N"
 var rpm_frac := 0.0
 var shift_lo := 0.0 # picada: ventana verde del cambio perfecto en la barra de vueltas (0 = apagada)
 var shift_hi := 0.0
-var nitro_frac := 1.0
 var limited := false # limitador de vueltas (para la luz del tablero)
 
 # ── estado interno ──
-const WHEEL_LOCK := PI * 0.75 # el volante de la pantalla se traba a ±135° (con el dedo, el acelerómetro y el teclado): ahí la dirección está al máximo
+const WHEEL_LOCK := PI * 0.75 # el volante de la pantalla (nivel Arcade) se traba a ±135° (con el dedo, el acelerómetro y el teclado): ahí la dirección está al máximo
+const WHEEL_LOCK_REAL := PI * 3.0 # el volante REAL se traba a ±540° (tres vueltas de tope a tope, como un auto de calle)
+var wheel_real := 0 # 0 = el volante de siempre (±135°) · 50 = real al 50 % (±270°) · 100 = real (±540°): lo manda el nivel de simulación (race.gd, SIM_PRESETS «wheel» / Opciones → «Volante de la pantalla»)
+var steer_pct := 0.0 # «Ángulo de dirección» del nivel PERSONALIZADO en % (0 = el del auto): con 130 % las ruedas doblan más y el volante real lleva más vueltas (la relación de dirección es fija)
 var wheel_rotation := 0.0
+
+## Hasta dónde gira el volante de la pantalla (rad hacia cada lado): ahí la dirección está al máximo. Pedido del dueño (20/10/2026): «en simulación total quiero un volante real: dar los giros
+## con los dedos de verdad; con el ángulo de dirección en 130 tengo que dar más vueltas, como una dirección hidráulica». El volante real mantiene la relación de dirección de un auto de calle
+## (±540° para el ángulo de dirección del auto) y se escala con el ángulo elegido; el de siempre queda para Arcade e Intermedio.
+func wheel_lock() -> float:
+	if wheel_real <= 0:
+		return WHEEL_LOCK
+	var k := steer_pct / 100.0 if steer_pct >= 70.0 else 1.0
+	return WHEEL_LOCK_REAL * clampf(float(wheel_real) / 100.0, 0.0, 1.0) * k
 var wheel_visual := 0.0
 var wheel_target := 0.0
 var wheel_touch_angle := 0.0
@@ -73,7 +82,7 @@ var _gyro_dt := 0.016
 var _gyro_steer := 0.0
 
 var _drags := {} # índice de dedo → posición (arrastre de cámara)
-const ITEMS := ["wheel", "slider", "pedal", "gears", "handbrake", "nitro"]
+const ITEMS := ["wheel", "slider", "pedal", "gears", "handbrake"]
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -104,8 +113,6 @@ func rect_of(id: String) -> Rect2:
 			r = Rect2(190.0 * u, vs.y - 30.0 * u - 158.0 * u, 64.0 * u, 158.0 * u)
 		"handbrake":
 			r = Rect2(vs.x - 100.0 * u - 64.0 * u, vs.y - 22.0 * u - 64.0 * u, 64.0 * u, 64.0 * u)
-		"nitro":
-			r = Rect2(vs.x - 100.0 * u - 64.0 * u, vs.y - 100.0 * u - 64.0 * u, 64.0 * u, 64.0 * u)
 		"cam":
 			r = Rect2(vs.x - 10.0 * u - 40.0 * u, 10.0 * u, 40.0 * u, 40.0 * u)
 		"pause":
@@ -132,8 +139,6 @@ func _active_items() -> Array:
 	a.append("wheel" if steer_mode == "wheel" else "slider")
 	if manual:
 		a.append("gears")
-	if has_nitro:
-		a.append("nitro")
 	if gyro_on:
 		a.erase("wheel")
 		a.erase("slider")
@@ -161,7 +166,7 @@ func _hit(pos: Vector2) -> String:
 			continue
 		if rect_of(id).grow(4.0 * _u()).has_point(pos):
 			return id
-	for id in ["pedal", "handbrake", "nitro", "gears"]:
+	for id in ["pedal", "handbrake", "gears"]:
 		if id in _active_items() and rect_of(id).grow(6.0 * _u()).has_point(pos):
 			return id
 	if "wheel" in _active_items():
@@ -206,8 +211,6 @@ func _touch_down(idx: int, pos: Vector2) -> void:
 			_pedal_from_y(pos.y)
 		"handbrake":
 			handbrake = true
-		"nitro":
-			nitro = true
 
 func _touch_move(idx: int, pos: Vector2) -> void:
 	if not _touch.has(idx):
@@ -235,8 +238,9 @@ func _touch_move(idx: int, pos: Vector2) -> void:
 			wheel_touch_angle = a
 			# el volante gira EXACTAMENTE lo que gira el dedo y se traba donde la dirección llega al tope (19/10/2026, pedido del dueño: «se le podía dar 3 vueltas y la
 			# rueda se trababa antes»: antes el dibujo llegaba a ±540° y la dirección ya estaba al máximo a los ±180°)
-			wheel_rotation = clampf(wheel_rotation + d, -WHEEL_LOCK, WHEEL_LOCK)
-			wheel_target = wheel_rotation / WHEEL_LOCK
+			var lock := wheel_lock()
+			wheel_rotation = clampf(wheel_rotation + d, -lock, lock)
+			wheel_target = wheel_rotation / lock
 		"slider":
 			_slider_from_x(pos.x)
 		"pedal":
@@ -265,8 +269,6 @@ func _touch_up(idx: int) -> void:
 			brake = 0.0
 		"handbrake":
 			handbrake = false
-		"nitro":
-			nitro = false
 		"gears":
 			if not t["moved"]:
 				var r := rect_of("gears")
@@ -353,9 +355,9 @@ func update_inputs(dt: float) -> void:
 	steer += (desired - steer) * (1.0 - exp(-dt * rate))
 	if steer_mode == "wheel":
 		if gyro_on:
-			wheel_rotation += (_gyro_steer * WHEEL_LOCK - wheel_rotation) * (1.0 - exp(-dt * 15.0))
+			wheel_rotation += (_gyro_steer * wheel_lock() - wheel_rotation) * (1.0 - exp(-dt * 15.0))
 		elif not wheel_contact:
-			var target_rot := kb_steer * WHEEL_LOCK if kb_steer != 0.0 else 0.0
+			var target_rot := kb_steer * wheel_lock() if kb_steer != 0.0 else 0.0
 			wheel_rotation += (target_rot - wheel_rotation) * (1.0 - exp(-dt * rate)) # (vuelve al centro al mismo ritmo que la dirección: antes tardaba el doble)
 		wheel_visual = wheel_rotation if wheel_contact else wheel_visual + (wheel_rotation - wheel_visual) * (1.0 - exp(-dt * 30.0))
 	# pedales: el dedo manda; sin dedo, el teclado
@@ -425,8 +427,6 @@ func _draw() -> void:
 		else:
 			draw_circle(rc, rr.size.x * 0.2, Color(1.0, 0.3, 0.3)) # grabar
 	_draw_round_button(rect_of("handbrake"), "H", handbrake, Color(1.0, 0.24, 0.19), Color(0.35, 0.12, 0.12), Color(1.0, 0.47, 0.43), font, u)
-	if has_nitro or editing:
-		_draw_round_button(rect_of("nitro"), "N₂O", nitro, Color(0.3, 0.65, 1.0), Color(0.07, 0.19, 0.35), Color(0.31, 0.7, 1.0), font, u, nitro_frac)
 	if editing:
 		_draw_edit_marks(font, u)
 
@@ -438,7 +438,7 @@ var _edit_pinch_d := 0.0
 var _edit_bar: Control
 
 func _edit_ids() -> Array:
-	var a := ["cam", "pause", "handbrake", "nitro", "gears", "pedal", "wheel" if steer_mode == "wheel" else "slider"]
+	var a := ["cam", "pause", "handbrake", "gears", "pedal", "wheel" if steer_mode == "wheel" else "slider"]
 	if show_shot:
 		a.insert(2, "shot")
 		a.insert(3, "rec")

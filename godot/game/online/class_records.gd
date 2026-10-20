@@ -12,7 +12,7 @@ const QUEUE_MAX := 30
 const SIMS := ["arcade", "mid", "pro", "custom", "adv"]
 const HIGHER := ["drift", "fugitive"] # tablas donde más es mejor
 ## código corto de cada mejora para el resumen («E3 T2 S1»)
-const UPG_CODE := {"engine": "E", "turbo": "T", "weight": "W", "brakes": "B", "suspension": "S", "gearbox": "G", "diff": "D", "aero": "A", "nitro": "N", "stance": "P"}
+const UPG_CODE := {"engine": "E", "turbo": "T", "weight": "W", "brakes": "B", "suspension": "S", "gearbox": "G", "diff": "D", "aero": "A", "stance": "P"}
 
 static func cls_of(pi: int) -> String:
 	if pi >= 800:
