@@ -7,7 +7,8 @@ const Release := preload("res://game/data/release.gd")
 const MenuAccount := preload("res://game/ui/menu_account.gd")
 const CrashLog := preload("res://game/diag/crash_log.gd") # (no cargar bootstrap/: un APK viejo no lo trae y esta pantalla dejaba de andar)
 
-const POLICY_URL := "https://webmaletin-art.github.io/Rally-Sim-movile/docs/privacidad.html"
+const WEB_BASE := "https://webmaletin-art.github.io/Rally-Sim-movile/docs/" # (GitHub Pages: ver docs/PLAY_STORE.md, 7.3)
+const POLICY_URL := WEB_BASE + "privacidad.html"
 const TERMS_URL := "https://github.com/webmaletin-art/Rally-Sim-movile/blob/main/docs/TERMINOS.md"
 const CONSENT_VERSION := 2 # (2: la cuenta obligatoria cambió qué datos se guardan; se vuelve a pedir la aceptación)
 
@@ -183,7 +184,17 @@ func _hub() -> void:
 			m.toast(tr("Modo desarrollador apagado"))
 			m.stack.clear()
 			m.enter_home(), false, 78.0)) # (con la cuenta obligatoria: hay que iniciar sesión y el servidor pisa lo local)
-	m.body.add_child(Kit.wrap("Los textos legales completos están en el repositorio del juego (docs/PRIVACIDAD.md y docs/TERMINOS.md).", 12, Kit.MUTED, 300))
+	# los textos legales y cómo borrar la cuenta, también en la web (las direcciones que van en la ficha de Google Play)
+	m.body.add_child(Kit.wrap(tr("Textos legales y eliminación de la cuenta, en la web:"), 12, Kit.MUTED, 300))
+	var gw := Kit.grid(3, 8, 8)
+	m.body.add_child(gw)
+	for it in [["PRIVACIDAD (WEB)", POLICY_URL], ["TÉRMINOS (WEB)", WEB_BASE + "terminos.html"], ["ELIMINAR CUENTA (WEB)", WEB_BASE + "eliminar-cuenta.html"]]:
+		var url: String = it[1]
+		var wb := Kit.button("🌐 " + tr(str(it[0])), func() -> void:
+			m.sfx.play("click")
+			OS.shell_open(url), false, 13, Vector2(0, 46))
+		wb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		gw.add_child(wb)
 
 func _tap_version() -> void:
 	var now := Time.get_ticks_msec() / 1000.0

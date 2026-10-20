@@ -24,8 +24,8 @@ func _init(p_title: String, p_values: Array, p_cur, p_fmt: Callable, p_cb: Calla
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(col)
 	title_l = Kit.label(p_title, 13, Kit.MUTED)
-	title_l.clip_text = true
 	title_l.custom_minimum_size.x = 40
+	Kit.fit_label(title_l, 10) # los títulos largos («Ayuda de trazada (el auto te ayuda a doblar)») bajan la letra en vez de cortarse con «…»
 	col.add_child(title_l)
 	var row := Kit.hbox(4)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE

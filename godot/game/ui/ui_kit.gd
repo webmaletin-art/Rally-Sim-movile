@@ -40,6 +40,28 @@ static func label(text: String, size := 22, color := TEXT, align := HORIZONTAL_A
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
 
+## Texto de una sola línea que no se corta con «…»: la letra baja (hasta min_size) hasta que entra entero en el ancho que le toque. Reporte del dueño, 20/10/2026: «el texto se ve cortado».
+## Se vuelve a ajustar solo cuando cambia el tamaño de la etiqueta; si el texto cambia después, llamar de nuevo a fit_label_now.
+static func fit_label(l: Label, min_size := 10) -> Label:
+	l.clip_text = true
+	l.set_meta("fit_base", l.get_theme_font_size("font_size"))
+	l.set_meta("fit_min", min_size)
+	l.resized.connect(func() -> void: fit_label_now(l))
+	return l
+
+static func fit_label_now(l: Label) -> void:
+	var w := l.size.x
+	if w < 30.0 or l.text == "" or not l.has_meta("fit_base"):
+		return
+	var font: Font = l.get_theme_font("font")
+	var base: int = int(l.get_meta("fit_base"))
+	var sz := base
+	var lo: int = int(l.get_meta("fit_min"))
+	while sz > lo and font.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x > w - 2.0:
+		sz -= 1
+	if int(l.get_theme_font_size("font_size")) != sz:
+		l.add_theme_font_size_override("font_size", sz)
+
 static func button(text: String, cb: Callable = Callable(), accent := false, size := 22, min_size := Vector2(0, 56)) -> Button:
 	var b := Button.new()
 	b.text = text
@@ -194,11 +216,11 @@ static func card_button(title: String, sub: String, right: String, cb: Callable,
 		tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	else:
-		tl.clip_text = true
+		fit_label(tl, 12)
 	v.add_child(tl)
 	if sub != "":
 		var sl := label(sub, 13, DARK.lightened(0.15) if dark else MUTED)
-		sl.clip_text = true
+		fit_label(sl, 10)
 		sl.custom_minimum_size.x = 40
 		v.add_child(sl)
 	if right != "":

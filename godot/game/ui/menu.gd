@@ -689,13 +689,13 @@ func menu_button(text: String, sub: String, cb: Callable, accent := false, enabl
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	var col := Color(0.05, 0.06, 0.08) if accent else (Kit.TEXT if enabled else Kit.MUTED)
 	var tl := Kit.label(text, tsize, col, HORIZONTAL_ALIGNMENT_CENTER)
-	tl.clip_text = true
 	tl.custom_minimum_size.x = 40
+	Kit.fit_label(tl, 14)
 	v.add_child(tl)
 	if sub != "":
 		var sl := Kit.label(sub, 15 if tsize >= 24 else 13, col.darkened(0.15) if accent else Kit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-		sl.clip_text = true
 		sl.custom_minimum_size.x = 40
+		Kit.fit_label(sl, 10)
 		v.add_child(sl)
 	b.add_child(v)
 	b.pressed.connect(func() -> void:
@@ -721,13 +721,13 @@ func tile(icon: String, text: String, sub: String, cb: Callable, accent := false
 	else:
 		v.add_child(Kit.label(icon, 22, col, HORIZONTAL_ALIGNMENT_CENTER))
 	var tl := Kit.label(text, 16, col, HORIZONTAL_ALIGNMENT_CENTER)
-	tl.clip_text = true
 	tl.custom_minimum_size.x = 40
+	Kit.fit_label(tl, 11)
 	v.add_child(tl)
 	if sub != "":
 		var sl := Kit.label(sub, 11, col.darkened(0.15) if accent else Kit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-		sl.clip_text = true
 		sl.custom_minimum_size.x = 40
+		Kit.fit_label(sl, 8)
 		v.add_child(sl)
 	b.add_child(v)
 	b.pressed.connect(func() -> void:
