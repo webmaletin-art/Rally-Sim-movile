@@ -36,6 +36,10 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 - ✅📱 Faros con luz hasta los bordes de la calle (`city/city_clock.gd`). Volante de la pantalla trabado en ±135° donde la dirección llega al tope (`ui/controls.gd`).
 - ✅📱 Asfalto y piso de la física a la misma altura, rayas a 1,2 cm (ruedas ya no «enterradas»); terraplén y cuneta junto a las rutas de campo (Ruta Panorámica 70 cuadra 37). La nieve sobre 64 m es de diseño: 🔎 pregunta al dueño.
 - ✅📱 Región: 1 cuadrado por cuadro al cargar (antes 2): menos tironcitos, **sin medir en teléfono**.
+- ✅📱 (20/10) Dream City sólo choca con edificios (fachadas y edificios especiales), objetos y vallas: esquinas, cruces y huecos libres; las rutas de campo conservan su pared (`city/city_layout.gd` → `wall_push`).
+- ✅📱 (20/10) Esquinas redondeadas en los cruces, veredas y rayas recortadas contra las otras calzadas (una sola regla: `ribbon_poly`, `prepare_fillets`, `clip_obstacles`), piso de la vereda a la altura del cordón (ruedas ya no hundidas en el borde).
+- ✅📱 (20/10) El terreno de la ciudad no tapa el asfalto de las rutas de campo ni de la colina (`world/terrain_cap.gd`); la banquina de las rutas de campo se cubre de nieve desde 54–64 m (`WorldSurfaces.snow_k`).
+- ✅📱 (20/10) Taller de prueba del mundo abierto sin respawn; mapa/GPS escondido con cualquier menú; botón de luces (Auto/Encendidas/Apagadas); GPS que recalcula a los 0,5 s de salirte; placa de policía arriba a la izquierda.
 
 ## Carreras del mundo abierto
 - ✅📱 (19/10) Las carreras largan a 100 m o más de cualquier taller, se cierran las calles que salen del recorrido (vallas) y la pista se ve en el mapa y en el GPS (`city/street_closure.gd`).

@@ -3,6 +3,7 @@ extends RefCounted
 ## pueblos, estaciones y peajes. Sale de `tools/world_gen` (python3 build_region.py) y se guarda en `data/region/region_1.bin` (ver export.py para el formato).
 ## Todas las consultas son puras (la física corre en hilos). Ejes: x al este, z al sur (el norte es −z), metros.
 
+const WorldSurfaces := preload("res://game/world/world_surfaces.gd")
 const FILE := "res://game/data/region/region_1.bin"
 const WALL := 9.0 # metros de banquina y pasto entre el borde de la calzada y la pared invisible de la ruta
 const SHOULDER := 1.9
@@ -380,7 +381,7 @@ func ground(x: float, z: float) -> Vector2:
 	if pr[1] < 0.0 and pr[0] >= -0.05:
 		return Vector2(hc, 0.0)
 	if pr[0] >= 0.0:
-		return Vector2(hc, 2.0) # banquina
+		return Vector2(hc, float(WorldSurfaces.SNOW) if WorldSurfaces.snow_side(hc) else 2.0) # banquina (con nieve, nieve: se tiñe igual en la malla)
 	return Vector2(hc, float(surface_off_road(x, z)))
 
 ## Metros de pared invisible de la calle ei, medidos desde el borde de la calzada

@@ -8,6 +8,7 @@ const WorldSurfaces := preload("res://game/world/world_surfaces.gd")
 const PaperKit := preload("res://game/fx/paper_kit.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityProps := preload("res://game/city/city_props.gd")
+const TerrainCap := preload("res://game/world/terrain_cap.gd")
 const PieceBatch := preload("res://game/city/piece_batch.gd")
 const TreeSprites := preload("res://game/city/tree_sprites.gd")
 const HorizonTrees := preload("res://game/city/horizon_trees.gd")
@@ -784,7 +785,9 @@ func _terrain_h(wx: float, wz: float) -> float:
 		h = CityLayout.verge_height(h, vg)
 	# donde hay una calle el terreno se hunde un poco para que el asfalto quede por encima aunque la ladera suba al costado
 	var pr := city.probe(wx, wz)
-	if pr[6] >= 0.0 and not near_rural:
+	if pr[6] >= 0.0 and not near_rural and city.is_dense_road(int(pr[6])):
+		h = city.dense_ground(h, pr) # calles de la ciudad: el terreno a ras del asfalto (apenas por debajo)
+	elif pr[6] >= 0.0 and not near_rural:
 		# el hundimiento se desvanece con la distancia al borde de la vereda (antes era todo o nada por vértice y en las banquinas se veían escalones de 16 m);
 		# bajo tierra se hunde más lejos: si no, las lomas del terreno asoman por adentro de la rampa
 		var lim := 20.0 if float(pr[4]) < -0.3 else 7.0
@@ -808,15 +811,77 @@ func _has_region_roads(x0: float, z0: float) -> bool:
 	var r := CityLayout.REGION_R - 40.0
 	return fx * fx + fz * fz > r * r
 
+var _cap_chunks: Dictionary = {} # cuadras (Vector2i) con una ruta de campo o un camino de la colina cerca: el terreno ahí se recorta para no tapar el asfalto (_city_caps)
+
+## ¿Hay una ruta de campo (rural, atajo, panorámica, colina) a menos de 24 m de esta cuadra? (se arma la primera vez, mirando todos los puntos de las calles)
+func _has_cap_roads(x0: float, z0: float) -> bool:
+	if _cap_chunks.is_empty():
+		_cap_chunks[Vector2i(1 << 30, 1 << 30)] = false # (marca de «ya armado»)
+		for si in city.s_x.size():
+			if city.s_next[si] < 0 or city._verge_road[city.s_road[si]] == 0:
+				continue
+			var px: float = city.s_x[si]
+			var pz: float = city.s_z[si]
+			for ox in [-24.0, 24.0]:
+				for oz in [-24.0, 24.0]:
+					_cap_chunks[city.chunk_of(px + float(ox), pz + float(oz))] = true
+	return _cap_chunks.has(Vector2i(int(floor(x0 / CityLayout.CELL)), int(floor(z0 / CityLayout.CELL))))
+
+## El terreno nunca tapa el asfalto de las rutas de campo y los caminos de la colina (TerrainCap): para cada punto de la calzada y de la banquina (cada 1,5 m a lo largo y 7 puntos a lo ancho)
+## se baja el nivel de corte de los vértices de la malla que lo taparían. (ox, oz) = posición del vértice (0, 0) de la grilla de w×w vértices (con un anillo de más alrededor de la cuadra).
+func _city_caps(ox: float, oz: float, step: float, w: int, cap: PackedFloat32Array, y0: PackedFloat32Array) -> void:
+	var span := float(w - 1) * step
+	var seen := {}
+	for kx in range(int(floor((ox - 24.0) / CityLayout.HC)), int(floor((ox + span + 24.0) / CityLayout.HC)) + 1):
+		for kz in range(int(floor((oz - 24.0) / CityLayout.HC)), int(floor((oz + span + 24.0) / CityLayout.HC)) + 1):
+			var lst: Variant = city._hash.get(Vector2i(kx, kz))
+			if lst == null:
+				continue
+			for si in (lst as PackedInt32Array):
+				if seen.has(si):
+					continue
+				seen[si] = true
+				var rid: int = city.s_road[si]
+				var ni: int = city.s_next[si]
+				if ni < 0 or city._verge_road[rid] == 0:
+					continue
+				var a := Vector2(city.s_x[si], city.s_z[si])
+				var b := Vector2(city.s_x[ni], city.s_z[ni])
+				var seg_len := a.distance_to(b)
+				if seg_len < 0.05:
+					continue
+				var rd: Dictionary = city.roads[rid]
+				var hw: float = rd["hw"]
+				var sw: float = rd["sw"]
+				var reach := hw + sw + 3.0
+				if maxf(a.x, b.x) < ox - reach or minf(a.x, b.x) > ox + span + reach or maxf(a.y, b.y) < oz - reach or minf(a.y, b.y) > oz + span + reach:
+					continue
+				var dir := (b - a) / seg_len
+				var nrm := Vector2(-dir.y, dir.x)
+				var ya: float = city.s_y[si]
+				var yb: float = city.s_y[ni]
+				var grade := (yb - ya) / seg_len # el tope sigue el plano de la calzada
+				var m := maxi(1, int(ceil(seg_len / 1.5)))
+				for k in m + 1:
+					var t := float(k) / float(m)
+					var c := a.lerp(b, t)
+					var yr := lerpf(ya, yb, t)
+					for lat in [-hw - sw, -hw, -hw * 0.5, 0.0, hw * 0.5, hw, hw + sw]:
+						var l: float = lat
+						# la calzada se dibuja a ROAD_UP y la banquina a CURB sobre el eje; la malla queda 3 cm por debajo
+						var target := yr + (CityLayout.ROAD_UP if absf(l) <= hw + 0.01 else CityLayout.CURB) - 0.03
+						TerrainCap.point(c.x + nrm.x * l, c.y + nrm.y * l, target, dir.x * grade, dir.y * grade, ox, oz, step, w, y0, cap)
+
 func _terrain(s: Soup, x0: float, z0: float) -> void:
 	var tc := TC
 	var capped := _has_region_roads(x0, z0)
+	var city_caps := _has_cap_roads(x0, z0)
 	if capped:
 		tc = TC_REGION_ROADS
 	var n := int(CityLayout.CELL / tc)
 	var hs := PackedFloat32Array()
 	hs.resize((n + 1) * (n + 1))
-	if capped:
+	if capped or city_caps:
 		# el terreno de la ciudad también tapaba los caminos de la región (la malla queda por encima de una calzada que cruza una ladera): se calcula el corte igual que en
 		# RegionWorld._terrain (con la misma grilla de 8 m), sobre una grilla con un anillo de vértices de más alrededor (los bordes de las cuadras vecinas salen iguales)
 		var w := n + 3
@@ -825,7 +890,14 @@ func _terrain(s: Soup, x0: float, z0: float) -> void:
 		for iz in w:
 			for ix in w:
 				y0[iz * w + ix] = _terrain_h(x0 + float(ix - 1) * tc, z0 + float(iz - 1) * tc)
-		var cap: PackedFloat32Array = region_world.road_caps(x0 - tc, z0 - tc, tc, w, y0)
+		var cap := PackedFloat32Array()
+		if capped:
+			cap = region_world.road_caps(x0 - tc, z0 - tc, tc, w, y0)
+		else:
+			cap.resize(w * w)
+			cap.fill(1.0e9)
+		if city_caps:
+			_city_caps(x0 - tc, z0 - tc, tc, w, cap, y0)
 		for iz in n + 1:
 			for ix in n + 1:
 				var j := (iz + 1) * w + ix + 1
@@ -877,29 +949,16 @@ func _roads(rd: Soup, mk: Soup, key: Vector2i, tn: Soup) -> void:
 				if ni < 0:
 					continue
 				_road_segment(rd, mk, si, ni, tn)
+	# esquinas redondeadas de los cruces (asfalto): las dibuja la cuadra donde cae el centro de cada una
+	for f in city.fillets_in(Rect2(x0, z0, CityLayout.CELL, CityLayout.CELL)):
+		var fc := CityLayout.poly_box(f).get_center()
+		if fc.x < x0 or fc.x >= x1 or fc.y < z0 or fc.y >= z1:
+			continue
+		_flat(rd, f, func(q: Vector2) -> float: return city.road_y_near(q), CityLayout.ROAD_UP, C_ASPH)
 
-## Normal (hacia la derecha del avance) en el punto si, unida con la del tramo anterior para que las curvas no queden con huecos. Devuelve (nx, nz, escala del ancho)
+## Normal (hacia la derecha del avance) en el punto si, unida con la del tramo anterior (CityLayout.miter)
 func _miter(si: int) -> Vector3:
-	var ni: int = city.s_next[si]
-	var pi: int = city.s_prev[si]
-	var d1 := Vector2.ZERO
-	var d0 := Vector2.ZERO
-	if ni >= 0:
-		d1 = Vector2(city.s_x[ni] - city.s_x[si], city.s_z[ni] - city.s_z[si]).normalized()
-	if pi >= 0:
-		d0 = Vector2(city.s_x[si] - city.s_x[pi], city.s_z[si] - city.s_z[pi]).normalized()
-	if d1 == Vector2.ZERO:
-		d1 = d0
-	if d0 == Vector2.ZERO:
-		d0 = d1
-	var n1 := Vector2(-d1.y, d1.x)
-	var n0 := Vector2(-d0.y, d0.x)
-	var m := n0 + n1
-	if m.length() < 0.05:
-		return Vector3(n1.x, n1.y, 1.0)
-	m = m.normalized()
-	var k := clampf(1.0 / maxf(m.dot(n1), 0.55), 1.0, 1.8)
-	return Vector3(m.x, m.y, k)
+	return city.miter(si)
 
 ## ¿Este punto cae adentro de la calzada de OTRA calle? (ahí no se dibuja la vereda: se cruza la calle)
 func _in_other_road(x: float, z: float, own: int) -> bool:
@@ -950,50 +1009,137 @@ func _road_segment(rd: Soup, mk: Soup, si: int, ni: int, tn: Soup) -> void:
 	var kb := mb.z
 	var up := Vector3(0, CityLayout.ROAD_UP, 0)
 	rd.quad_up(a - na * (hw * ka) + up, b - nb * (hw * kb) + up, b + nb * (hw * kb) + up, a + na * (hw * ka) + up, C_ASPH)
-	# veredas con cordón (más altas); no se dibujan donde cruza otra calle
-	var curb := 0.16
+	# veredas con cordón (más altas). Cada tramo se recorta contra las calzadas de las otras calles y las esquinas redondeadas (CityLayout.clip_obstacles): la vereda termina en el
+	# cordón del cruce y no se mete en la calle de al lado (antes se salteaba entera si su medio caía en otra calle y quedaban escalones y cuñas)
+	var curb := CityLayout.CURB
 	var cu := Vector3(0, curb, 0)
 	var side_col := C_SIDE
 	if kind == "rural" or kind == "shortcut" or kind == "scenic":
-		side_col = C_RURAL_SIDE
+		side_col = WorldSurfaces.side_color(C_RURAL_SIDE, (a.y + b.y) * 0.5) # (con nieve, la banquina no es tierra limpia)
 	elif kind == "alley":
 		side_col = Color(0.72, 0.46, 0.42) # veredas de ladrillo rojo
-	var mid := (a + b) * 0.5
+	var obst: Array = city.clip_obstacles(si)
 	for sg in ([] if sw < 0.01 else [-1.0, 1.0]):
 		var s: float = sg
-		var nmid := (na + nb).normalized()
-		var probe_pt := mid + nmid * (s * (hw + sw * 0.5))
-		if _in_other_road(probe_pt.x, probe_pt.z, city.s_road[si]):
-			continue
 		var e0a := a + na * (s * hw * ka)
 		var e0b := b + nb * (s * hw * kb)
 		var e1a := a + na * (s * (hw + sw) * ka)
 		var e1b := b + nb * (s * (hw + sw) * kb)
-		rd.quad_up(e0a + cu, e0b + cu, e1b + cu, e1a + cu, side_col)
-		# cara vertical del cordón
-		var cface_out := Vector2(-nmid.x * s, -nmid.z * s) # el cordón mira hacia la calzada
-		var qn := (e0b + up - (e0a + up)).cross(e0b + cu - (e0a + up))
-		if qn.x * cface_out.x + qn.z * cface_out.y > 0.0:
-			rd.quad(e0a + up, e0b + up, e0b + cu, e0a + cu, C_CURB)
-		else:
-			rd.quad(e0b + up, e0a + up, e0a + cu, e0b + cu, C_CURB)
-	# rayas (no cerca de los cruces)
+		var quad := PackedVector2Array([Vector2(e0a.x, e0a.z), Vector2(e0b.x, e0b.z), Vector2(e1b.x, e1b.z), Vector2(e1a.x, e1a.z)])
+		for part in _clip_all(quad, obst, 0.0):
+			_sidewalk_part(rd, part, a, b, side_col, quad)
+	# rayas: el borde de la calzada (blanco) y el eje (amarillo o blanco cortado). Se recortan contra las otras calzadas y esquinas: ninguna raya cruza otra calle. Las del eje no se
+	# pintan cerca de los cruces (como antes); las del eje de una calle chica terminan donde empieza la calle grande.
 	var local_i := si - _first_sample(city.s_road[si])
 	var nj: PackedByteArray = road["nj"]
 	var junc := nj.size() > local_i and nj[local_i] != 0
-	if not junc and kind != "plaza" and kind != "bay":
+	if kind != "plaza" and kind != "bay":
 		var lw := 0.11
-		var mu := Vector3(0, CityLayout.ROAD_UP + PaperKit.MARK_UP, 0) # a 1,2 cm del asfalto; el shader de las rayas las sube con la distancia (antes 7 cm fijos: se veían flotando y tapaban las ruedas)
+		var mdy := CityLayout.ROAD_UP + PaperKit.MARK_UP # a 1,2 cm del asfalto; el shader de las rayas las sube con la distancia (antes 7 cm fijos: se veían flotando y tapaban las ruedas)
 		if kind in ["major", "ring", "coast", "hill", "rural", "scenic"] and hw >= 4.0:
-			if local_i % 3 != 2: # raya del medio cortada
+			if local_i % 3 != 2 and not junc: # raya del medio cortada
 				var cc := C_YEL if kind != "ring" else C_WHT
-				mk.quad_up(a - na * lw + mu, b - nb * lw + mu, b + nb * lw + mu, a + na * lw + mu, cc)
+				_mark_part(mk, a, b, na, nb, -lw, lw, mdy, cc, obst, hw)
 			for sg in [-1.0, 1.0]:
 				var s2: float = sg
 				var o := (hw - 0.45) * s2
-				mk.quad_up(a + na * (o - 0.07) + mu, b + nb * (o - 0.07) + mu, b + nb * (o + 0.07) + mu, a + na * (o + 0.07) + mu, C_WHT)
-		elif local_i % 4 < 2:
-			mk.quad_up(a - na * 0.08 + mu, b - nb * 0.08 + mu, b + nb * 0.08 + mu, a + na * 0.08 + mu, C_WHT)
+				_mark_part(mk, a, b, na, nb, o - 0.07, o + 0.07, mdy, C_WHT, obst, -1.0)
+		elif local_i % 4 < 2 and not junc:
+			_mark_part(mk, a, b, na, nb, -0.08, 0.08, mdy, C_WHT, obst, hw)
+
+## Recorta el polígono p contra los obstáculos (calzadas ajenas y esquinas): lo que queda, en pedazos. min_hw: sólo recortan las calzadas con medio ancho ≥ ese valor (0 = todas)
+func _clip_all(p: PackedVector2Array, obst: Array, min_hw: float) -> Array:
+	var parts: Array = [p]
+	if obst.is_empty():
+		return parts
+	var box := CityLayout.poly_box(p)
+	for o in obst:
+		if float(o["hw"]) < min_hw:
+			continue
+		var op: PackedVector2Array = o["poly"]
+		if not CityLayout.poly_box(op).intersects(box):
+			continue
+		var next: Array = []
+		for q in parts:
+			if not CityLayout.poly_box(q).intersects(CityLayout.poly_box(op)):
+				next.append(q)
+				continue
+			for r in Geometry2D.clip_polygons(q, op):
+				if not Geometry2D.is_polygon_clockwise(r) and CityLayout.poly_area(r) > 0.02:
+					next.append(r)
+		parts = next
+		if parts.is_empty():
+			break
+	return parts
+
+## Altura del eje en el punto q (x, z) de un tramo a → b
+func _y_on(q: Vector2, a: Vector3, b: Vector3) -> float:
+	var ab := Vector2(b.x - a.x, b.z - a.z)
+	var l2 := ab.length_squared()
+	var t := clampf((q - Vector2(a.x, a.z)).dot(ab) / l2, 0.0, 1.0) if l2 > 0.0001 else 0.0
+	return lerpf(a.y, b.y, t)
+
+## Triángulos horizontales de un polígono (x, z) a la altura que da y_of + dy
+func _flat(s: Soup, poly: PackedVector2Array, y_of: Callable, dy: float, col: Color) -> void:
+	var idx := Geometry2D.triangulate_polygon(poly)
+	for i in range(0, idx.size(), 3):
+		var p0: Vector2 = poly[idx[i]]
+		var p1: Vector2 = poly[idx[i + 1]]
+		var p2: Vector2 = poly[idx[i + 2]]
+		var v0 := Vector3(p0.x, float(y_of.call(p0)) + dy, p0.y)
+		var v1 := Vector3(p1.x, float(y_of.call(p1)) + dy, p1.y)
+		var v2 := Vector3(p2.x, float(y_of.call(p2)) + dy, p2.y)
+		var cy := (v1 - v0).cross(v2 - v0).y
+		if absf(cy) < 2.0e-4:
+			continue # triángulo sin área (la triangulación de un polígono recortado deja puntas repetidas)
+		if cy < 0.0:
+			s.tri(v0, v2, v1, col)
+		else:
+			s.tri(v0, v1, v2, col)
+
+func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
+	var ab := b - a
+	var l2 := ab.length_squared()
+	var t := clampf((p - a).dot(ab) / l2, 0.0, 1.0) if l2 > 1.0e-9 else 0.0
+	return p.distance_to(a + ab * t)
+
+## Un pedazo de vereda (ya recortado): la losa a la altura del cordón y la cara vertical del cordón en los bordes que miran a la calzada (los del lado de afuera y los costados
+## que tocan a la vereda del tramo vecino no llevan). quad = el cuadrilátero original del tramo: e0a, e0b (junto a la calzada), e1b, e1a (afuera).
+func _sidewalk_part(rd: Soup, part: PackedVector2Array, a: Vector3, b: Vector3, col: Color, quad: PackedVector2Array) -> void:
+	var curb := CityLayout.CURB
+	var up := CityLayout.ROAD_UP
+	var yf := func(q: Vector2) -> float: return _y_on(q, a, b)
+	_flat(rd, part, yf, curb, col)
+	var n := part.size()
+	for i in n:
+		var p := part[i]
+		var q := part[(i + 1) % n]
+		var m := (p + q) * 0.5
+		if p.distance_to(q) < 0.05:
+			continue
+		# el lado de afuera (e1) y los costados (e0a–e1a, e0b–e1b) del cuadrilátero original no llevan cordón
+		if _seg_dist(m, quad[2], quad[3]) < 0.03 or _seg_dist(m, quad[1], quad[2]) < 0.03 or _seg_dist(m, quad[3], quad[0]) < 0.03:
+			continue
+		var d := (q - p).normalized()
+		var outv := Vector2(d.y, -d.x)
+		if Geometry2D.is_point_in_polygon(m + outv * 0.1, part):
+			outv = -outv
+		var pb := Vector3(p.x, float(yf.call(p)) + up, p.y)
+		var qb := Vector3(q.x, float(yf.call(q)) + up, q.y)
+		var pt := Vector3(p.x, float(yf.call(p)) + curb, p.y)
+		var qt := Vector3(q.x, float(yf.call(q)) + curb, q.y)
+		var qn := (qb - pb).cross(qt - pb)
+		if qn.x * outv.x + qn.z * outv.y > 0.0:
+			rd.quad(pb, qb, qt, pt, C_CURB)
+		else:
+			rd.quad(qb, pb, pt, qt, C_CURB)
+
+## Una raya entre los desplazamientos o0 y o1 (a la derecha del eje) del tramo a → b, recortada contra las calzadas ajenas con medio ancho ≥ min_hw (−1 = contra todas)
+func _mark_part(mk: Soup, a: Vector3, b: Vector3, na: Vector3, nb: Vector3, o0: float, o1: float, dy: float, col: Color, obst: Array, min_hw: float) -> void:
+	var poly := PackedVector2Array([Vector2(a.x + na.x * o0, a.z + na.z * o0), Vector2(b.x + nb.x * o0, b.z + nb.z * o0), Vector2(b.x + nb.x * o1, b.z + nb.z * o1), Vector2(a.x + na.x * o1, a.z + na.z * o1)])
+	var yf := func(q: Vector2) -> float: return _y_on(q, a, b)
+	for part in _clip_all(poly, obst, maxf(min_hw, 0.0)):
+		_flat(mk, part, yf, dy, col)
 
 var _first_cache: Dictionary = {}
 func _first_sample(road_id: int) -> int:

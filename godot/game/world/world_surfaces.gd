@@ -42,3 +42,16 @@ static func color(h: float, z: float, jit: float) -> Color:
 	if z > SAND_Z and h < SAND_H:
 		return Color(0.93 + jit, 0.85 + jit, 0.62 + jit)
 	return Color.TRANSPARENT
+
+## La banquina de una ruta de campo con nieve ([B] 19/10/2026): «si hay nieve no debe haber camino de tierra limpio». snow_k = 0 por debajo de SNOW_H − 10 m y 1 desde SNOW_H; la banquina se
+## tiñe hacia la nieve (side_color, lo que se ve) y desde la mitad pisa nieve (snow_side, lo que se siente).
+const SNOW_SIDE := Color(0.90, 0.91, 0.94)
+
+static func snow_k(h: float) -> float:
+	return smoothstep(SNOW_H - 10.0, SNOW_H, h)
+
+static func side_color(base: Color, h: float) -> Color:
+	return base.lerp(SNOW_SIDE, 0.85 * snow_k(h))
+
+static func snow_side(h: float) -> bool:
+	return snow_k(h) >= 0.5

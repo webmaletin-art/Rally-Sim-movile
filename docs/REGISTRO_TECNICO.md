@@ -5,6 +5,57 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 20/10/2026 01:00 UTC · [B] Tercera tanda: la ciudad sólo choca con edificios, esquinas y veredas bien terminadas, terreno que no tapa la ruta, banquina con nieve, GPS, menús y luces (rama ccr-e7ae3f10-45afj2) — PENDIENTE DE APK
+- **Pedido del dueño (mensaje con 15 capturas, 19/10):** «hay una traba invisible, una colisión: en un mundo abierto lo único que no deja pasar son los edificios y las vallas o cercos de la ruta; el resto no
+  es colisión» (Avenida 3 cuadras 3 y 6; Avenida 2 cuadra 6 «justo me topo con otra calle y no puedo cruzar»; no puedo hacer un finito de drift contra un edificio; «en los vértices sólo colisionan los edificios,
+  no puede haber una colisión invisible en la esquina de un edificio»). Al modificar la suspensión en el taller de prueba el auto hace respawn y el GPS queda por arriba del menú. «La rueda sigue hundiéndose
+  en el borde del asfalto y de la tierra.» Asfalto y veredas mal terminados, rayas que se intercruzan: «poné una regla de que esas líneas terminen bien, hacelo de una vez». GPS que marca mal, tarda en
+  actualizarse y no da ruta nueva si te pasaste. Botón para apagar las luces (de día estaban prendidas). Nieve: «si hay nieve no debe haber camino de tierra limpio»; en la X de la Ruta Panorámica el camino
+  de tierra pasaba por arriba del asfalto en diagonal: «las rutas deben cortarse, una unión limpia»; «pasto y tierra sobre la ruta no existe, la ruta debe ser limpia». Eventos: sólo en el modo online
+  con cuenta (y en tiempo real cuando se habilite), nunca en una partida común del mundo abierto (ahí sólo persecuciones y carreras). Placa de policía tapada por los botones de pausa y cámara.
+- **Cambios (cada uno con su causa):**
+  - **Colisiones (`city/city_layout.gd` → `prepare_walls`, `wall_push`, `DENSE_KINDS`; `track/city_track.gd` → `_push_locked`; commit 03c612b):** la pared de la ciudad era el borde del corredor de la calle (a
+    1–5 m de las fachadas en los cruces, y también donde no había edificio: esquinas y huecos). Ahora, en las calles de la ciudad (`DENSE_KINDS`), sólo chocan las fachadas (los cuadriláteros de `slabs`, con
+    una grilla de 4 m) y los 11 edificios especiales, más los objetos (postes, semáforos) y las vallas; las rutas de campo, la costa, la bahía y los túneles conservan la pared del corredor. Un auto pegado
+    a una fachada (a un radio) pasa; adentro, no. `city_walls_test` (8 OK) cruza cada cruce por el eje y las esquinas, comprueba que toda pared es un edificio o un objeto y que la Panorámica sigue con su pared.
+  - **Taller de prueba y menús (`race.gd` → `_lab_apply`, `ui/race_hud.gd` → `external_menu`, `ui/city_hud.gd` → `menu_open`; commit 81ffd53):** al aplicar un ajuste en el mundo abierto se reconstruía el
+    auto como en una largada (respawn). Ahora `_rebuild_cars(only_player)` conserva posición, velocidad y giro. El minimapa/GPS (`city_hud`) se agregaba después del menú de pausa y se dibujaba arriba: ahora
+    se esconde mientras haya cualquier menú (pausa, taller, eventos, pantalla de pruebas).
+  - **Placa de policía (`city/city_police.gd` → `PoliceBadge`):** pasó arriba a la izquierda, junto al cronómetro (los botones de pausa y cámara la tapaban).
+  - **Luces (`city/city_clock.gd` → `lights_mode`, `cycle_lights`; botón en la pausa de `ui/race_hud.gd`):** AUTO (de noche y bajo techo) · ENCENDIDAS · APAGADAS; de día en AUTO los faros quedan apagados.
+  - **GPS (`ui/city_hud.gd` → `_trim_route`, `_route_dev`, `_off_t`; commit aa81f03):** la línea se recorta proyectando el auto sobre la poligonal (arranca sobre la calle) y se pide ruta nueva a los 0,5 s
+    de estar a más de 14 m del recorrido (antes recién a más de 40 m). Primera versión: medía el desvío salteando el primer tramo y recalculaba de más; corregido y probado en `lab_city_test`.
+  - **Esquinas redondeadas, veredas y rayas con una regla única (`city/city_layout.gd` → `ribbon_poly`, `prepare_fillets`, `clip_obstacles`, `CURB`; `city/city_world.gd` → `_road_segment`, `_clip_all`,
+    `_sidewalk_part`, `_mark_part`, `_flat`):** causa: cada tramo de vereda y de raya se dibujaba entero y sólo se salteaba si su punto medio caía en otra calle; en los cruces quedaban escalones, cuñas dentro
+    de la otra calle y rayas que cruzaban otra calzada. La regla ahora: (1) la calzada de cada tramo es un polígono (`ribbon_poly`, la misma que se dibuja); (2) en cada cruce se unen las calzadas y se «cierra» la
+    unión con un radio de 4,5 m: lo que se agrega es la esquina redondeada del pavimento (`fillets`, 717 en la ciudad; los 187 cruces probados tienen sus esquinas); (3) las veredas y las rayas de cada tramo
+    se recortan contra las calzadas de las otras calles y contra esas esquinas (`clip_obstacles`): la vereda termina en el cordón del cruce con su cara vertical, la raya no pasa por arriba de otra calzada.
+    Dos errores propios encontrados con la prueba: la costura de la circunvalación repetía el primer punto y `miter` normalizaba un vector casi nulo (dirección al azar, escala 1,8: vereda metida en la calzada
+    en (910, ±10)); y `_flat` dejaba triángulos de área cero (ahora se descartan).
+  - **Ruedas en el borde (`track/city_track.gd` → `ground_info`):** el piso de la física sobre la vereda sube a `CURB` (16 cm) con una rampita de 25 cm desde el asfalto (antes quedaba a la altura del asfalto y la
+    rueda se hundía 16 cm dentro del cordón dibujado); la esquina redondeada se consulta antes que el corredor (parte de ella cae afuera) y es asfalto a la altura de la calle más cercana.
+  - **Terreno que no tapa el asfalto (`world/terrain_cap.gd` nuevo, `city/city_world.gd` → `_city_caps`, `_has_cap_roads`, `_terrain`; `region/region_world.gd` ahora delega en `TerrainCap.point`):** causa
+    medida con la prueba nueva `city_terrain_test`: en el camino de la colina (`Camino de la Colina 300`, en (−1058, −728)) la malla de 16 m quedaba hasta 73 cm POR ENCIMA del asfalto (un vértice de la
+    ladera de arriba, interpolado hasta el de abajo) y 1,4 cm en un atajo: era el «pasto y tierra sobre la ruta». Se usa el mismo recorte que ya tenía la región: para cada punto de la calzada y la banquina
+    de las rutas de campo y la colina se bajan los vértices que la taparían. Ahora 0 puntos de 25 026 medidos. **Efecto lateral a mirar:** la malla queda hasta unos decímetros más baja junto a esa ruta, y la
+    física fuera del corredor sigue el terreno natural (ya pasaba antes con el hundimiento de 0,5 m de la colina).
+  - **Banquina con nieve (`world/world_surfaces.gd` → `snow_k`, `side_color`, `snow_side`; `city/city_world.gd`, `region/region_world.gd`, `track/city_track.gd`, `region/region_data.gd`):** a partir de 54 m la banquina
+    de las rutas de campo se tiñe hacia la nieve (casi blanca desde 64 m) y desde unos 59 m se pisa como nieve (superficie 6) en vez de banquina. El asfalto sigue limpio.
+  - **La X de la Ruta Panorámica (2054, 1213, a 63,9 m):** se renderizó con el director del tráiler (pantalla virtual, no es el del teléfono): el asfalto de los dos tramos se cruza limpio y las banquinas se cortan
+    contra el borde del asfalto del otro; lo que se veía «tierra sobre el asfalto» era la banquina dibujada entera. Hay 9 cruces de rutas de campo en el mapa (Ruta 20/60/80 con sus atajos y la X de la Panorámica).
+  - **Eventos:** ya estaba (tanda anterior) que sólo corren con `cfg.events` (mundo abierto entrado desde el MODO ONLINE) y que una partida común no los tiene. Queda pendiente de definir el mundo compartido en
+    tiempo real (pregunta abierta).
+- **Pruebas (Godot 4.7.2 en la computadora, nada probado en un teléfono):** nuevas `junction_render_test` (8 OK: esquinas, vereda y rayas sin pisar otra calzada, piso de la vereda a ±0 mm, esquina como asfalto
+  108 de 108), `city_terrain_test` (6 OK: terreno bajo el asfalto en 25 026 puntos, banquina con nieve), `city_walls_test` (8), `lab_city_test` (24); y las existentes `road_height_test` (12), `city_test` (101),
+  `surfaces_test` (9), `region_terrain_test` (8), etc. (ver abajo la lista final de la corrida). Las dos nuevas están en el flujo de GitHub.
+- **Qué falta / pedirle al dueño (APK RC):** (1) recorrer Avenida 2 y 3 (cuadras 3 y 6) y las esquinas: ¿ya nada invisible?, ¿el finito de drift contra un edificio?; (2) taller de prueba en el mundo abierto: ¿sin
+  respawn y sin el mapa arriba del menú?; (3) ruedas en el cordón y el borde del asfalto; (4) esquinas redondas, veredas y rayas en los cruces (de día y de noche); (5) GPS: pasarse una calle, ¿da ruta nueva rápido?;
+  (6) luces: AUTO/ENCENDIDAS/APAGADAS en la pausa; (7) Ruta Panorámica en la X y por encima de 59 m: ¿la banquina nevada se ve bien?; (8) caminos de la colina: ¿se ve limpia la ruta?; (9) placa de policía.
+  **Preguntas abiertas:** ¿en los túneles el GPS «sin ruta» te molesta?; ¿a alta velocidad el volante de la pantalla llega al tope igual (hoy la dirección se reduce con la velocidad)?; ¿eventos también en el mundo
+  compartido en tiempo real cuando se abra?; ¿querés suavizar más las esquinas redondeadas (hoy radio 4,5 m)?
+
+---
+
 ## 19/10/2026 22:10 UTC · [B] Segunda tanda sobre la pantalla de juego: eventos sin letras, policía, talleres, faros, carreras del mapa, volante, altura del asfalto y terraplén (rama ccr-e7ae3f10-45afj2) — PENDIENTE DE APK
 - **Pedido del dueño (dos mensajes con capturas, 19/10):** «sigue estando mal: no quiero más letras en la pantalla de partida; sólo un puntito rojo en la pausa y en EVENTOS; un menú de eventos lindo, con fotos
   y autos, nada genérico: lista → elegir uno → explicación con imagen → IR AL EVENTO (el GPS me lleva, incluso a otra ciudad) → pausa → SALIR DEL EVENTO». Cartel de la policía más lindo, arriba a un costado.

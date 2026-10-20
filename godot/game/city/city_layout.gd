@@ -133,7 +133,7 @@ func base_height(x: float, z: float) -> float:
 ## natural, así que no coincidían. Ahora el terreno junto a estas rutas sale de UNA función (verge_height) que usan la malla (city_world._terrain_h) y el piso de la física
 ## (city_track.ground_info): del lado de abajo un terraplén que baja de a poco hasta el terreno natural; del lado de arriba una cuneta que sube suave hasta la ladera.
 const VERGE_KINDS := ["rural", "shortcut", "scenic", "hill"]
-const VERGE_LEVEL := 0.25 # el borde del terraplén queda a esta altura por debajo del asfalto
+const VERGE_LEVEL := -0.02 # el borde del terraplén queda a esta altura por debajo del eje de la calle (negativo = 2 cm arriba: a ras de la banquina, que se dibuja 16 cm arriba)
 const VERGE_BW_MAX := 20.0 # hasta dónde (metros más allá de la banquina) se ablanda el terreno
 var _verge_road := PackedByteArray() # por calle: 1 = ruta de campo (se arma con prepare_verge, una vez, después de build)
 
@@ -347,6 +347,253 @@ func _quad_push(x: float, z: float, r: float, qi: int) -> Vector3:
 	if d < 1.0e-4:
 		return Vector3(onx, onz, r)
 	return Vector3(bdx / d, bdz / d, r - d)
+
+## ───── Esquinas y cruces: calzadas, esquinas redondeadas y recortes · [B] 19/10/2026
+## Reporte del dueño: «las terminaciones de la vereda están todas mal hechas, las rayas se cruzan, el camino de tierra pasa por arriba del asfalto de la otra ruta; hacelo de una vez».
+## Antes cada tramo de vereda y de raya se dibujaba entero y sólo se salteaba el tramo cuyo medio caía en otra calle: en los cruces quedaban escalones, cuñas que se metían en la calle
+## de al lado, rayas que cruzaban otra calzada. Ahora (city_world._road_segment):
+##  · cada calle de la ciudad tiene su calzada como polígono (ribbon_poly: la misma que se dibuja);
+##  · en cada cruce, la unión de las calzadas se «cierra» con un radio (FILLET_R): lo que se agrega es la esquina redondeada del pavimento (fillets);
+##  · las veredas y las rayas de cada tramo se recortan contra las calzadas de las otras calles y contra esas esquinas (clip_obstacles): la vereda termina en el cordón del cruce y
+##    la raya no pasa por arriba de otra calzada. El piso de la física sigue lo mismo (ground_info: la vereda a la altura del cordón, la esquina como asfalto).
+const CURB := 0.16 # la vereda se dibuja a esta altura sobre el eje de la calle (el asfalto, a ROAD_UP)
+const FILLET_R := 4.5
+var fillets: Array = [] # PackedVector2Array por esquina redondeada
+var _fcells: Dictionary = {} # Vector2i (16 m) -> PackedInt32Array de esquinas que tocan esa celda
+var _ribbons: Dictionary = {} # punto -> la calzada de ese tramo (PackedVector2Array)
+var _obst: Dictionary = {} # punto -> Array de {poly, hw, fil}: lo que recorta a la vereda y las rayas de ese tramo
+
+## Normal (hacia la derecha del avance) en el punto si, unida con la del tramo anterior para que las curvas no queden con huecos. Devuelve (nx, nz, escala del ancho)
+func miter(si: int) -> Vector3:
+	var ni: int = s_next[si]
+	var pi: int = s_prev[si]
+	var d1 := Vector2.ZERO
+	var d0 := Vector2.ZERO
+	# un vecino pegado al punto (la costura de una circunvalación que cierra sobre sí misma repite el primer punto) no da dirección: normalized() de un vector casi nulo apunta a cualquier lado
+	if ni >= 0:
+		var v1 := Vector2(s_x[ni] - s_x[si], s_z[ni] - s_z[si])
+		if v1.length() >= 0.05:
+			d1 = v1.normalized()
+	if pi >= 0:
+		var v0 := Vector2(s_x[si] - s_x[pi], s_z[si] - s_z[pi])
+		if v0.length() >= 0.05:
+			d0 = v0.normalized()
+	if d1 == Vector2.ZERO:
+		d1 = d0
+	if d0 == Vector2.ZERO:
+		d0 = d1
+	var n1 := Vector2(-d1.y, d1.x)
+	var n0 := Vector2(-d0.y, d0.x)
+	var m := n0 + n1
+	if m.length() < 0.05:
+		return Vector3(n1.x, n1.y, 1.0)
+	m = m.normalized()
+	var k := clampf(1.0 / maxf(m.dot(n1), 0.55), 1.0, 1.8)
+	return Vector3(m.x, m.y, k)
+
+## La calzada del tramo que sale del punto si (cuadrilátero en x, z), igual a la que dibuja city_world; vacío si no hay tramo
+func ribbon_poly(si: int) -> PackedVector2Array:
+	if _ribbons.has(si):
+		return _ribbons[si]
+	var out := PackedVector2Array()
+	var ni: int = s_next[si]
+	if ni >= 0 and Vector2(s_x[ni] - s_x[si], s_z[ni] - s_z[si]).length() >= 0.05 and str((roads[s_road[si]] as Dictionary)["kind"]) != "tunnel":
+		var hw := float((roads[s_road[si]] as Dictionary)["hw"])
+		var ma := miter(si)
+		var mb := miter(ni)
+		var a := Vector2(s_x[si], s_z[si])
+		var b := Vector2(s_x[ni], s_z[ni])
+		var na := Vector2(ma.x, ma.y)
+		var nb := Vector2(mb.x, mb.y)
+		out = PackedVector2Array([a - na * (hw * ma.z), b - nb * (hw * mb.z), b + nb * (hw * mb.z), a + na * (hw * ma.z)])
+	_ribbons[si] = out
+	return out
+
+static func poly_area(p: PackedVector2Array) -> float:
+	var a := 0.0
+	for i in p.size():
+		var q := p[(i + 1) % p.size()]
+		a += p[i].x * q.y - q.x * p[i].y
+	return absf(a) * 0.5
+
+static func poly_box(p: PackedVector2Array) -> Rect2:
+	var lo := p[0]
+	var hi := p[0]
+	for q in p:
+		lo = Vector2(minf(lo.x, q.x), minf(lo.y, q.y))
+		hi = Vector2(maxf(hi.x, q.x), maxf(hi.y, q.y))
+	return Rect2(lo, hi - lo)
+
+## Suma el polígono p a la unión acc (lista de polígonos disjuntos)
+static func _union_add(acc: Array, p: PackedVector2Array) -> Array:
+	var cur := p
+	var rest: Array = []
+	for q in acc:
+		var r: Array = Geometry2D.merge_polygons(cur, q)
+		if r.size() == 1:
+			cur = r[0]
+		else:
+			rest.append(q)
+	rest.append(cur)
+	return rest
+
+## Arma las esquinas redondeadas de todos los cruces (una vez, después de build)
+func prepare_fillets() -> void:
+	fillets = []
+	_fcells = {}
+	_ribbons = {}
+	_obst = {}
+	for j in junctions:
+		var rids: Array = j["roads"]
+		var skip := false
+		for rid in rids:
+			if str((roads[int(rid)] as Dictionary)["kind"]) == "tunnel":
+				skip = true
+		if skip:
+			continue
+		var jp: Vector2 = j["pos"]
+		var acc: Array = []
+		var kx := int(floor(jp.x / HC))
+		var kz := int(floor(jp.y / HC))
+		for dx in range(-2, 3):
+			for dz in range(-2, 3):
+				var k2 := Vector2i(kx + dx, kz + dz)
+				if not _hash.has(k2):
+					continue
+				for si in (_hash[k2] as PackedInt32Array):
+					if not rids.has(int(s_road[si])) or Vector2(s_x[si], s_z[si]).distance_to(jp) > 46.0:
+						continue
+					var poly := ribbon_poly(si)
+					if not poly.is_empty():
+						acc = _union_add(acc, poly)
+		if acc.is_empty():
+			continue
+		var u: PackedVector2Array = acc[0]
+		for q in acc:
+			if poly_area(q) > poly_area(u):
+				u = q
+		var d1: Array = Geometry2D.offset_polygon(u, FILLET_R, Geometry2D.JOIN_ROUND)
+		if d1.is_empty():
+			continue
+		var big: PackedVector2Array = d1[0]
+		for q in d1:
+			if poly_area(q) > poly_area(big):
+				big = q
+		var d2: Array = Geometry2D.offset_polygon(big, -FILLET_R, Geometry2D.JOIN_ROUND)
+		if d2.is_empty():
+			continue
+		var closed: PackedVector2Array = d2[0]
+		for q in d2:
+			if poly_area(q) > poly_area(closed):
+				closed = q
+		for fp in Geometry2D.clip_polygons(closed, u):
+			if Geometry2D.is_polygon_clockwise(fp) or poly_area(fp) < 0.8:
+				continue
+			_add_fillet(fp)
+
+func _add_fillet(fp: PackedVector2Array) -> void:
+	var fi := fillets.size()
+	fillets.append(fp)
+	var bx := poly_box(fp)
+	for cx in range(int(floor(bx.position.x / 16.0)), int(floor(bx.end.x / 16.0)) + 1):
+		for cz in range(int(floor(bx.position.y / 16.0)), int(floor(bx.end.y / 16.0)) + 1):
+			var k := Vector2i(cx, cz)
+			var arr: PackedInt32Array = _fcells.get(k, PackedInt32Array())
+			arr.append(fi)
+			_fcells[k] = arr
+
+## Las esquinas redondeadas cuyo recuadro toca el recuadro r
+func fillets_in(r: Rect2) -> Array:
+	var out: Array = []
+	var seen := {}
+	for cx in range(int(floor(r.position.x / 16.0)), int(floor(r.end.x / 16.0)) + 1):
+		for cz in range(int(floor(r.position.y / 16.0)), int(floor(r.end.y / 16.0)) + 1):
+			var lst: Variant = _fcells.get(Vector2i(cx, cz))
+			if lst == null:
+				continue
+			for fi in (lst as PackedInt32Array):
+				if seen.has(fi):
+					continue
+				seen[fi] = true
+				if poly_box(fillets[fi]).intersects(r):
+					out.append(fillets[fi])
+	return out
+
+## Terreno junto a las calles de la ciudad: a ras del asfalto (3 cm por debajo), no 50 cm más abajo como antes: con las esquinas y los huecos entre edificios libres (CityLayout.wall_push) el
+## auto puede pasar por ahí y se veía una zanja. h = el terreno natural, pr = probe(x, z). La malla (city_world._terrain_h) y el piso de la física (city_track.ground_info) usan esto.
+func dense_ground(h: float, pr: PackedFloat64Array) -> float:
+	var ri := int(pr[6])
+	if ri < 0 or not is_dense_road(ri):
+		return h
+	var lim := 20.0 if float(pr[4]) < -0.3 else 7.0
+	var w := smoothstep(-lim - 9.0, -lim + 3.0, float(pr[0]))
+	return lerpf(h, minf(h, float(pr[4]) - 0.03), w)
+
+## Altura del eje de la calle más cercana a q (para las esquinas redondeadas)
+func road_y_near(q: Vector2) -> float:
+	var best := 1.0e18
+	var by := height(q.x, q.y)
+	var kx := int(floor(q.x / HC))
+	var kz := int(floor(q.y / HC))
+	for dx in range(-1, 2):
+		for dz in range(-1, 2):
+			var k2 := Vector2i(kx + dx, kz + dz)
+			if not _hash.has(k2):
+				continue
+			for si in (_hash[k2] as PackedInt32Array):
+				if str((roads[s_road[si]] as Dictionary)["kind"]) == "tunnel":
+					continue
+				var d := Vector2(s_x[si], s_z[si]).distance_squared_to(q)
+				if d < best:
+					best = d
+					by = s_y[si]
+	return by
+
+## ¿El punto está en una esquina redondeada (asfalto)?
+func on_fillet(x: float, z: float) -> bool:
+	var lst: Variant = _fcells.get(Vector2i(int(floor(x / 16.0)), int(floor(z / 16.0))))
+	if lst == null:
+		return false
+	var p := Vector2(x, z)
+	for fi in (lst as PackedInt32Array):
+		if Geometry2D.is_point_in_polygon(p, fillets[fi]):
+			return true
+	return false
+
+## Lo que recorta a la vereda y a las rayas del tramo que sale del punto si: las calzadas de las otras calles (o de otro tramo de la misma, como en la X de la Panorámica) y las esquinas
+## redondeadas cercanas. Cada una: {poly, hw, fil}
+func clip_obstacles(si: int) -> Array:
+	if _obst.has(si):
+		return _obst[si]
+	var out: Array = []
+	var ni: int = s_next[si]
+	if ni >= 0:
+		var own := int(s_road[si])
+		var rd: Dictionary = roads[own]
+		var a := Vector2(s_x[si], s_z[si])
+		var b := Vector2(s_x[ni], s_z[ni])
+		var reach := float(rd["hw"]) + float(rd["sw"]) + 1.0
+		var box := Rect2(Vector2(minf(a.x, b.x), minf(a.y, b.y)) - Vector2(reach, reach), (b - a).abs() + Vector2(reach, reach) * 2.0)
+		var mid := (a + b) * 0.5
+		var kx := int(floor(mid.x / HC))
+		var kz := int(floor(mid.y / HC))
+		for dx in range(-1, 2):
+			for dz in range(-1, 2):
+				var k2 := Vector2i(kx + dx, kz + dz)
+				if not _hash.has(k2):
+					continue
+				for sj in (_hash[k2] as PackedInt32Array):
+					var rj := int(s_road[sj])
+					if sj == si or (rj == own and absi(sj - si) <= 40):
+						continue
+					var poly := ribbon_poly(sj)
+					if poly.is_empty() or not poly_box(poly).intersects(box):
+						continue
+					out.append({"poly": poly, "hw": float((roads[rj] as Dictionary)["hw"]), "fil": false})
+		for f in fillets_in(box):
+			out.append({"poly": f, "hw": 99.0, "fil": true})
+	_obst[si] = out
+	return out
 
 ## Zona de la ciudad (decide la altura y el estilo de los edificios): 0 centro · 1 intermedio · 2 barrio · 3 costa · 4 colina · 5 afuera
 func zone_of(x: float, z: float) -> int:

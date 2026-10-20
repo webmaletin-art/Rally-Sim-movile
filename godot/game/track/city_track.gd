@@ -20,6 +20,7 @@ var _fresh := PackedInt32Array() # rotos desde la última vez que el mundo los m
 var _dyn_hits := PackedFloat32Array() # choques del jugador con autos del tránsito desde la última consulta: índice del círculo, normal (x, z), profundidad
 var _dyn := PackedFloat32Array() # círculos de choque que se mueven (autos del tránsito): x, z, r, …
 var _mx := Mutex.new() # la física corre en hilos aparte: los objetos se tocan de a uno
+var _road_rural := PackedByteArray() # por calle: 1 = ruta de campo (rural, atajo, panorámica): su banquina se cubre de nieve en la altura
 var _road_up := PackedFloat32Array() # por calle: cuánto sube el asfalto dibujado sobre su altura (CityLayout.ROAD_UP; 0 en los túneles, que tienen su propio piso)
 
 func _init() -> void:
@@ -32,8 +33,10 @@ func _init() -> void:
 		RegionServices.install(city, rg)
 	city.prepare_verge()
 	city.prepare_walls()
+	city.prepare_fillets()
 	for rd in city.roads:
 		_road_up.append(0.0 if str((rd as Dictionary)["kind"]) == "tunnel" else CityLayout.ROAD_UP)
+		_road_rural.append(1 if str((rd as Dictionary)["kind"]) in ["rural", "shortcut", "scenic"] else 0)
 	cones = ConeField.new()
 	cones.setup(PackedVector2Array())
 	samples = [Vector3(0, 0, 0)]
@@ -64,13 +67,27 @@ func ground_info(x: float, z: float) -> Vector2:
 			if not vf.is_empty() and CityLayout.verge_min_e(vf) > 0.0:
 				rgd.x = CityLayout.verge_height(rgd.x, vf)
 			return rgd
+	# la esquina redondeada de un cruce es asfalto (la malla la dibuja a la altura del eje de la calle más cercana + ROAD_UP): se mira antes que el corredor porque parte de la esquina
+	# queda afuera del corredor de las dos calles (ahí el piso era el terreno y las ruedas se hundían o rebotaban)
+	if city.on_fillet(x, z):
+		return Vector2(city.road_y_near(Vector2(x, z)) + CityLayout.ROAD_UP, 0.0)
 	if pr[0] > -0.05:
+		var ri := int(pr[6])
+		var up: float = _road_up[ri] if ri >= 0 and ri < _road_up.size() else 0.0
 		if float(pr[1]) <= float(pr[5]):
-			var ri := int(pr[6])
-			var up: float = _road_up[ri] if ri >= 0 and ri < _road_up.size() else 0.0
 			return Vector2(float(pr[4]) + up, 0.0) # (sobre el asfalto que se dibuja: city_world.gd)
-		return Vector2(float(pr[4]), 2.0)
+		if up <= 0.0:
+			return Vector2(float(pr[4]), 2.0) # (túnel)
+		# la vereda / banquina: a la altura del cordón con que se dibuja (CityLayout.CURB), con una rampita de 25 cm desde el asfalto. Antes la física las dejaba a la altura del
+		# asfalto y las ruedas quedaban hundidas 16 cm en el cordón (reporte del dueño, 19/10/2026)
+		var ramp := clampf((float(pr[1]) - float(pr[5])) / 0.25, 0.0, 1.0)
+		var sv := 2.0
+		if ri >= 0 and ri < _road_rural.size() and _road_rural[ri] == 1 and WorldSurfaces.snow_side(float(pr[4])):
+			sv = float(WorldSurfaces.SNOW) # la banquina nevada de una ruta de campo es nieve, no tierra limpia
+		return Vector2(float(pr[4]) + lerpf(up, CityLayout.CURB, ramp), sv)
 	var gh := city.height(x, z)
+	if pr[6] >= 0.0:
+		gh = city.dense_ground(gh, pr) # junto a las calles de la ciudad: a ras del asfalto, como la malla
 	var zn := city.zone_of(x, z)
 	var vc := -1e9
 	if zn >= 2 and gh < WorldSurfaces.ROCK_H and not (z > WorldSurfaces.SAND_Z and gh < WorldSurfaces.SAND_H):

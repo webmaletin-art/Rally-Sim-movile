@@ -8,6 +8,8 @@ const CityLayout := preload("res://game/city/city_layout.gd")
 const PaperKit := preload("res://game/fx/paper_kit.gd")
 const RegionData := preload("res://game/region/region_data.gd")
 const CityProps := preload("res://game/city/city_props.gd")
+const TerrainCap := preload("res://game/world/terrain_cap.gd")
+const WorldSurfaces := preload("res://game/world/world_surfaces.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 const TEX := "res://game/models/paper/tex/"
 
@@ -481,85 +483,9 @@ func _cap_disc(cx: float, cz: float, r: float, yr: float, ox: float, oz: float, 
 				var j := iz * w + ix
 				cap[j] = minf(cap[j], target)
 
-## Un punto (px, pz) que tiene que quedar por encima de la malla: si la malla pasa por arriba de `target` se baja el nivel de corte de los vértices del triángulo.
-## El camino tiene pendiente (gx, gz son los metros que sube por metro hacia cada eje): se trabaja con las alturas de los vértices «sin la pendiente» (como si el camino fuera horizontal) y el nivel
-## de corte se vuelve a inclinar con el camino. Antes todos los vértices se bajaban al mismo nivel, el del punto más bajo del camino dentro del triángulo: en una subida del 7 % y una grilla de 8 m
-## el terreno quedaba hasta medio metro por debajo de la calzada (el asfalto parecía flotar y «doblado»).
+## Un punto (px, pz) que tiene que quedar por encima de la malla (ver TerrainCap.point)
 func _cap_point(px: float, pz: float, target: float, gx: float, gz: float, ox: float, oz: float, step: float, w: int, y0: PackedFloat32Array, cap: PackedFloat32Array) -> void:
-	var fx := (px - ox) / step
-	var fz := (pz - oz) / step
-	var ix := int(floor(fx))
-	var iz := int(floor(fz))
-	if ix < 0 or iz < 0 or ix >= w - 1 or iz >= w - 1:
-		return
-	var u := fx - float(ix)
-	var v := fz - float(iz)
-	var j1 := iz * w + ix
-	var j2: int
-	var l1: float
-	var l2: float
-	var l3: float
-	var x1 := ox + float(ix) * step
-	var z1 := oz + float(iz) * step
-	var x3 := x1 + step
-	var z3 := z1 + step
-	var x2: float
-	var z2: float
-	if u >= v:
-		j2 = j1 + 1
-		l1 = 1.0 - u
-		l2 = u - v
-		l3 = v
-		x2 = x3
-		z2 = z1
-	else:
-		j2 = j1 + w
-		l1 = 1.0 - v
-		l2 = v - u
-		l3 = u
-		x2 = x1
-		z2 = z3
-	var j3 := j1 + w + 1
-	if l1 * y0[j1] + l2 * y0[j2] + l3 * y0[j3] <= target:
-		return
-	# alturas sin la pendiente del camino (distancia al punto medida sobre el camino × pendiente)
-	var s1 := gx * (x1 - px) + gz * (z1 - pz)
-	var s2 := gx * (x2 - px) + gz * (z2 - pz)
-	var s3 := gx * (x3 - px) + gz * (z3 - pz)
-	var y1 := y0[j1] - s1
-	var y2 := y0[j2] - s2
-	var y3 := y0[j3] - s3
-	# se ordenan los tres vértices de menor a mayor altura
-	var t_j: int
-	var t_y: float
-	var t_l: float
-	var t_s: float
-	if y1 > y2:
-		t_j = j1; t_y = y1; t_l = l1; t_s = s1
-		j1 = j2; y1 = y2; l1 = l2; s1 = s2
-		j2 = t_j; y2 = t_y; l2 = t_l; s2 = t_s
-	if y2 > y3:
-		t_j = j2; t_y = y2; t_l = l2; t_s = s2
-		j2 = j3; y2 = y3; l2 = l3; s2 = s3
-		j3 = t_j; y3 = t_y; l3 = t_l; s3 = t_s
-		if y1 > y2:
-			t_j = j1; t_y = y1; t_l = l1; t_s = s1
-			j1 = j2; y1 = y2; l1 = l2; s1 = s2
-			j2 = t_j; y2 = t_y; l2 = t_l; s2 = t_s
-	# nivel de corte L: l1·min(y1, L) + l2·min(y2, L) + l3·min(y3, L) = target
-	var lvl := target
-	if lvl > y1:
-		var s_low := l1 * y1
-		lvl = (target - s_low) / maxf(l2 + l3, 1.0e-6)
-		if lvl > y2:
-			s_low += l2 * y2
-			lvl = (target - s_low) / maxf(l3, 1.0e-6)
-	if l1 > 1.0e-4:
-		cap[j1] = minf(cap[j1], lvl + s1)
-	if l2 > 1.0e-4:
-		cap[j2] = minf(cap[j2], lvl + s2)
-	if l3 > 1.0e-4:
-		cap[j3] = minf(cap[j3], lvl + s3)
+	TerrainCap.point(px, pz, target, gx, gz, ox, oz, step, w, y0, cap)
 
 ## Color del terreno: el de la ciudad cerca de ella, el del bioma lejos; la pendiente fuerte se vuelve roca
 func _color(x: float, z: float, y: float, slope: float) -> Color:
@@ -663,7 +589,7 @@ func _junction(rd, sd, ni: int) -> void:
 			var ub := (oc - Vector2(arc[k + 1].x, arc[k + 1].z)).normalized() * RegionData.SHOULDER
 			var qa := Vector3(arc[k].x + ua.x, arc[k].y, arc[k].z + ua.y) + dn
 			var qb := Vector3(arc[k + 1].x + ub.x, arc[k + 1].y, arc[k + 1].z + ub.y) + dn
-			sd.quad_up(arc[k] + dn, arc[k + 1] + dn, qb, qa, C_SIDE if col == C_ASPH else col.darkened(0.1))
+			sd.quad_up(arc[k] + dn, arc[k + 1] + dn, qb, qa, WorldSurfaces.side_color(C_SIDE, arc[k].y) if col == C_ASPH else col.darkened(0.1))
 
 ## Altura de la calzada de la calle ei a s metros del nodo ni (sin el desfase de la calle)
 func _edge_h(ei: int, ni: int, s: float) -> float:
@@ -809,7 +735,7 @@ func _road_segment(rd, mk, sd, rl, k: int) -> void:
 	var dn := Vector3(0, -0.05, 0) # la banquina queda por debajo del asfalto de cualquier calle que la cruce
 	for sg in [-1.0, 1.0]:
 		var s: float = sg
-		sd.quad_up(a + na * (s * hw) + dn, b + nb * (s * hw) + dn, b + nb * (s * (hw + sw)) + dn, a + na * (s * (hw + sw)) + dn, C_SIDE if surf == 0 else col.darkened(0.1))
+		sd.quad_up(a + na * (s * hw) + dn, b + nb * (s * hw) + dn, b + nb * (s * (hw + sw)) + dn, a + na * (s * (hw + sw)) + dn, WorldSurfaces.side_color(C_SIDE, (ya + yb) * 0.5) if surf == 0 else col.darkened(0.1))
 	# rayas (no en la boca de una calle que termina contra otra: las rayas de la calle chica no cruzan la ruta que atraviesa)
 	var mouth: bool = (i == 0 and not _is_through(int(e[0]), ei)) or (i == n - 2 and not _is_through(int(e[1]), ei))
 	var mid2 := (a2 + b2) * 0.5
