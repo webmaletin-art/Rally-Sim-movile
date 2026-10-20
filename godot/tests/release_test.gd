@@ -1,4 +1,4 @@
-## Prueba de lo gratis y lo pago: 3 etapas y la copa Debut gratis, autos premium por compra (sueltos, garaje o juego completo), y que
+## Prueba de lo gratis y lo pago: 5 etapas de la aventura y las copas Debut y Nacional gratis, autos premium por compra (sueltos, garaje o juego completo), y que
 ## las compras pasen los autos al garaje.
 ## Uso: godot --headless --path godot --script res://tests/release_test.gd
 extends SceneTree
@@ -20,7 +20,8 @@ func _init() -> void:
 	p.d["iap"] = {}
 	p.d["owned"] = {}
 	p.d["settings"]["dev"] = false
-	check(Release.adventure_limit(p) == 3, "gratis: 3 etapas de la aventura")
+	check(Release.adventure_limit(p) == 5 and Release.ADVENTURE_STAGES == 5, "gratis: 5 etapas de la aventura (pedido del dueño, 20/10/2026)")
+	check(str(Products.PRODUCTS["dr_adventure"]["desc"]).contains("tenés %d gratis" % Release.ADVENTURE_STAGES), "la descripción de «Aventura completa» dice cuántas etapas son gratis (%d)" % Release.ADVENTURE_STAGES)
 	check(Release.tier_allowed(p, "debut") and Release.tier_allowed(p, "nacional") and not Release.tier_allowed(p, "continental"), "gratis: copas Debut y Nacional, no la Continental")
 	check(not Release.car_unlocked(p, "gt3") and Release.car_unlocked(p, "gt"), "el GT3 es premium; el Kaze GT no")
 	check(not Release.can_buy(p, "hyper") and not Release.can_buy(p, "genesis") and Release.can_buy(p, "gt"), "premium y premio no se pagan con monedas")
@@ -38,6 +39,23 @@ func _init() -> void:
 	q.d["settings"]["dev"] = false
 	Release.sync_cars(q)
 	check(Release.adventure_limit(q) == 99 and q.owns("truck") and q.owns("gt3") and q.owns("hyper"), "el juego completo da todo")
+	# lo que se vende es lo mismo en el juego, en el servidor y en la función que le pregunta a Google: si un producto falta en alguno, una compra real no se acredita
+	var repo := ProjectSettings.globalize_path("res://").path_join("..")
+	var fn_src := FileAccess.get_file_as_string(repo.path_join("supabase/functions/verify-purchase/handler.ts"))
+	var sql_src := FileAccess.get_file_as_string(repo.path_join("supabase/migrations/20261014000000_account_economy.sql"))
+	if fn_src != "" and sql_src != "":
+		var ids_ok := true
+		var amounts_ok := true
+		var kinds_ok := true
+		for pid in Products.ORDER:
+			var pdd: Dictionary = Products.PRODUCTS[pid]
+			ids_ok = ids_ok and fn_src.contains("'%s'" % pid)
+			if str(pdd["kind"]) == "credits":
+				amounts_ok = amounts_ok and sql_src.contains("('%s', 'coins', %d)" % [pid, int(pdd["amount"])])
+			else:
+				kinds_ok = kinds_ok and sql_src.contains("('%s', 'entitlement', 0)" % pid)
+		check(ids_ok and Products.ORDER.size() == 10, "los %d productos del juego están en la función verify-purchase" % Products.ORDER.size())
+		check(amounts_ok and kinds_ok, "el servidor (account_products) tiene las mismas bolsas de monedas y los mismos desbloqueos que el juego")
 	# modo online abierto, herramientas técnicas sólo en desarrollo, tienda de monedas
 	check(Release.online_open(p) and Release.ONLINE_OPEN and Release.REALTIME, "el modo online está abierto con tiempo real (autorizado por el dueño el 15/10/2026)")
 	check(not (Release.store() and Release.tools()), "la versión de Play no trae herramientas técnicas (📊, RENDIMIENTO)")

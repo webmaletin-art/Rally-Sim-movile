@@ -7,9 +7,9 @@ extends RefCounted
 
 const PRODUCTS := {
 	"dr_full": {"kind": "unlock", "name": "Juego completo", "icon": "💎", "best": true,
-		"desc": "TODO: la aventura completa (12 etapas), todas las copas, el camión Mamut, el GT3 RS y el Aerion. El mejor precio."},
+		"desc": "Todo: aventura de 12 etapas, todas las copas y los 3 autos premium. El mejor precio."},
 	"dr_adventure": {"kind": "unlock", "name": "Aventura completa", "icon": "🌄",
-		"desc": "Las 12 etapas de la Ruta de los Sueños (tenés 3 gratis) y las copas Continental y Leyenda."},
+		"desc": "Las 12 etapas de la Ruta de los Sueños (tenés 5 gratis) y las copas Continental y Leyenda."}, # (los gratis son Release.ADVENTURE_STAGES: release_test lo comprueba)
 	"dr_garage": {"kind": "unlock", "name": "Garaje premium", "icon": "🏎",
 		"desc": "Los 3 autos premium: Mamut 6x6 (camión), GT3 RS y Aerion. Quedan en tu garaje."},
 	"car_truck": {"kind": "unlock", "name": "Colossus Mamut 6x6", "icon": "🚛", "desc": "El camión de rally: diez toneladas imparables fuera del camino."},

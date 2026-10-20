@@ -109,7 +109,7 @@ func _start_info() -> void:
 	m.set_title("ANTES DE EMPEZAR")
 	m.body.add_child(Kit.label("SIMULACIÓN TOTAL…", 26, Kit.ACCENT))
 	m.body.add_child(Kit.label("…con un poco de ayuda", 20, Kit.GOLD))
-	_text("La aventura se maneja como un simulador: el auto tiene peso, las gomas se deslizan y cada superficie agarra distinto. Para que sea disfrutable de punta a punta tiene ABS y un poco de control de tracción y de estabilidad (se pueden cambiar en Opciones → Física).")
+	_text("La aventura se maneja como un simulador: el auto tiene peso, las gomas se deslizan y cada superficie agarra distinto. Para que sea disfrutable de punta a punta tiene ABS y un poco de control de tracción y de estabilidad (la aventura trae su propia configuración de ayudas).")
 	_text("Manejás el DR Bisonte XR negro del equipo Dream Racing. Primero ves una presentación, después la explicación de cómo se juega y el mapa, y largás desde la Estación Aurora.", 14, Kit.MUTED)
 	m.body.add_child(m.menu_button("▶ EMPEZAR", "presentación y primera etapa", func(): _play(0, true), true))
 

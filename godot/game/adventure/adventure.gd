@@ -94,6 +94,7 @@ static func car_setups(race) -> Array:
 	var cfg: Dictionary = race.cfg
 	var profile: RefCounted = race.profile
 	var stv := AdvData.state(profile) if profile != null else AdvData.default_state()
+	stv["damage"] = AdvData.zero_damage() # cada etapa y cada reintento largan con el auto reparado (pedido del dueño, 20/10/2026); el daño de adentro de la etapa se arregla en el taller
 	var vehicles: Dictionary = race.vehicles
 	var sa: Dictionary = race._sim_assists()
 	var assists := {"abs": sa["abs"], "tc": sa["tc"], "stab": sa["stab"]}
@@ -166,7 +167,8 @@ func setup(race) -> void:
 	S = AdvRoute.STAGES[stage]
 	st = AdvData.state(r.profile) if r.profile != null else AdvData.default_state()
 	st["started"] = true
-	dmg0 = (r.cfg.get("dmg0", (st["damage"] as Dictionary).duplicate()) as Dictionary)
+	st["damage"] = AdvData.zero_damage() # la etapa (y cada reintento) larga con el auto reparado
+	dmg0 = AdvData.zero_damage()
 	r.cfg["dmg0"] = dmg0.duplicate()
 	if OS.get_cmdline_user_args().has("--advdmg"):
 		st["damage"] = {"motor": 0.5, "dir": 0.4, "susp": 0.3} # prueba: auto golpeado
@@ -767,7 +769,7 @@ func on_hit(v: float, kind: String) -> void:
 	if state != "race" or v < 2.5:
 		return
 	var armor := float((st["skills"] as Dictionary).get("armor", 0))
-	var k := (v - 2.5) * 0.018 * (1.0 - 0.12 * armor)
+	var k := (v - 2.5) * AdvData.HIT_K * (1.0 - 0.12 * armor)
 	var d: Dictionary = st["damage"]
 	match kind:
 		"wall":

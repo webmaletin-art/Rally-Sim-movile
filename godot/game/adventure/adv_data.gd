@@ -83,10 +83,19 @@ static func apply_skills(V: Dictionary, st: Dictionary) -> void:
 	V["steerResponse"] = float(V["steerResponse"]) * (1.0 + 0.06 * ct)
 	V["stabilityAssist"] = minf(1.0, float(V.get("stabilityAssist", 0.0)) + 0.04 * ct)
 
-## Daño (0..1 por parte): motor → potencia · dirección → tira hacia un lado · suspensión → agarre
+## Daño (0..1 por parte): motor → potencia · dirección → tira hacia un lado · suspensión → agarre.
+## 20/10/2026, pedido del dueño («hacé más bajo el daño de las ruedas en la aventura: es muy difícil manejar todas las etapas con las ruedas dañadas»): los efectos bajaron
+## (potencia −30 % → −20 %, agarre −12 % → −6 %, volante que tira 0,14 → 0,05) y cada etapa (y cada reintento) arranca con el auto reparado (ver zero_damage).
 static func damage_mul(st: Dictionary) -> Dictionary:
 	var d: Dictionary = st["damage"]
-	return {"power": 1.0 - 0.3 * float(d["motor"]), "grip": 1.0 - 0.12 * float(d["susp"]), "pull": 0.14 * float(d["dir"]) * float(st.get("pull", 1.0))}
+	return {"power": 1.0 - 0.2 * float(d["motor"]), "grip": 1.0 - 0.06 * float(d["susp"]), "pull": 0.05 * float(d["dir"]) * float(st.get("pull", 1.0))}
+
+## Un auto sin daño (cada etapa y cada reintento largan así)
+static func zero_damage() -> Dictionary:
+	return {"motor": 0.0, "dir": 0.0, "susp": 0.0}
+
+## Cuánto daño se suma por un golpe a v m/s (antes 0,018 por m/s de más sobre 2,5: con un par de golpes en la montaña el auto ya tiraba para un costado)
+const HIT_K := 0.007
 
 static func stage_name(si: int) -> String:
 	return str(AdvRoute.STAGES[si]["name"])
