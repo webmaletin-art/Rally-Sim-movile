@@ -41,11 +41,13 @@ Es la versión para probar en el teléfono antes de decidir si se publica. Nada 
   - el paquete `.rc`.
 
   Están anotadas al principio de `build-godot.yml`.
+- **No hay que deshacer** el paso «Marcar la versión candidata» (desde el 20/10): escribe `game/build_channel.txt` («rc») sólo si la rama no es `main`, y con ese archivo `Release.internal()` habilita el modo desarrollador y «COPIAR REGISTRO».
+  En `main` el paso no corre, así que la versión pública no los trae aunque nadie se acuerde de nada. `tools/export/check_pck.py` falla el armado si el marcador se escribió y no entró al paquete.
 - **Play Store:** el AAB se arma a mano con el flujo «Build Play Store AAB» (`build-aab.yml`). Ese flujo sí lleva la característica `store`: sin modo desarrollador y sin herramientas.
 
 ## 3. Pruebas
 
-- **En cada compilación (GitHub):** 98 pruebas de Godot sin pantalla (`godot --headless --script res://tests/…`), cada una con `timeout`.
+- **En cada compilación (GitHub):** 101 pruebas de Godot sin pantalla (`godot --headless --script res://tests/…`), cada una con `timeout`.
 - **Pruebas SQL:** `.github/workflows/economy-test.yml` aplica TODAS las migraciones dos veces en un Postgres temporal. Después corre:
   - `tools/online/economy_test.sql`;
   - `tools/online/account_test.sql`;

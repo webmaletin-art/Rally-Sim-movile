@@ -170,7 +170,7 @@ func _hub() -> void:
 		m.body.add_child(Kit.label("Versión %s" % version_text(), 16, Kit.MUTED)) # la versión pública no trae modo desarrollador
 	if Release.dev(m.profile):
 		m.body.add_child(Kit.label("🛠 Modo desarrollador activo", 15, Kit.GREEN))
-	var g := Kit.grid(2, 8, 8)
+	var g := Kit.grid(2 if Release.internal() else 3, 8, 8) # (en la versión pública son 3 baldosas: en una sola fila)
 	m.body.add_child(g)
 	for it in [["🎬", "CRÉDITOS", "credits"], ["🔒", "PRIVACIDAD", "privacy"], ["📜", "TÉRMINOS DE USO", "terms"]]:
 		var dest: String = it[2]
