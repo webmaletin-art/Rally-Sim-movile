@@ -14,6 +14,10 @@ EXTRA = ['game/data/region/spawns.json', 'game/data/networks/red_1.json']
 def required():
     out = subprocess.run(['git', 'ls-files', 'godot'], cwd=ROOT, capture_output=True, text=True, check=True).stdout.split('\n')
     req = [p[len('godot/'):] for p in out if p.endswith(RAW_EXT)]
+    # El marcador de la versión candidata lo escribe el flujo (build-godot.yml, paso «Marcar la versión candidata») sólo fuera de main: si está en la carpeta, tiene que estar en el pck
+    # (sin él la RC perdería el modo desarrollador y «COPIAR REGISTRO»; ver Release.internal()).
+    if os.path.exists(os.path.join(ROOT, 'godot', 'game', 'build_channel.txt')):
+        req.append('game/build_channel.txt')
     return sorted(set(req + EXTRA))
 
 

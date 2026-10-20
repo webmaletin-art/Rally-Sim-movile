@@ -13,6 +13,23 @@ const Profile := preload("res://game/data/profile.gd")
 
 var fail := false
 
+## Doble de la red del cliente online: el mismo código de fetch_name() y push_name(), con la respuesta del servidor de mentira
+class FakeNet:
+	extends "res://game/online/online.gd"
+	var last_path := ""
+	var requests := 0
+	var calls: Array = []
+	var reply: Dictionary = {"ok": true, "code": 200, "data": [{"name": "Pepe"}], "error": ""}
+	func sign_in() -> bool:
+		return true
+	func request(_method: int, path: String, _body: Variant = null, _bearer := "") -> Dictionary:
+		last_path = path
+		requests += 1
+		return reply
+	func call_fn(fn: String, args: Dictionary, _need_session := true) -> Dictionary:
+		calls.append([fn, args])
+		return {"ok": true, "code": 200, "data": null, "error": ""}
+
 func check(ok: bool, msg: String) -> void:
 	print(("OK   " if ok else "FALLA ") + msg)
 	if not ok:
@@ -24,6 +41,9 @@ func _fresh() -> Profile:
 	return p
 
 func _init() -> void:
+	_run()
+
+func _run() -> void:
 	var saved := FileAccess.get_file_as_string(Profile.PATH) if FileAccess.file_exists(Profile.PATH) else "" # (adopt_nick guarda el perfil: se deja el archivo como estaba)
 	# ── la respuesta de la tabla players
 	check(Online.parse_name([{"name": "Pepe"}]) == "Pepe", "el nombre sale de la fila de la cuenta")
@@ -55,6 +75,35 @@ func _init() -> void:
 	check(not ("profile.d.get(\"name\"" in src), "online.gd manda el nombre sólo con net_name()")
 	var app_src := FileAccess.get_file_as_string("res://game/app.gd")
 	check("eco.sync(Online.net_name(profile))" in app_src, "al entrar al online se manda net_name() (antes «Piloto» pisaba el nombre de la cuenta)")
+	# ── la lectura del nombre y su guardado en la cuenta, con la red de mentira
+	var n := FakeNet.new()
+	n.email = "a@b.co"
+	n.uid = "11111111-1111-1111-1111-111111111111"
+	var got: String = await n.fetch_name()
+	check(got == "Pepe" and n.last_path == "/rest/v1/players?id=eq.11111111-1111-1111-1111-111111111111&select=name", "fetch_name() pide la fila de SU cuenta en players y devuelve el nombre (%s)" % n.last_path)
+	n.reply = {"ok": false, "code": 401, "data": {"message": "JWT expired"}, "error": "JWT expired"}
+	check(await n.fetch_name() == "", "con un error del servidor no hay nombre")
+	n.reply = {"ok": true, "code": 200, "data": [], "error": ""}
+	check(await n.fetch_name() == "", "una cuenta sin fila en players no tiene nombre todavía")
+	var n2 := FakeNet.new()
+	check(await n2.fetch_name() == "" and n2.requests == 0, "sin cuenta no se pide nada")
+	n2.email = "a@b.co"
+	n2.uid = "no-es-un-uuid"
+	check(await n2.fetch_name() == "" and n2.requests == 0, "un id que no es un uuid no se mete en la dirección")
+	var pn := _fresh()
+	n.profile = pn
+	n.push_name()
+	check(n.calls.is_empty(), "sin apodo elegido no se deja nada en la cuenta")
+	pn.d["name"] = "Hernan"
+	pn.d["nickSet"] = true
+	n.push_name()
+	n.push_name()
+	check(n.calls.size() == 1 and str(n.calls[0][0]) == "set_player_name" and (n.calls[0][1] as Dictionary)["p_name"] == "Hernan", "el apodo elegido queda en la cuenta con set_player_name, una sola vez por sesión")
+	pn.d["name"] = "Hernan2"
+	n.push_name()
+	check(n.calls.size() == 2 and (n.calls[1][1] as Dictionary)["p_name"] == "Hernan2", "…y si lo cambia, se vuelve a dejar")
+	n.free()
+	n2.free()
 	if saved != "":
 		var f := FileAccess.open(Profile.PATH, FileAccess.WRITE)
 		f.store_string(saved)
