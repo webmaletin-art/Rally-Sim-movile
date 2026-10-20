@@ -32,6 +32,12 @@ const BUST_SPEED := 6.9 # m/s (25 km/h): más despacio que esto con un patruller
 const BUST_T := 1.6
 const STICK_R := 4.5 # pegado de verdad (te están encerrando): también llena la barra, más lento
 const STICK_T := 6.0
+## 20/10/2026, pedido del dueño («voy en persecución y me arrestan igual: la barra tiene que subir si la policía me frena o si me quedo quieto; a velocidad alta no me
+## deben arrestar; un poco despacio puede subir lento y muy despacio sube porque no me dan opciones»): antes un patrullero a menos de STICK_R metros llenaba la barra en
+## STICK_T segundos a CUALQUIER velocidad (a 200 km/h también). Ahora depende de la velocidad: ver bust_rate.
+const BUST_FREE_KMH := 70.0 # desde acá no hay arresto posible: la barra sólo baja
+const STILL_KMH := 8.0 # casi quieto
+const STILL_R := 14.0 # quieto, un patrullero a esta distancia ya te rodea
 const ESCAPE_R := 480.0
 const ESCAPE_T := 10.0
 const LOST_R := 1400.0 # un patrullero que quedó así de lejos se pierde (sale de la persecución)
@@ -455,7 +461,6 @@ func _chase(dt: float, p: Vector2, me) -> void:
 		_escaped()
 		return
 	var dmin := 1e9
-	var near := 0
 	for u in units.duplicate():
 		var c = u["car"]
 		var q := Vector2(c.phys.px, c.phys.pz)
@@ -464,8 +469,6 @@ func _chase(dt: float, p: Vector2, me) -> void:
 			_remove(u)
 			continue
 		dmin = minf(dmin, d)
-		if d < BUST_R:
-			near += 1
 		# lejos aprietan (para no quedar atrás); pegados, igual que el jugador
 		c.phys.powerMul = 1.0 + clampf((d - 30.0) / 250.0, 0.0, 1.0) * (0.9 + 0.15 * float(heat))
 	# refuerzos: si perdió alguno (o subió el nivel), llega otro por atrás, fuera de la vista
@@ -502,13 +505,8 @@ func _chase(dt: float, p: Vector2, me) -> void:
 			u["drv"].idx = 0
 		else:
 			u["drv"].path = PackedVector2Array()
-	# arresto
-	if near > 0 and sp < BUST_SPEED:
-		bust += dt / BUST_T
-	elif dmin < STICK_R:
-		bust += dt / STICK_T
-	else:
-		bust -= dt / 5.0
+	# arresto: sólo si te frenan o andás despacio (a velocidad alta no hay arresto)
+	bust += dt * bust_rate(sp * 3.6, dmin)
 	bust = clampf(bust, 0.0, 1.0)
 	if bust >= 1.0:
 		_arrest()
@@ -520,6 +518,22 @@ func _chase(dt: float, p: Vector2, me) -> void:
 		lose_t = maxf(0.0, lose_t - dt * 2.0)
 	if lose_t >= ESCAPE_T:
 		_escaped()
+
+## Cuánto sube (+) o baja (−) por segundo la barra de arresto (0–1), según la velocidad del jugador (km/h) y la distancia al patrullero más cercano (m):
+##  · desde BUST_FREE_KMH (70 km/h) hacia arriba no hay arresto: la barra baja (en 5 s);
+##  · casi quieto con un patrullero a menos de STILL_R, o a menos de 25 km/h con uno a menos de BUST_R: te arrestan en BUST_T s (no te dan opciones);
+##  · entre 25 y 70 km/h sólo sube si uno está pegado (STICK_R: te encierran o te frenan), lento, y cada vez más lento cuanto más rápido vas;
+##  · en cualquier otro caso la barra baja.
+static func bust_rate(kmh: float, d_min: float) -> float:
+	if kmh >= BUST_FREE_KMH:
+		return -1.0 / 5.0
+	if d_min < BUST_R and kmh < BUST_SPEED * 3.6:
+		return 1.0 / BUST_T
+	if kmh < STILL_KMH and d_min < STILL_R:
+		return 1.0 / BUST_T
+	if d_min < STICK_R:
+		return (1.0 / STICK_T) * clampf((BUST_FREE_KMH - kmh) / (BUST_FREE_KMH - BUST_SPEED * 3.6), 0.0, 1.0)
+	return -1.0 / 5.0
 
 ## Evento «Huida» (carreras del mundo abierto): la persecución arranca ya, con patrulleros detrás (fuera de la vista) y uno de frente
 func event_chase(me, level: int) -> void:
