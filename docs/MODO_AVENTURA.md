@@ -20,7 +20,7 @@ la cumbre (final con dos jefes: La Sombra y El Lobo Blanco).
   alambrados, árboles (dos niveles de detalle), casas, campos (girasol, trigo, maíz, vacas), postes de luz, tranqueras, carteles,
   flechas de curva, mojones, estaciones, talleres, túneles, puente con río, paso bajo nivel y horizonte de montañas.
 - `adventure.gd`: la etapa: salida de la estación (cinemática), carrera contra el rival con «director», talleres (entrar/seguir,
-  reparar cuesta tiempo), daño (motor, dirección, suspensión), llegada (cinemática, carga de combustible, guardado, guía, ajuste,
+  reparar cuesta tiempo), daño (motor, dirección, suspensión: más bajo desde el 20/10/2026, potencia ×0,80, agarre ×0,94 y tirón de dirección 0,05 al máximo, un golpe a 72 km/h suma 0,122; y vuelve a cero al empezar cada carrera o etapa, `AdvData.zero_damage`; `adv_rules_test`; **5 etapas libres**, `Release.ADVENTURE_STAGES`), llegada (cinemática, carga de combustible, guardado, guía, ajuste,
   habilidades), derrota y reintento, final con premio (el DR Bisonte XR negro queda en el garaje).
 - Director del rival: hasta el 82 % de la etapa va adelante «al filo» (te espera si vas despacio, aprieta a su máximo si lo
   alcanzás); en el tramo final corre a tu propio ritmo medido contra el perfil de la ruta, con un margen que crece por etapa.

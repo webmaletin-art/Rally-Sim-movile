@@ -34,6 +34,15 @@ Los precios los fija Play Console (el juego muestra lo que devuelve Google), as�
 
 Con eso: tres autos sueltos (8,97) > garaje (6,99); aventura + garaje (11,98) > juego completo (9,99). En Play Console conviene dejar que Google convierta a cada país y revisar a mano Argentina, Brasil y México (precios locales más bajos venden más). Los precios de los autos DENTRO del juego (9.000 a 260.000 $) no hace falta cambiarlos: el inicial es el R2 Turbo de 9.000 y una medalla de oro en la copa Debut paga 2.000 $ (la tabla está en `docs/AUTOS.md`).
 
+### Revisión de precios y productos (20/10/2026)
+Hecha con el código del juego, el SQL y la función de borde; **ningún precio vive en el código** (los fija Play Console), así que lo que se revisó es que lo que se vende sea coherente y que el juego diga la verdad:
+- **Los 10 productos coinciden en los tres lugares** (juego `store/products.gd`, servidor `account_products` en la migración `20261014000000_account_economy.sql`, función `verify-purchase`): mismos IDs, mismas bolsas (5.000 / 12.000 / 30.000 / 80.000) y los 6 desbloqueos. `release_test` lo comprueba (21 OK): si alguien cambia uno sin tocar los otros, la prueba falla.
+- **Reparto gratis / pago:** 5 etapas de la aventura, copas Debut y Nacional y todos los mapas son gratis. Los textos del juego (tienda, «SEGUÍ CORRIENDO», descripción de la aventura) toman el número de `Release.ADVENTURE_STAGES`; la descripción de `dr_adventure` quedó en «tenés 5 gratis» y `release_test` verifica que diga el número correcto.
+- **Lógica de la escalera de precios** (con la tabla recomendada de arriba): los tres autos sueltos (1,99 + 2,99 + 3,99 = 8,97) cuestan más que el garaje (6,99: −22 %); aventura + garaje (11,98) cuesta más que el juego completo (9,99: −17 %); las bolsas rinden +19 % (1,99), +49 % (3,99) y +98 % (7,99) más monedas por dólar que la chica: crecen parejo y no hay una bolsa «mala». Con 5 etapas gratis, `dr_adventure` ofrece 7 etapas pagas en vez de 9: sigue siendo razonable a USD 4,99 (más las copas Continental y Leyenda).
+- **Sin «pagar para ganar»:** las monedas no compran los autos premium ni el DR Bisonte XR; sólo aceleran lo que se consigue corriendo.
+- **Para confirmar vos antes de cargar los productos en Play Console:** los USD de la tabla (son recomendación), qué hacer con los países de poder adquisitivo bajo (Argentina, Brasil, México: precios locales más bajos venden más) y si querés una oferta de lanzamiento.
+- **Textos que cambian con esto:** la ficha de Play no dice cuántas etapas son gratis, así que no hay que tocarla por este cambio (sí por lo del online, ver 5).
+
 ## 1. Qué ya está listo en el código
 | Cosa | Dónde |
 |---|---|
@@ -77,7 +86,7 @@ La versión de prueba (APK liviano / completo de GitHub) **no cambia**: todo lo 
    | ID | Tipo | Qué es | Precio recomendado (ver 0; lo confirmás vos) |
    |---|---|---|---|
    | `dr_full` | no consumible | **Juego completo**: aventura (12 etapas), todas las copas y los 3 autos premium | USD 9,99 |
-   | `dr_adventure` | no consumible | Aventura completa (12 etapas, tenés 3 gratis) y las copas Continental y Leyenda | USD 4,99 |
+   | `dr_adventure` | no consumible | Aventura completa (12 etapas, tenés 5 gratis) y las copas Continental y Leyenda | USD 4,99 |
    | `dr_garage` | no consumible | Garaje premium: Mamut 6x6, GT3 RS y Aerion | USD 6,99 |
    | `car_truck` | no consumible | Colossus Mamut 6x6 (camión) | USD 1,99 |
    | `car_gt3` | no consumible | Altair GT3 RS | USD 2,99 |
@@ -105,7 +114,7 @@ Los íconos del lanzador (adaptativo + monocromo) ya están en `godot/store/icon
 
 ## 5. Qué queda oculto o apagado en la versión de Play (ya hecho, solo en el AAB)
 - **Herramientas técnicas** (📊 diagnóstico de rendimiento, RENDIMIENTO, registro de FPS por capturas): ya no existen en el juego final; sólo en compilaciones de desarrollo (`Release.tools()`).
-- **Modo online CERRADO** (`Release.ONLINE_OPEN := false`): la ficha dice «próximamente»; no se puede crear cuenta ni activar rankings, así que no se recopila ningún dato (las respuestas de «Seguridad de los datos» son las de «sin modo online»). Se abre en una actualización futura, cuando se cierre el tiempo real.
+- **Modo online** (**actualizado el 20/10/2026**; antes de esto este punto decía «cerrado»): desde el 15/10 `Release.ONLINE_OPEN` y `Release.REALTIME` están en `true` por autorización del dueño. El online funciona **«por datos»** (cuenta, créditos, autos, eventos, temporada, ranking y recompensa que maneja el servidor); el mundo compartido en **tiempo real** (encontrarse, chat, conectados) sigue **apagado** hasta que el dueño ponga `app_flags.pvp = true` en Supabase (`Release.pvp_open`). Por eso las respuestas de «Seguridad de los datos» son las de **con modo online** (`docs/PLAY_SEGURIDAD_DATOS.md`) y la ficha (`store_listing/ficha.md`, que todavía dice «online cerrado») **hay que ajustarla** antes de subir: o se nombra «eventos y ranking online» o se deja sin mencionar.
 - **Modo desarrollador** (siete toques en la versión): no se puede activar y, aunque un perfil lo tuviera guardado, se ignora.
 - **RENDIMIENTO** (prueba de rendimiento): sin botón en el menú ni arranque directo.
 - **Descargas**: el juego tiene que funcionar sin conexión con todo adentro (los autos viajan en un paquete de recursos de Play, ver 7.2, no se bajan de internet); los permisos de red que figuran en el AAB los agrega la biblioteca de compras de Google.
@@ -115,7 +124,7 @@ Los íconos del lanzador (adaptativo + monocromo) ya están en `godot/store/icon
 ### Propuestas que necesitan tu OK (todavía NO las hice)
 1. **Idiomas**: español, inglés, portugués, francés, italiano y alemán ya tienen traducción de los textos del juego (la voz grabada del copiloto todavía solo existe en español, ver `docs/PLAN_V1.md`).
 2. **Taller de prueba de la pausa** (ajusta todo gratis en pruebas de autos de la tienda y Carrera rápida): ¿lo dejamos para todos o solo en la prueba de autos de la tienda? Como se venden créditos, quizá convenga dejarlo solo en la tienda.
-3. **Reparto gratis / pago**: hoy son gratis las 3 primeras etapas de la aventura, las copas Debut y Nacional y todos los mapas; el resto con `dr_adventure` / `dr_garage` / `dr_full`.
+3. **Reparto gratis / pago**: hoy son gratis las 5 primeras etapas de la aventura (eran 3: pedido del dueño del 20/10/2026, `Release.ADVENTURE_STAGES`), las copas Debut y Nacional y todos los mapas; el resto con `dr_adventure` / `dr_garage` / `dr_full`.
 4. **Créditos**: SÍ se venden (bolsas de monedas consumibles, ver tabla de productos). Precios y cantidades a revisar por el dueño antes de subir.
 5. **DR Bisonte XR** en la tienda ($190.000): se ve y se prueba, pero se compra recién al terminar la aventura. ¿Lo mantenemos así en la versión de Play?
 6. **Ícono provisorio**: ¿querés un logo propio?

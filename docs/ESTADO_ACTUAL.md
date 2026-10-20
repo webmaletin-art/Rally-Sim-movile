@@ -41,6 +41,19 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 - ✅📱 (20/10) El terreno de la ciudad no tapa el asfalto de las rutas de campo ni de la colina (`world/terrain_cap.gd`); la banquina de las rutas de campo se cubre de nieve desde 54–64 m (`WorldSurfaces.snow_k`).
 - ✅📱 (20/10) Taller de prueba del mundo abierto sin respawn; mapa/GPS escondido con cualquier menú; botón de luces (Auto/Encendidas/Apagadas); GPS que recalcula a los 0,5 s de salirte; placa de policía arriba a la izquierda.
 
+## Versión para publicar (20/10, [B] 4.ª tanda) — `docs/REGISTRO_TECNICO.md` → 20/10 05:30
+- ✅📱 **Fluidez:** las cuadras de la ciudad se calculan en un hilo y el cuadro sólo las sube en pasos cortos (`CityWorld`, válvula `threaded = false`). En la computadora, a 180 km/h por la ruta de 42 km: 0 cuadros de más de 40 ms (antes p99 68 ms, máximo 120 ms), `update_around` ≤ 3 ms. **Sin medir en un teléfono.** `city_stream_test`.
+- ✅📱 **Huecos entre edificios** cerrados con paredes invisibles (7,3 km), Plaza Aurora cerrada, Plaza y Parque del Drift abiertos (`city_leaks_test`: ninguna celda alcanzable adentro de las manzanas salvo 13 junto al Parque del Drift).
+- ✅📱 **Veredas planas** (un plano a 1 cm del asfalto, sin cordón); piso de la física igual.
+- ✅📱 **Policía:** a 70 km/h o más no arresta; la barra sube si te frenan (pegado y despacio) o si te quedás quieto con patrulleros cerca (`police_bust_test`).
+- ✅📱 **Nivel de simulación:** lo elegido al largar es lo único que manda; la pausa sin OPCIONES/reglajes/taller salvo en Carrera rápida y pruebas; se pregunta en cada carrera menos en la Aventura; PERSONALIZADO con «Ángulo de dirección» 70–130 % (`sim_level_test`).
+- ✅📱 **Circuitos de Dream City** como lazos limpios (antes con «púas»), minimapa con sólo el circuito y mapa grande con la ciudad apagada durante la carrera (`street_closure_test`, `lab_city_test`). 🔎 «GPS amarillo» interpretado como el texto/línea amarilla: confirmar con el dueño.
+- ✅📱 **Calidad automática** más flexible (mediana sin tirones, 36 FPS, perdón del 10 %, Mali-G57/G68 en gama media); todos recalibran una vez (`VERSION` 4).
+- ✅📱 **Aventura:** menos daño de ruedas y se reinicia en cada etapa; 5 etapas libres (`adv_rules_test`).
+- ✅📱 **Menús:** texto que baja la letra en vez de cortarse con «…»; «Acerca de» con enlaces web a privacidad, términos y borrado de cuenta.
+- 🔎 **Auto «Ren…»:** no existe un auto con ese nombre; sus cabinas más rotas son Strix Vandal RS y Chakal Dune R. Falta que el dueño diga cuál.
+- ✅ **SQL:** 21 migraciones aplicadas en orden y repetidas en un Postgres 16 local (`ECONOMIA_ONLINE_TEST OK`, `CUENTA_TEST OK`). ⛔ Siguen sin aplicar 20261022 → 20261023 → 20261024 hasta el OK del dueño.
+
 ## Carreras del mundo abierto
 - ✅📱 (19/10) Las carreras largan a 100 m o más de cualquier taller, se cierran las calles que salen del recorrido (vallas) y la pista se ve en el mapa y en el GPS (`city/street_closure.gd`).
 - ✅📱 79 eventos para descubrir (sprint, rally, montaña, velocidad, picada, circuito urbano, huida, persecución), en el mapa, con rivales adaptables y premios que valida el servidor (`docs/CARRERAS_MUNDO_ABIERTO.md`). Apagados en el online.

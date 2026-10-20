@@ -45,7 +45,7 @@ Es la versión para probar en el teléfono antes de decidir si se publica. Nada 
 
 ## 3. Pruebas
 
-- **En cada compilación (GitHub):** 85 pruebas de Godot sin pantalla (`godot --headless --script res://tests/…`), cada una con `timeout`.
+- **En cada compilación (GitHub):** 98 pruebas de Godot sin pantalla (`godot --headless --script res://tests/…`), cada una con `timeout`.
 - **Pruebas SQL:** `.github/workflows/economy-test.yml` aplica TODAS las migraciones dos veces en un Postgres temporal. Después corre:
   - `tools/online/economy_test.sql`;
   - `tools/online/account_test.sql`;
@@ -186,6 +186,24 @@ Con el servidor tal cual, sin las migraciones nuevas:
 - la cacería es la de siempre.
 
 Todo eso es lo esperado.
+
+## 9 bis. Lo que se sumó el 20/10/2026 (cuarta tanda de [B], pedido del dueño de «dejar el juego listo para publicar»)
+
+Está en la misma rama y en el mismo APK RC. Detalle y causas: `docs/REGISTRO_TECNICO.md` → 20/10 05:30. **Nada de esto se probó en un teléfono.**
+
+| Qué | Para mirar en el teléfono |
+|---|---|
+| Las cuadras de la ciudad se arman en un hilo | Ir fuerte (150–250 km/h) por las rutas a otros pueblos y por la ciudad: ¿hay tirones? ¿se ve que aparezcan las cuadras de golpe? Con «Mostrar FPS»: ¿baja el FPS al cruzar de una cuadra a otra? |
+| Huecos entre edificios cerrados | Intentar entrar entre dos edificios, a un parque o a la Plaza Aurora (no debe poder); la Plaza y el Parque del Drift siguen abiertos; entrar a talleres, concesionarios y estaciones. |
+| Veredas planas | ¿Las ruedas ya no «suben» el cordón? ¿Se ve bien la vereda? |
+| Policía | Pasar un control a más de 70 km/h (no te arresta); frenar pegado a un patrullero (te arresta); quedarte quieto con patrulleros cerca (sube la barra). |
+| Nivel de simulación | Empezar una carrera: pregunta el nivel (menos en la Aventura). En PERSONALIZADO: «Ángulo de dirección» (más/menos giro de las ruedas). La pausa de una copa o evento no trae OPCIONES ni taller; la de Carrera rápida sí. |
+| Carreras del mapa | Circuito Centro / Puerto / Norte: lazos limpios, minimapa con sólo el circuito, mapa grande con la ciudad apagada. |
+| Calidad automática | Primer arranque: ¿la recomendada es más alta que antes? Todos los teléfonos recalibran una vez (`Autotune.VERSION` 4). |
+| Aventura | 5 etapas libres; daño de ruedas bajo; el daño vuelve a cero en cada etapa. |
+| Menús | Textos que no se cortan; «Acerca de» con los 3 enlaces web (hay que verificar que abran: la página de GitHub Pages tiene que estar publicada). |
+
+**Auto «Ren…»:** pendiente de que el dueño diga cuál es (no hay ninguno con ese nombre).
 
 ## 10. Antes de publicar (pasos manuales, en orden)
 

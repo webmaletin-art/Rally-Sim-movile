@@ -2,7 +2,16 @@
 
 Objetivo: **la mayor calidad visual que el teléfono pueda sostener de forma estable (~60 FPS)**, elegida UNA vez y dejada fija. No hay resolución dinámica ni adaptación por FPS durante la partida.
 
-## Versión actual (15/10/2026, 2.ª versión, `Autotune.VERSION = 3`)
+## Ajuste del 20/10/2026 (`Autotune.VERSION = 4`: todos los teléfonos vuelven a calibrar una vez)
+Pedido del dueño: «la configuración automática elige muy bajo en todos los teléfonos, no perdona nada; con manual medio-alto anda a 60». Qué cambió (`autotune.gd`, `ui/calibration.gd`):
+- **Medición sin tirones sueltos** (`Autotune.stats`): los cuadros de más de 3 veces la mediana (y más de 100 ms) no cuentan para el promedio, hasta un 5 % de los cuadros (compilar un shader, subir una cuadra, el sistema). Con más de un 5 % son tirones de verdad y cuentan todos. El «piso» (el 5 % peor) sigue contando todo.
+- **Mínimo de 36 FPS** (`REC_FPS`, antes 40) con el piso en 22 (60 % del mínimo). Se mide en el lugar más pesado de la ciudad (el centro): en el resto del mapa anda mejor.
+- **Perdón** (`FORGIVE` = 0,9, `PresetSearch.near`): si la calidad de arriba de la que llegó «casi llega» (≥ 90 % del mínimo, o sea ≥ 32,4 FPS) se recomienda esa; si ninguna llega pero alguna casi, se recomienda esa y no la pixelada 60 FPS.
+- **Estabilización adaptativa:** después del tiempo base de cada cambio se espera 1 s sin ningún cuadro lento (hasta 4 s más) antes de medir.
+- **GPU:** Mali-G57 y G68 (gama media) pasan al nivel 1 (antes 0: la «★ sugerida» quedaba en BAJA). Sólo es una marca de la pantalla de elección.
+- Pruebas: `autotune_test` (82 OK; casos nuevos de perdón y de tirones aislados).
+
+## Versión actual (15/10/2026, 2.ª versión, `Autotune.VERSION = 3`; los umbrales de 40 FPS de abajo son los de esa versión, ver el ajuste de arriba)
 Lo de abajo de esta sección es la historia (la escalera de 8 perfiles quedó en el código sin uso). Hoy:
 - **5 calidades** (`Autotune.PRESETS`): **60 FPS** (escala 3D calculada entre 0,25 y 0,50, texturas bajas, 2/10 partículas, 600 árboles, sin sombras y, si hace falta, sin tránsito ni peatones), BAJA (0,50), NORMAL (0,67), ALTA (0,80), ULTRA (1,00).
 - **Medición** (`Autotune.PresetSearch`, en el centro de Dream City): ALTA → si da ≥ 40 FPS, ULTRA; si no, NORMAL → BAJA. Después la **60 FPS**: con lo más bajo medido calcula la escala que daría 60 (los FPS suben como baja la cantidad de píxeles) y la mide; si no llega, baja la escala una vez más, y si bajar píxeles no sirvió (el límite es el procesador) apaga la vida del mundo y mide otra vez. Entre 3 y 7 mediciones (~25 a 55 s).

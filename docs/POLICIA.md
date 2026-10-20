@@ -15,7 +15,7 @@ cortan, te chocan y se te cruzan adelante; si te agarran pagás la multa y apare
   Si pierden alguno llega un refuerzo por atrás (fuera de la vista) cada 16 s.
 - **Por qué es tan difícil**: agarran 20 % más que el patrullero de la tienda (+3 % por nivel) y, cuando quedan lejos, empujan más (hasta ×1,9 de potencia +15 % por nivel; pegados, igual que vos).
   No se teletransportan: siempre manejan con la misma física.
-- **Arresto**: con un patrullero a menos de 8,5 m y vos a menos de 25 km/h, la barra se llena en 1,6 s; con uno pegado a menos de 4,5 m (aunque vayas rápido) en 6 s.
+- **Arresto** (`CityPolice.bust_rate`, 20/10/2026, pedido del dueño: «en persecución me arresta igual; a velocidades altas no deben arrestarme; la barra sube si me frenan o si me quedo quieto; si voy un poco despacio puede subir, y muy lento sube porque no me dan opciones»): la barra se llena con un patrullero a menos de 8,5 m y vos a menos de 25 km/h (1,6 s); **quieto** (menos de 8 km/h) con un patrullero a menos de 14 m también sube (te rodean); pegado (menos de 4,5 m) y entre ~25 y 70 km/h sube cada vez más lento (6,2 s a 26 km/h, ~9 s a 40 km/h, ~27 s a 60 km/h); **a 70 km/h o más la barra siempre baja** (en 5 s). Prueba: `police_bust_test`.
   Multa = $2.000 + $1.500 por nivel (si no te alcanza, se cobra lo que tengas; pasa por `profile.spend(…, "fine")`, que la cuenta del servidor valida como cualquier gasto).
   Fundido a negro y aparecés parado frente a la **comisaría de Dream City** (`STATION` = (70, 60), sobre la calle más cercana; cartel «COMISARÍA · POLICÍA DE DREAM CITY»).
 - **Escape**: todos a más de 480 m durante 10 s seguidos. Ese control no vuelve a salir por 4 minutos.

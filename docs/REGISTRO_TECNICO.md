@@ -5,6 +5,75 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 20/10/2026 05:30 UTC · [B] Cuarta tanda (versión para publicar): huecos entre edificios, cuadras que se arman en un hilo, veredas planas, policía, nivel de simulación, circuitos y GPS de carreras, calidad automática, aventura y menús (rama ccr-e7ae3f10-45afj2) — PENDIENTE DE APK
+- **Pedido del dueño (20/10, con 2 capturas de «NIVEL DE SIMULACIÓN» a 17/16 FPS):** (1) cerrar con valla, cartel o colisión invisible los huecos entre edificios («el jugador no puede entrar entre
+  los edificios»; parques y plazas cerrados, **no cerrar Drift**); (2) «en rutas hacia otros pueblos hace tirones y baja mucho el FPS, necesito fluidez»; la vereda de 75 cm: «un plano nomás, sin polígonos, sin
+  altura»; (3) policía: «me arresta igual en persecución; la barra tiene que subir si me frenan o si me quedo quieto; a velocidades altas no deben arrestarme»; (4) lo que manda es lo que se elige al largar
+  (arcade / intermedio / simulador total / personalizado), nada en la pausa lo pisa, se pregunta en cada carrera salvo en la Aventura; (5) «ángulo de dirección» en PERSONALIZADO (100 %, máximo 130 %);
+  (6) «el auto Ren… se ve muy feo desde las cámaras internas»; (7) «la configuración automática elige muy bajo en todos los teléfonos, no perdona nada»; (8) en una carrera del mundo abierto «el GPS se sale
+  por caminos del costado: sacá el GPS amarillo, que sólo se vea el circuito, barreras en los caminos, en el mapa la ciudad cerrada y sólo el circuito abierto»; (9) Aventura: menos daño de ruedas, que se
+  reinicie en cada carrera/etapa, 5 etapas libres; (10) menús y opciones más visibles y profesionales, revisar precios de Play, que el SQL esté listo y organizado, arreglar errores de lógica. **El dueño
+  prueba y después da el OK para fusionar a `main`: no se fusionó nada ni se aplicó ninguna migración.**
+- **Cambios (cada uno con su causa):**
+  - **Huecos entre edificios (`city/city_layout.gd` → `_close_gaps`, `_gap_runs`, `_gap_needs_wall`, `_cap_dead_ends`, `_close_station_lots`, `_point_in_special`, `prepare_walls`, `gap_wall_len`):** causa: desde la
+    3.ª tanda la pared de las calles de la ciudad eran sólo las fachadas; cada lugar de la línea de edificación sin losa dejaba pasar al auto adentro de las manzanas (289 bolsillos, ~100.000 m²). Ahora se
+    suman paredes invisibles (cuadriláteros de 0,6 m en la línea de edificación) exactamente donde falta la losa, el fondo de las calles sin salida y los playones de las estaciones. No tocan el eje de ninguna calle
+    (cruces y esquinas siguen libres), ni la entrada de talleres, concesionarios y estaciones, ni la Plaza ni el Parque del Drift. La Plaza Aurora queda cerrada. 2.347 tramos, 7.294 m de pared. **Prueba nueva
+    `city_leaks_test`** (BFS con la colisión real sobre una grilla de 2 m, círculo de 1,2 m, desde el eje de cada calle: 187.167 celdas alcanzables manejando): 13 celdas fuera de las calles (todas junto al Parque
+    del Drift, que se maneja por adentro), Plaza Aurora 0 celdas, 31/31 surtidores y frentes de lugares alcanzables, eje de las calles libre en 6.727 puntos.
+  - **Fluidez: las cuadras se arman en un hilo (`city/city_world.gd` → `_chunk_data`, `_assemble_a`, `_assemble_b`, `_extras_q`, `update_around`, `warm`, `threaded`; `fx/paper_kit.gd` → `surface_arrays`,
+    `add_arrays`; `city/piece_batch.gd` → `warm`; `city/tree_sprites.gd` → `ensure`):** causa medida (computadora de 4 núcleos, ruta de 42 km Salida 20 → Puerto Alba a 180 km/h, 40 s): cada cuadra de 160 m se
+    armaba entera en el cuadro en que entraba en el radio (12–32 ms en el centro, 20–26 ms en rutas, 57–70 ms en el borde con la región, picos de 130–190 ms) → cuadros de hasta 120 ms (p99 68,5 ms, 33 cuadros
+    de más de 40 ms, 6 de más de 80 ms; `update_around` p99 39 ms). En el teléfono es 3 a 6 veces más. Ahora: UN hilo (`WorkerThreadPool`) calcula las sopas de triángulos, los arreglos de los objetos y la lista
+    de árboles (`_chunk_data`: sólo cuentas, sin nodos ni recursos), y el cuadro principal sólo sube mallas en pasos cortos (A: terreno, calles, edificios · B: objetos, árboles, choques · después, de a uno por
+    cuadro, los locales, las estaciones y los autos de las vidrieras, con el modelo pedido antes por `ResourceLoader.load_threaded_request`). Medido: **p99 de cuadro 33,7 ms (tope de la prueba 30 FPS = 33,3 ms),
+    máximo 37,9 ms, 0 cuadros de más de 40 ms; `update_around` p99 1,0 ms, máximo 2,9 ms; 0 cuadros con una cuadra sin armar a ±2 cuadras, a 180 y a 300 km/h**; las mismas 46 cuadras y 46.107 triángulos que antes.
+    `warm()` (carga de la pista y viajes con pantalla negra) sigue sincrónico. Seguridad de hilos: una sola cuenta a la vez (el principal espera al hilo antes de armar una por su cuenta, sin Mutex: si un error
+    cortara el hilo, un Mutex quedaría tomado para siempre), lo que se llena a demanda se carga antes en el principal (`_ensure_shared`: semáforos, piezas de papel, imágenes de árboles), `track.broken` y los
+    interruptores del diagnóstico van en copias, y el hilo no toca el motor de dibujo (ningún nodo ni recurso). Válvula de escape: `CityWorld.threaded = false` vuelve a armar todo en el hilo principal. **Prueba nueva
+    `city_stream_test`** (11 OK, 18 s): el hilo y el principal calculan lo mismo en 28 cuadras de todo tipo, se arman las 49 de alrededor y las colas quedan vacías, `update_around` es corto (el 90 % < 1,6 ms), `warm()`
+    con un trabajo en camino termina, sin hilos salen las mismas cuadras y triángulos, y el piso de la física se consulta mientras el hilo trabaja. **Límite:** la región (`RegionWorld`) ya armaba en hilos (máximo 2,9 ms
+    en el principal); romper un objeto de la calle sigue rearmando la malla de su cuadra en el principal (unos ms en la PC).
+  - **Veredas planas (`city/city_world.gd` → `_sidewalk_part`, `_flat`; `city/city_layout.gd` → `CURB`; `track/city_track.gd` → `ground_info`):** la vereda era una losa a 16 cm con una cara vertical de cordón en cada borde:
+    ahora es un plano a 1 cm del asfalto (`CURB` = 0,05 contra `ROAD_UP` = 0,04), sin caras verticales; el piso de la física sigue al plano. Menos triángulos en cada cuadra de calles y las ruedas ya no «suben el cordón».
+    `junction_render_test` (10 OK) comprueba que no hay escalones ni caras de cordón y que el piso coincide al milímetro.
+  - **Policía (`city/city_police.gd` → `bust_rate`, `BUST_FREE_KMH`, `STILL_KMH`, `STILL_R`):** el arresto sumaba segundos «cerca» sin mirar la velocidad. Ahora: a 70 km/h o más la barra baja siempre; pegado y a menos
+    de ~25 km/h sube entera (1,6 s); quieto (< 8 km/h) con un patrullero a menos de 14 m sube igual (te rodean); entre ~25 y 70 km/h sube cada vez más lento («porque no me dan opciones»). **Prueba nueva `police_bust_test`** (11 OK).
+  - **Nivel de simulación (`race.gd` → `_sim_assists`, `with_steer_angle`; `ui/options_ui.gd`; `ui/race_hud.gd` → `_fill_pause`, `lab_on`; `ui/menu.gd` → `launch`, `_level_screen`; `data/profile.gd`):** lo que se
+    elige al largar es lo único que manda: se saca del menú de Opciones la página de física (ayudas), y de la pausa OPCIONES, AJUSTAR CÁMARA, MODIFICAR CONTROLES y el TALLER DE PRUEBA salvo en la Carrera rápida y las pruebas
+    de vehículos (`lab_on`); en copas, eventos y Aventura la pausa queda con seguir, cámara, cine, mapa, luces, eventos, reiniciar y salir. Se pregunta en cada carrera (copas, rápida, mundo abierto, Travesía, rutas);
+    la Aventura trae su configuración (`adv`); REPETIR conserva el nivel de esa carrera. **PERSONALIZADO trae «Ángulo de dirección»** (70–130 %, o «según el auto» = 0): reemplaza al ángulo del reglaje (no se suman) y nunca pasa
+    de 130 %. Los textos largos de los selectores («Ayuda de trazada (el auto te ayuda a doblar)») se cortaban con «…»: la letra baja hasta que entran (`Kit.fit_label`, también en los botones del menú y las baldosas del inicio).
+    **Pruebas:** `sim_level_test` (13 OK, nueva), `lab_city_test` (29 OK: la pausa con y sin `lab_on`), `autotune_test`.
+  - **Circuitos y GPS en carreras del mundo abierto (`world/ow_events.gd` → `CIRCUITS`, `_crossing`, `_city_events`; `ui/city_hud.gd` → `in_course`, `MapView._draw`, `_draw_car`):** causa de «el GPS se sale por caminos del costado»:
+    los tres circuitos de Dream City se armaban uniendo coordenadas sueltas (a ~50 m de cualquier cruce) con el camino más corto: el recorrido salía del anillo por una calle del costado hasta el punto y volvía por la misma
+    (una «púa» en cada punto: 7, 2 y 3 puntos repetidos). Ahora cada circuito se arma con cruces exactos de dos calles (Centro: Calle 20 entera; Puerto: sector al sur entre las avenidas 2 y 4; Norte: sector entre las
+    6 y 8): lazos limpios. En carrera el minimapa muestra SÓLO el circuito (sin calles, lugares ni texto amarillo), y el mapa grande apaga la ciudad («CALLES CERRADAS · SÓLO EL CIRCUITO ESTÁ ABIERTO»); las vallas que cierran las
+    calles ya existían (`street_closure.gd`: 26, 31 y 22 bocas cerradas). **Pruebas:** `street_closure_test` (15 OK; la nueva «sin púas» falla 7/2/3 con los circuitos viejos), `lab_city_test`. **Hipótesis a confirmar con el dueño:**
+    «GPS amarillo» = el texto amarillo del GPS y la línea naranja que se muestra al ir hacia la carrera (esa sigue antes de largar, es la guía hasta el punto de salida).
+  - **Calidad gráfica automática (`autotune.gd` → `stats`, `REC_FPS`, `FORGIVE`, `PresetSearch.near`, `_gpu_tier`, `VERSION`; `ui/calibration.gd` → espera de tirones; `ui/calib_ui.gd`):** la recomendada exigía 40 FPS promedio
+    medidos en el lugar más pesado de la ciudad, con los tirones de cada cambio incluidos. Ahora: los cuadros de más de 3 veces la mediana (y > 100 ms) no cuentan hasta un 5 % (compilar un shader, subir una cuadra);
+    mínimo de 36 FPS; si la calidad de arriba «casi llega» (≥ 90 % del mínimo) se recomienda esa; si ninguna llega pero una casi, se recomienda esa y no la pixelada «60 FPS»; la estabilización espera 1 s sin cuadros lentos
+    (hasta 4 s más); Mali-G57 y G68 (gama media) ya no quedan en el nivel más bajo. `VERSION` 4: **todos los teléfonos vuelven a calibrar una vez**. `autotune_test` (82 OK).
+  - **Aventura (`adventure/adv_data.gd` → `damage_mul`, `HIT_K`, `zero_damage`; `adventure/adventure.gd`; `data/release.gd` → `ADVENTURE_STAGES` = 5):** daño de ruedas más bajo (potencia ×0,80, agarre ×0,94 y
+    tirón de la dirección 0,05 al máximo; antes ×0,70, ×0,88 y 0,14; un golpe a 72 km/h suma 0,122 contra 0,315) y el daño vuelve a cero al empezar cada carrera o etapa. 5 etapas libres (eran 3): la tienda y la descripción de
+    «Aventura completa» lo dicen. **Pruebas:** `adv_rules_test` (9 OK, nueva), `release_test` (21 OK).
+  - **Menús y compras (`ui/ui_kit.gd` → `fit_label`; `ui/menu.gd`; `ui/menu_about.gd`; `store/products.gd`):** nada de texto cortado con «…» en las tarjetas, botones y selectores (la letra baja hasta 10 px); «Acerca de» ya
+    no manda a «docs/PRIVACIDAD.md del repositorio»: tiene botones para abrir en la web la privacidad, los términos y cómo eliminar la cuenta (las direcciones de la ficha de Google Play); la descripción de «Juego
+    completo» se acortó para que no se corte.
+- **Pruebas de cierre (Godot 4.7.2 en la computadora; nada probado en un teléfono):** se repitió acá TODA la lista de `build-godot.yml` en el orden del flujo (99 entradas, 33 minutos en una
+  computadora de 4 núcleos): las 99 en verde, sin errores de script ni de análisis en ningún registro (mi contador marcó «FALLA=1» en `rewards_test` sólo porque su última línea dice «FALLAS: 0»).
+  Nuevas: `city_leaks_test` (8 OK), `city_stream_test` (11), `police_bust_test` (11), `adv_rules_test` (9), `sim_level_test` (13); cambiadas: `release_test` (21), `autotune_test` (82),
+  `street_closure_test` (15), `lab_city_test` (29), `junction_render_test` (10); `menu_ui_test` (35 OK, con `-- --menu --noconsent` como en el flujo). Las más largas: `escape_farm_test` 2,5 min,
+  `travesia_test` 3 min, `ow_events_test` 2 min, `custom_route_test` 2 min. **SQL:** con un Postgres 16 local se aplicaron las 21 migraciones en orden (y se repitieron las repetibles):
+  `ECONOMIA_ONLINE_TEST OK` y `CUENTA_TEST OK` (213 comprobaciones); las 3 pendientes (20261022, 20261023, 20261024) corren limpias.
+- **Qué no se hizo / se pregunta:** (1) **el auto «Ren…»:** no hay ningún auto con ese nombre; se renderizaron las 30 cabinas (`tests/_cabview.gd`, vista `onboard`): lo más roto es el **Strix Vandal RS** (el guardabarros
+  y el capó se ven rasgados desde adentro) y el **Chakal Dune R** (restos rojos de la jaula arriba); el resto se ve parejo. Falta saber cuál es (¿Strix, Chakal, Send Rally 80, Pampa R2 Rally?). (2) Los textos nuevos están
+  traducidos a 5 idiomas (`tools/i18n/batches/b70_publicar.py`) pero quedan ~930 textos de herramientas y diagnóstico sin traducir (no los ve el jugador). (3) La ficha de Play dice «modo online cerrado»: el juego
+  trae eventos y ranking online (el tiempo real sigue apagado hasta `app_flags.pvp`); decidir qué prometer.
+
+---
+
 ## 20/10/2026 01:00 UTC · [B] Tercera tanda: la ciudad sólo choca con edificios, esquinas y veredas bien terminadas, terreno que no tapa la ruta, banquina con nieve, GPS, menús y luces (rama ccr-e7ae3f10-45afj2) — PENDIENTE DE APK
 - **Pedido del dueño (mensaje con 15 capturas, 19/10):** «hay una traba invisible, una colisión: en un mundo abierto lo único que no deja pasar son los edificios y las vallas o cercos de la ruta; el resto no
   es colisión» (Avenida 3 cuadras 3 y 6; Avenida 2 cuadra 6 «justo me topo con otra calle y no puedo cruzar»; no puedo hacer un finito de drift contra un edificio; «en los vértices sólo colisionan los edificios,
