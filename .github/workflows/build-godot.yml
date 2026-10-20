@@ -76,6 +76,7 @@ jobs:
           timeout -k 5 900 godot --headless --script res://tests/ow_events_test.gd
           timeout -k 5 120 godot --headless --script res://tests/street_closure_test.gd
           timeout -k 5 120 godot --headless --script res://tests/road_height_test.gd
+          timeout -k 5 120 godot --headless --script res://tests/city_walls_test.gd
           timeout -k 5 600 godot --headless --script res://tests/sectors_test.gd
           timeout -k 5 120 godot --headless --script res://tests/city_reach_test.gd
           timeout -k 5 300 godot --headless --script res://tests/region_threads_test.gd

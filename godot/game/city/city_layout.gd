@@ -226,6 +226,128 @@ static func verge_height(h: float, v: PackedFloat64Array) -> float:
 	var fade := smoothstep(VERGE_BW_MAX - 4.0, VERGE_BW_MAX, emin)
 	return lerpf(sh / sw, h, fade)
 
+## ───── Paredes de la ciudad: sólo los edificios · [B] 19/10/2026
+## Reporte del dueño: «hay una colisión invisible en la esquina; no me deja pasar a la otra calle ni hacer un finito de drift al edificio. Lo único que debe chocar son los edificios,
+## las vallas, los guardarraíles y las banquinas». Antes la pared era el borde del corredor de la calle (calzada + vereda): en los cruces el corredor se achica en diagonal y la pared
+## quedaba 1–5 m ANTES de la fachada, y donde no había edificio (esquinas, huecos) también. Ahora, en las calles de la ciudad (major, minor, alley, ring, plaza) chocan las
+## losas de fachada (las mismas cajas que se dibujan) y los edificios especiales; en las rutas de campo, la costanera, las bahías y los túneles sigue la pared del corredor.
+const WALL_CELL := 16.0
+const DENSE_KINDS := ["major", "minor", "alley", "ring", "plaza"]
+var _wq := PackedFloat32Array() # 8 números por cuadrilátero (A, B, C, D en sentido antihorario)
+var _wcells: Dictionary = {} # Vector2i (16 m) -> PackedInt32Array de cuadriláteros que tocan esa celda
+var _dense_road := PackedByteArray() # por calle: 1 = calle de la ciudad (la pared son los edificios)
+
+func prepare_walls() -> void:
+	_dense_road.resize(roads.size())
+	for i in roads.size():
+		_dense_road[i] = 1 if str((roads[i] as Dictionary)["kind"]) in DENSE_KINDS else 0
+	_wq = PackedFloat32Array()
+	_wcells = {}
+	for key in slabs:
+		for sl in (slabs[key] as Array):
+			var pts: PackedVector3Array = sl["pts"]
+			var away: PackedVector2Array = sl["away"]
+			var depth: float = sl["depth"]
+			for i in pts.size() - 1:
+				var a := Vector2(pts[i].x, pts[i].z)
+				var b := Vector2(pts[i + 1].x, pts[i + 1].z)
+				if a.distance_squared_to(b) < 0.0004:
+					continue
+				_add_wall_quad(a, b, b + away[i + 1] * depth, a + away[i] * depth)
+	for key in buildings:
+		for bd in (buildings[key] as Array):
+			var yaw: float = bd["yaw"]
+			var tg := Vector2(sin(yaw), cos(yaw))
+			var nm := Vector2(cos(yaw), -sin(yaw))
+			var cen := Vector2(float(bd["x"]), float(bd["z"]))
+			var w2: float = float(bd["w"]) * 0.5
+			var d2: float = float(bd["d"]) * 0.5
+			_add_wall_quad(cen - tg * w2 - nm * d2, cen + tg * w2 - nm * d2, cen + tg * w2 + nm * d2, cen - tg * w2 + nm * d2)
+
+func _add_wall_quad(a: Vector2, b: Vector2, c: Vector2, d: Vector2) -> void:
+	# sentido antihorario (área con signo positiva)
+	var area := (b - a).cross(c - a) + (c - a).cross(d - a)
+	if area < 0.0:
+		var t := b
+		b = d
+		d = t
+	var qi := _wq.size() / 8
+	_wq.append_array(PackedFloat32Array([a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y]))
+	var x0 := minf(minf(a.x, b.x), minf(c.x, d.x))
+	var x1 := maxf(maxf(a.x, b.x), maxf(c.x, d.x))
+	var z0 := minf(minf(a.y, b.y), minf(c.y, d.y))
+	var z1 := maxf(maxf(a.y, b.y), maxf(c.y, d.y))
+	for cx in range(int(floor(x0 / WALL_CELL)), int(floor(x1 / WALL_CELL)) + 1):
+		for cz in range(int(floor(z0 / WALL_CELL)), int(floor(z1 / WALL_CELL)) + 1):
+			var k := Vector2i(cx, cz)
+			var arr: PackedInt32Array = _wcells.get(k, PackedInt32Array())
+			arr.append(qi)
+			_wcells[k] = arr
+
+## ¿La calle ri es una calle de la ciudad (la pared son los edificios) y no una ruta de campo, una bahía o un túnel?
+func is_dense_road(ri: int) -> bool:
+	return ri >= 0 and ri < _dense_road.size() and _dense_road[ri] == 1
+
+## Empuje de los edificios sobre un círculo (x, z, r): (nx, nz, profundidad) con la normal hacia donde hay que moverse; profundidad ≤ 0 = no toca ninguno
+func wall_push(x: float, z: float, r: float) -> Vector3:
+	var best := Vector3.ZERO
+	if _wcells.is_empty():
+		return best
+	for cx in range(int(floor((x - r) / WALL_CELL)), int(floor((x + r) / WALL_CELL)) + 1):
+		for cz in range(int(floor((z - r) / WALL_CELL)), int(floor((z + r) / WALL_CELL)) + 1):
+			var lst: Variant = _wcells.get(Vector2i(cx, cz))
+			if lst == null:
+				continue
+			for qi in (lst as PackedInt32Array):
+				var h := _quad_push(x, z, r, qi) # (un cuadrilátero que toca dos celdas se mira dos veces: no importa)
+				if h.z > best.z:
+					best = h
+	return best
+
+func _quad_push(x: float, z: float, r: float, qi: int) -> Vector3:
+	var o := qi * 8
+	var inside := true
+	var bd2 := 1.0e18
+	var bdx := 0.0
+	var bdz := 0.0
+	var bi := 0
+	var onx := 0.0
+	var onz := 0.0
+	for e in 4:
+		var ax := _wq[o + e * 2]
+		var az := _wq[o + e * 2 + 1]
+		var n2 := (e + 1) % 4
+		var bx := _wq[o + n2 * 2]
+		var bz := _wq[o + n2 * 2 + 1]
+		var ex := bx - ax
+		var ez := bz - az
+		var l2 := ex * ex + ez * ez
+		var t := 0.0
+		if l2 > 1.0e-9:
+			t = clampf(((x - ax) * ex + (z - az) * ez) / l2, 0.0, 1.0)
+		var dx := x - (ax + ex * t)
+		var dz := z - (az + ez * t)
+		var d2 := dx * dx + dz * dz
+		if ex * (z - az) - ez * (x - ax) < 0.0:
+			inside = false
+		if d2 < bd2:
+			bd2 = d2
+			bdx = dx
+			bdz = dz
+			bi = e
+			var ln := sqrt(l2)
+			if ln > 1.0e-6:
+				onx = ez / ln # normal hacia afuera de la arista (antihorario)
+				onz = -ex / ln
+	if inside:
+		return Vector3(onx, onz, r + sqrt(bd2))
+	if bd2 >= r * r:
+		return Vector3.ZERO
+	var d := sqrt(bd2)
+	if d < 1.0e-4:
+		return Vector3(onx, onz, r)
+	return Vector3(bdx / d, bdz / d, r - d)
+
 ## Zona de la ciudad (decide la altura y el estilo de los edificios): 0 centro · 1 intermedio · 2 barrio · 3 costa · 4 colina · 5 afuera
 func zone_of(x: float, z: float) -> int:
 	var r := sqrt(x * x + z * z)

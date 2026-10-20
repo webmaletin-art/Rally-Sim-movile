@@ -31,6 +31,7 @@ func _init() -> void:
 		city.region = rg
 		RegionServices.install(city, rg)
 	city.prepare_verge()
+	city.prepare_walls()
 	for rd in city.roads:
 		_road_up.append(0.0 if str((rd as Dictionary)["kind"]) == "tunnel" else CityLayout.ROAD_UP)
 	cones = ConeField.new()
@@ -159,7 +160,8 @@ func _push_locked(x: float, z: float, r: float, use_dyn := true) -> Vector3:
 	# Sólo empuja si el círculo se sale de todos; entonces va hacia el más cercano. (Antes la pared de la región empujaba también adentro de la calle de la ciudad: en la punta de las rutas
 	# 20, 40 y 80, donde la región todavía no empezaba, el auto se quedaba clavado o no podía dar marcha atrás.)
 	var has_city: bool = pr[6] >= 0.0
-	var city_pen := r - float(pr[0]) if has_city else -1e9
+	var dense: bool = has_city and city.is_dense_road(int(pr[6])) # calle de la ciudad: la pared son los edificios (CityLayout.wall_push), no el borde del corredor
+	var city_pen := r - float(pr[0]) if has_city and not dense else -1e9
 	var reg_pen := 1e9
 	var reg_n := Vector2.ZERO
 	if region != null and x * x + z * z > REGION_R2 and x < CityLayout.POCKET_X0:
@@ -176,6 +178,9 @@ func _push_locked(x: float, z: float, r: float, use_dyn := true) -> Vector3:
 	elif has_reg:
 		if reg_pen > 0.0:
 			best = Vector3(reg_n.x, reg_n.y, minf(reg_pen, 6.0))
+	var wp := city.wall_push(x, z, r) # los edificios (fachadas y edificios especiales): lo único que frena en las calles de la ciudad, además de vallas y objetos
+	if wp.z > best.z:
+		best = wp
 	if not city.drift.is_empty(): # la pared invisible de la plaza de drift (el cerco), con una abertura donde entra la ruta
 		var dc: Vector2 = city.drift["c"]
 		var dd := Vector2(x, z) - dc
