@@ -22,6 +22,9 @@ const WorldSync := preload("res://game/online/world_sync.gd")
 const CityLayout := preload("res://game/city/city_layout.gd")
 const CityClock := preload("res://game/city/city_clock.gd")
 const DriftSession := preload("res://game/drift_session.gd")
+const TestSession := preload("res://game/test_session.gd")
+const GuideVoice := preload("res://game/audio/guide_voice.gd")
+const MenuTest := preload("res://game/ui/menu_test.gd")
 const PaperTrack := preload("res://game/track/paper_track.gd")
 const Drag := preload("res://game/data/drag.gd")
 const PaperWorld := preload("res://game/track/paper_world.gd")
@@ -89,6 +92,7 @@ var social: Node # online_social.gd: chat, presencia, amigos, reportes y mercado
 var rtsync: Node # world_sync.gd: posiciones en tiempo real (Supabase Realtime); sólo con Release.REALTIME
 var menu_mode := false
 var session # Session (carreras) o DriftSession
+var guide: Node # game/audio/guide_voice.gd: la guía hablada del Modo de prueba (subtítulos + voz si hay audio); null fuera de la prueba
 var race_hud: Control
 var paused := false
 var done_t := 0.0
@@ -338,13 +342,23 @@ func _ready() -> void:
 			if modes != null:
 				modes.toggle(m))
 		race_hud.quit_pressed.connect(_quit)
+		if cfg.get("test", false) == true: # MODO DE PRUEBA: la guía hablada (subtítulos y voz si hay audio) y la salida única
+			guide = GuideVoice.new()
+			guide.set_mode(str(profile.setting("guideMode")))
+			if cfg.get("guideHeard") is Dictionary:
+				guide.heard = (cfg["guideHeard"] as Dictionary).duplicate() # (al reiniciar la prueba no se repite lo que Claudio ya dijo)
+			add_child(guide)
+			race_hud.test_on = true
+			race_hud.guide_say.connect(func(id: String) -> void: guide.say(id))
+			race_hud.test_exit_pressed.connect(_test_exit)
 		race_hud.camera_pressed.connect(_next_camera)
 		race_hud.cine_pressed.connect(_toggle_cine)
 		race_hud.edit_controls_pressed.connect(_edit_controls)
 		race_hud.cam_step.connect(func(d: int) -> void:
 			if cam_rig != null:
 				cam_rig.next(d)
-				_save_cam_adj())
+				_save_cam_adj()
+				_guide_camera())
 		race_hud.camadj_changed.connect(_save_cam_adj)
 		race_hud.lab_changed.connect(_lab_apply)
 		race_hud.lab_reset.connect(_lab_reset)
@@ -671,6 +685,13 @@ func _make_track() -> void:
 			# se aparece dentro del Estacionamiento Central: en la sala que se eligió en el menú (por defecto la planta baja)
 			track.spawn_i = int(cfg.get("spawn", 0)) % track.city.spawns.size()
 		return
+	if track_id == "pruebas":
+		# MODO DE PRUEBA (20/10/2026): la Drift Plaza mejorada; en la carrera contrarreloj la largada va sobre la línea del circuito elegido (se arma antes de poner los autos)
+		track = DriftTrack.new(true)
+		var tsu: Dictionary = cfg.get("testSetup", {})
+		if str(tsu.get("mode", "drift")) == "race":
+			track.set_loop(str(tsu.get("loop", "dirt")))
+		return
 	if track_id == "prueba" or not track_maps.has(track_id):
 		track_id = "prueba"
 		track = CircuitTrack.new()
@@ -896,7 +917,7 @@ func wall_dist() -> float:
 	return rail_off() - 1.0
 
 ## Niveles de simulación (se eligen antes de largar): ayudas del auto del jugador
-## «wheel» = el volante de la pantalla: 0 = el de siempre (un cuarto de vuelta de tope a tope hacia cada lado), 50 = real al 50 % (vuelta y media), 100 = real (tres vueltas hacia cada lado)
+## «wheel» = el volante de la pantalla: 0 = el de siempre (±135°: tres cuartos de vuelta de tope a tope), 50 = real al 50 % (±270°: vuelta y media de tope a tope), 100 = real (±540°: tres vueltas de tope a tope)
 const SIM_PRESETS := {
 	"arcade": {"abs": true, "tc": 80.0, "stab": 90.0, "line": 60.0, "wheel": 0},
 	"mid": {"abs": true, "tc": 50.0, "stab": 30.0, "line": 25.0, "wheel": 0},
@@ -932,6 +953,10 @@ func _on_sim_changed(id: String) -> void:
 	_apply_assists()
 	if race_hud != null:
 		race_hud.toast("🎮 " + Tr.t(race_hud._sim_name(id)))
+	if guide != null:
+		guide.say("sim_changed")
+		if int(_sim_assists().get("wheel", 0)) > 0:
+			guide.say("wheel_real")
 
 ## Cambio de una ayuda en las opciones: el nivel pasa a «personalizado» conservando los valores del nivel anterior en las otras
 func _assist_changed(key: String) -> void:
@@ -1474,6 +1499,18 @@ func _start_session() -> void:
 			race_hud.setup(session, cfg, rival_info)
 			if race_hud.net_hud != null:
 				race_hud.net_hud.respawn_pressed.connect(_net_respawn)
+		return
+	if menu_mode and track is DriftTrack and str(cfg.get("type", "")) == "test":
+		session = TestSession.new(track, cfg, cars.size())
+		session.names[0] = rival_info[0]["name"]
+		(track as DriftTrack).cones.reset()
+		session.beep.connect(_on_beep)
+		session.go.connect(_on_go)
+		if guide != null:
+			session.guided = guide.mode != "off"
+			session.guide_event.connect(func(id: String) -> void: guide.say(id))
+		if race_hud != null:
+			race_hud.setup(session, cfg, rival_info)
 		return
 	if menu_mode and track is DriftTrack:
 		session = DriftSession.new(track, cfg, cars.size())
@@ -2531,6 +2568,8 @@ func _toggle_pause() -> void:
 	if not menu_mode or (session == null and adv == null):
 		return
 	paused = not paused
+	if guide != null:
+		guide.set_dock("right" if paused else "center") # (en la pausa los paneles ocupan la izquierda)
 	if paused:
 		_finish_physics() # la simulación queda quieta; la imagen y la cámara siguen vivas para poder cambiar de cámara
 	AudioServer.set_bus_mute(0, paused)
@@ -2583,6 +2622,8 @@ func _restart() -> void:
 		restart_with({"type": "adventure", "stage": int(cfg["stage"]), "back": str(cfg.get("back", "adventure")), "dmg0": (adv.dmg0 as Dictionary).duplicate()})
 		return
 	var c := cfg
+	if guide != null:
+		c["guideHeard"] = guide.heard.duplicate()
 	var a := get_parent()
 	a.call_deferred("start_race", c)
 	queue_free()
@@ -2634,6 +2675,25 @@ func _quit() -> void:
 	AudioServer.set_bus_mute(0, false)
 	exit_requested.emit(str(cfg.get("back", "home")))
 
+## Modo de prueba: la guía comenta cada cámara la primera vez que se usa
+const CAM_LINES := {"onboard": "cam_onboard", "chase": "cam_chase", "custom": "cam_free", "rearcabin": "cam_rear", "hood": "cam_hood", "bumper": "cam_bumper"}
+
+func _guide_camera() -> void:
+	if guide == null or cam_rig == null:
+		return
+	var id := "cam_aerial" if str(cam_rig.cam_name()) == "Aérea" else str(CAM_LINES.get(cam_rig.mode(), ""))
+	if id != "":
+		guide.say(id)
+
+## «SALIR DE LA PRUEBA» confirmado (dos toques): la prueba se usa una sola vez; se marca como hecha y se vuelve al menú (que se despide con la guía)
+func _test_exit() -> void:
+	if profile != null:
+		MenuTest.mark_done(profile)
+	if guide != null:
+		guide.stop()
+	AudioServer.set_bus_mute(0, false)
+	exit_requested.emit("home")
+
 ## Ajuste de cámara del jugador (pausa → AJUSTAR CÁMARA): se guarda en el perfil
 func _save_cam_adj() -> void:
 	if cam_rig == null or profile == null:
@@ -2663,7 +2723,8 @@ func _lab_init() -> void:
 	race_hud.lab = base
 	race_hud.lab_defs = CarBuild.default_tune(vehicles[str(cfg["car"])])
 	race_hud.opts_on = true # OPCIONES, ajuste de cámara y controles en la pausa
-	race_hud.lab_on = cfg.get("test", false) == true # los reglajes sólo en el Modo de prueba (en el resto el taller es el del garaje y el de los talleres del mundo)
+	race_hud.lab_on = cfg.get("test", false) == true and (cfg.get("testSetup", {}) as Dictionary).get("lab", true) == true # los reglajes sólo en el Modo de prueba, y sólo si se pidió la ayuda de reglaje (en el resto el taller es el del garaje y el de los talleres del mundo)
+	race_hud.test_on = cfg.get("test", false) == true
 
 ## Rearma el auto con los ajustes nuevos. En drift y en las pruebas libres queda donde estaba; en una carrera vuelve a la parrilla.
 func _lab_apply() -> void:
@@ -2681,8 +2742,8 @@ func _lab_apply() -> void:
 		omega.append(float(ph.wheels[wi].omega))
 	if cam_rig != null:
 		cam_index = cam_rig.index
-	var city_world_on := track is CityTrack and session is CitySession
-	_rebuild_cars(city_world_on) # (mundo abierto: sólo el auto del jugador; lo demás sigue igual)
+	var city_world_on := (track is CityTrack and session is CitySession) or session is TestSession # (mundo abierto y Modo de prueba: sólo el auto del jugador; lo demás —la sesión, la nafta, los otros autos— sigue igual)
+	_rebuild_cars(city_world_on)
 	if keep and not cars.is_empty():
 		cars[0].place(pose[0], pose[1], pose[2])
 		if city_world_on:
@@ -2711,6 +2772,7 @@ func _next_camera() -> void:
 		return
 	cam_rig.next()
 	cam_index = cam_rig.index
+	_guide_camera()
 	if menu_mode and race_hud != null:
 		race_hud.toast("🎥 " + cam_rig.cam_name())
 	else:
@@ -2910,6 +2972,8 @@ func _step_physics(dt: float) -> void:
 	pl.in_handbrake = controls.handbrake
 	if fuel != null and fuel.blocks_throttle():
 		pl.in_throttle = 0.0 # sin nafta (o cargando) el auto no acelera
+	if session is TestSession and session.blocks_throttle():
+		pl.in_throttle = 0.0 # (Modo de prueba) lo mismo: el consumo de nafta se prueba de verdad
 	if menu_mode and session != null and session.state == "run" and assist_view != null:
 		var la := float(_sim_assists()["line"]) / 100.0
 		# con el auto casi parado la ayuda no gira el volante (antes se veía el volante torcido en la largada)

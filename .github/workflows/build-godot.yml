@@ -115,6 +115,8 @@ jobs:
           timeout -k 5 600 godot --headless --script res://tests/release_test.gd
           timeout -k 5 600 godot --headless --script res://tests/menu_ui_test.gd -- --menu --noconsent
           timeout -k 5 150 godot --headless --script res://tests/workshop_ui_test.gd -- --menu --noconsent
+          timeout -k 5 150 godot --headless --script res://tests/test_menu_test.gd -- --menu --noconsent
+          timeout -k 5 300 godot --headless --script res://tests/test_mode_test.gd
           timeout -k 5 150 godot --headless --script res://tests/public_build_test.gd -- --menu --noconsent
           timeout -k 5 60 godot --headless --script res://tests/nick_account_test.gd
           timeout -k 5 90 godot --headless --script res://tests/calib_pick_test.gd

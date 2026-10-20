@@ -80,7 +80,7 @@ func _run() -> void:
 		menu.call("go", "workshop", null, false)
 		await _frames()
 		var buy_found := false
-		var st2: Array = [menu.get("body")]
+		var st2: Array = [menu.get("body"), menu.get("pinned")] # (desde el 20/10/2026 el COMPRAR va en la franja fija de arriba: workshop_ui_test)
 		while not st2.is_empty():
 			var n2: Node = st2.pop_back()
 			if n2 is Button and (n2 as Button).text.begins_with("🛒"):

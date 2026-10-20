@@ -126,7 +126,9 @@ func _init() -> void:
 	# choque (Etapa 11): el jugador golpea a un auto → física temporal; un roce no
 	var victim = null
 	for v in ct.vehicles:
-		if v.conn < 0.0 and not v.crashed and v.v > 3.0:
+		# (un auto que ya va a 14 m/s no «recibe» un golpe de 14 m/s por atrás: la velocidad de acercamiento es cero; se elige uno que ande más despacio.
+		#  Antes se tomaba el primero de la lista y, al cambiar las calles de la ciudad —20/10/2026—, el primero pasó a ser uno que iba a 13,8 m/s)
+		if v.conn < 0.0 and not v.crashed and v.v > 3.0 and v.v < 9.0:
 			victim = v
 			break
 	if victim != null:

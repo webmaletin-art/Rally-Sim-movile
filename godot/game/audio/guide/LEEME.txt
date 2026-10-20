@@ -1,0 +1,4 @@
+Voz de la guía del Modo de prueba.
+Cada línea del guion (godot/game/data/guide_script.json) busca su audio acá: es/<id>.ogg  (o .mp3 / .wav).
+Si no hay audio se muestra sólo el subtítulo. Lista y textos: docs/GUION_VOZ_GUIA.md · qué falta grabar: python3 tools/audio/guide_voice_todo.py
+Para otros idiomas: carpeta en/, pt/, fr/, it/, de/ con los mismos nombres (si falta, se usa la de es/).

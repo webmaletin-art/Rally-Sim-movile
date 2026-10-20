@@ -1,18 +1,18 @@
 # Ficha de Play Store — Dream Racing
 
 Textos para pegar en Play Console → Presencia en Play Store → Ficha principal (y «Agregar traducciones»). Límites de Google: título 30, descripción corta 80, completa 4000.
-Revisada el 13/10/2026 con el juego actual (26 autos, Dream City y su región, Travesía X, copas, cuenta obligatoria con correo). El modo online está CERRADO («próximamente»): no se promete nada que no esté. Como hace falta una cuenta para jugar, Play pide además las credenciales de una cuenta de prueba en «Acceso a la app» (ver docs/PLAY_STORE.md).
+Revisada el 13/10/2026 con el juego actual (28 autos, Dream City y su región, Travesía X, copas, cuenta obligatoria con correo). El modo online está CERRADO («próximamente»): no se promete nada que no esté. Como hace falta una cuenta para jugar, Play pide además las credenciales de una cuenta de prueba en «Acceso a la app» (ver docs/PLAY_STORE.md).
 
 ## Español (idioma predeterminado)
 
 **Título (máx. 30):** Dream Racing: Rally y Drift
 
-**Descripción corta (máx. 80):** 26 autos, mundo abierto, rally, drift y una aventura de 12 etapas.
+**Descripción corta (máx. 80):** 28 autos, mundo abierto, rally, drift y una aventura de 12 etapas.
 
 **Descripción completa (máx. 4000):**
 Dream Racing es un juego de rally, drift y mundo abierto hecho para el celular, con pilotos que viven cada curva. Elegí tu auto, ajustalo hasta el último tornillo y salí a la ruta.
 
-🚗 26 AUTOS CON MODELOS DETALLADOS
+🚗 28 AUTOS CON MODELOS DETALLADOS
 Hatchbacks, clásicos de demolición, pick-ups 4x4, buggies Dakar, rally Grupo B, muscle cars, GT3, superdeportivos, hypercars y camiones 6x6. Cada uno se ve, suena y maneja distinto. Probalos en la tienda antes de comprarlos.
 
 🌆 DREAM CITY Y SU REGIÓN
@@ -52,18 +52,18 @@ Sin publicidad. Para jugar creás una cuenta gratis con tu correo: tus créditos
 **Política de privacidad:** https://webmaletin-art.github.io/Rally-Sim-movile/docs/privacidad.html
 
 ### Notas de la versión 1.0.0
-Primera versión en Google Play: 26 autos, Dream City y su región, aventura de 12 etapas, Travesía X, copas, red de rutas, drift, tienda con prueba de autos y taller con guías fáciles.
+Primera versión en Google Play: 28 autos, Dream City y su región, aventura de 12 etapas, Travesía X, copas, red de rutas, drift, tienda con prueba de autos y taller con guías fáciles.
 
 ## English
 
 **Title:** Dream Racing: Rally & Drift
 
-**Short description:** 26 cars, open world, rally, drift and a 12-stage adventure.
+**Short description:** 28 cars, open world, rally, drift and a 12-stage adventure.
 
 **Full description:**
 Dream Racing is a rally, drift and open-world driving game made for your phone, with drivers who live every corner. Pick your car, tune it down to the last bolt and hit the road.
 
-🚗 26 DETAILED CARS
+🚗 28 DETAILED CARS
 Hatchbacks, demolition classics, 4x4 pick-ups, Dakar buggies, Group B rally cars, muscle cars, GT3, supercars, hypercars and 6x6 trucks. Each one looks, sounds and drives differently. Test drive any car in the shop before you buy it.
 
 🌆 DREAM CITY AND ITS REGION
@@ -101,18 +101,18 @@ No ads. To play you create a free account with your email: your credits, cars an
 **Category:** Games → Racing · **Tags:** racing, rally, drift, open world, simulation, cars
 
 ### Release notes 1.0.0
-First release on Google Play: 26 cars, Dream City and its region, 12-stage adventure, Crossing X, cups, route network, drift, shop with test drives and an easy tuning garage.
+First release on Google Play: 28 cars, Dream City and its region, 12-stage adventure, Crossing X, cups, route network, drift, shop with test drives and an easy tuning garage.
 
 ## Português (Brasil)
 
 **Título:** Dream Racing: Rally e Drift
 
-**Descrição curta:** 26 carros, mundo aberto, rally, drift e uma aventura de 12 etapas.
+**Descrição curta:** 28 carros, mundo aberto, rally, drift e uma aventura de 12 etapas.
 
 **Descrição completa:**
 Dream Racing é um jogo de rally, drift e mundo aberto feito para o celular, com pilotos que vivem cada curva. Escolha seu carro, ajuste cada detalhe e caia na estrada.
 
-🚗 26 CARROS DETALHADOS
+🚗 28 CARROS DETALHADOS
 Hatchbacks, clássicos de demolição, picapes 4x4, buggies Dakar, rally Grupo B, muscle cars, GT3, superesportivos, hipercarros e caminhões 6x6. Cada um tem visual, som e direção diferentes. Teste qualquer carro na loja antes de comprar.
 
 🌆 DREAM CITY E SUA REGIÃO
@@ -151,12 +151,12 @@ Sem anúncios. Para jogar você cria uma conta grátis com seu e-mail: seus cré
 
 **Titre :** Dream Racing : Rallye & Drift
 
-**Description courte :** 26 voitures, monde ouvert, rallye, drift et une aventure en 12 étapes.
+**Description courte :** 28 voitures, monde ouvert, rallye, drift et une aventure en 12 étapes.
 
 **Description complète :**
 Dream Racing est un jeu de rallye, de drift et de monde ouvert pensé pour le téléphone, avec des pilotes qui vivent chaque virage. Choisis ta voiture, règle-la au moindre boulon et prends la route.
 
-🚗 26 VOITURES DÉTAILLÉES
+🚗 28 VOITURES DÉTAILLÉES
 Citadines, classiques de démolition, pick-up 4x4, buggies Dakar, rallye Groupe B, muscle cars, GT3, supercars, hypercars et camions 6x6. Chacune a son look, son son et sa conduite. Essaie n'importe quelle voiture en boutique avant de l'acheter.
 
 🌆 DREAM CITY ET SA RÉGION
@@ -195,12 +195,12 @@ Sans publicité. Pour jouer, tu crées un compte gratuit avec ton e-mail : tes c
 
 **Titolo:** Dream Racing: Rally e Drift
 
-**Descrizione breve:** 26 auto, mondo aperto, rally, drift e un'avventura in 12 tappe.
+**Descrizione breve:** 28 auto, mondo aperto, rally, drift e un'avventura in 12 tappe.
 
 **Descrizione completa:**
 Dream Racing è un gioco di rally, drift e mondo aperto pensato per il telefono, con piloti che vivono ogni curva. Scegli la tua auto, mettila a punto fino all'ultimo bullone e parti.
 
-🚗 26 AUTO DETTAGLIATE
+🚗 28 AUTO DETTAGLIATE
 Utilitarie, classiche da demolizione, pick-up 4x4, buggy Dakar, rally Gruppo B, muscle car, GT3, supercar, hypercar e camion 6x6. Ognuna ha un aspetto, un suono e una guida diversi. Provale in negozio prima di comprarle.
 
 🌆 DREAM CITY E LA SUA REGIONE
@@ -239,12 +239,12 @@ Senza pubblicità. Per giocare crei un account gratuito con la tua e-mail: credi
 
 **Titel:** Dream Racing: Rallye & Drift
 
-**Kurzbeschreibung:** 26 Autos, offene Welt, Rallye, Drift und ein Abenteuer in 12 Etappen.
+**Kurzbeschreibung:** 28 Autos, offene Welt, Rallye, Drift und ein Abenteuer in 12 Etappen.
 
 **Vollständige Beschreibung:**
 Dream Racing ist ein Rallye-, Drift- und Open-World-Spiel fürs Handy, mit Fahrern, die jede Kurve erleben. Wähle dein Auto, tune es bis zur letzten Schraube und ab auf die Straße.
 
-🚗 26 DETAILLIERTE AUTOS
+🚗 28 DETAILLIERTE AUTOS
 Kleinwagen, Demolition-Klassiker, 4x4-Pick-ups, Dakar-Buggys, Gruppe-B-Rallyeautos, Muscle Cars, GT3, Supersportwagen, Hypercars und 6x6-Trucks. Jedes sieht, klingt und fährt anders. Probiere jedes Auto im Shop aus, bevor du es kaufst.
 
 🌆 DREAM CITY UND IHRE REGION

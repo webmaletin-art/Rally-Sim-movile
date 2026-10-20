@@ -11,6 +11,7 @@ const CityHud := preload("res://game/ui/city_hud.gd")
 const NetHud := preload("res://game/ui/net_hud.gd")
 const OnlinePanel := preload("res://game/ui/online_panel.gd")
 const EventsUi := preload("res://game/ui/events_ui.gd")
+const Slides := preload("res://game/ui/guide_slides.gd")
 
 signal resume_pressed
 signal restart_pressed
@@ -36,6 +37,8 @@ signal camadj_changed # se movió una barra del ajuste de cámara (race.gd lo gu
 signal lab_changed # se movió una barra del taller de prueba (race.gd rearma el auto)
 signal lab_reset
 signal sim_changed(id: String) # se eligió otro nivel de simulación desde la pausa (race.gd lo aplica)
+signal guide_say(id: String) # Modo de prueba: la guía hablada (game/audio/guide_voice.gd) dice esta línea
+signal test_exit_pressed # Modo de prueba: «SALIR DE LA PRUEBA» confirmado (race.gd la marca como usada y vuelve al menú)
 var sim_fn: Callable # nivel de simulación actual («arcade», «mid», «pro», «custom»); vacío = acá no se puede cambiar (la Aventura lo fija)
 ## Niveles de simulación (los mismos de la pantalla que se ve antes de largar: menu.gd)
 const SIM_LEVELS := [["arcade", "ARCADE", "ABS, tracción y estabilidad altas y ayuda de trazada fuerte: el auto perdona casi todo."],
@@ -86,6 +89,18 @@ var lab_on := false # ¿hay taller de prueba (reglajes) en la pausa? Sólo el Mo
 var lab: Dictionary = {} # estado del auto de la prueba
 var lab_defs: Dictionary = {}
 var lab_tab: Array = [0]
+## Modo de prueba (20/10/2026): galería de la guía a la derecha de la pausa y de las páginas (reglajes, cámara, nivel de simulación) y salida con doble toque
+var test_on := false
+var gallery: PanelContainer
+var gslides: Control
+var gcount_l: Label
+var gallery_on := true
+var exit_btn: Button
+var exit_armed_t := 0.0
+var _lab_tab_said := -1
+const GALLERY_PAGES := ["lab", "camadj", "sim"]
+const LAB_SLIDES := ["motor", "agarre", "susp", "frenos", "trac", "aero"] # una hoja por solapa del reglaje (lab_panel.gd TABS)
+const LAB_LINES := ["lab_motor", "lab_agarre", "lab_susp", "lab_frenos", "lab_trans", "lab_aero"]
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -260,7 +275,7 @@ func setup(s: RefCounted, c: Dictionary, r: Array) -> void:
 		add_child(city_hud)
 		city_hud.setup(s.track, func(m: String) -> void: toast(m), opts.profile if opts != null else null)
 		pos_l.visible = false
-	elif t == "drift":
+	elif t == "drift" or t == "test":
 		var polys: Array = (s.track.map_lines as Array)
 		minimap.setup_lines(polys, s.track.map_bounds, cols)
 	else:
@@ -328,6 +343,14 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 			lap_l.text += "  ·  🤖 %s %s" % [bn, _pts(s.bot_score)]
 		drift_l.text = ("%s  ·  %d°" % [_pts(s.cur), int(s.angle_deg)]) if (s.cur > 0.0 and s.state == "run") else ""
 		drift_l.add_theme_color_override("font_color", [Color(0.55, 0.85, 1.0), Color(0.55, 0.85, 1.0), Color(1.0, 0.9, 0.4), Color(1.0, 0.7, 0.25), Color(1.0, 0.5, 0.2), Color(1.0, 0.35, 0.3)][clampi(s.mult, 0, 5)])
+	elif t == "test": # Modo de prueba: cronómetro, nafta y puntos / vueltas; nada más (la guía habla por los subtítulos)
+		var hl: Array = s.hud_lines()
+		time_l.text = str(hl[0]) if s.state != "countdown" else "0:00.00"
+		lap_l.text = str(hl[1])
+		drift_l.text = str(hl[2])
+		pos_l.visible = s.show_mult()
+		pos_l.text = "x%d" % s.mult
+		drift_l.add_theme_color_override("font_color", [Color(0.55, 0.85, 1.0), Color(0.55, 0.85, 1.0), Color(1.0, 0.9, 0.4), Color(1.0, 0.7, 0.25), Color(1.0, 0.5, 0.2), Color(1.0, 0.35, 0.3)][clampi(s.mult, 0, 5)])
 	elif t == "city":
 		lap_l.text = "%s · %.1f km" % [Tr.t("DREAM CITY"), s.odo / 1000.0]
 	elif t == "net":
@@ -365,6 +388,8 @@ func update_hud(dt: float, n_cars: int, car_list: Array = []) -> void:
 
 ## Los avisos se apagan solos aunque no haya sesión que actualice el HUD (aventura, pausa)
 func _process(dt: float) -> void:
+	if test_on:
+		_test_process(dt)
 	var nx := toasts.step(dt)
 	if not nx.is_empty():
 		_show_toast(nx)
@@ -436,7 +461,7 @@ func _fill_pause() -> void:
 		if b != null:
 			b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			row.add_child(b)
-	var sz := Vector2(0, 62)
+	var sz := Vector2(0, 54 if test_on else 62) # (la pausa de la prueba tiene más botones: más bajos para que entren sin desplazar)
 	var cam_b := Kit.button("🎥  CÁMARA", func(): camera_pressed.emit(), false, 19, sz)
 	var adj_b: Button = null
 	# configuraciones, reglajes y demás: sólo en la Carrera rápida y las pruebas de vehículos (lab_on); en copas, eventos y Aventura la pausa queda limpia y nada pisa lo elegido al empezar (pedido del dueño, 20/10/2026)
@@ -498,15 +523,41 @@ func _fill_pause() -> void:
 			pair.call(Kit.button(str(mb[0][0]), func(): mode_pressed.emit(str(mb[0][1])), false, 19, sz), Kit.button(str(mb[1][0]), func(): mode_pressed.emit(str(mb[1][1])), false, 19, sz))
 		elif mb.size() == 1:
 			pair.call(Kit.button(str(mb[0][0]), func(): mode_pressed.emit(str(mb[0][1])), false, 19, sz), null)
+	var ed_b: Button = null
 	if opts_on:
-		var ed_b := Kit.button("🕹  MODIFICAR CONTROLES", func(): edit_controls_pressed.emit(), false, 19, sz)
-		ed_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		pause_col.add_child(ed_b)
+		ed_b = Kit.button("🕹  MODIFICAR CONTROLES", func(): edit_controls_pressed.emit(), false, 19, sz)
+	var lb: Button = null
 	if lab_on: # (sólo el Modo de prueba: ahí los reglajes son parte de lo que se prueba)
-		var lb := Kit.button("🔧  REGLAJES  (grip, suspensión, potencia…)", func(): open_page("lab"), false, 19, sz)
-		lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		pause_col.add_child(lb)
-	pair.call(Kit.button("↺  REINICIAR", func(): restart_pressed.emit(), false, 19, sz), Kit.button("✕  SALIR", func(): quit_pressed.emit(), false, 19, sz))
+		lb = Kit.button("🔧  REGLAJES" if test_on else "🔧  REGLAJES  (grip, suspensión, potencia…)", func(): open_page("lab"), false, 19, sz)
+	if test_on and ed_b != null:
+		pair.call(ed_b, lb) # (uno al lado del otro)
+	else:
+		for xb in [ed_b, lb]:
+			if xb != null:
+				(xb as Button).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				pause_col.add_child(xb)
+	if test_on: # Modo de prueba: la guía con dibujos (a la derecha) se muestra u oculta, y para salir hay que tocar dos veces (no se vuelve a entrar)
+		var gal_b := Kit.button(_gallery_label(), Callable(), false, 19, sz)
+		gal_b.pressed.connect(func() -> void:
+			gallery_on = not gallery_on
+			gal_b.text = _gallery_label()
+			Kit.fit_button_now(gal_b))
+		pair.call(gal_b, Kit.button("↺  REINICIAR", func(): restart_pressed.emit(), false, 19, sz))
+		exit_armed_t = 0.0
+		exit_btn = Kit.button("🚪  " + Tr.t("SALIR DE LA PRUEBA"), func() -> void:
+			if exit_armed_t <= 0.0:
+				exit_armed_t = 4.0
+				exit_btn.text = "⚠  " + Tr.t("TOCÁ OTRA VEZ PARA SALIR")
+				Kit.fit_button_now(exit_btn)
+				guide_say.emit("exit_warn")
+				return
+			exit_armed_t = 0.0
+			test_exit_pressed.emit(), false, 19, sz)
+		exit_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pause_col.add_child(exit_btn)
+		_fit_pause_buttons(pause_col)
+	else:
+		pair.call(Kit.button("↺  REINICIAR", func(): restart_pressed.emit(), false, 19, sz), Kit.button("✕  SALIR", func(): quit_pressed.emit(), false, 19, sz))
 	cine_btn.text = "🎬  SALIR DEL MODO CINE" if cine_on else "🎬  MODO CINE"
 
 var cine_on := false
@@ -530,6 +581,8 @@ func set_paused(on: bool) -> void:
 		toast_t = 0.0 if toast_l.text == "" else toast_t
 	pause_box.visible = on
 	pause_box.mouse_filter = Control.MOUSE_FILTER_STOP
+	if on and test_on:
+		guide_say.emit("test_pause")
 	if city_hud != null:
 		city_hud.set_paused(on)
 	if net_hud != null:
@@ -621,10 +674,12 @@ func _opts_go(name: String, arg, push := true) -> void:
 		opts.fx_page(opts_body, opts_col)
 	elif name == "camadj":
 		_cam_page()
+		_gallery_show("camaras")
 	elif name == "lab":
 		_lab_page()
 	elif name == "sim":
 		_sim_page()
+		_gallery_show("volante")
 	elif name == "ayuda":
 		_help_page()
 	else:
@@ -782,6 +837,96 @@ func _lab_page() -> void:
 	opts_title.text = Tr.t("TALLER DE PRUEBA")
 	if lab.is_empty():
 		return
+	if test_on: # la guía: al abrir los reglajes y al cambiar de solapa dice qué hace cada una, y la hoja de la derecha acompaña
+		var tab_i := clampi(int(lab_tab[0]), 0, LAB_SLIDES.size() - 1)
+		_gallery_show(str(LAB_SLIDES[tab_i]))
+		if _lab_tab_said < 0:
+			guide_say.emit("lab_open")
+		if tab_i != _lab_tab_said:
+			_lab_tab_said = tab_i
+			guide_say.emit(str(LAB_LINES[tab_i]))
 	LabPanel.build(opts_body, lab, lab_defs, lab_tab, func() -> void: lab_changed.emit(), func() -> void: _opts_go("lab", null, false), func() -> void:
 		lab_reset.emit()
 		_opts_go("lab", null, false), opts.sfx if opts != null else null)
+
+# ───────────────────────── Modo de prueba: galería de la guía ─────────────────────────
+## Los botones de la pausa de la prueba bajan la letra si el texto no entra (nada cortado)
+func _fit_pause_buttons(n: Node) -> void:
+	if n is Button:
+		Kit.fit_button(n as Button, 11)
+	for c in n.get_children():
+		_fit_pause_buttons(c)
+
+func _gallery_label() -> String:
+	return ("🖼  " + Tr.t("OCULTAR LA GUÍA")) if gallery_on else ("🖼  " + Tr.t("MOSTRAR LA GUÍA"))
+
+## La galería (hojas con dibujos, ◀ ▶ y OCULTAR) a la derecha: se arma la primera vez
+func _ensure_gallery() -> void:
+	if gallery != null:
+		return
+	gallery = Kit.panel(10, Color(0.04, 0.05, 0.08, 0.92))
+	gallery.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
+	gallery.anchor_left = 0.5
+	gallery.offset_left = 8
+	gallery.offset_right = -12
+	gallery.offset_top = 12
+	gallery.offset_bottom = -150 # (abajo quedan los subtítulos de la guía: hasta tres renglones)
+	var col := Kit.vbox(8)
+	gallery.add_child(col)
+	gslides = Slides.new()
+	gslides.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	gslides.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(gslides)
+	var row := Kit.hbox(8)
+	col.add_child(row)
+	var prev := Kit.button("◀", func() -> void:
+		gslides.prev()
+		_gallery_count(), false, 20, Vector2(64, 44))
+	row.add_child(prev)
+	gcount_l = Kit.label("", 16, Kit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	gcount_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gcount_l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(gcount_l)
+	var nxt := Kit.button("▶", func() -> void:
+		gslides.next()
+		_gallery_count(), false, 20, Vector2(64, 44))
+	row.add_child(nxt)
+	var hide_b := Kit.button("✕", func() -> void: gallery_on = false, false, 18, Vector2(52, 44))
+	row.add_child(hide_b)
+	gallery.visible = false
+	add_child(gallery)
+	_gallery_count()
+
+func _gallery_count() -> void:
+	if gslides != null and gcount_l != null:
+		gcount_l.text = "%d / %d · %s" % [gslides.index + 1, gslides.count(), gslides.title_of(gslides.index)]
+
+## La hoja que acompaña a la pantalla que se está viendo (solapa del reglaje, cámara, nivel de simulación)
+func _gallery_show(id: String) -> void:
+	if not test_on:
+		return
+	_ensure_gallery()
+	gslides.show_id(id)
+	_gallery_count()
+
+## ¿Hay que mostrar la galería ahora? En la pausa y en las páginas que tienen su hoja
+func _gallery_context() -> bool:
+	if events_ui != null and events_ui.visible:
+		return false
+	if pause_box.visible:
+		return true
+	return opts_box != null and opts_box.visible and GALLERY_PAGES.has(opts_page)
+
+func _test_process(dt: float) -> void:
+	if gallery == null and (pause_box.visible or (opts_box != null and opts_box.visible)):
+		_ensure_gallery()
+	if gallery != null:
+		var want := gallery_on and not cine_on and _gallery_context()
+		if gallery.visible != want:
+			gallery.visible = want
+	if exit_armed_t > 0.0:
+		exit_armed_t -= dt
+		if exit_armed_t <= 0.0 and exit_btn != null and is_instance_valid(exit_btn):
+			exit_btn.text = "🚪  " + Tr.t("SALIR DE LA PRUEBA")
+			Kit.fit_button_now(exit_btn)
+

@@ -62,6 +62,25 @@ static func fit_label_now(l: Label) -> void:
 	if int(l.get_theme_font_size("font_size")) != sz:
 		l.add_theme_font_size_override("font_size", sz)
 
+## Lo mismo para un botón de una sola línea: la letra baja (hasta min_size) hasta que el texto entra entero entre los márgenes de la caja
+static func fit_button(b: Button, min_size := 10) -> Button:
+	b.set_meta("fit_base", b.get_theme_font_size("font_size"))
+	b.set_meta("fit_min", min_size)
+	b.resized.connect(func() -> void: fit_button_now(b))
+	return b
+
+static func fit_button_now(b: Button) -> void:
+	var w := b.size.x - 32.0 # (14 de margen a cada lado y un poco de aire)
+	if w < 20.0 or b.text == "" or not b.has_meta("fit_base"):
+		return
+	var font: Font = b.get_theme_font("font")
+	var sz: int = int(b.get_meta("fit_base"))
+	var lo: int = int(b.get_meta("fit_min"))
+	while sz > lo and font.get_string_size(b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, sz).x > w:
+		sz -= 1
+	if int(b.get_theme_font_size("font_size")) != sz:
+		b.add_theme_font_size_override("font_size", sz)
+
 static func button(text: String, cb: Callable = Callable(), accent := false, size := 22, min_size := Vector2(0, 56)) -> Button:
 	var b := Button.new()
 	b.text = text
@@ -170,6 +189,7 @@ static func tabs(labels: Array, cur: int, cb: Callable, size := 17, h := 44.0) -
 		var b := button(str(labels[i]), func() -> void: cb.call(idx), cur == i, size, Vector2(0, h))
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.clip_text = true
+		fit_button(b, 10) # (el texto no se corta: «SIMULADOR TOTAL» baja la letra para entrar)
 		row.add_child(b)
 	return row
 

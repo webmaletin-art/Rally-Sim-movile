@@ -23,6 +23,8 @@ const MenuNet := preload("res://game/ui/menu_net.gd")
 const MenuPerf := preload("res://game/ui/menu_perf.gd")
 const MenuStore := preload("res://game/ui/menu_store.gd")
 const MenuChrome := preload("res://game/ui/menu_chrome.gd")
+const MenuTest := preload("res://game/ui/menu_test.gd")
+const GuideVoice := preload("res://game/audio/guide_voice.gd")
 const Release := preload("res://game/data/release.gd")
 const Autotune := preload("res://game/autotune.gd")
 const CalibUi := preload("res://game/ui/calib_ui.gd")
@@ -60,6 +62,8 @@ var world_ui: RefCounted # menu_world.gd: mundo abierto y modo online
 var net_ui: RefCounted # menu_net.gd: la Red de rutas (circular libre o persecución)
 var diag_ui: RefCounted # menu_diag.gd: diagnóstico de rendimiento (registro manual)
 var chrome: RefCounted # menu_chrome.gd: marco del garaje premium (barra superior, riel, carrusel y especificaciones)
+var test_ui: RefCounted # menu_test.gd: MODO DE PRUEBA (guía previa, armado y salida única)
+var _guide: Node # game/audio/guide_voice.gd: la guía hablada (subtítulos + audio si hay), se crea la primera vez que se usa
 var chrome_on := false # la pantalla actual usa el marco (garaje, tienda, taller)
 var view_frac := 0.475 # hasta dónde llega lo que tapa la vista 3D por la izquierda (fracción del ancho)
 var view_top := 0.0 # px que tapa la barra superior
@@ -150,6 +154,8 @@ func _ready() -> void:
 	store.m = self
 	chrome = MenuChrome.new()
 	chrome.m = self
+	test_ui = MenuTest.new()
+	test_ui.m = self
 	_build_world()
 	_build_ui()
 	if showcar != "":
@@ -386,6 +392,15 @@ func request_calibration(back: String) -> void:
 		if back.begins_with("options:"):
 			go("options", back.substr(8)), info, not auto.is_empty(), func() -> void: app.start_calibration(back), Autotune.preset_order(rec))
 
+## La guía hablada del Modo de prueba: se crea la primera vez y vive en el menú (capa por encima de todo). El modo (voz y texto · sólo texto · apagada) viene del perfil.
+func guide_voice() -> Node:
+	if _guide == null or not is_instance_valid(_guide):
+		_guide = GuideVoice.new()
+		_guide.set_mode(str(profile.setting("guideMode")))
+		add_child(_guide)
+		_guide.set_dock("right") # (a la izquierda están los paneles del menú)
+	return _guide
+
 func toast(t: String) -> void:
 	toast_l.text = t
 	toast_t = 3.2
@@ -453,6 +468,8 @@ func go(name: String, arg = null, push := true) -> void:
 	if adv_car_shown and not name.begins_with("adv"):
 		adv_car_shown = false
 		refresh_car()
+	if _guide != null and is_instance_valid(_guide) and not name.begins_with("test_") and name != "options":
+		_guide.stop() # (la guía sólo habla en las pantallas del Modo de prueba)
 	if screen != "" and push and (name != screen or arg != screen_arg):
 		stack.append([screen, screen_arg])
 	screen = name
@@ -561,6 +578,11 @@ func go(name: String, arg = null, push := true) -> void:
 				diag_ui.build(arg)
 		"nick": world_ui.nick_screen()
 		"adventure", "adv_skills", "adv_help", "adv_stages", "adv_start": adventure.build(name, arg)
+		"test_guide", "test_pages", "test_setup":
+			if MenuTest.available(profile):
+				test_ui.build(name, arg)
+			else:
+				_home() # (la prueba se usa una sola vez; sin la configuración gráfica automática todavía no se muestra)
 		_: _home()
 	if chrome_on and screen == name: # (la tienda de la calle abre el concesionario con un go() adentro: ése ya armó su marco)
 		_chrome_finish(name)
@@ -834,9 +856,18 @@ func _home() -> void:
 	advb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(advb)
 	var on_open := Release.online_open(profile)
-	var obn := menu_button("MODO ONLINE", ("con otros jugadores" if Release.pvp_open(profile) else "eventos y ranking · tiempo real pronto") if on_open else "próximamente", func(): go("online"), on_open, true, 20)
+	# MODO DE PRUEBA (pedido del dueño, 20/10/2026): una tercera baldosa al lado de Aventura y Modo online, sólo después de la configuración gráfica automática y hasta que se use (una sola vez)
+	var test_tile := MenuTest.available(profile)
+	var online_sub := "próximamente"
+	if on_open:
+		online_sub = "con otros jugadores" if Release.pvp_open(profile) else ("eventos y ranking" if test_tile else "eventos y ranking · tiempo real pronto")
+	var obn := menu_button("MODO ONLINE", online_sub, func(): go("online"), on_open, true, 20)
 	obn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(obn)
+	if test_tile:
+		var tsb := menu_button("MODO DE PRUEBA", "una sola vez", func(): go("test_guide"), false, true, 20)
+		tsb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top.add_child(tsb)
 	var g := Kit.grid(3, 8, 8)
 	body.add_child(g)
 	var tiles: Array = []
@@ -871,6 +902,8 @@ func _home() -> void:
 			go("perf"), false, 14, Vector2(0, 38)) # sólo en compilaciones de desarrollo
 		pb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		urow.add_child(pb)
+	if MenuTest.take_farewell(profile): # (recién salió de la prueba)
+		guide_voice().say("exit_done", true)
 
 func _done_events() -> int:
 	var n := 0

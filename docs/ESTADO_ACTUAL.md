@@ -3,6 +3,13 @@
 Una sección por sistema, con lo que anda, lo que falta y lo que espera prueba en el teléfono. El detalle técnico vive en el documento de cada sistema (ver `docs/INDICE_TECNICO.md`);
 el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hecho y probado en la computadora · 📱 falta probar en el APK · 🚧 en curso · ⛔ bloqueado.
 
+## Sexta tanda («último retoque», 20/10/2026, [B]) — `docs/REGISTRO_TECNICO.md` → 20/10 [B] sexta tanda
+- ✅📱 **Modo de prueba guiado** (baldosa en el inicio, una sola vez): guía antes de entrar, armado (camioneta, GT, clásico o superdeportivo · nivel de simulación · drift por puntos/libre o carrera por el camino de tierra o entre los edificios · ayuda de reglaje), pista con lomos de burro, punto de nafta y 4 autos haciendo drift; pausa con la guía en dibujos a la derecha y SALIR DE LA PRUEBA con doble toque. **La voz de Claudio es opcional:** sin audios se ve el subtítulo (`docs/GUION_VOZ_GUIA.md`).
+- ✅📱 Pausa: cambiar el nivel de simulación en cualquier modo menos la Aventura; sin «taller de prueba» (queda el del garaje y los talleres del mundo). Volante real en simulación total y PERSONALIZADO.
+- ✅📱 Calles de Dream City: bocas soldadas, cruces a la misma altura, paredes de relleno recortadas, terreno que no tapa el asfalto (`city_streets_test`). Policía con jurisdicción por ciudad y reconocimiento del auto. Taller con COMPRAR fijo arriba y lista que no salta. Cabinas del monoplaza y el buggy.
+- ✅📱 Sin Nitro ni alerones; precios por escalones («cada dos autos, el mismo precio»); migración `20261025120000` con devolución probada en un Postgres local.
+- ✅ Guías nuevas: `docs/GUIA_SQL_SUPABASE.md`, `docs/GUIA_PLAY_CONSOLE_PASO_A_PASO.md`, `docs/QUE_FALTA.md`.
+
 ## Versión candidata (rama ccr-e7ae3f10-45afj2, NO en main) — `docs/VERSION_CANDIDATA.md`
 - ✅📱 Fases 1–5 validadas técnicamente (pruebas de Godot y SQL en GitHub); **ninguna probada en un teléfono**. APK «Dream Racing RC» en la release `godot-apk-rc` (se instala al lado).
 - ✅📱 Fase 5: desafíos del día (LOGROS, 1.ª página), metas de colección X/N, hitos de temporada, horarios rotativos, cacería para principiantes (apagada hasta publicar).

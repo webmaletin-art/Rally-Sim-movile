@@ -1,0 +1,267 @@
+{
+ "version": 1,
+ "narrador": "Claudio",
+ "nota": "Guion de la guía hablada del Modo de prueba. Cada línea se muestra como subtítulo y, si existe el audio res://game/audio/guide/<idioma>/<id>.ogg (o .mp3 / .wav), se reproduce. Sin audio, sólo se ve el texto. Ver docs/GUION_VOZ_GUIA.md.",
+ "lines": [
+  {
+   "id": "welcome",
+   "ctx": "Pantalla de bienvenida (antes de entrar)",
+   "es": "Hola, soy Claudio, tu guía. Este es el modo de prueba: un lugar para conocer el auto, ajustar el reglaje y hacer drift antes de salir al mundo abierto. Podés leer la guía o ir directo a la prueba."
+  },
+  {
+   "id": "guide_pages",
+   "ctx": "Al abrir las hojas de la guía",
+   "es": "Con las flechas pasás las hojas: suspensión, tracción, frenos, cámaras, volante y drift. Cuando quieras, volvé y entrá a la prueba."
+  },
+  {
+   "id": "setup_welcome",
+   "ctx": "Pantalla de armado de la prueba",
+   "es": "Elegí con qué auto vas a probar, el nivel de simulación y qué querés hacer: drift o carrera."
+  },
+  {
+   "id": "car_pickup",
+   "ctx": "Elegir la camioneta",
+   "es": "La camioneta: alta y pesada. Es ideal para sentir la suspensión en los lomos de burro y en la tierra."
+  },
+  {
+   "id": "car_gt",
+   "ctx": "Elegir el GT",
+   "es": "El GT: equilibrado y estable. Un auto rápido de calle para aprender el reglaje."
+  },
+  {
+   "id": "car_classic",
+   "ctx": "Elegir el clásico",
+   "es": "El clásico: poco agarre y mucho carácter. Se desliza fácil, así que es muy divertido para el drift."
+  },
+  {
+   "id": "car_super",
+   "ctx": "Elegir el superdeportivo",
+   "es": "El superdeportivo: muchísima potencia. Con simulación total hay que tratarlo con cuidado."
+  },
+  {
+   "id": "sim_arcade",
+   "ctx": "Elegir Arcade",
+   "es": "Arcade: ABS, control de tracción y estabilidad altos, y el volante gira poco: tres cuartos de vuelta de tope a tope. El auto te perdona casi todo."
+  },
+  {
+   "id": "sim_mid",
+   "ctx": "Elegir Intermedio",
+   "es": "Intermedio: ayudas medias. Un manejo equilibrado, entre el arcade y el simulador."
+  },
+  {
+   "id": "sim_pro",
+   "ctx": "Elegir Simulador total",
+   "es": "Simulador total: sin ayudas, y el volante de la pantalla pide vueltas de verdad, como uno real. Más difícil, pero muy realista."
+  },
+  {
+   "id": "sim_custom",
+   "ctx": "Elegir Personalizado",
+   "es": "Personalizado: elegís cada ayuda y cuánto querés que gire el volante, desde tres cuartos de vuelta hasta tres vueltas de tope a tope."
+  },
+  {
+   "id": "mode_drift",
+   "ctx": "Elegir el modo Drift",
+   "es": "Drift: una plaza grande con conos y cuatro autos haciendo drift solos. Podés sumar puntos o derrapar libre."
+  },
+  {
+   "id": "mode_race",
+   "ctx": "Elegir el modo Carrera",
+   "es": "Carrera: una vuelta contrarreloj por puertas. Elegí el camino de tierra por detrás de la ciudad o la pista entre los edificios."
+  },
+  {
+   "id": "score_points",
+   "ctx": "Drift por puntos",
+   "es": "Con puntos: cada derrape suma según el ángulo y la velocidad, y cuanto más largo, mejor el multiplicador."
+  },
+  {
+   "id": "score_free",
+   "ctx": "Drift libre",
+   "es": "Libre: sin puntos ni apuro. Sólo vos, el auto y el ángulo."
+  },
+  {
+   "id": "loop_dirt",
+   "ctx": "Circuito de tierra",
+   "es": "El camino de tierra: da toda la vuelta por atrás de la ciudad y vuelve al playón por el otro lado."
+  },
+  {
+   "id": "loop_urban",
+   "ctx": "Circuito entre los edificios",
+   "es": "Entre los edificios: una vuelta por las calles de la ciudad, con esquinas cerradas y una rotonda."
+  },
+  {
+   "id": "lab_on",
+   "ctx": "Ayuda de reglaje: sí",
+   "es": "Con la ayuda de reglaje vas a ver el menú de reglajes en la pausa: suspensión, tracción, frenos y más."
+  },
+  {
+   "id": "lab_off",
+   "ctx": "Ayuda de reglaje: no",
+   "es": "Sin ayuda de reglaje el auto va como viene de fábrica. Igual podés cambiar el nivel de simulación desde la pausa."
+  },
+  {
+   "id": "gfx",
+   "ctx": "Botón de calidad gráfica",
+   "es": "Si el juego te anda justo, bajá la calidad gráfica desde acá. Podés volver a medirla cuando quieras."
+  },
+  {
+   "id": "start",
+   "ctx": "Al estar todo elegido",
+   "es": "Cuando estés listo, tocá empezar la prueba. Acordate: se hace una sola vez."
+  },
+  {
+   "id": "test_welcome",
+   "ctx": "Al largar",
+   "es": "Ya estás en la pista. Manejá un rato para entrar en calor. Con la pausa abrís los reglajes y la guía."
+  },
+  {
+   "id": "test_try_drift",
+   "ctx": "Pasaron unos segundos sin derrapar (drift)",
+   "es": "Probá hacer un drift: acelerá, girá el volante y tirá del freno de mano, el botón H, para soltar la cola."
+  },
+  {
+   "id": "test_pause",
+   "ctx": "Al abrir la pausa",
+   "es": "Esta es la pausa de la prueba. Podés cambiar el nivel de simulación, abrir los reglajes, mirar la guía o salir de la prueba."
+  },
+  {
+   "id": "test_drift_first",
+   "ctx": "Primer derrape",
+   "es": "¡Eso es drift! Cuanto más ángulo y más velocidad, más puntos. Si chocás, perdés el derrape."
+  },
+  {
+   "id": "test_bumps",
+   "ctx": "Al llegar a los lomos de burro",
+   "es": "Estos son lomos de burro. Pasalos a distintas velocidades y fijate cómo trabaja la suspensión."
+  },
+  {
+   "id": "test_fuel_corner",
+   "ctx": "Al llegar a la esquina de la nafta",
+   "es": "Esta es la esquina de la nafta. Frená adentro del cuadrado verde y el tanque se carga solo."
+  },
+  {
+   "id": "test_refuel",
+   "ctx": "Empieza a cargar",
+   "es": "Cargando nafta. Quedate quieto un momento."
+  },
+  {
+   "id": "test_fuel_full",
+   "ctx": "Tanque lleno",
+   "es": "Tanque lleno. Ya podés seguir probando."
+  },
+  {
+   "id": "test_fuel_low",
+   "ctx": "Poca nafta",
+   "es": "Te queda poca nafta. Buscá la esquina verde."
+  },
+  {
+   "id": "test_fuel_empty",
+   "ctx": "Sin nafta",
+   "es": "Te quedaste sin nafta. El auto no acelera: llevalo al cuadrado verde o reiniciá desde la pausa."
+  },
+  {
+   "id": "race_start",
+   "ctx": "Largada de la carrera",
+   "es": "Pasá por las puertas en orden. Te marco la próxima con un faro verde. Cada vuelta se mide."
+  },
+  {
+   "id": "test_lap_first",
+   "ctx": "Primera vuelta",
+   "es": "Primera vuelta completa. A ver si la mejorás."
+  },
+  {
+   "id": "test_lap_done",
+   "ctx": "Otras vueltas",
+   "es": "Otra vuelta. Fijate si bajaste el tiempo."
+  },
+  {
+   "id": "cam_onboard",
+   "ctx": "Cámara onboard (casco)",
+   "es": "Esta es la cámara onboard: ves desde el casco del piloto. Es la más realista."
+  },
+  {
+   "id": "cam_chase",
+   "ctx": "Cámaras de persecución",
+   "es": "Cámara de persecución: el auto visto desde atrás. Cambiá la distancia con el botón de cámara."
+  },
+  {
+   "id": "cam_aerial",
+   "ctx": "Cámara aérea",
+   "es": "Cámara aérea: ideal para ver el trazado completo de un derrape."
+  },
+  {
+   "id": "cam_free",
+   "ctx": "Cámara libre",
+   "es": "Cámara libre: movela con el dedo y acercá con dos dedos."
+  },
+  {
+   "id": "cam_rear",
+   "ctx": "Cámara interior",
+   "es": "Cámara interior, atrás del piloto: ves el tablero, el volante y las manos."
+  },
+  {
+   "id": "cam_hood",
+   "ctx": "Cámara de capó",
+   "es": "Cámara de capó: se ve la trompa del auto delante tuyo."
+  },
+  {
+   "id": "cam_bumper",
+   "ctx": "Cámara de paragolpes",
+   "es": "Cámara de paragolpes: la más baja y la que más sensación de velocidad da."
+  },
+  {
+   "id": "lab_open",
+   "ctx": "Al abrir los reglajes",
+   "es": "Acá podés modificar lo que quieras del auto: potencia, agarre, suspensión, frenos, transmisión y aerodinámica. Cada cambio se aplica enseguida: probalo y volvé."
+  },
+  {
+   "id": "lab_motor",
+   "ctx": "Solapa Motor",
+   "es": "Motor: la potencia, el peso y la resistencia al aire. Menos peso y más potencia aceleran más, pero las ruedas patinan."
+  },
+  {
+   "id": "lab_agarre",
+   "ctx": "Solapa Agarre",
+   "es": "Agarre: gomas, presiones y alineación. Más agarre atrás frena el derrape; menos agarre atrás lo facilita."
+  },
+  {
+   "id": "lab_susp",
+   "ctx": "Solapa Suspensión",
+   "es": "Suspensión: la altura, los resortes, los amortiguadores y las barras. Los resortes duros responden rápido; los blandos absorben mejor los lomos de burro."
+  },
+  {
+   "id": "lab_frenos",
+   "ctx": "Solapa Frenos",
+   "es": "Frenos: el reparto entre adelante y atrás, la presión y la dirección. Más freno atrás ayuda a meter el auto de costado."
+  },
+  {
+   "id": "lab_trans",
+   "ctx": "Solapa Transmisión",
+   "es": "Transmisión: cómo se reparte la tracción entre adelante y atrás, el diferencial y la relación final. La tracción trasera es la reina del drift."
+  },
+  {
+   "id": "lab_aero",
+   "ctx": "Solapa Aerodinámica",
+   "es": "Aerodinámica: la carga adelante y atrás. Aprieta el auto al piso a alta velocidad, pero le quita punta."
+  },
+  {
+   "id": "sim_changed",
+   "ctx": "Cambio de nivel de simulación en la pausa",
+   "es": "Cambiaste el nivel de simulación. Se aplica enseguida."
+  },
+  {
+   "id": "wheel_real",
+   "ctx": "Volante real activo",
+   "es": "Con el volante real tenés que girar de verdad con el dedo: hasta tres vueltas de tope a tope."
+  },
+  {
+   "id": "exit_warn",
+   "ctx": "Primer toque en SALIR DE LA PRUEBA",
+   "es": "Si salís de la prueba no podés volver a entrar. Tocá otra vez para confirmar."
+  },
+  {
+   "id": "exit_done",
+   "ctx": "Al salir de la prueba",
+   "es": "Listo, terminaste la prueba. Ahora te espera el mundo abierto. ¡Disfrutalo!"
+  }
+ ]
+}

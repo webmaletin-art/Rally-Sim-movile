@@ -1,6 +1,7 @@
 # Guía simple: subir Dream Racing a Google Play
 
 Pasos en orden, para hacer vos (la parte técnica ya está hecha en el repositorio). Detalle fino en `docs/PLAY_STORE.md`.
+**Versión con clics, pantalla por pantalla: `docs/GUIA_PLAY_CONSOLE_PASO_A_PASO.md`.** Lista de pendientes: `docs/QUE_FALTA.md`. El servidor (SQL): `docs/GUIA_SQL_SUPABASE.md`.
 Tiempo total: unas horas de trámites + **14 días de prueba cerrada** (obligatorio en cuentas personales nuevas).
 
 ## Camino completo desde la versión candidata (16/10/2026)
