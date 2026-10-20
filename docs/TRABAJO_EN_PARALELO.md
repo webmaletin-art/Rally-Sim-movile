@@ -59,6 +59,7 @@ Así el otro lo ve con `git pull` y no se pisan.
 
 | Chat | Sistema / tarea | Archivos | Desde (UTC) |
 |---|---|---|---|
+| B | Quinta tanda (2.º mensaje del dueño del 20/10): versión pública sin modo desarrollador ni «COPIAR REGISTRO» (sólo en el APK RC), la práctica de Carrera rápida en la Aventura no debe pisar ni desbloquear la Aventura de pago, y el nombre del jugador en otro celular (online) | `godot/game/data/release.gd` (`internal()`), `godot/game/ui/menu_about.gd`, `godot/game/ui/options_ui.gd`, `godot/game/ui/menu_garage.gd` (1 línea), `godot/game/app.gd` (1 línea), `godot/game/adventure/adventure.gd`, `godot/game/online/online.gd` (un método que lee el nombre), `godot/game/ui/menu_world.gd` (pantalla del nombre), `.github/workflows/build-godot.yml` (un paso que marca la versión candidata), pruebas, docs | 20/10 UTC |
 
 ## 5. Avisos para el otro chat
 
