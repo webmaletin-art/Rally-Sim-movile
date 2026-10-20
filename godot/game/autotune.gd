@@ -10,7 +10,7 @@ extends RefCounted
 const FrameRes := preload("res://game/ui/frame_res.gd")
 const Tr := preload("res://game/i18n/tr.gd")
 
-const VERSION := 3 # sube cuando una actualización grande justifique volver a calibrar (2: optimización automática por calidades; 3: + opción 60 FPS y recomendada ≥ 40 FPS, 15/10/2026)
+const VERSION := 4 # sube cuando una actualización grande justifique volver a calibrar (2: optimización automática por calidades; 3: + opción 60 FPS y recomendada ≥ 40 FPS, 15/10/2026; 4: medición sin tirones sueltos, mínimo de 36 FPS y un poco de perdón, 20/10/2026)
 const TARGET_FPS := 60.0
 const SETTLE_S := 2.5 # lo que sigue a cada cambio no cuenta (se rearman cuadras, compila el shader…)
 const MEASURE_S := 5.0
@@ -58,9 +58,9 @@ static func _gpu_tier(gpu: String) -> int:
 		var m2 := re.search(gpu)
 		if m2 != null:
 			var g := int(m2.get_string(1))
-			if g >= 610 or g in [77, 78, 710, 715, 720]:
+			if g >= 610 or g in [76, 77, 78, 710, 715, 720]:
 				return 2
-			return 1 if g >= 72 else 0
+			return 1 if (g >= 72 or g in [57, 68]) else 0 # (la G57 y la G68 son de gama media: antes quedaban en lo más bajo)
 		return 0 # Mali-T y los viejos
 	if "powervr" in gpu or "videocore" in gpu or "vivante" in gpu or "tegra" in gpu:
 		return 0
@@ -170,17 +170,30 @@ static func target_fps() -> float:
 
 # ───────────────────────── medición y búsqueda ─────────────────────────
 ## Promedio de cuadros por segundo y «piso» (el 5 % peor de los cuadros) de una lista de duraciones de cuadro (s)
+## [B] 20/10/2026 (pedido del dueño: «la configuración automática elige muy baja, no perdona nada»): un par de tirones aislados (compilar un shader, subir una cuadra, el sistema operativo)
+## ya no bajan el promedio: los cuadros de más de 3 veces la mediana (y más de 100 ms) no cuentan, hasta un 5 % de los cuadros. Si hay más de un 5 % de tirones no es ruido: cuentan todos.
 static func stats(frame_times: PackedFloat32Array) -> Dictionary:
 	var n := frame_times.size()
 	if n < 3:
 		return {"avg": 0.0, "low": 0.0, "n": n}
-	var sum := 0.0
-	for t in frame_times:
-		sum += t
 	var sorted := frame_times.duplicate()
 	sorted.sort()
+	var cut := maxf(3.0 * float(sorted[n / 2]), 0.1)
+	var sum := 0.0
+	var kept := 0
+	for t in frame_times:
+		if t <= cut:
+			sum += t
+			kept += 1
+	var spikes := n - kept
+	if spikes > int(0.05 * float(n)):
+		sum = 0.0
+		for t in frame_times:
+			sum += t
+		kept = n
+		spikes = 0
 	var p95: float = sorted[mini(n - 1, int(ceil(0.95 * float(n))) - 1)]
-	return {"avg": float(n) / maxf(sum, 0.0001), "low": 1.0 / maxf(p95, 0.0001), "n": n}
+	return {"avg": float(kept) / maxf(sum, 0.0001), "low": 1.0 / maxf(p95, 0.0001), "n": n, "spikes": spikes}
 
 ## ¿Estable? promedio cerca del objetivo Y sin caídas frecuentes (no basta un pico)
 static func is_stable(m: Dictionary, target: float) -> bool:
@@ -301,14 +314,15 @@ const K60_MAX := 0.50
 ## Optimización automática (15/10/2026, 2.ª versión, pedido del dueño: «tiene que ser más potente: primero la recomendada, que corra a más de 40 FPS;
 ## también una opción de 60 FPS que reduzca todo hasta correr a 60 aunque se vea pixelado; después las otras con sus FPS. Entre 40 y 60 vamos a estar»).
 ## Recomendada = la calidad más alta que da ≥ REC_FPS de promedio sin tirones (el 5 % peor ≥ 60 % de eso). Con pantallas de menos de 60 Hz se escala.
-const REC_FPS := 40.0
+const REC_FPS := 36.0 # (antes 40: se medía el peor lugar de la ciudad, y en el resto del mapa se juega con bastante más)
+const FORGIVE := 0.9 # una calidad que llega al 90 % del mínimo «casi llega»: si la de abajo sí llegó, se recomienda la de arriba (20/10/2026: «que sea un poco flexible»)
 const FLUID_AVG := 0.75 # (la versión anterior: la usan pruebas y diagnósticos viejos)
 const FLUID_LOW := 0.5
 
 static func is_fluid(m: Dictionary, target: float) -> bool:
 	return float(m.get("avg", 0.0)) >= FLUID_AVG * target and float(m.get("low", 0.0)) >= FLUID_LOW * target
 
-## Búsqueda: ALTA → (≥ 40) ULTRA / (no) NORMAL → (no) BAJA; después la opción 60 FPS: con lo más bajo medido se calcula la escala 3D que daría
+## Búsqueda: ALTA → (≥ 36) ULTRA / (no) NORMAL → (no) BAJA; después la opción 60 FPS: con lo más bajo medido se calcula la escala 3D que daría
 ## 60 (los FPS suben como baja la cantidad de píxeles) y se mide; si no llega, se baja una vez más (tope K60_MIN), y si bajar píxeles no sirve
 ## (el límite es el procesador) se apaga la vida del mundo (tránsito y peatones). 7 mediciones como mucho (~55 s; lo normal, 3 a 5).
 class PresetSearch extends RefCounted:
@@ -322,9 +336,11 @@ class PresetSearch extends RefCounted:
 	func _init(p_target: float) -> void:
 		target = p_target
 	func rec_min() -> float:
-		return minf(40.0, target * 0.67)
-	func ok(m: Dictionary) -> bool: # corre a ≥ 40 FPS sin tirones
+		return minf(REC_FPS, target * 0.6)
+	func ok(m: Dictionary) -> bool: # corre a ≥ 36 FPS sin tirones
 		return float(m.get("avg", 0.0)) >= rec_min() and float(m.get("low", 0.0)) >= rec_min() * 0.6
+	func near(m: Dictionary) -> bool: # casi llega (≥ 90 % del mínimo)
+		return float(m.get("avg", 0.0)) >= rec_min() * FORGIVE and float(m.get("low", 0.0)) >= rec_min() * 0.5
 	func fluid(m: Dictionary) -> bool: # (compatibilidad)
 		return ok(m)
 	func next() -> int:
@@ -371,12 +387,18 @@ class PresetSearch extends RefCounted:
 			_base = la
 			n60 = 1
 			_queue = [0]
-	## La recomendada: la más alta que corre a ≥ 40 FPS; si ninguna llega, la 60 FPS (la más fluida)
+	## La recomendada: la más alta que corre a ≥ 36 FPS (y si la que sigue casi llegó, esa: un poco de perdón); si ninguna llega ni casi, la 60 FPS (la más fluida)
 	func recommended() -> int:
 		var best := 0
 		for i in probes:
 			if int(i) > 0 and ok(probes[i]) and int(i) > best:
 				best = int(i)
+		if best > 0 and probes.has(best + 1) and near(probes[best + 1]):
+			best += 1
+		elif best == 0:
+			for i in probes:
+				if int(i) > 0 and near(probes[i]) and int(i) > best:
+					best = int(i)
 		return best
 	## FPS de cada calidad: lo medido, o estimado desde la medición más parecida (por cantidad de píxeles; nunca más que el objetivo)
 	func estimate(i: int) -> float:

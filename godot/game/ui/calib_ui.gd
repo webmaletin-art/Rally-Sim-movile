@@ -63,7 +63,7 @@ static func pick(parent: Node, presets: Array, suggested: int, on_pick: Callable
 			box.add_child(Kit.label(str(info[i]), 15, Kit.GOLD if i == suggested else Kit.TEXT))
 		grid.add_child(box)
 	if measured:
-		col.add_child(Kit.wrap(Tr.t("Medimos el rendimiento en Dream City: la recomendada es la más linda que corre a 40 FPS o más en este teléfono; «60 FPS» baja todo hasta correr a 60."), 15, Kit.TEXT, 860))
+		col.add_child(Kit.wrap(Tr.t("Medimos el rendimiento en el centro de Dream City, el lugar más pesado: la recomendada es la más linda que corre fluida en este teléfono (en el resto del mapa anda mejor); «60 FPS» baja todo hasta correr a 60."), 15, Kit.TEXT, 860))
 	col.add_child(Kit.wrap(Tr.t("Podés cambiarla cuando quieras en OPCIONES → GRÁFICOS (también cada opción por separado)."), 15, Kit.MUTED, 860))
 	if on_measure.is_valid():
 		col.add_child(Kit.button("📏 " + Tr.t("MEDIR AUTOMÁTICAMENTE"), func() -> void:

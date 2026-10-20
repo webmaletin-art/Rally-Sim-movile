@@ -23,6 +23,7 @@ var result := {}
 var _t := 0.0
 var _rung := -1
 var _times := PackedFloat32Array()
+var _quiet := 0.0 # segundos seguidos sin un cuadro lento (ver «settle»)
 var _n_probe := 0
 var _kept: Dictionary = {} # los ajustes del jugador antes de calibrar (si se cierra sin terminar, el perfil guardado no se tocó)
 
@@ -48,7 +49,10 @@ func _process(dt: float) -> void:
 					_setup()
 		"settle":
 			_t += dt
-			if _t >= (Autotune.FIRST_SETTLE_S if _n_probe <= 1 else Autotune.SETTLE_S):
+			# la estabilización espera a que pasen los tirones del cambio (el shader nuevo, las cuadras que se rearman): se mide recién con 1 s sin ningún cuadro lento (hasta 4 s de más)
+			_quiet = 0.0 if dt > 0.12 else _quiet + dt
+			var base_s: float = Autotune.FIRST_SETTLE_S if _n_probe <= 1 else Autotune.SETTLE_S
+			if _t >= base_s and (_quiet >= 1.0 or _t >= base_s + 4.0):
 				_t = 0.0
 				_times = PackedFloat32Array()
 				state = "measure"
@@ -90,6 +94,7 @@ func _start_probe(r: int) -> void:
 	_rung = r
 	_n_probe += 1
 	_t = 0.0
+	_quiet = 0.0
 	state = "settle"
 	var P: Dictionary = searcher.preset(r) # (la 60 FPS con la escala 3D que calculó la búsqueda)
 	var st: Dictionary = race.profile.d["settings"]

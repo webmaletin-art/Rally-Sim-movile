@@ -90,6 +90,18 @@ func _init() -> void:
 	var jm := Autotune.stats(jerky)
 	check(float(jm["avg"]) > 50.0 and not Autotune.is_stable(jm, 60.0), "promedio alto con caídas frecuentes (piso %d) → NO estable" % int(float(jm["low"])))
 	check(not Autotune.is_stable({"avg": 56.0, "low": 50.0}, 60.0) and Autotune.is_stable({"avg": 58.0, "low": 50.0}, 60.0), "margen: 58 FPS parejos sí, 56 no")
+	# tirones sueltos (compilar un shader, subir una cuadra): no bajan el promedio; muchos tirones sí (20/10/2026: «la automática no perdona nada»)
+	var rare := PackedFloat32Array()
+	for i in 300:
+		rare.append(0.4 if i in [40, 120, 210] else 1.0 / 60.0)
+	var rm := Autotune.stats(rare)
+	check(float(rm["avg"]) > 58.0 and int(rm["spikes"]) == 3 and Autotune.is_stable(rm, 60.0), "3 cuadros de 400 ms entre 300 no cuentan: %.1f FPS (antes %.1f)" % [float(rm["avg"]), 300.0 / (297.0 / 60.0 + 1.2)])
+	var many := PackedFloat32Array()
+	for i in 300:
+		many.append(0.4 if i % 15 == 0 else 1.0 / 60.0)
+	var mm := Autotune.stats(many)
+	check(float(mm["avg"]) < 30.0 and int(mm["spikes"]) == 0 and not Autotune.is_stable(mm, 60.0), "un tirón cada 15 cuadros es tirón de verdad: cuenta todo (%.1f FPS)" % float(mm["avg"]))
+	check(Autotune._gpu_tier("mali-g57 mc2") == 1 and Autotune._gpu_tier("mali-g68") == 1, "la Mali-G57 y la G68 (gama media) ya no quedan en lo más bajo")
 
 	# búsqueda del perfil (pocas pruebas, estable, sin volver a subir)
 	var strong := _phone([55, 60, 60, 60, 60, 60, 60, 61])
@@ -144,11 +156,14 @@ func _init() -> void:
 	var cases := [
 		[{3: 58.0, 4: 50.0}, 4, [3, 4]], # ULTRA corre a 50: recomendada ULTRA; ALTA ya da 58 → la 60 FPS no se mide
 		[{3: 58.0, 4: 30.0}, 3, [3, 4]],
-		[{3: 35.0, 2: 50.0, 0: [61.0]}, 2, [3, 2, 0]],
-		[{3: 30.0, 2: 33.0, 1: 41.0, 0: [62.0]}, 1, [3, 2, 1, 0]],
-		[{3: 20.0, 2: 22.0, 1: 25.0, 0: [40.0, 52.0, 58.0]}, 0, [3, 2, 1, 0, 0, 0], false], # ninguna llega a 40: recomendada la 60 FPS, que se baja una vez más y después apaga el tránsito
+		[{3: 35.0, 2: 50.0, 0: [61.0]}, 3, [3, 2, 0]], # ALTA da 35: casi llega a 36, se perdona → ALTA (20/10/2026: «la automática no perdona nada»)
+		[{3: 26.0, 2: 50.0, 0: [61.0]}, 2, [3, 2, 0]], # ALTA da 26: lejos de llegar → NORMAL
+		[{3: 26.0, 2: 28.0, 1: 41.0, 0: [62.0]}, 1, [3, 2, 1, 0]],
+		[{3: 30.0, 2: 33.0, 1: 41.0, 0: [62.0]}, 2, [3, 2, 1, 0]], # NORMAL da 33: casi llega → NORMAL (y no BAJA)
+		[{3: 28.0, 2: 31.0, 1: 34.0, 0: [58.0]}, 1, [3, 2, 1, 0]], # ninguna llega, BAJA casi: se recomienda BAJA y no la pixelada 60 FPS
+		[{3: 20.0, 2: 22.0, 1: 25.0, 0: [40.0, 52.0, 58.0]}, 0, [3, 2, 1, 0, 0, 0], false], # ninguna llega a 36: recomendada la 60 FPS, que se baja una vez más y después apaga el tránsito
 		[{3: 20.0, 2: 20.0, 1: 20.0, 0: [20.0, 58.0]}, 0, [3, 2, 1, 0, 0], false], # el límite es el procesador: bajar píxeles no sirve → sin tránsito
-		[{3: 30.0, 2: 33.0, 1: 41.0, 0: [50.0, 58.0]}, 1, [3, 2, 1, 0, 0], true], # bajando la escala llega: el tránsito queda
+		[{3: 26.0, 2: 28.0, 1: 41.0, 0: [50.0, 58.0]}, 1, [3, 2, 1, 0, 0], true], # bajando la escala llega: el tránsito queda
 	]
 	for cs in cases:
 		var ps = Autotune.PresetSearch.new(60.0)
