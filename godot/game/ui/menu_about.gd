@@ -164,8 +164,10 @@ func _hub() -> void:
 	m.set_title("ACERCA DE")
 	var big := Kit.label("DREAM RACING", 34, Kit.ACCENT)
 	m.body.add_child(big)
-	var ver := Kit.button("Versión %s" % version_text(), func() -> void: _tap_version(), false, 16, Vector2(0, 40))
-	m.body.add_child(ver)
+	if Release.internal():
+		m.body.add_child(Kit.button("Versión %s" % version_text(), func() -> void: _tap_version(), false, 16, Vector2(0, 40))) # (siete toques = modo desarrollador: sólo en la versión candidata)
+	else:
+		m.body.add_child(Kit.label("Versión %s" % version_text(), 16, Kit.MUTED)) # la versión pública no trae modo desarrollador
 	if Release.dev(m.profile):
 		m.body.add_child(Kit.label("🛠 Modo desarrollador activo", 15, Kit.GREEN))
 	var g := Kit.grid(2, 8, 8)
@@ -175,9 +177,10 @@ func _hub() -> void:
 		g.add_child(m.tile(str(it[0]), str(it[1]), "", func() -> void:
 			page = 0
 			m.go(dest), false, 78.0))
-	g.add_child(m.tile("🪲", "COPIAR REGISTRO", "", func() -> void: # el registro de la sesión anterior: si el juego se cerró solo, se pega para ver qué pasó justo antes
-		CrashLog.copy_to_clipboard()
-		m.toast(tr("Registro copiado: pegalo en un mensaje")), false, 78.0))
+	if Release.internal(): # sólo en la versión candidata (pedido del dueño, 20/10/2026): la versión pública no trae «copiar registro»
+		g.add_child(m.tile("🪲", "COPIAR REGISTRO", "", func() -> void: # el registro de la sesión anterior: si el juego se cerró solo, se pega para ver qué pasó justo antes
+			CrashLog.copy_to_clipboard()
+			m.toast(tr("Registro copiado: pegalo en un mensaje")), false, 78.0))
 	if Release.dev(m.profile):
 		g.add_child(m.tile("🔓", "APAGAR MODO DEV", "", func() -> void:
 			Release.deactivate_dev(m.profile)
@@ -197,19 +200,21 @@ func _hub() -> void:
 		gw.add_child(wb)
 
 func _tap_version() -> void:
+	if not Release.internal():
+		return # (la versión pública no tiene modo desarrollador)
 	var now := Time.get_ticks_msec() / 1000.0
 	if now - tap_t > 1.6:
 		taps = 0
 	tap_t = now
 	taps += 1
-	if taps >= 7 and not Release.dev(m.profile) and not Release.store():
+	if taps >= 7 and not Release.dev(m.profile):
 		Release.activate_dev(m.profile)
 		m.refresh_car()
 		m.update_credits()
 		m.sfx.play("buy")
 		m.toast(tr("🛠 Modo desarrollador: todo desbloqueado"))
 		m.go("about", null, false)
-	elif taps >= 3 and not Release.dev(m.profile) and not Release.store():
+	elif taps >= 3 and not Release.dev(m.profile):
 		m.toast(tr("Faltan %d toques…") % (7 - taps))
 
 ## Texto en secciones con paginador (n secciones por página)

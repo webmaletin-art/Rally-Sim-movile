@@ -653,7 +653,7 @@ func _ws_part_grid(id: String, st: Dictionary, cat: String) -> void:
 		m.sfx.play("click")
 		_after_change(), cur == "", true, 64.0, 16)
 	g.add_child(stock)
-	for pid in PartCatalog.parts_in(cat, bool(m.profile.d["settings"].get("dev", false))):
+	for pid in PartCatalog.parts_in(cat, Release.dev(m.profile)):
 		var p := PartCatalog.part(str(pid))
 		var ok: bool = bool(VehicleCustomization.can_install(str(pid), id, ctx["V"], ctx["meta"])["ok"])
 		var eq: bool = cur == str(pid)

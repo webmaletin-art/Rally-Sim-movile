@@ -7,6 +7,7 @@ const Lens := preload("res://game/fx/lens.gd")
 const Autotune := preload("res://game/autotune.gd")
 const FrameRes := preload("res://game/ui/frame_res.gd")
 const CrashLog := preload("res://game/diag/crash_log.gd")
+const Release := preload("res://game/data/release.gd")
 
 signal changed(key: String)
 
@@ -153,7 +154,7 @@ func options_page(body: VBoxContainer, cat = null) -> void:
 				changed.emit("retune"), false, 15, Vector2(0, 50)))
 	if cat == "inclinacion":
 		_accel_block(body)
-	if cat == "sonido": # también en Acerca de: si el juego se cerró solo, se copia lo que pasó justo antes y se pega en un mensaje
+	if cat == "sonido" and Release.internal(): # también en Acerca de: si el juego se cerró solo, se copia lo que pasó justo antes y se pega en un mensaje (sólo en la versión candidata, no en la pública)
 		var cb := Kit.button("🪲 " + tr("COPIAR REGISTRO"), Callable(), false, 15, Vector2(0, 50))
 		cb.pressed.connect(func() -> void:
 			sfx.play("click")

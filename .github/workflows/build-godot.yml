@@ -9,6 +9,7 @@ name: Build Godot APK
 # RAMA DE LA VERSIÓN CANDIDATA ccr-e7ae3f10-45afj2 (15/10/2026): correcciones de la auditoría (docs/AUDITORIA_CICLO_DE_JUEGO.md). Publica APARTE: contenido en
 # «godot-content-4.7-rc» (los autos se reusan de «godot-content-4.7» si no cambiaron) y el APK en «godot-apk-rc»; la app se instala AL LADO de la normal
 # («Dream Racing RC», com.gskorp.rallygodot.rc). No pisa el APK ni el contenido de main. Al fusionar a main hay que deshacer estos 4 cambios (rama, CONTENT_TAG, release y CHANNEL de boot.gd, paquete).
+# (El paso «Marcar la versión candidata» —modo desarrollador y «copiar registro» sólo en la RC— NO hay que deshacerlo: no corre en main.)
 on:
   push:
     branches: [ccr-e7ae3f10-45afj2]
@@ -111,6 +112,8 @@ jobs:
           timeout -k 5 600 godot --headless --script res://tests/paper_test.gd
           timeout -k 5 600 godot --headless --script res://tests/release_test.gd
           timeout -k 5 600 godot --headless --script res://tests/menu_ui_test.gd -- --menu --noconsent
+          timeout -k 5 150 godot --headless --script res://tests/public_build_test.gd -- --menu --noconsent
+          timeout -k 5 60 godot --headless --script res://tests/nick_account_test.gd
           timeout -k 5 600 godot --headless --script res://tests/map_data_test.gd
           timeout -k 5 600 godot --headless --script res://tests/custom_route_test.gd
           timeout -k 5 900 godot --headless --script res://tests/map_v3_test.gd
@@ -233,6 +236,14 @@ jobs:
           sed -i "s/^version\/name=.*/version\/name=\"0.${GITHUB_RUN_NUMBER}\"/" export_presets.cfg
           grep -n "^version/" export_presets.cfg
           echo "r${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}" > game/build_id.txt
+
+      - name: Marcar la versión candidata (el modo desarrollador y «copiar registro» existen sólo acá)
+        if: github.ref != 'refs/heads/main'
+        working-directory: godot
+        run: |
+          # (20/10/2026, pedido del dueño) La versión pública —main y Google Play— no puede traer modo desarrollador ni «COPIAR REGISTRO»: sólo «Dream Racing RC». Release.internal() lee este archivo;
+          # NO está en el repositorio y este paso no corre en main, así que aunque esta rama se fusione a main la versión pública nunca lo trae (el AAB de Play ni siquiera pasa por este flujo).
+          echo "rc" > game/build_channel.txt
 
       - name: Exportar APK liviano y contenido (content.pck + cars.pck)
         working-directory: godot

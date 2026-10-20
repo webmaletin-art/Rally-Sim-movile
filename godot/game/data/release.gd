@@ -1,6 +1,7 @@
 extends RefCounted
 ## Qué incluye la versión pública del juego y qué queda libre en el «modo desarrollador» (del dueño, para probar sin perder el
-## progreso real). El modo desarrollador se activa en Opciones → Acerca de (tocar siete veces el número de versión).
+## progreso real). El modo desarrollador se activa en Opciones → Acerca de (tocar siete veces el número de versión) y SÓLO existe en la versión candidata
+## («Dream Racing RC») y en el editor: la versión pública (main y Google Play) no lo trae (ver internal()).
 
 ## Etapas de la aventura gratis (el resto y las copas Continental y Leyenda se desbloquean con el paquete de aventura)
 const ADVENTURE_STAGES := 5 # (20/10/2026, pedido del dueño: 5 etapas libres; eran 3)
@@ -14,6 +15,29 @@ const PREMIUM_CARS := {"truck": "car_truck", "gt3": "car_gt3", "hyper": "car_hyp
 ## Versión de Google Play (se compila con la característica «store»): sin modo desarrollador, sin prueba de rendimiento y sin descargas
 static func store() -> bool:
 	return OS.has_feature("store")
+
+## Archivo que marca la versión candidata: lo escribe el flujo build-godot.yml (paso «Marcar la versión candidata») SÓLO en las ramas que no son main, y no está en el repositorio.
+## Es un .txt para que el paquete lo incluya (filtro de inclusión de los presets de exportación, igual que build_id.txt).
+const CHANNEL_FILE := "res://game/build_channel.txt"
+
+## Sólo para pruebas: simula la versión pública aunque se corra en el editor (tests/public_build_test.gd)
+static var test_public := false
+
+## ¿Compilación INTERNA? El editor y la versión candidata «Dream Racing RC». Sólo ahí existen el modo desarrollador y «COPIAR REGISTRO» (pedido del dueño, 20/10/2026: la versión pública
+## —main y Google Play— no puede traer nada raro). La versión pública queda así aunque la rama de la candidata se fusione a main: el marcador no está en el repositorio y el flujo no lo escribe en main.
+static func internal() -> bool:
+	return not test_public and internal_for(store(), OS.has_feature("editor"), _is_marked())
+
+static var _marked := -1 # -1 = todavía no se miró el archivo (se mira una sola vez: dev() se llama desde muchos lados)
+
+static func _is_marked() -> bool:
+	if _marked < 0:
+		_marked = 1 if FileAccess.file_exists(CHANNEL_FILE) else 0
+	return _marked == 1
+
+## La regla de internal() con los tres datos a la vista (se prueba sin exportar nada)
+static func internal_for(is_store: bool, in_editor: bool, marked: bool) -> bool:
+	return not is_store and (in_editor or marked)
 
 ## Herramientas técnicas (📊 diagnóstico de rendimiento, RENDIMIENTO, capturas de FPS): sólo en compilaciones de desarrollo, nunca en el juego final
 static func tools() -> bool:
@@ -59,7 +83,7 @@ static func login_wall(profile: RefCounted, online: Node, required := ACCOUNT_RE
 const IAP_FULL := true
 
 static func dev(profile: RefCounted) -> bool:
-	return not store() and profile != null and profile.setting("dev") == true
+	return internal() and profile != null and profile.setting("dev") == true
 
 static func _iap(profile: RefCounted, id: String) -> bool:
 	return profile != null and ((profile.d.get("iap", {}) as Dictionary).get(id, false) == true)

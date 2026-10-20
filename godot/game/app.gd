@@ -184,7 +184,7 @@ func _on_race_finished(result: Dictionary) -> void:
 
 ## Manda la marca al ranking online (sin esperar la respuesta ni molestar si falla). No cuenta el modo desarrollador, las pruebas de autos ni la aventura.
 func _submit_online(cfg: Dictionary, result: Dictionary) -> void:
-	if online == null or not online.enabled() or profile.setting("dev") == true:
+	if online == null or not online.enabled() or Release.dev(profile):
 		return
 	var board: String = Online.board_for(str(result.get("type", "")), cfg)
 	if board == "":
