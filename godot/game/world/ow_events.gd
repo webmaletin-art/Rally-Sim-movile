@@ -217,16 +217,44 @@ static func _picada(region, ni: int, used: Dictionary, cand: Array) -> Dictionar
 			s += 120.0
 	return {}
 
-## Dream City: tres circuitos de dos vueltas por las calles (puntos fijos alrededor de la plaza, el recorrido lo da el GPS de la ciudad)
+## Dream City: tres circuitos de dos vueltas por las calles. Cada uno es una lista de CRUCES [calle, calle] (el cruce de dos calles, no un punto cualquiera) unidos por el GPS de la ciudad.
+## Antes los puntos eran coordenadas sueltas, a 50 m de cualquier cruce: el recorrido salía del anillo por una calle del costado hasta el punto y volvía por la misma (una «púa» en cada punto: el
+## mapa y el GPS se veían mal, reporte del dueño del 20/10/2026). Con cruces exactos el recorrido es un lazo limpio: el anillo Calle 20 entero (Centro) y un sector de anillos y avenidas al sur
+## (Puerto: entre las avenidas 2 y 4, hacia la costa) y al norte (Norte: entre las avenidas 6 y 8).
 const CIRCUITS := [
-	["Circuito Centro", [Vector2(0.0, -185.0), Vector2(208.0, -15.0), Vector2(-10.0, 177.0), Vector2(-142.0, -105.0)]],
-	["Circuito del Puerto", [Vector2(104.0, -135.0), Vector2(193.0, 215.0), Vector2(-101.0, 137.0)]],
-	["Circuito Norte", [Vector2(12.0, -560.0), Vector2(-381.0, -420.0), Vector2(-142.0, -105.0), Vector2(8.0, -185.0)]],
+	["Circuito Centro", [["Calle 20", "Avenida 1"], ["Calle 20", "Avenida 3"], ["Calle 20", "Avenida 5"], ["Calle 20", "Avenida 7"]]],
+	["Circuito del Puerto", [["Calle 20", "Avenida 2"], ["Calle 40", "Avenida 2"], ["Calle 40", "Avenida 4"], ["Calle 20", "Avenida 4"]]],
+	["Circuito Norte", [["Calle 20", "Avenida 6"], ["Calle 40", "Avenida 6"], ["Calle 40", "Avenida 8"], ["Calle 20", "Avenida 8"]]],
 ]
+
+## Dónde se cruzan dos calles de la ciudad (por nombre): el cruce más cercano al centro si hubiera más de uno; Vector2.INF si no se cruzan
+static func _crossing(city, a: String, b: String) -> Vector2:
+	var ia := -1
+	var ib := -1
+	for i in city.roads.size():
+		var nm := str((city.roads[i] as Dictionary)["name"])
+		if nm == a and ia < 0:
+			ia = i
+		if nm == b and ib < 0:
+			ib = i
+	var best := Vector2.INF
+	for j in city.junctions:
+		var rs: Array = j["roads"]
+		if rs.has(ia) and rs.has(ib):
+			var q: Vector2 = j["pos"]
+			if best == Vector2.INF or q.length() < best.length():
+				best = q
+	return best
 
 static func _city_events(gps, out: Array) -> void:
 	for ci in CIRCUITS.size():
-		var wp: Array = CIRCUITS[ci][1]
+		var wp: Array = []
+		for cr in (CIRCUITS[ci][1] as Array):
+			var q := _crossing(gps.city, str(cr[0]), str(cr[1]))
+			if q != Vector2.INF:
+				wp.append(q)
+		if wp.size() < 3:
+			continue
 		var pts := PackedVector2Array()
 		var total := 0.0
 		var ok := true

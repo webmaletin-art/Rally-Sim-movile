@@ -44,6 +44,7 @@ func _init() -> void:
 		var grid := SC.grid_of(pts)
 		var ex: Array = SC.exits_for(gps, rg, pts)
 		_check(ex.size() >= 3 and ex.size() <= SC.MAX_FENCES, "%s: %d bocas de calle cerradas" % [e["name"], ex.size()])
+		_check(_spurs(pts) == 0 and (pts[0] as Vector2).distance_to(pts[pts.size() - 1]) < 12.0, "%s: el recorrido es un lazo limpio, sin púas (ir y volver por la misma calle): %d puntos pasan dos veces por el mismo lugar" % [e["name"], _spurs(pts)])
 		var on := 0
 		for f in ex:
 			if SC.dist_to(grid, pts, f["p"]) < SC.FAR_D - 0.5:
@@ -107,3 +108,21 @@ func _flood(gps, pts: PackedVector2Array, grid: Dictionary, ex: Array) -> float:
 			seen[m] = true
 			queue.append(m)
 	return worst
+
+## Cuántos puntos del recorrido vuelven a pasar a menos de 4 m de un punto ya recorrido 60 m o más atrás (una «púa»: salir a un punto por una calle del costado y volver por la misma).
+## El cierre del lazo (el final cerca del principio) no cuenta.
+func _spurs(pts: PackedVector2Array) -> int:
+	var cum := PackedFloat32Array([0.0])
+	for i in range(1, pts.size()):
+		cum.append(cum[i - 1] + pts[i - 1].distance_to(pts[i]))
+	var total := cum[cum.size() - 1]
+	var n := 0
+	for j in range(pts.size()):
+		for i in range(0, j):
+			var along := cum[j] - cum[i]
+			if along < 60.0 or total - along < 60.0:
+				continue
+			if pts[i].distance_to(pts[j]) < 4.0:
+				n += 1
+				break
+	return n

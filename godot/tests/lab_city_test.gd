@@ -79,6 +79,28 @@ func _run() -> void:
 	hud.external_menu = false
 	hud.update_hud(0.016, 1, race.cars)
 	_check(ch._mini.visible, "al cerrar los menús vuelve el minimapa")
+	# carrera del mundo abierto: el GPS es sólo el circuito (sin el texto amarillo y con el resto de las calles apagado en el mapa); al terminar todo vuelve
+	var cp := Vector2(race.cars[0].phys.px, race.cars[0].phys.pz)
+	ch.set_course(PackedVector2Array([cp, cp + Vector2(40, 0), cp + Vector2(80, 25)]), "Circuito de prueba")
+	hud.update_hud(0.2, 1, race.cars)
+	_check(ch.in_course() and not ch.gps_l.visible and ch.gps_l.text == "", "en una carrera: el GPS es sólo el circuito (sin el texto amarillo)")
+	ch.clear_course()
+	hud.update_hud(0.2, 1, race.cars)
+	_check(not ch.in_course() and ch.gps_l.visible, "al terminar la carrera el GPS vuelve a ser el de siempre")
+	# pausa: las configuraciones y los reglajes sólo en la Carrera rápida y las pruebas de vehículos (lab_on); en copas, eventos y Aventura la pausa queda limpia (pedido del dueño, 20/10/2026)
+	_check(hud.lab_on, "Carrera rápida: la pausa lleva el taller de prueba")
+	hud._fill_pause()
+	await process_frame
+	var ptx := _buttons_text(hud.pause_col)
+	_check(ptx.contains("OPCIONES") and ptx.contains("TALLER DE PRUEBA") and ptx.contains("MODIFICAR CONTROLES"), "Carrera rápida: OPCIONES, TALLER DE PRUEBA y MODIFICAR CONTROLES están en la pausa")
+	hud.lab_on = false
+	hud._fill_pause()
+	await process_frame
+	ptx = _buttons_text(hud.pause_col)
+	_check(not ptx.contains("OPCIONES") and not ptx.contains("TALLER") and not ptx.contains("MODIFICAR") and not ptx.contains("AJUSTAR") and ptx.contains("SEGUIR") and ptx.contains("CÁMARA") and ptx.contains("REINICIAR"), "copas, eventos y Aventura: la pausa sin configuraciones ni reglajes (queda seguir, cámara, cine, reiniciar y salir)")
+	hud.lab_on = true
+	hud._fill_pause()
+	await process_frame
 	# faros: automáticos (de día apagados, de noche prendidos), encendidos a mano y apagados a mano
 	var clk = race.clock
 	_check(clk != null and clk._beam != null, "hay faros")
@@ -158,3 +180,14 @@ func _run() -> void:
 	_check(ch.route != old_route, "GPS: la ruta cambió")
 	race.queue_free()
 	quit(1 if fail else 0)
+
+## Los textos de todos los botones de un menú, separados por «|»
+func _buttons_text(root_n: Node) -> String:
+	var out := ""
+	var st: Array = [root_n]
+	while not st.is_empty():
+		var n: Node = st.pop_back()
+		if n is Button:
+			out += (n as Button).text + "|"
+		st.append_array(n.get_children())
+	return out

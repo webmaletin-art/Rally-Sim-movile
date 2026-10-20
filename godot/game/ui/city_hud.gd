@@ -261,7 +261,7 @@ func _apply_vis() -> void:
 	_big.visible = big and not menu_open
 	_mini.visible = not big and not menu_open
 	street_l.visible = not big and not menu_open
-	gps_l.visible = not big and not menu_open
+	gps_l.visible = not big and not menu_open and not _course # (en una carrera el GPS es sólo el circuito en el minimapa: sin el texto amarillo)
 	if big and not menu_open:
 		_layout_big()
 		_center_big()
@@ -419,6 +419,8 @@ func set_course(pts: PackedVector2Array, nm: String) -> void:
 	route = pts.duplicate()
 	if has_dest:
 		dest = pts[pts.size() - 1]
+	gps_l.text = ""
+	_apply_vis()
 	_mini.queue_redraw()
 
 ## Dónde va el auto en el recorrido (índice): el GPS sigue desde ahí; en un circuito, dando la vuelta
@@ -436,6 +438,12 @@ func clear_course() -> void:
 	if _course:
 		_course = false
 		_clear_dest()
+		_apply_vis()
+		_mini.queue_redraw()
+
+## ¿Hay una carrera del mundo abierto en curso? (el minimapa muestra sólo el circuito y el mapa grande apaga el resto de la ciudad)
+func in_course() -> bool:
+	return _course and race_route.size() > 1
 
 func _clear_dest() -> void:
 	preview_route = PackedVector2Array()
@@ -571,7 +579,7 @@ func update_hud(dt: float, car) -> void:
 		else:
 			_toast_cb.call(Tr.t("%s: esa ciudad abre en la próxima actualización") % CityNames.t(str(ex["name"])))
 	if has_dest and _course:
-		_gps_text()
+		pass # (carrera del mundo abierto: el GPS es el circuito del minimapa, sin texto)
 	elif has_dest:
 		_off_t += step
 		_trim_route()
@@ -808,6 +816,14 @@ class MapView extends Control:
 			view_w = view_w.expand(to_world(q))
 		view_w = view_w.grow(6.0)
 		draw_set_transform_matrix(xf)
+		var racing: bool = hud.in_course()
+		if racing and not big:
+			# en una carrera del mundo abierto el minimapa muestra SÓLO el circuito (pedido del dueño, 20/10/2026: «al entrar en una carrera lo único que se debería ver en el GPS es el circuito»)
+			draw_polyline(hud.race_route, Color(0.05, 0.12, 0.2, 0.95), 16.0 / s, false)
+			draw_polyline(hud.race_route, Color(0.35, 0.95, 0.55), 10.0 / s, false)
+			draw_set_transform_matrix(Transform2D.IDENTITY)
+			_draw_car(xf)
+			return
 		if hud.region != null and big and hud._map_tex != null:
 			# el relieve de toda la región (una imagen: 1 píxel = 100 m)
 			draw_texture_rect(hud._map_tex, Rect2(hud.region.x0, hud.region.z0, float(hud.region.gw) * hud.region.cell, float(hud.region.gh) * hud.region.cell), false)
@@ -829,6 +845,8 @@ class MapView extends Control:
 					wpx = maxf(wpx, 3.2 / s)
 				var col := Color(0.92, 0.94, 0.97, 0.9) if pass_i == 0 else (Color(0.42, 0.46, 0.54) if str(sg["kind"]) in ["rural", "hill", "scenic"] else Color(0.30, 0.34, 0.42))
 				draw_polyline(sg["pts"], col, wpx if big else minf(wpx, 11.0 / s), false)
+		if racing: # la ciudad «cerrada»: las calles quedan apagadas y sólo el circuito (abierto) se ve
+			draw_rect(view_w, Color(0.04, 0.06, 0.09, 0.80), true)
 		if hud.preview_route.size() > 1:
 			draw_polyline(hud.preview_route, Color(0.05, 0.12, 0.2, 0.9), 14.0 / s, false)
 			draw_polyline(hud.preview_route, Color(0.35, 0.95, 0.55), 8.0 / s, false)
@@ -841,6 +859,14 @@ class MapView extends Control:
 		draw_set_transform_matrix(Transform2D.IDENTITY)
 		# lugares
 		var f := ThemeDB.fallback_font
+		if racing:
+			var fl: Vector2 = xf * (hud.race_route[0] as Vector2)
+			draw_rect(Rect2(fl - Vector2(8, 8), Vector2(16, 16)), Color(0, 0, 0, 0.8))
+			draw_rect(Rect2(fl - Vector2(6, 6), Vector2(12, 12)), Color(1.0, 1.0, 1.0))
+			draw_string_outline(f, Vector2(14.0, sz.y - 16.0), Tr.t("CALLES CERRADAS · SÓLO EL CIRCUITO ESTÁ ABIERTO"), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, 5, Color(0, 0, 0, 0.9))
+			draw_string(f, Vector2(14.0, sz.y - 16.0), Tr.t("CALLES CERRADAS · SÓLO EL CIRCUITO ESTÁ ABIERTO"), HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.95, 0.85, 0.5))
+			_draw_car(xf)
+			return
 		if hud.region != null and hud.refs_on:
 			_draw_region_places(xf, f)
 		for p in (hud.city.pois if (hud.refs_on and (not big or view_m() < 6000.0)) else []):
@@ -880,7 +906,11 @@ class MapView extends Control:
 			if Rect2(Vector2.ZERO, sz).grow(12.0).has_point(dp):
 				draw_circle(dp, 9.0, Color(1, 0.25, 0.2))
 				draw_circle(dp, 4.0, Color.WHITE)
-		# el auto: en el chico siempre en el centro mirando hacia arriba; en el grande en su lugar y rotado
+		_draw_car(xf)
+
+	## El auto (en el chico siempre en el centro mirando hacia arriba; en el grande en su lugar y rotado), el marco y la N del norte
+	func _draw_car(xf: Transform2D) -> void:
+		var f := ThemeDB.fallback_font
 		var me: Vector2 = xf * (hud.car_pos as Vector2)
 		var fwd := Vector2(0.0, -1.0) # en el mapa grande: x al este, z al sur (en pantalla y crece hacia el sur)
 		if big:
@@ -889,7 +919,7 @@ class MapView extends Control:
 		var tri := PackedVector2Array([me + fwd * 11.0, me - fwd * 7.0 + rgt * 7.0, me - fwd * 3.0, me - fwd * 7.0 - rgt * 7.0])
 		draw_colored_polygon(tri, Color(1.0, 0.5, 0.1))
 		draw_polyline(PackedVector2Array([tri[0], tri[1], tri[2], tri[3], tri[0]]), Color.WHITE, 1.6, true)
-		draw_rect(Rect2(Vector2.ZERO, sz), Color(1, 1, 1, 0.35), false, 2.0)
+		draw_rect(Rect2(Vector2.ZERO, size), Color(1, 1, 1, 0.35), false, 2.0)
 		if not big:
 			# la N del norte, girando con el mapa
 			var nrm: Vector2 = xf * (hud.car_pos + Vector2(0.0, -MINI_R * 0.8))
