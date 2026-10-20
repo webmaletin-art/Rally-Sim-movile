@@ -431,11 +431,12 @@ func _fill_pause() -> void:
 	var sz := Vector2(0, 62)
 	var cam_b := Kit.button("🎥  CÁMARA", func(): camera_pressed.emit(), false, 19, sz)
 	var adj_b: Button = null
-	if rig != null:
+	# configuraciones, reglajes y demás: sólo en la Carrera rápida y las pruebas de vehículos (lab_on); en copas, eventos y Aventura la pausa queda limpia y nada pisa lo elegido al empezar (pedido del dueño, 20/10/2026)
+	if rig != null and lab_on:
 		adj_b = Kit.button("📐  AJUSTAR CÁMARA", func(): open_page("camadj"), false, 19, sz)
 	pair.call(cam_b, adj_b)
 	cine_btn = Kit.button("🎬  MODO CINE", func(): cine_pressed.emit(), false, 19, sz)
-	pair.call(cine_btn, Kit.button("⚙  OPCIONES", func(): open_options(), false, 19, sz))
+	pair.call(cine_btn, Kit.button("⚙  OPCIONES", func(): open_options(), false, 19, sz) if lab_on else null)
 	if online_panel != null:
 		var on_b := Kit.button("🌐  ONLINE  ·  CHAT, JUGADORES, MERCADO", func(): open_page("on_home"), true, 19, sz)
 		on_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -485,9 +486,10 @@ func _fill_pause() -> void:
 			pair.call(Kit.button(str(mb[0][0]), func(): mode_pressed.emit(str(mb[0][1])), false, 19, sz), Kit.button(str(mb[1][0]), func(): mode_pressed.emit(str(mb[1][1])), false, 19, sz))
 		elif mb.size() == 1:
 			pair.call(Kit.button(str(mb[0][0]), func(): mode_pressed.emit(str(mb[0][1])), false, 19, sz), null)
-	var ed_b := Kit.button("🕹  MODIFICAR CONTROLES", func(): edit_controls_pressed.emit(), false, 19, sz)
-	ed_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pause_col.add_child(ed_b)
+	if lab_on:
+		var ed_b := Kit.button("🕹  MODIFICAR CONTROLES", func(): edit_controls_pressed.emit(), false, 19, sz)
+		ed_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pause_col.add_child(ed_b)
 	if lab_on:
 		var lb := Kit.button("🔧  TALLER DE PRUEBA  (grip, suspensión, potencia…)", func(): open_page("lab"), false, 19, sz)
 		lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL

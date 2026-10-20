@@ -905,7 +905,19 @@ func _sim_assists() -> Dictionary:
 	var lv := str(cfg.get("sim", profile.setting("simLevel")))
 	if SIM_PRESETS.has(lv):
 		return SIM_PRESETS[lv]
-	return {"abs": profile.setting("abs") == true, "tc": float(profile.setting("tc")), "stab": float(profile.setting("stab")), "line": float(profile.setting("lineAssist"))}
+	# personalizado: «steer» = ángulo de dirección en % (0 = el del auto, con su reglaje); lo elegido al empezar es lo único que manda (pedido del dueño, 20/10/2026)
+	var sa := {"abs": profile.setting("abs") == true, "tc": float(profile.setting("tc")), "stab": float(profile.setting("stab")), "line": float(profile.setting("lineAssist"))}
+	var st = profile.setting("steerAngle")
+	sa["steer"] = clampf(float(st) if st != null else 0.0, 0.0, 130.0)
+	return sa
+
+## Ángulo de dirección del nivel PERSONALIZADO (Opciones → «Ángulo de dirección», en %; 0 = el del auto con su reglaje): reemplaza al ángulo del reglaje, que build_params ya dejó multiplicado en maxSteer.
+## Pedido del dueño (20/10/2026): «cuánto dobla la rueda: está en 100 y el máximo es 130; que se pueda aumentar y disminuir».
+static func with_steer_angle(prm: Dictionary, pst: Dictionary, steer_pct: float) -> void:
+	if steer_pct < 70.0:
+		return
+	var tune_pct := float((pst.get("tune", {}) as Dictionary).get("steer", 100.0))
+	prm["maxSteer"] = float(prm["maxSteer"]) / maxf(tune_pct, 1.0) * minf(steer_pct, 130.0)
 
 ## Cambio de una ayuda en las opciones: el nivel pasa a «personalizado» conservando los valores del nivel anterior en las otras
 func _assist_changed(key: String) -> void:
@@ -1180,7 +1192,9 @@ func _car_setups() -> Array:
 	if not lab_state.is_empty():
 		pst = lab_state # taller de prueba de la pausa: el mismo auto con todos los ajustes liberados
 	var pp: Dictionary = Cosmetics.paint_ok(pid, pst) if pst.has("paint") else {"body": "#1a4fe0", "rim": "#ff6a08"} # (un diseño pago sin comprar se dibuja liso)
-	out.append({"params": CarBuild.build_params(vehicles[pid], pst, assists), "paint": Color(str(pp["body"])), "rim": Color(str(pp.get("rim", "#2a2d33"))), "name": str(profile.d["name"]), "finish": str(pp.get("finish", "gloss")), "visual_type": str(vehicles[pid].get("visualType", pid)), "ai": {},
+	var prm: Dictionary = CarBuild.build_params(vehicles[pid], pst, assists)
+	with_steer_angle(prm, pst, float(sa.get("steer", 0.0)))
+	out.append({"params": prm, "paint": Color(str(pp["body"])), "rim": Color(str(pp.get("rim", "#2a2d33"))), "name": str(profile.d["name"]), "finish": str(pp.get("finish", "gloss")), "visual_type": str(vehicles[pid].get("visualType", pid)), "ai": {},
 		"livery": int(pp.get("livery", 0)), "accent": Color(str(pp.get("accent", "#ff6a08"))), "text": Color(str(pp.get("text", "#f2f2ee"))), "tire": Color(str(pp.get("tire", "#141516"))), "parts": pp})
 	if _is_convoy():
 		out.append_array(_convoy_setups())

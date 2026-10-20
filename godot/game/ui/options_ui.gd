@@ -65,6 +65,7 @@ const OPTION_LIST := [
 	["fisica", "tc", "Control de tracción", [0, 25, 50, 75, 100], ["Apagado", "25%", "50%", "75%", "100%"]],
 	["fisica", "stab", "Estabilidad", [0, 30, 60, 100], ["Apagada", "Baja", "Media", "Alta"]],
 	["fisica", "lineAssist", "Ayuda de trazada (el auto te ayuda a doblar)", [0, 25, 50, 75, 100], ["Sin ayuda", "Suave", "Media", "Fuerte", "Máxima"]],
+	["fisica", "steerAngle", "Ángulo de dirección (cuánto doblan las ruedas)", [0, 70, 80, 90, 100, 110, 120, 130], ["Según el auto", "70%", "80%", "90%", "100%", "110%", "120%", "130%"]],
 	["sonido", "volume", "Volumen general", [0, 30, 60, 80, 100], ["Silencio", "Bajo", "Medio", "Alto", "Máximo"]],
 	["sonido", "volEngine", "Motor", [0, 50, 75, 100, 130], ["Silencio", "Bajo", "Medio", "Normal", "Fuerte"]],
 	["sonido", "volSurf", "Gomas y tierra", [0, 15, 30, 50, 80], ["Silencio", "Muy bajo", "Normal", "Fuerte", "Muy fuerte"]],
@@ -97,6 +98,8 @@ func options_page(body: VBoxContainer, cat = null) -> void:
 		body.add_child(g)
 		for c in OPTION_CATS:
 			var key: String = c[0]
+			if key == "fisica":
+				continue # las ayudas y la física se eligen UNA vez, al empezar cada carrera (nivel de simulación → PERSONALIZADO): ningún otro menú las pisa (pedido del dueño, 20/10/2026)
 			g.add_child(Kit.card_button(str(c[2]), str(c[3]), "", func() -> void:
 				sfx.play("click")
 				nav.call("fx", null) if key == "efectos" else nav.call("options", key), false, true, 62.0, 18, str(c[1])))
