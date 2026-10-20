@@ -14,8 +14,8 @@ const GAME_SCENE := "res://game/main.tscn"
 
 ## Los paquetes (.pck) los arma la misma versión del motor que corre el APK (cambian de formato entre versiones): cada versión (menor) del motor baja de su propia release.
 ## Los APK de Godot 4.4 leían «godot-content» (que ya no se actualiza y sigue sirviendo para ellos).
-## CHANNEL: en la rama de la versión candidata (ccr-e7ae3f10-45afj2) el APK de prueba baja su propio contenido («godot-content-4.7-rc»), así no se mezcla con el de main.
-const CHANNEL := "-rc"
+## CHANNEL: en la rama de la versión candidata (ccr-e7ae3f10-45afj2) vale "-rc" (el APK de prueba baja su propio contenido, «godot-content-4.7-rc»); en main, la versión pública, queda vacío.
+const CHANNEL := ""
 
 static func content_tag() -> String:
 	var v := Engine.get_version_info()

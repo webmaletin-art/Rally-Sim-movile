@@ -6,13 +6,12 @@ name: Build Godot APK
 #    se publican en la release "godot-content-4.7" (una por versión del motor); el APK liviano los descarga solo. cars.pck solo se vuelve a bajar si cambia (su versión es su hash).
 #  · (el APK «completo» con todo adentro ya no se arma: pesaría más de 600 MB)
 # Cada vez que se actualiza el contenido, el APK liviano NO hay que reinstalarlo: al abrir baja lo nuevo.
-# RAMA DE LA VERSIÓN CANDIDATA ccr-e7ae3f10-45afj2 (15/10/2026): correcciones de la auditoría (docs/AUDITORIA_CICLO_DE_JUEGO.md). Publica APARTE: contenido en
-# «godot-content-4.7-rc» (los autos se reusan de «godot-content-4.7» si no cambiaron) y el APK en «godot-apk-rc»; la app se instala AL LADO de la normal
-# («Dream Racing RC», com.gskorp.rallygodot.rc). No pisa el APK ni el contenido de main. Al fusionar a main hay que deshacer estos 4 cambios (rama, CONTENT_TAG, release y CHANNEL de boot.gd, paquete).
-# (El paso «Marcar la versión candidata» —modo desarrollador y «copiar registro» sólo en la RC— NO hay que deshacerlo: no corre en main.)
+# VERSIÓN PÚBLICA (main): publica el APK normal «Dream Racing» (release «godot-apk») y el contenido en «godot-content-4.7». La rama de la versión candidata
+# ccr-e7ae3f10-45afj2 publica APARTE («godot-content-4.7-rc», «godot-apk-rc», app «Dream Racing RC», com.gskorp.rallygodot.rc): ver docs/VERSION_CANDIDATA.md.
+# (El paso «Marcar la versión candidata» —modo desarrollador y «copiar registro» sólo en la RC— no corre en main.)
 on:
   push:
-    branches: [ccr-e7ae3f10-45afj2]
+    branches: [main]
     paths:
       - 'godot/**'
       - '.github/workflows/build-godot.yml'
@@ -31,8 +30,7 @@ env:
   GODOT_VERSION: 4.7.2 # (15/10/2026: 4.5.1 → 4.7.2, decisión del dueño; ver docs/MIGRACION_GODOT.md → «Evaluación 15/10/2026»)
   # El contenido (content.pck + cars.pck) lo tiene que armar la MISMA versión del motor que corre el APK (los paquetes cambian de formato entre versiones): una release por versión (menor) del motor.
   # El APK liviano arma el nombre solo (bootstrap/boot.gd, Engine.get_version_info()); los APK viejos (4.4) siguen leyendo «godot-content», que ya no se actualiza.
-  CONTENT_TAG: godot-content-4.7-rc
-  MAIN_CONTENT_TAG: godot-content-4.7 # (de ahí se reusa cars.pck si es la misma versión: no se suben ~600 MB otra vez)
+  CONTENT_TAG: godot-content-4.7
 
 jobs:
   # Las pruebas corren en paralelo y NO frenan la compilación del APK (si fallan, el job queda en rojo y se mira el log).
@@ -332,15 +330,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view godot-apk-rc >/dev/null 2>&1 || gh release create godot-apk-rc \
-            --title "VERSIÓN CANDIDATA: Dream Racing RC (se instala aparte)" \
-            --notes "Versión candidata con las correcciones de economía, objetivos, récords por clase y eventos (docs/AUDITORIA_CICLO_DE_JUEGO.md). Se instala APARTE del juego normal (Dream Racing RC): no lo borra. Usa la misma cuenta. Las compras de Google Play no andan en esta versión de prueba." \
+          gh release view godot-apk >/dev/null 2>&1 || gh release create godot-apk \
+            --title "APK de Dream Racing (para instalar)" \
+            --notes "Instalá DreamRacing-liviano.apk (baja el juego solo al abrirse; la primera vez baja también los autos, unos 500 MB)." \
             --prerelease
-          cp build/gskorp-light.apk build/DreamRacing-RC.apk
-          gh release upload godot-apk-rc build/DreamRacing-RC.apk --clobber
+          cp build/gskorp-light.apk build/DreamRacing-liviano.apk
+          gh release upload godot-apk build/DreamRacing-liviano.apk --clobber
 
       - name: Subir APK liviano
         uses: actions/upload-artifact@v4
         with:
-          name: gskorp-godot-LIVIANO-RC-apk
+          name: gskorp-godot-LIVIANO-apk
           path: build/gskorp-light.apk
