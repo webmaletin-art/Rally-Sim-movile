@@ -8,7 +8,7 @@ Los detalles de cada formulario de Play Console están en `docs/GUIA_PLAY_CONSOL
 | Dato | Valor |
 |---|---|
 | **Rama que se publica** | **`main`** (https://github.com/webmaletin-art/Rally-Sim-movile/tree/main). La rama `ccr-e7ae3f10-45afj2` es la de pruebas («Dream Racing RC»): no se sube a Play. |
-| **De dónde sale el AAB** | Lo arma el flujo **«Build Play Store AAB»** sobre `main` (ya corrido el 21/10: versión **1.0.0**, código de versión **1004**). Se baja de **GitHub → Releases → `play-aab`**: https://github.com/webmaletin-art/Rally-Sim-movile/releases/tag/play-aab → archivo **`DreamRacing-play-v1004.aab`** (763 MB; armado en verde el 21/10, con el plugin de compras y la revisión de 16 KB aprobada). **No uses** el `v1003` (es del 13/10, motor viejo) ni ninguno que diga `PRUEBA` o `SIN-COMPRAS`. |
+| **De dónde sale el AAB** | Lo arma el flujo **«Build Play Store AAB»** sobre `main` (ya corrido el 21/10 con todo lo último: versión **1.0.0**, código de versión **1006**). Se baja de **GitHub → Releases → `play-aab`**: https://github.com/webmaletin-art/Rally-Sim-movile/releases/tag/play-aab → archivo **`DreamRacing-play-v1006.aab`** (763 MB; armado en verde el 21/10 a las 05:33 UTC desde `main`, con el plugin de compras, el taller sin «Estética» y la revisión de 16 KB aprobada). **No uses** el `v1003`, `v1004` ni `v1005` (son anteriores y no tienen los últimos cambios) ni ninguno que diga `PRUEBA` o `SIN-COMPRAS`. Si algún día hay un número más alto que 1006, es porque se armó uno nuevo: ése es el vigente. |
 | Paquete (ID de la app) | `com.srg.dreamracing` (no se puede cambiar después) |
 | Nombre en la tienda | Dream Racing: Rally y Drift |
 | Precio de la app | **Gratis**, con 10 compras dentro de la app (ver paso 5) |
@@ -21,7 +21,7 @@ Te lo puede decir la propia consola: en el Panel aparece (o no) la tarea «Reali
 
 ## 1. Hoy a la noche / mañana a primera hora (20 minutos, desde la compu)
 
-1. **Bajá el AAB**: https://github.com/webmaletin-art/Rally-Sim-movile/releases/tag/play-aab → `DreamRacing-play-v1004.aab`. Guardalo en una carpeta fácil.
+1. **Bajá el AAB**: https://github.com/webmaletin-art/Rally-Sim-movile/releases/tag/play-aab → `DreamRacing-play-v1006.aab`. Guardalo en una carpeta fácil.
 2. **Bajá la ficha** (los textos y las imágenes están en `store_listing/` de `main`):
    - Textos en 6 idiomas: https://github.com/webmaletin-art/Rally-Sim-movile/blob/main/store_listing/ficha.md (abrilo en el navegador y copiá/pegá desde ahí).
    - Ícono 512×512: https://github.com/webmaletin-art/Rally-Sim-movile/raw/main/store_listing/icono_512.png (clic derecho → guardar imagen como…). *Es el «DR» provisorio: sirve para lanzar; si tenés logo propio, cambiás sólo esta imagen cuando quieras, sin tocar el juego.*
@@ -54,7 +54,7 @@ Te lo puede decir la propia consola: en el Panel aparece (o no) la tarea «Reali
 
 ## 3. Play Console, parte 2: subir el AAB y probar las compras (≈1–2 horas, el día 1) → guía pasos 6–7
 
-1. **Prueba interna** → Crear versión → **subí `DreamRacing-play-v1004.aab`** (tarda varios minutos en procesar). Aceptá Play App Signing. Nombre de versión `1.0.0`. En **«Notas de la versión»** pegá el bloque de `store_listing/novedades.md` (es el texto de «Novedades» que ve el jugador).
+1. **Prueba interna** → Crear versión → **subí `DreamRacing-play-v1006.aab`** (tarda varios minutos en procesar). Aceptá Play App Signing. Nombre de versión `1.0.0`. En **«Notas de la versión»** pegá el bloque de `store_listing/novedades.md` (es el texto de «Novedades» que ve el jugador).
    - Si Google muestra un **error rojo**, copiámelo tal cual. Las advertencias amarillas (por ejemplo, de símbolos de depuración) no impiden nada.
 2. **Testers**: creá una lista con tu Gmail (y los de quien te ayude) → copiá el **enlace de participación** → abrilo en el teléfono con ese Gmail → instalá **desde Play** (desinstalá antes el APK de GitHub: la firma es distinta).
 3. **Pruebas de licencia** (Configuración → Pruebas de licencia): agregá tu Gmail, respuesta `RESPOND_NORMALLY` (las compras de prueba no cobran).

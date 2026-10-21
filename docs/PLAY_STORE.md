@@ -1,6 +1,6 @@
 # Dream Racing en Google Play — guía de publicación
 
-> **21/10/2026:** AAB vigente `DreamRacing-play-v1004.aab` (763 MB, motor 4.7.2, API 36, plugin de compras fijo en 3.3.0 / Billing Library 9.1, 16 KB aprobado). Guía para publicar, en orden: **`docs/LANZAMIENTO_PASO_A_PASO.md`**. Lo de abajo es el detalle técnico y el historial (el `v1003` ya no sirve).
+> **21/10/2026:** AAB vigente `DreamRacing-play-v1006.aab` (763 MB, motor 4.7.2, API 36, plugin de compras fijo en 3.3.0 / Billing Library 9.1, 16 KB aprobado). Guía para publicar, en orden: **`docs/LANZAMIENTO_PASO_A_PASO.md`**. Lo de abajo es el detalle técnico y el historial (el `v1003` ya no sirve).
 
 Todo lo que ya está armado en el repositorio y lo que tiene que hacer el dueño (GitHub y Play Console).
 
