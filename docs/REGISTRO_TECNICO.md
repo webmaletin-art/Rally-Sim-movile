@@ -13,6 +13,7 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 - **Capturas de Play rehechas:** `05_garaje` salía con la pestaña ESTÉTICA y los pilotos en T (con el render por software los pilotos de la sala quedan en T-pose; en el teléfono se mueven) → ahora **`05_taller`** (pantalla de AJUSTE del taller, sin pilotos) y `06_pintura` (sin pilotos y sin ESTÉTICA); `tools/trailer/make_play_shots.py` apunta a `ui/tune.png`. Las otras 6 no cambian.
 - **Novedades (what's new):** `store_listing/novedades.md` con el texto de la versión 1.0.0 en es-419, en-US, pt-BR, fr-FR, it-IT y de-DE (419–480 caracteres, tope 500) y el bloque con etiquetas `<es-419>…</es-419>` para pegarlo de una vez en «Notas de la versión»; `ficha.md` lo referencia; `docs/LANZAMIENTO_PASO_A_PASO.md` actualizada (capturas en orden, novedades, el AAB que se sube).
 - **AAB:** el `v1005` (05:07 UTC) no tiene este cambio → se rearmó desde `main` (`a19d51a`): flujo «Build Play Store AAB» n.º 6, verde (plugin 3.3.0, 16 KB aprobado, firmado, con compras) → **`DreamRacing-play-v1006.aab`** (763 MB), release `play-aab`. Es el que se sube; el v1003, v1004 y v1005 no sirven.
+- **GitHub (21/10 06:35 UTC):** «Build Godot APK» n.º 242 sobre `main` (`a19d51a`) **en verde** (todas las pruebas + armado del APK liviano y del contenido) y el n.º 241 de la RC con el mismo código (`149feda`) también; AAB v1006 verde.
 - **Pedirle al dueño:** que mire el taller en el teléfono (¿queda bien sin ESTÉTICA?, ¿faltan las llantas y la pintura en el riel?).
 
 ---
