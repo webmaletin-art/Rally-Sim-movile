@@ -24,8 +24,8 @@ Te lo puede decir la propia consola: en el Panel aparece (o no) la tarea «Reali
 1. **Bajá el AAB**: https://github.com/webmaletin-art/Rally-Sim-movile/releases/tag/play-aab → `DreamRacing-play-v1004.aab`. Guardalo en una carpeta fácil.
 2. **Bajá la ficha** (los textos y las imágenes están en `store_listing/` de `main`):
    - Textos en 6 idiomas: https://github.com/webmaletin-art/Rally-Sim-movile/blob/main/store_listing/ficha.md (abrilo en el navegador y copiá/pegá desde ahí).
-   - Ícono 512×512: https://raw.githubusercontent.com/webmaletin-art/Rally-Sim-movile/main/store_listing/icono_512.png (clic derecho → guardar imagen como…). *Es el «DR» provisorio: sirve para lanzar; si tenés logo propio, cambiás sólo esta imagen cuando quieras, sin tocar el juego.*
-   - Gráfico de funciones 1024×500: https://raw.githubusercontent.com/webmaletin-art/Rally-Sim-movile/main/store_listing/grafico_funciones_1024x500.png
+   - Ícono 512×512: https://github.com/webmaletin-art/Rally-Sim-movile/raw/main/store_listing/icono_512.png (clic derecho → guardar imagen como…). *Es el «DR» provisorio: sirve para lanzar; si tenés logo propio, cambiás sólo esta imagen cuando quieras, sin tocar el juego.*
+   - Gráfico de funciones 1024×500: https://github.com/webmaletin-art/Rally-Sim-movile/raw/main/store_listing/grafico_funciones_1024x500.png
    - **8 capturas** (1920×1080): `store_listing/capturas/` → https://github.com/webmaletin-art/Rally-Sim-movile/tree/main/store_listing/capturas (abrí cada una y guardala). Cuando tengas el juego instalado desde Play, podés sacar capturas propias con el botón 📷 y reemplazarlas.
 3. **Supabase (panel de tu proyecto, 3 interruptores)** — sin esto el login o los correos pueden fallar y Google rechaza la app por «no puedo entrar»:
    - Authentication → **Sign In / Providers**: **«Allow anonymous sign-ins» = apagado**.
@@ -80,7 +80,7 @@ Te lo puede decir la propia consola: en el Panel aparece (o no) la tarea «Reali
 
 - **Cuenta personal nueva (la condición del paso 0):** el mismo día 1, **Prueba cerrada → Crear versión → «Promover»** el mismo AAB, lista de **15 a 20 testers** (hacen falta 12; siempre alguno se baja) y mandales el enlace. Tienen que instalar desde Play, **abrir la app de vez en cuando y no desinstalarla durante 14 días seguidos**. Mientras pasan los días podés subir versiones nuevas a esa misma prueba sin reiniciar el contador. Al día 14: **«Solicitar acceso a producción»** (formulario corto: contestá con la verdad cuántos testers tuviste y qué arreglaste). Google responde en unos días.
 - **Cuenta de organización / anterior a noviembre de 2023:** cuando las compras anden en la interna → **Producción → Crear versión → promover el AAB → notas de versión → Enviar a revisión** (horas a unos días).
-- **Notas de la versión 1.0.0** (ya están en `ficha.md`): «Primera versión en Google Play: 28 autos, Dream City y su región, aventura de 12 etapas, Travesía X, copas, red de rutas, drift, modo de prueba guiado, tienda con prueba de autos y taller con guías fáciles.»
+- **Notas de la versión 1.0.0** (están en `ficha.md`, en español e inglés; en los otros idiomas Play muestra las del idioma predeterminado, no hace falta traducirlas): «Primera versión en Google Play: 28 autos, Dream City y su región, aventura de 12 etapas, Travesía X, copas, red de rutas, drift, modo de prueba guiado, modo online con eventos y ranking, tienda con prueba de autos y taller con guías fáciles.»
 - Antes de «Enviar a revisión»: en el **Panel** de Play Console todas las tareas tienen que estar tildadas (la que falte te dice qué hacer).
 
 ## 5. La semana de pruebas y después (lo que acordamos)
@@ -97,7 +97,7 @@ Te lo puede decir la propia consola: en el Panel aparece (o no) la tarea «Reali
 | Google rechaza el AAB | Copiame el mensaje exacto (casi siempre es un dato de la ficha o una declaración que falta). |
 | «No pudimos acceder a la app» en la revisión | Probá la cuenta de revisión en el juego; revisá «Confirm email» apagado y que Supabase no esté pausado. |
 | Las compras no suman monedas | Falta la cuenta de servicio o el flujo «Supabase · publicar funciones» (paso 3.5); esperá hasta 24 h; probá con un tester de licencia. |
-| Quiero un AAB nuevo | GitHub → Actions → **Build Play Store AAB** → Run workflow → rama `main`, versión `1.0.1` (por ejemplo) → ~40 min → Releases → `play-aab`. |
+| Quiero un AAB nuevo | GitHub → Actions → **Build Play Store AAB** → Run workflow → rama `main`, versión `1.0.1` (por ejemplo) → unos 6–10 min → Releases → `play-aab` → el archivo con el número más alto (`DreamRacing-play-v10xx.aab`). |
 | Necesito volver atrás una actualización | Play Console → Producción → «Detener lanzamiento» o publicar el AAB anterior como una versión nueva (el código de versión sólo sube). |
 
 ## 7. Qué revisé yo para que Play lo acepte (21/10/2026)
