@@ -1,5 +1,7 @@
 # Guía de Google Play Console, paso a paso (de cero a «Dream Racing» publicado)
 
+> **Actualización 21/10/2026:** el orden cronológico para publicar (rama `main`, AAB `DreamRacing-play-v1004.aab`, datos y capturas de la ficha, productos y precios) está en **`docs/LANZAMIENTO_PASO_A_PASO.md`**. Esta guía queda como detalle de cada pantalla de Play Console.
+
 Para el dueño, 20/10/2026. Está pensada para ir **tocando y tildando**: cada paso dice **dónde entrar**, **qué poner** y **qué tiene que pasar**. Lo técnico (el juego, el AAB, las políticas, los textos y el servidor) ya está hecho en el repositorio; acá van sólo los trámites que se hacen en tu cuenta.
 
 > Los nombres del menú de Play Console cambian de vez en cuando. Si no encontrás algo con el nombre que figura acá, usá el **buscador de la consola** (arriba, «Buscar en la consola») y escribí la palabra clave que va entre «comillas».
