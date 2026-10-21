@@ -100,12 +100,19 @@ func _on_details(result: Dictionary) -> void:
 		return
 	for d in result.get("product_details", []):
 		var dd: Dictionary = d
-		var id := str(dd.get("product_id", ""))
+		var id := str(dd.get("product_id", dd.get("productId", "")))
 		var price := ""
 		var offer: Variant = dd.get("one_time_purchase_offer_details")
+		if not (offer is Dictionary):
+			var offers: Variant = dd.get("one_time_purchase_offer_details_list") # Billing Library 8+: varias opciones de compra por producto
+			if offers is Array and not (offers as Array).is_empty():
+				offer = (offers as Array)[0]
 		if offer is Dictionary:
 			price = str((offer as Dictionary).get("formatted_price", ""))
-		details[id] = {"title": str(dd.get("title", "")), "price": price}
+		if price == "":
+			price = str(dd.get("formatted_price", ""))
+		if id != "":
+			details[id] = {"title": str(dd.get("title", dd.get("name", ""))), "price": price}
 	state_changed.emit()
 
 func _on_purchases(result: Dictionary) -> void:

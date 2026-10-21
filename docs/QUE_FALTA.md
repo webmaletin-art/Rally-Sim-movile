@@ -1,5 +1,7 @@
 # ¿Qué falta? — lista única de pendientes antes de publicar (actualizada el 21/10/2026)
 
+> **Para publicar, seguí `docs/LANZAMIENTO_PASO_A_PASO.md`** (orden cronológico, rama `main`, AAB, datos y capturas de la ficha). Esta lista queda como resumen.
+
 Para el dueño. Está ordenada: primero lo que **ya está hecho**, después lo que **sólo podés hacer vos**, con el documento donde está el paso a paso.
 Regla de siempre: **nada de esto está probado en un teléfono** (desde acá sólo se prueba con pruebas automáticas, capturas y un Postgres de prueba).
 
@@ -47,10 +49,10 @@ Pendientes concretos: cuenta de desarrollador y perfil de pagos · «Contenido d
 - **Tráiler en YouTube** y las capturas elegidas para la ficha.
 
 ## 6. Preguntas que sigo esperando (contestá cuando puedas)
-1. **El auto «Ren…»** que se ve feo desde las cámaras internas: ¿cuál es? No existe un auto con ese nombre; las cabinas más rotas son las del **Strix Vandal RS** y el **Chakal Dune R**. ¿Es alguno de ésos?
+1. ~~El auto «Ren…» feo desde las cámaras internas~~ → **era el Buggy** (dos tableros): arreglado el 21/10 (`cowl_z` 2.6), falta verlo en el teléfono.
 2. El **«GPS amarillo»** que había que sacar: ¿era la línea o el texto amarillo del GPS en las carreras del mapa?
 3. **Monedas «borradas» en otro celular:** ¿qué número veías en cada uno?, ¿el primero tenía el modo desarrollador?, ¿qué APK en cada uno? (No encontré ningún camino que borre créditos del servidor.)
-4. La **ficha de Play** dice «online cerrado/próximamente»: ¿mencionamos los eventos y el ranking online?
+4. ~~La ficha de Play dice «online cerrado»~~ → **ya menciona el modo online y el modo de prueba** (`store_listing/ficha.md`, 21/10).
 5. ¿Querés **eventos también en el mundo compartido en tiempo real** cuando se abra (`app_flags.pvp = true`)?
 6. ¿Las **carreras con camión** (Colossus Mamut 6x6 y Titán T4) necesitan más sentido? Ver el informe de «vehículos obligatorios» en el registro técnico de hoy.
 

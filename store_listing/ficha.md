@@ -1,7 +1,7 @@
 # Ficha de Play Store — Dream Racing
 
 Textos para pegar en Play Console → Presencia en Play Store → Ficha principal (y «Agregar traducciones»). Límites de Google: título 30, descripción corta 80, completa 4000.
-Revisada el 13/10/2026 con el juego actual (28 autos, Dream City y su región, Travesía X, copas, cuenta obligatoria con correo). El modo online está CERRADO («próximamente»): no se promete nada que no esté. Como hace falta una cuenta para jugar, Play pide además las credenciales de una cuenta de prueba en «Acceso a la app» (ver docs/PLAY_STORE.md).
+Revisada el 13/10/2026 con el juego actual (28 autos, Dream City y su región, Travesía X, copas, cuenta obligatoria con correo). El modo online funciona «por datos» (eventos, temporadas y ranking); el mundo compartido en tiempo real figura como «llega pronto» (se enciende desde el servidor con `app_flags.pvp`): no se promete nada que no esté. Como hace falta una cuenta para jugar, Play pide además las credenciales de una cuenta de prueba en «Acceso a la app» (ver docs/PLAY_STORE.md).
 
 ## Español (idioma predeterminado)
 
@@ -45,7 +45,13 @@ Volante en pantalla, pedales o manejo inclinando el teléfono; caja automática 
 🎬 PARA LUCIRSE
 Cámaras interiores con pilotos, cámara libre y de cine, efectos de lente y modo foto para tus mejores capturas. Música de radio en los menús.
 
-Sin publicidad. Para jugar creás una cuenta gratis con tu correo: tus créditos, tus autos y tus compras se guardan en tu cuenta (no se pierden si cambiás de teléfono) y, una vez adentro, el juego anda también sin conexión. Incluye compras opcionales dentro del juego. Próximamente: modo online.
+🎓 MODO DE PRUEBA
+Una pista para reglar tu auto y probar cosas sin ir a una carrera, con Claudio como guía.
+
+🌐 MODO ONLINE
+Eventos semanales, temporadas y rankings con premios. El mundo compartido en tiempo real llega pronto.
+
+Sin publicidad. Para jugar creás una cuenta gratis con tu correo: tus créditos, tus autos y tus compras se guardan en tu cuenta (no se pierden si cambiás de teléfono) y, una vez adentro, el juego anda también sin conexión. Incluye compras opcionales dentro del juego.
 
 **Categoría:** Juegos → Carreras · **Etiquetas sugeridas:** carreras, rally, drift, mundo abierto, simulación, autos
 **Contacto:** roldanhr98@gmail.com · **Estudio:** SRGamestudios
@@ -96,7 +102,13 @@ On-screen wheel, pedals or tilt steering; automatic or manual gearbox; resize an
 🎬 SHOW IT OFF
 Cockpit cameras with drivers, free and cinematic cameras, lens effects and a photo mode for your best shots. Radio music in the menus.
 
-No ads. To play you create a free account with your email: your credits, cars and purchases are saved in your account (you keep them if you change phones) and, once you're in, the game also works offline. Includes optional in-app purchases. Online mode coming soon.
+🎓 TEST MODE
+A proving ground to tune your car and try things without going to a race, with Claudio as your guide.
+
+🌐 ONLINE MODE
+Weekly events, seasons and leaderboards with prizes. The real-time shared world is coming soon.
+
+No ads. To play you create a free account with your email: your credits, cars and purchases are saved in your account (you keep them if you change phones) and, once you're in, the game also works offline. Includes optional in-app purchases.
 
 **Category:** Games → Racing · **Tags:** racing, rally, drift, open world, simulation, cars
 
@@ -145,7 +157,13 @@ Volante na tela, pedais ou direção inclinando o celular; câmbio automático o
 🎬 PARA SE EXIBIR
 Câmeras internas com pilotos, câmera livre e de cinema, efeitos de lente e modo foto. Música de rádio nos menus.
 
-Sem anúncios. Para jogar você cria uma conta grátis com seu e-mail: seus créditos, carros e compras ficam salvos na conta (não se perdem se você trocar de celular) e, depois de entrar, o jogo também funciona sem conexão. Tem compras opcionais dentro do jogo. Em breve: modo online.
+🎓 MODO DE TESTE
+Uma pista para regular o seu carro e experimentar coisas sem ir a uma corrida, com o Claudio como guia.
+
+🌐 MODO ONLINE
+Eventos semanais, temporadas e rankings com prêmios. O mundo compartilhado em tempo real chega em breve.
+
+Sem anúncios. Para jogar você cria uma conta grátis com seu e-mail: seus créditos, carros e compras ficam salvos na conta (não se perdem se você trocar de celular) e, depois de entrar, o jogo também funciona sem conexão. Tem compras opcionais dentro do jogo.
 
 ## Français
 
@@ -189,7 +207,13 @@ Volant à l'écran, pédales ou conduite en inclinant le téléphone ; boîte au
 🎬 POUR LA VITRINE
 Caméras intérieures avec pilotes, caméra libre et cinéma, effets d'objectif et mode photo. Musique de radio dans les menus.
 
-Sans publicité. Pour jouer, tu crées un compte gratuit avec ton e-mail : tes crédits, tes voitures et tes achats sont enregistrés dans ton compte (ils ne se perdent pas si tu changes de téléphone) et, une fois connecté, le jeu fonctionne aussi hors ligne. Achats intégrés facultatifs. Bientôt : mode en ligne.
+🎓 MODE ESSAI
+Une piste pour régler ta voiture et tester des choses sans aller en course, avec Claudio pour te guider.
+
+🌐 MODE EN LIGNE
+Événements hebdomadaires, saisons et classements avec récompenses. Le monde partagé en temps réel arrive bientôt.
+
+Sans publicité. Pour jouer, tu crées un compte gratuit avec ton e-mail : tes crédits, tes voitures et tes achats sont enregistrés dans ton compte (ils ne se perdent pas si tu changes de téléphone) et, une fois connecté, le jeu fonctionne aussi hors ligne. Achats intégrés facultatifs.
 
 ## Italiano
 
@@ -233,7 +257,13 @@ Volante a schermo, pedali o guida inclinando il telefono; cambio automatico o ma
 🎬 PER FAR SCENA
 Telecamere interne con i piloti, telecamera libera e cinema, effetti obiettivo e modalità foto. Musica da radio nei menu.
 
-Senza pubblicità. Per giocare crei un account gratuito con la tua e-mail: crediti, auto e acquisti restano salvati nel tuo account (non si perdono se cambi telefono) e, una volta dentro, il gioco funziona anche offline. Acquisti in-app facoltativi. In arrivo: modalità online.
+🎓 MODALITÀ PROVA
+Una pista per regolare la tua auto e provare cose senza andare a una gara, con Claudio come guida.
+
+🌐 MODALITÀ ONLINE
+Eventi settimanali, stagioni e classifiche con premi. Il mondo condiviso in tempo reale arriva presto.
+
+Senza pubblicità. Per giocare crei un account gratuito con la tua e-mail: crediti, auto e acquisti restano salvati nel tuo account (non si perdono se cambi telefono) e, una volta dentro, il gioco funziona anche offline. Acquisti in-app facoltativi.
 
 ## Deutsch
 
@@ -277,4 +307,10 @@ Lenkrad auf dem Bildschirm, Pedale oder Neigungssteuerung; Automatik oder manuel
 🎬 ZUM ANGEBEN
 Innenkameras mit Fahrern, freie und Kino-Kamera, Linseneffekte und Fotomodus. Radiomusik in den Menüs.
 
-Keine Werbung. Zum Spielen legst du ein kostenloses Konto mit deiner E-Mail an: Credits, Autos und Käufe werden in deinem Konto gespeichert (sie gehen beim Handywechsel nicht verloren) und nach der Anmeldung läuft das Spiel auch offline. Enthält optionale In-App-Käufe. Bald: Online-Modus.
+🎓 TESTMODUS
+Eine Teststrecke, um dein Auto einzustellen und Dinge auszuprobieren, ohne in ein Rennen zu gehen – mit Claudio als Guide.
+
+🌐 ONLINE-MODUS
+Wöchentliche Events, Saisons und Ranglisten mit Preisen. Die gemeinsame Echtzeit-Welt kommt bald.
+
+Keine Werbung. Zum Spielen legst du ein kostenloses Konto mit deiner E-Mail an: Credits, Autos und Käufe werden in deinem Konto gespeichert (sie gehen beim Handywechsel nicht verloren) und nach der Anmeldung läuft das Spiel auch offline. Enthält optionale In-App-Käufe.

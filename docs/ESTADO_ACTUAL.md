@@ -3,6 +3,14 @@
 Una sección por sistema, con lo que anda, lo que falta y lo que espera prueba en el teléfono. El detalle técnico vive en el documento de cada sistema (ver `docs/INDICE_TECNICO.md`);
 el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hecho y probado en la computadora · 📱 falta probar en el APK · 🚧 en curso · ⛔ bloqueado.
 
+## Preparación del lanzamiento (21/10/2026, [B]) — `docs/REGISTRO_TECNICO.md` → 21/10 05:30 · guía: `docs/LANZAMIENTO_PASO_A_PASO.md`
+- ✅📱 **Buggy:** la cámara de adentro ya no dibuja nada de la carrocería del modelo (`cowl_z = 2.6` en `game/models/cars/buggy.json`): un solo tablero, el nuestro.
+- ✅ **Migraciones:** 22 aplicadas, Local = Remote (flujo n.º 37, 21/10 04:49 UTC); nada pendiente.
+- ✅📱 **Compras:** plugin de Google Play Billing **fijo en 3.3.0** (Billing Library 9.1) en `build-aab.yml`; `billing.gd` tolera las variantes de las claves de precio; los 10 productos coinciden con el servidor. **Sólo se prueban de verdad en la prueba interna de Play** (plugin 3.3.0 + motor 4.7.2 nunca corrieron en un teléfono).
+- ✅ **AAB:** `DreamRacing-play-v1004.aab` (763 MB) en la release `play-aab`, armado desde `main` en verde (API 36, 16 KB aprobado, firmado con la clave de subida, con compras). Se reconstruye si cambia el juego.
+- ✅ **Ficha de Play:** textos en 6 idiomas actualizados (`store_listing/ficha.md`) y 8 capturas en `store_listing/capturas/`.
+- ⛔ **Lo que sólo puede hacer el dueño:** cuenta de Play Console y declaraciones, 10 productos, cuenta de revisión, secreto `GOOGLE_PLAY_SERVICE_ACCOUNT` + «Supabase · publicar funciones», interruptores de Supabase, la prueba cerrada de 14 días (si la cuenta es personal).
+
 ## Sexta tanda («último retoque», 20/10/2026, [B]) — `docs/REGISTRO_TECNICO.md` → 20/10 [B] sexta tanda
 - ✅📱 **Modo de prueba guiado y FIJO** (baldosa siempre en el inicio —desde el 21/10/2026; antes era de una sola vez—; la primera vez que se juega el inicio manda a su guía): guía antes de entrar, armado («mi auto» o camioneta, GT, clásico, superdeportivo · nivel de simulación · drift por puntos/libre o carrera por el camino de tierra o entre los edificios · ayuda de reglaje), pista con lomos de burro, punto de nafta y 4 autos haciendo drift; pausa con la guía en dibujos a la derecha y SALIR DE LA PRUEBA con un toque. **La voz de Claudio es opcional:** sin audios se ve el subtítulo (`docs/GUION_VOZ_GUIA.md`).
 - ✅📱 Pausa: cambiar el nivel de simulación en cualquier modo menos la Aventura; sin «taller de prueba» (queda el del garaje y los talleres del mundo). Volante real en simulación total y PERSONALIZADO.
