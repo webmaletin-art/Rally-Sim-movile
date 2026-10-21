@@ -1,6 +1,6 @@
 # Versión candidata (RC) — Dream Racing
 
-Rama `ccr-e7ae3f10-45afj2` · **NO está en `main`** · Godot 4.7.2 · 16/10/2026.
+Rama `ccr-e7ae3f10-45afj2` · **fusionada a `main` el 21/10/2026** (commit `e953c9b`; la RC sigue siendo la rama de pruebas) · Godot 4.7.2 · 16/10/2026.
 Es la versión para probar en el teléfono antes de decidir si se publica. Nada de esto se publicó ni se aplicó al servidor real.
 
 **Cómo leer los estados** (en este documento y en el registro):
@@ -34,7 +34,7 @@ Es la versión para probar en el teléfono antes de decidir si se publica. Nada 
   - el APK en la release **`godot-apk-rc`** (`DreamRacing-RC.apk`).
 - **Instalación:** el APK RC se llama «Dream Racing RC», paquete `com.gskorp.rallygodot.rc`. Se instala **al lado** de la app normal y no la pisa.
 - **Concurrencia:** desde el 16/10, un push nuevo cancela la compilación anterior de la rama RC. En `main` no se cancela nada.
-- **Al fusionar a `main`** (sólo con autorización del dueño) hay que deshacer 4 cosas:
+- **Al fusionar a `main`** (sólo con autorización del dueño) hay que deshacer 4 cosas (**hecho el 21/10/2026 en `e953c9b`**; la RC conserva las suyas, así que las próximas fusiones se hacen con `git merge` común —no fast-forward— y no hay que volver a deshacer nada mientras nadie toque esas líneas):
   - la rama del disparador;
   - `CONTENT_TAG`;
   - la release y el `CHANNEL` de `bootstrap/boot.gd`;
@@ -219,8 +219,8 @@ Está en la misma rama y en el mismo APK RC. Detalle y causas: `docs/REGISTRO_TE
 ## 10. Antes de publicar (pasos manuales, en orden)
 
 1. Probar el RC en el teléfono (sección 9) y en uno más, si hay.
-2. Autorizar y aplicar las migraciones 20261022 → 20261023 → 20261024 (sección 6) y mirar que el flujo salga en verde.
-3. Fusionar la rama a `main` (con autorización) y deshacer los 4 cambios del RC (sección 2).
+2. ~~Autorizar y aplicar las migraciones 20261022 → 20261023 → 20261024 (sección 6)~~ **Hecho el 21/10/2026** (se aplicaron también 20261025120000; `docs/GUIA_SQL_SUPABASE.md` → «Historial»).
+3. ~~Fusionar la rama a `main` y deshacer los 4 cambios del RC (sección 2)~~ **Hecho el 21/10/2026** (`e953c9b`).
 4. Armar el AAB con «Build Play Store AAB» y subirlo a una **prueba interna** de Play.
 5. En Play Console:
    - crear los 10 productos con los ID de la sección 5 y sus precios;

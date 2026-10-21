@@ -1,15 +1,15 @@
-# ¿Qué falta? — lista única de pendientes antes de publicar (20/10/2026)
+# ¿Qué falta? — lista única de pendientes antes de publicar (actualizada el 21/10/2026)
 
 Para el dueño. Está ordenada: primero lo que **ya está hecho**, después lo que **sólo podés hacer vos**, con el documento donde está el paso a paso.
 Regla de siempre: **nada de esto está probado en un teléfono** (desde acá sólo se prueba con pruebas automáticas, capturas y un Postgres de prueba).
 
 ## 1. Lo que ya está hecho (por mí)
-- Todas las tandas de arreglos del juego, fusionadas en `main` (ver `docs/REGISTRO_TECNICO.md`, entradas `[B]` del 19 y 20/10).
+- Todas las tandas de arreglos del juego, **fusionadas en `main` el 21/10/2026** (commit `e953c9b`; ver `docs/REGISTRO_TECNICO.md`, entradas `[B]` del 19 y 20/10). La compilación de `main` arma el APK normal («Dream Racing», release `godot-apk`); la RC sigue armando «Dream Racing RC» (release `godot-apk-rc`).
 - **Modo de prueba guiado** con la voz de Claudio (subtítulos y audio opcional): `docs/GUION_VOZ_GUIA.md`.
-- SQL: las 4 migraciones nuevas y su prueba (se aplican con el flujo; estado en `docs/GUIA_SQL_SUPABASE.md` → «Historial»).
+- SQL: las 4 migraciones nuevas, su prueba y **su aplicación al servidor real (21/10/2026 00:02 UTC, sin errores; `docs/GUIA_SQL_SUPABASE.md` → «Historial»)**.
 - Guías: `docs/GUIA_SQL_SUPABASE.md`, `docs/GUIA_PLAY_CONSOLE_PASO_A_PASO.md`, esta lista; políticas de privacidad y términos; textos de la ficha en 6 idiomas; AAB reproducible con un flujo.
 
-## 2. Probar en el teléfono (APK normal de `main` / «Dream Racing RC»)
+## 2. Probar en el teléfono (APK normal de `main` / «Dream Racing RC»; la primera vez que abras cada una baja los autos de nuevo, ~600 MB, con wifi)
 Hacelo con calma y **anotá qué falla**; con una captura y «dónde» (el 📍 del mapa o el nombre de la calle) lo arreglo.
 
 | Qué | Cómo se prueba | Qué tiene que pasar |
@@ -28,7 +28,7 @@ Hacelo con calma y **anotá qué falla**; con una captura y «dónde» (el 📍 
 ## 3. Servidor (Supabase)
 | Qué | Dónde | Estado |
 |---|---|---|
-| Aplicar las migraciones 20261022 → 20261025120000 | Actions → «Supabase · aplicar migraciones» | Lo apliqué con tu autorización; el resultado está en `docs/GUIA_SQL_SUPABASE.md` → «Historial» |
+| Aplicar las migraciones 20261022 → 20261025120000 | Actions → «Supabase · aplicar migraciones» | ✅ **Hecho** el 21/10/2026 con tu autorización (flujo n.º 35, sin errores). **Falta lo tuyo:** correr en el SQL Editor las 5 consultas de `docs/GUIA_SQL_SUPABASE.md` §4 (30 segundos; desde acá no puedo mirar la base real) |
 | «Allow anonymous sign-ins» apagado; «Confirm email» apagado o SMTP propio | Supabase → Authentication | 🖱 **vos** |
 | Realtime → «Allow public access» apagado | Supabase → Realtime → Settings | 🖱 **vos** |
 | Cuenta de revisión para Google + saldo (`account_admin_grant`) | Juego + SQL Editor | 🖱 **vos** (`docs/CUENTA_Y_ECONOMIA.md`) |

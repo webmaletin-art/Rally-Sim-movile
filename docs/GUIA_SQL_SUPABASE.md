@@ -1,6 +1,6 @@
 # Guía del SQL y de Supabase — qué se aplica, cómo se aplica y cómo se comprueba
 
-Para el dueño. **Estado al 20/10/2026** (se actualiza al final, en «Historial»). Lo que sólo se puede hacer en el panel de Supabase está marcado con 🖱.
+Para el dueño. **Estado al 21/10/2026: las 4 migraciones nuevas ya están aplicadas** (detalle al final, en «Historial»). Lo que sólo se puede hacer en el panel de Supabase está marcado con 🖱.
 
 ## 1. Qué es esto, en una frase
 El servidor del juego (Supabase) guarda las cuentas, los créditos, los autos, las compras, los récords y los eventos. Su estructura está escrita en **migraciones SQL** (carpeta `supabase/migrations/`): cada archivo es un paso, se aplican **en orden** y cada una se aplica **una sola vez** (las ya aplicadas se saltean). Todas son **aditivas y repetibles** (`if not exists`, `on conflict`) y cada una **se prueba sola** con un bloque `do $$ … $$` al final: si la prueba falla, la migración entera se deshace y no queda nada a medias.
@@ -10,17 +10,17 @@ El servidor del juego (Supabase) guarda las cuentas, los créditos, los autos, l
 | Migración | Qué hace | Estado |
 |---|---|---|
 | `20261003000000` a `20261021000000` (17 archivos: base online, borrado de cuenta, chat, economía, catálogo, cuenta obligatoria, Realtime privado, economía en el servidor, cosméticos, concesionarios, cacería, eventos, temporadas y vales) | La base del online y de la cuenta | **Aplicadas** (la última, `20261021000000`, el 15/10/2026 17:45 UTC) |
-| `20261022000000_claims_progress` | Los premios de una sola vez (logros, medallas, primeras victorias) quedan guardados en la cuenta: al reinstalar no se cobran dos veces y no se pierde el progreso | ver «Historial» |
-| `20261023000000_class_records` | Récords por **clase** (según el índice de rendimiento del auto): se compite contra autos parecidos, no contra cualquiera | ver «Historial» |
-| `20261024000000_events_rotation_daily_milestones` | Horarios de eventos que rotan, cacería para principiantes (queda **apagada**), desafíos del día configurables e hitos de la temporada | ver «Historial» |
-| `20261025120000_no_nitro_spoilers_price_tiers` | **Sin Nitro ni alerones:** devuelve lo pagado a quien los tuviera (a cuentas y a garajes online), los saca de los autos y borra esas filas del catálogo del servidor; siembra los **precios por escalones** (cada precio lo comparten 2 a 5 autos) y los locales nuevos | ver «Historial» |
+| `20261022000000_claims_progress` | Los premios de una sola vez (logros, medallas, primeras victorias) quedan guardados en la cuenta: al reinstalar no se cobran dos veces y no se pierde el progreso | ✅ **Aplicada** el 21/10/2026 00:02 UTC |
+| `20261023000000_class_records` | Récords por **clase** (según el índice de rendimiento del auto): se compite contra autos parecidos, no contra cualquiera | ✅ **Aplicada** el 21/10/2026 00:02 UTC |
+| `20261024000000_events_rotation_daily_milestones` | Horarios de eventos que rotan, cacería para principiantes (queda **apagada**), desafíos del día configurables e hitos de la temporada | ✅ **Aplicada** el 21/10/2026 00:02 UTC |
+| `20261025120000_no_nitro_spoilers_price_tiers` | **Sin Nitro ni alerones:** devuelve lo pagado a quien los tuviera (a cuentas y a garajes online), los saca de los autos y borra esas filas del catálogo del servidor; siembra los **precios por escalones** (cada precio lo comparten 2 a 5 autos) y los locales nuevos | ✅ **Aplicada** el 21/10/2026 00:02 UTC |
 
-**Ojo con la última:** devuelve plata y borra filas del catálogo; no es reversible con un botón (la plata devuelta queda en la cuenta). Se probó con datos de verdad en un Postgres local (`tools/online/refund_nitro_test.sh`: una cuenta con Nitro 1 y 2 y los tres alerones recupera exactamente lo que pagó, se le sacan de los autos, y repetir la migración no devuelve dos veces).
+**Ojo con la última (ya aplicada):** devuelve plata y borra filas del catálogo; no es reversible con un botón (la plata devuelta queda en la cuenta). Se probó con datos de verdad en un Postgres local (`tools/online/refund_nitro_test.sh`: una cuenta con Nitro 1 y 2 y los tres alerones recupera exactamente lo que pagó, se le sacan de los autos, y repetir la migración no devuelve dos veces).
 
 ## 3. Cómo se aplican (con GitHub, sin escribir SQL)
 1. Entrá a https://github.com/webmaletin-art/Rally-Sim-movile → pestaña **Actions**.
 2. En la lista de la izquierda elegí **«Supabase · aplicar migraciones»**.
-3. Botón **Run workflow** (a la derecha). En **«Use workflow from»** elegí la rama que tiene las migraciones (`main`, o la rama de la versión candidata si todavía no se fusionó) y apretá **Run workflow**.
+3. Botón **Run workflow** (a la derecha). En **«Use workflow from»** elegí la rama que tiene las migraciones (`main`; desde el 21/10/2026 la rama de la versión candidata tiene las mismas) y apretá **Run workflow**.
 4. Esperá 1 o 2 minutos y abrí la corrida. Tiene que quedar con ✅ verde. Los pasos que importan:
    - **«Migraciones pendientes»**: lista lo que falta aplicar (columna *Remote* vacía).
    - **«Aplicar las migraciones»**: aplica cada una en orden y escribe `Applying migration …` por cada una.
@@ -74,4 +74,9 @@ La compra de un producto de Play la verifica la función `verify-purchase` (carp
 - **Copia de seguridad antes de un cambio grande:** el plan gratuito no trae copias automáticas; en el plan **Pro** (Database → Backups) hay copias diarias. Si pasás a Pro, conviene hacerlo **antes de abrir el tiempo real** (ver `docs/COSTOS_ONLINE.md`).
 
 ## Historial (lo que se aplicó de verdad)
-_(se completa cuando se aplican)_
+- **21/10/2026 00:02 UTC · flujo «Supabase · aplicar migraciones», corrida n.º 35** (desde la rama `ccr-e7ae3f10-45afj2`, commit `edaaaf6`; autorización expresa del dueño el 20/10: «ejecutes todo lo que es SQL»). **Aplicó sin errores y en orden** `20261022000000_claims_progress`, `20261023000000_class_records`, `20261024000000_events_rotation_daily_milestones` y `20261025120000_no_nitro_spoilers_price_tiers`. «Migraciones pendientes» listaba exactamente esas cuatro; «Migraciones aplicadas» muestra las 22 versiones (`20261003000000` … `20261025120000`) con la misma fecha en *Local* y en *Remote*.
+  - **Antes de aplicar** estaba verde: el flujo «Economía online · prueba SQL» (corrida a mano n.º 32 sobre el mismo commit: aplica todas las migraciones dos veces, `ECONOMIA_ONLINE_TEST OK`, `CUENTA_TEST OK`, la función de compras y la devolución del Nitro con datos de verdad) y las 106 pruebas de Godot de `build-godot.yml` (corrida n.º 234, job «tests»).
+  - **Lo que no pude comprobar desde acá:** no tengo acceso a la base del proyecto real, así que las consultas de la sección 4 las corrés vos en el SQL Editor (30 segundos). Lo que sí se sabe es que cada migración corrió su autoprueba `do $$ … $$` (si una fallaba, el flujo quedaba en rojo y se deshacía todo) y que la lista final coincide.
+  - **Lo que cambia para quien juega:** el Nitro y los alerones desaparecen del catálogo y de los autos (a quien los hubiera pagado se le devolvió la plata de catálogo en su cuenta o su garaje online); los autos quedan con los precios por escalones; los premios de una sola vez, los récords por clase, los eventos rotativos y los hitos de la temporada ya existen en el servidor. La cacería para principiantes (`caza_inicial`) quedó **apagada** a propósito hasta publicar.
+  - **Pendiente (sólo vos, 🖱):** las 5 consultas de la sección 4, y lo de la sección 5 (correo sin confirmación, Realtime sin acceso público, cuenta de revisión de Google).
+- Antes (15/10/2026): `20261003000000` a `20261021000000` aplicadas con el mismo flujo; la última (`20261021000000_seasons_drift_vouchers`) el 15/10/2026 17:45 UTC, sin errores y con su autoprueba.
