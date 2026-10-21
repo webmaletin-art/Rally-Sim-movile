@@ -18,7 +18,7 @@ SHOTS = [
     ('02_aventura', ['world/extra/adv_girasoles/girasoles_front_low.jpg', 'world/extra/adv_*/*front_low.jpg']),
     ('03_dream_city', ['world/scoutw/plaza_sunset/a_front.jpg', 'world/scoutw/avenida3_golden/a_front.jpg']),
     ('04_region', ['world/aerial/puerto_alba/d1_alto_atras.jpg', 'world/scoutw/ruta_este/b_low.jpg']),
-    ('05_garaje', ['ui/garage.png']),
+    ('05_taller', ['ui/tune.png']),
     ('06_pintura', ['ui/paint.png']),
     ('07_lago', ['world/action/lake_dusk/a0_front_low.jpg', 'world/action/lake_dusk/*front_low.jpg']),
     ('08_travesia', ['ui/travesia.png', 'world/action/travesia/*front_low.jpg']),

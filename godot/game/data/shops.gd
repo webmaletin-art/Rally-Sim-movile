@@ -1,6 +1,10 @@
 extends RefCounted
 ## Los locales de Dream City: el concesionario y los talleres. Cada taller se ocupa de un tipo de trabajo (el menú del taller muestra solo eso).
-## tabs: pestañas del taller (0 piezas · 1 gomas · 2 ajuste · 3 pintura) · parts: mejoras que ofrece · tune: grupos de ajuste fino que ofrece.
+## tabs: pestañas del taller (0 piezas · 1 gomas · 2 ajuste · 3 pintura · 4 llantas) · parts: mejoras que ofrece · tune: grupos de ajuste fino que ofrece.
+## La pestaña 5 (ESTÉTICA: paragolpes, faldones y capó) está OCULTA desde el 21/10/2026 (pedido del dueño: «se ven muy feo, no tienen buen acabado»).
+## Para volver a mostrarla: sumar 5 a ALL_TABS y a las pestañas de «paint» (el código de la pestaña, `_ws_body`, y las piezas siguen en su lugar).
+
+const ALL_TABS := [0, 1, 2, 3, 4] # pestañas del taller del menú (garaje); los talleres de la calle usan las suyas (`tabs`)
 
 const SHOPS := {
 	"dealer": {"name": "Concesionario Dream City", "short": "Concesionario", "icon": "🚗", "color": Color(0.20, 0.45, 0.85), "kind": "dealer",
@@ -17,8 +21,8 @@ const SHOPS := {
 	"dealer_sport": {"name": "Dream Motorsport", "short": "Motorsport", "icon": "🏎", "color": Color(0.10, 0.10, 0.12), "kind": "dealer",
 		"info": "Deportivos de pista, superdeportivos e hypercars.", "display": ["gt3", "strix", "hyper"],
 		"cars": ["trilux", "pro_gt", "kl5", "trilux_s", "trilux_gt", "gt3", "veltor", "strix", "veltor_s", "moust", "veltor_gtr", "hyper", "police"]},
-	"paint": {"name": "Taller de Pintura", "short": "Pintura", "icon": "🎨", "color": Color(0.85, 0.30, 0.65), "kind": "workshop", "tabs": [3, 5],
-		"info": "Colores, acabados, llantas, pinzas, discos y estética."},
+	"paint": {"name": "Taller de Pintura", "short": "Pintura", "icon": "🎨", "color": Color(0.85, 0.30, 0.65), "kind": "workshop", "tabs": [3],
+		"info": "Colores, acabados, llantas, pinzas y discos."},
 	"engine": {"name": "Taller de Motor", "short": "Motor", "icon": "⚙️", "color": Color(0.88, 0.25, 0.20), "kind": "workshop", "tabs": [0], "parts": ["engine", "turbo", "weight"],
 		"info": "Motor, turbo y aligerado."},
 	"gearbox": {"name": "Taller de Transmisión", "short": "Transmisión", "icon": "🕹️", "color": Color(0.22, 0.62, 0.62), "kind": "workshop", "tabs": [0, 2], "parts": ["gearbox", "diff"], "tune": ["Transmisión"],

@@ -58,7 +58,7 @@ Sin publicidad. Para jugar creás una cuenta gratis con tu correo: tus créditos
 **Política de privacidad:** https://webmaletin-art.github.io/Rally-Sim-movile/docs/privacidad.html
 
 ### Notas de la versión 1.0.0
-Primera versión en Google Play: 28 autos, Dream City y su región, aventura de 12 etapas, Travesía X, copas, red de rutas, drift, modo de prueba guiado, modo online con eventos y ranking, tienda con prueba de autos y taller con guías fáciles.
+Ver `store_listing/novedades.md` (las novedades en los 6 idiomas, listas para pegar; máximo 500 caracteres cada una).
 
 ## English
 
@@ -113,7 +113,7 @@ No ads. To play you create a free account with your email: your credits, cars an
 **Category:** Games → Racing · **Tags:** racing, rally, drift, open world, simulation, cars
 
 ### Release notes 1.0.0
-First release on Google Play: 28 cars, Dream City and its region, 12-stage adventure, Crossing X, cups, route network, drift, guided test mode, online mode with events and rankings, shop with test drives and an easy tuning garage.
+See `store_listing/novedades.md` (what's new in the 6 languages, ready to paste; 500 characters max each).
 
 ## Português (Brasil)
 

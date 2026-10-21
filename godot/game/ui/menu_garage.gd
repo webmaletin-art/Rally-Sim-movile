@@ -82,6 +82,11 @@ func build(name: String, arg) -> void:
 func shop_info() -> Dictionary:
 	return Shops.get_shop(shop) if shop != "" else {}
 
+## Pestañas del taller que se muestran (las del local de la calle, o todas las visibles: sin ESTÉTICA, ver `Shops.ALL_TABS`)
+func allowed_tabs() -> Array:
+	var sd := shop_info()
+	return sd["tabs"] if not sd.is_empty() else Shops.ALL_TABS
+
 ## Título de la barra superior cuando se entra desde la calle (taller de Dream City o concesionario)
 func city_title() -> String:
 	var sd := shop_info()
@@ -387,7 +392,7 @@ func _workshop() -> void:
 	hl.custom_minimum_size.x = 40
 	head.add_child(hl)
 	var tab_names := ["⚙ PIEZAS", "⚪ GOMAS", "🎚 AJUSTE", "🎨 PINTURA", "🛞 LLANTAS", "🔩 ESTÉTICA"]
-	var allowed: Array = sd["tabs"] if not sd.is_empty() else [0, 1, 2, 3, 4, 5]
+	var allowed: Array = allowed_tabs()
 	if not allowed.has(ws_tab):
 		ws_tab = int(allowed[0])
 	if allowed.size() > 1 and not m.chrome_on: # (con el marco del garaje las pestañas están en el riel de la izquierda)

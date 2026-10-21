@@ -50,10 +50,10 @@ func _run() -> void:
 		await _frames()
 		check(int(garage.mine_i) == target and menu.get("screen") == "garage", "garaje: tocar una tarjeta elige ese auto")
 		check(String(menu.get("showroom").shown_id) != "", "garaje: la sala muestra el auto elegido")
-	# riel: PIEZAS … ESTÉTICA abren la pestaña del taller de siempre (RIEL: atrás, separador, mis autos, compra autos, 6 pestañas)
+	# riel: PIEZAS … LLANTAS abren la pestaña del taller de siempre (RIEL: atrás, separador, mis autos, compra autos, 5 pestañas; ESTÉTICA está oculta desde el 21/10/2026)
 	var rail_kids: Array = chrome.rail.get_children()
-	check(rail_kids.size() == 10, "garaje: el riel tiene atrás, separador, 2 autos y 6 pestañas del taller (%d)" % rail_kids.size())
-	for k in 6:
+	check(rail_kids.size() == 9, "garaje: el riel tiene atrás, separador, 2 autos y 5 pestañas del taller (%d)" % rail_kids.size())
+	for k in 5:
 		menu.call("go", "garage")
 		await _frames()
 		var rk: Array = chrome.rail.get_children()
