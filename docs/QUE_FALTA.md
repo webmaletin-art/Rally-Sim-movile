@@ -15,7 +15,7 @@ Hacelo con calma y **anotá qué falla**; con una captura y «dónde» (el 📍 
 
 | Qué | Cómo se prueba | Qué tiene que pasar |
 |---|---|---|
-| **Modo de prueba** | Inicio → baldosa **MODO DE PRUEBA** (aparece después de la configuración gráfica) | Guía con voz/subtítulos, armado, pista con lomos de burro, punto de nafta, camino de tierra y calles; carrera por puertas; pausa con la guía a la derecha; **SALIR DE LA PRUEBA** pide dos toques y después **la baldosa desaparece** (una sola vez) |
+| **Modo de prueba (fijo)** | Inicio → baldosa **MODO DE PRUEBA** (aparece después de la configuración gráfica y **queda siempre**) | Guía con voz/subtítulos, armado (podés elegir **MI AUTO**), pista con lomos de burro, punto de nafta, camino de tierra y calles; carrera por puertas; pausa con la guía a la derecha y REGLAJES; **SALIR DE LA PRUEBA** sale con un toque y la baldosa sigue ahí. **Primera vez:** con un perfil nuevo (instalá de cero o borrá los datos de la app), después de la configuración gráfica el inicio te manda solo a la guía del modo de prueba (con «AHORA NO · IR AL MENÚ» para dejarlo) |
 | **Pausa: nivel de simulación** | Cualquier carrera menos la Aventura → pausa → NIVEL DE SIMULACIÓN | Pasar de simulación total a arcade se aplica al instante y el auto sigue donde está |
 | **Volante real** | Simulación total (o PERSONALIZADO → Volante real) | Hay que girar el dedo de verdad: ¾ de vuelta en Arcade, 1½ en Real 50 %, 3 en Real 100 % |
 | **Calles y rutas** | Dream City: Avenida 2 y 3 (cuadras 3 y 6), Ruta 80 (cuadras 4 y 13), esquinas, la X de la Panorámica | Sin pedazos de tierra ni pasto sobre el asfalto, sin paredes invisibles, sin la rampa invisible |
@@ -41,7 +41,7 @@ Todo el camino, con clics, en **`docs/GUIA_PLAY_CONSOLE_PASO_A_PASO.md`**. Lo qu
 Pendientes concretos: cuenta de desarrollador y perfil de pagos · «Contenido de la app» (incluida «Seguridad de los datos») · ficha (ajustar la frase del online; la cantidad de autos ya dice 28) · AAB firmado · los 10 productos integrados con sus IDs · prueba interna con compras · prueba cerrada · producción.
 
 ## 5. Contenido que sólo vos tenés
-- **La voz de Claudio** (opcional, se puede sumar de a poco): 52 líneas en `docs/GUION_VOZ_GUIA.md`; se graban en `godot/game/audio/guide/es/<id>.ogg`. Sin audio se ve el subtítulo.
+- **La voz de Claudio** (opcional, se puede sumar de a poco): 53 líneas en `docs/GUION_VOZ_GUIA.md`; se graban en `godot/game/audio/guide/es/<id>.ogg`. Sin audio se ve el subtítulo.
 - **Licencia comercial de la música** (MusicGPT): confirmá que tu plan permite uso comercial; si no, apagamos la música antes de publicar.
 - **Logo propio** para el ícono (el «DR» actual es provisorio).
 - **Tráiler en YouTube** y las capturas elegidas para la ficha.

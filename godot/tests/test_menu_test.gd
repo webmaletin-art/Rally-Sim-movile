@@ -1,5 +1,6 @@
-## MODO DE PRUEBA en el menú ([B] 20/10/2026, pedido del dueño): la baldosa del inicio (después de la configuración gráfica automática y hasta que se use), la guía antes de entrar
-## (con la voz de Claudio y subtítulos), las hojas con dibujos, el armado (auto, nivel de simulación, drift o carrera, ayuda de reglaje) y la configuración que se larga.
+## MODO DE PRUEBA en el menú ([B] 20/10/2026, pedido del dueño; FIJO desde el 21/10): la baldosa del inicio (siempre, después de la configuración gráfica automática), la guía antes de entrar
+## (con la voz de Claudio y subtítulos), las hojas con dibujos, el armado (auto —o «mi auto»—, nivel de simulación, drift o carrera, ayuda de reglaje), la configuración que se larga
+## y la entrada de la primera vez que se juega (el menú manda al jugador nuevo a la guía, una sola vez).
 ## Uso: godot --headless --path godot --script res://tests/test_menu_test.gd -- --menu --noconsent
 extends SceneTree
 
@@ -113,7 +114,7 @@ func _run() -> void:
 	body = menu.get("body")
 	var g: Node = menu.call("guide_voice")
 	check(g != null and g.heard.has("welcome"), "la guía da la bienvenida (voz y subtítulo)")
-	check(_has_text(body, "UNA sola vez") or _has_text(body, "una sola vez"), "avisa que la prueba se usa una sola vez")
+	check(_has_text(body, "Queda siempre en el inicio") and not _has_text(body, "UNA sola vez"), "avisa que la prueba queda siempre en el inicio (ya no es de una sola vez)")
 	check(_btn(body, "LEER LA GUÍA") != null and _btn(body, "IR A LA PRUEBA") != null, "botones: LEER LA GUÍA e IR A LA PRUEBA")
 	var vb: Button = _btn(body, "GUÍA:")
 	check(vb != null and g.mode == "full", "botón de la voz: «%s»" % (vb.text if vb != null else "—"))
@@ -148,6 +149,8 @@ func _run() -> void:
 	check(menu.get("screen") == "test_setup" and g.heard.has("setup_welcome"), "ARMÁ TU PRUEBA: la guía explica qué elegir")
 	for nm in ["CAMIONETA", "GT", "CLÁSICO", "SUPERDEPORTIVO"]:
 		check(_btn(body, nm) != null, "auto de prueba: " + nm)
+	check(_btn(body, "MI AUTO") != null, "auto de prueba: «MI AUTO» (el del garaje)")
+	check(_btn(menu.get("pinned"), "salís y volvés cuando quieras") != null or _has_text(menu.get("pinned"), "salís y volvés cuando quieras"), "EMPEZAR LA PRUEBA ya no dice «una sola vez»")
 	for nm in ["ARCADE", "INTERMEDIO", "SIMULADOR TOTAL", "PERSONALIZADO"]:
 		check(_btn(body, nm) != null, "nivel de simulación: " + nm)
 	check(_btn(body, "DRIFT POR PUNTOS") != null and _btn(body, "DRIFT LIBRE") != null, "qué hacer: drift por puntos o libre")
@@ -159,6 +162,14 @@ func _run() -> void:
 	await _frames(4)
 	var st := MenuTest.setup_of(profile)
 	check(st["car"] == "pickup" and g.heard.has("car_pickup"), "elegir la camioneta: se guarda y la guía la presenta")
+	_btn(menu.get("body"), "MI AUTO").pressed.emit()
+	await _frames(4)
+	st = MenuTest.setup_of(profile)
+	check(st["car"] == MenuTest.MINE and g.heard.has("car_mine"), "elegir «mi auto»: se guarda y la guía avisa que lo que se ajuste no se guarda")
+	var mcfg := MenuTest.build_cfg(st, profile)
+	check(mcfg["car"] == str(profile.current_id()) and mcfg["state"].hash() == (profile.car() as Dictionary).hash(), "la prueba largaría con el auto elegido en el garaje (%s), con sus piezas" % str(mcfg["car"]))
+	_btn(menu.get("body"), "CAMIONETA").pressed.emit()
+	await _frames(4)
 	_btn(menu.get("body"), "SIMULADOR TOTAL").pressed.emit()
 	await _frames(4)
 	check(profile.setting("simLevel") == "pro" and g.heard.has("sim_pro"), "elegir simulador total: queda como nivel y la guía lo explica")
@@ -179,16 +190,55 @@ func _run() -> void:
 	check(ts["mode"] == "race" and ts["loop"] == "urban" and ts["lab"] == false and float(ts["tank"]) == 1.0, "configuración de la prueba: carrera, entre edificios, sin ayuda de reglaje, tanque lleno")
 	var cfg2 := MenuTest.build_cfg(MenuTest.default_setup())
 	check(cfg2["ai"] == 4 and cfg2["car"] == "gt" and cfg2["testSetup"]["lab"] == true, "por defecto: drift con cuatro autos, GT y ayuda de reglaje")
-	# ── 7) una sola vez
+	# ── 7) fijo: después de salir de la prueba la baldosa SIGUE (se puede volver cuantas veces se quiera)
 	MenuTest.mark_done(profile)
-	check(not MenuTest.available(profile), "al salir de la prueba deja de estar disponible")
-	menu.call("go", "test_guide", null, false)
-	await _frames(4)
-	check(menu.get("screen") == "test_guide" and not _has_text(menu.get("body"), "LEER LA GUÍA"), "no se puede volver a entrar (la pantalla cae al inicio)")
+	check(MenuTest.available(profile), "al salir de la prueba sigue disponible")
 	menu.call("go", "home", null, false)
 	await _frames(6)
-	check(not _has_text(menu.get("body"), "MODO DE PRUEBA"), "inicio: la baldosa desapareció")
-	check(g.heard.has("exit_done"), "el menú se despide con la guía una sola vez")
+	check(_btn(menu.get("body"), "MODO DE PRUEBA") != null, "inicio: la baldosa sigue ahí")
+	check(g.heard.has("exit_done"), "el menú se despide con la guía la primera vez")
+	g.heard.erase("exit_done")
+	menu.call("go", "home", null, false)
+	await _frames(6)
+	check(not g.heard.has("exit_done"), "…y no se despide de nuevo al volver al inicio")
+	MenuTest.mark_done(profile) # (la segunda vez que sale de la prueba)
+	menu.call("go", "home", null, false)
+	await _frames(6)
+	check(not g.heard.has("exit_done") and _btn(menu.get("body"), "MODO DE PRUEBA") != null, "la segunda vez: sin despedida y con la baldosa")
+	_btn(menu.get("body"), "MODO DE PRUEBA").pressed.emit()
+	await _frames(6)
+	check(menu.get("screen") == "test_guide" and _btn(menu.get("body"), "LEER LA GUÍA") != null, "se puede volver a entrar a la guía de la prueba")
+	# ── 8) primera vez que se juega: el menú manda a la guía de la prueba, una sola vez
+	profile.d.erase("testMode")
+	MenuTest.mark_first_time(profile)
+	g.heard.clear()
+	menu.set("no_consent", false) # (el menú de la prueba se abre con --noconsent: acá tiene que correr la entrada de la primera vez)
+	profile.d["settings"]["gfx"] = {} # sin la configuración gráfica automática todavía no
+	menu.call("go", "home", null, false)
+	await _frames(6)
+	check(menu.get("screen") == "home" and MenuTest.state(profile).get("intro") == true, "sin la configuración gráfica: se queda en el inicio y la entrada sigue pendiente")
+	profile.d["settings"]["gfx"] = {"locked": true, "version": Autotune.VERSION, "sig": Autotune.device_sig(), "auto": {}}
+	menu.call("go", "home", null, false)
+	await _frames(8)
+	check(menu.get("screen") == "test_guide", "con la configuración hecha: el inicio manda a la guía del modo de prueba")
+	check(g.heard.has("welcome_first") and not g.heard.has("welcome"), "…con la bienvenida a Dream Racing de la primera vez")
+	check(_has_text(menu.get("body"), "¡Bienvenido! Como es tu primera vez") and _btn(menu.get("body"), "IR A LA PRUEBA") != null, "…y la guía dice que es la primera vez y ofrece IR A LA PRUEBA")
+	check(MenuTest.state(profile).get("intro") != true, "la entrada quedó anotada: no insiste")
+	var skip: Button = _btn(menu.get("body"), "AHORA NO")
+	check(skip != null, "se puede dejar para después: AHORA NO · IR AL MENÚ")
+	skip.pressed.emit()
+	await _frames(6)
+	check(menu.get("screen") == "home", "AHORA NO vuelve al inicio")
+	menu.call("go", "home", null, false)
+	await _frames(6)
+	check(menu.get("screen") == "home" and _btn(menu.get("body"), "MODO DE PRUEBA") != null, "no se vuelve a mandar y la baldosa queda en el inicio")
+	_btn(menu.get("body"), "MODO DE PRUEBA").pressed.emit()
+	await _frames(6)
+	g.heard.clear()
+	menu.call("go", "test_guide", null, false)
+	await _frames(6)
+	check(g.heard.has("welcome") and not g.heard.has("welcome_first") and not _has_text(menu.get("body"), "¡Bienvenido! Como es tu primera vez"), "abierta desde la baldosa, la guía es la de siempre (sin la bienvenida de la primera vez)")
+	menu.set("no_consent", true)
 	# restaurar el perfil de la prueba
 	if saved_state != null:
 		profile.d["testMode"] = saved_state

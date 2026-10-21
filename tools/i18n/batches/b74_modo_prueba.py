@@ -12,11 +12,17 @@ def add(es, en, pt, fr, it, de):
 
 # ───────────────────────── la guía hablada (guion) ─────────────────────────
 add(ES['welcome'],
-    "Hi, I'm Claudio, your guide. This is test mode: a place to get to know the car, tune the setup and drift before heading out to the open world. You can read the guide or go straight to the test.",
-    "Oi, eu sou o Claudio, o seu guia. Este é o modo de teste: um lugar para conhecer o carro, ajustar a regulagem e fazer drift antes de sair para o mundo aberto. Você pode ler o guia ou ir direto para o teste.",
-    "Salut, je suis Claudio, ton guide. Voici le mode essai : un endroit pour découvrir la voiture, ajuster le réglage et drifter avant de partir dans le monde ouvert. Tu peux lire le guide ou aller directement à l'essai.",
-    "Ciao, sono Claudio, la tua guida. Questa è la modalità prova: un posto per conoscere l'auto, regolare l'assetto e fare drift prima di uscire nel mondo aperto. Puoi leggere la guida o andare direttamente alla prova.",
-    "Hallo, ich bin Claudio, dein Guide. Das ist der Testmodus: ein Ort, um das Auto kennenzulernen, das Setup einzustellen und zu driften, bevor du in die offene Welt fährst. Du kannst die Anleitung lesen oder gleich zum Test gehen.")
+    "Hi, I'm Claudio, your guide. This is test mode: a place to get to know the car, tune the setup and drift without going to a race. It always stays on the home screen, so come back whenever you like. You can read the guide or go straight to the test.",
+    "Oi, eu sou o Claudio, o seu guia. Este é o modo de teste: um lugar para conhecer o carro, ajustar a regulagem e fazer drift sem ir a uma corrida. Ele fica sempre na tela inicial, então volte quando quiser. Você pode ler o guia ou ir direto para o teste.",
+    "Salut, je suis Claudio, ton guide. Voici le mode essai : un endroit pour découvrir la voiture, ajuster le réglage et drifter sans aller en course. Il reste toujours sur l'accueil, alors reviens quand tu veux. Tu peux lire le guide ou aller directement à l'essai.",
+    "Ciao, sono Claudio, la tua guida. Questa è la modalità prova: un posto per conoscere l'auto, regolare l'assetto e fare drift senza andare a una gara. Resta sempre nella schermata iniziale, quindi torna quando vuoi. Puoi leggere la guida o andare direttamente alla prova.",
+    "Hallo, ich bin Claudio, dein Guide. Das ist der Testmodus: ein Ort, um das Auto kennenzulernen, das Setup einzustellen und zu driften, ohne in ein Rennen zu gehen. Er bleibt immer im Startmenü, komm also zurück, wann du willst. Du kannst die Anleitung lesen oder gleich zum Test gehen.")
+add(ES['welcome_first'],
+    "Welcome to Dream Racing! I'm Claudio, your guide. Before you head out, let's stop by test mode: a place to get to know the game, tune your car and try things without going to a race. After that it always stays in the menu. You can read the guide or go straight to the test.",
+    "Bem-vindo ao Dream Racing! Eu sou o Claudio, o seu guia. Antes de sair, vamos passar pelo modo de teste: um lugar para conhecer o jogo, regular o seu carro e experimentar coisas sem ir a uma corrida. Depois ele fica sempre no menu. Você pode ler o guia ou ir direto para o teste.",
+    "Bienvenue dans Dream Racing ! Je suis Claudio, ton guide. Avant de partir, passons par le mode essai : un endroit pour découvrir le jeu, régler ta voiture et tester des choses sans aller en course. Ensuite, il reste toujours dans le menu. Tu peux lire le guide ou aller directement à l'essai.",
+    "Benvenuto in Dream Racing! Sono Claudio, la tua guida. Prima di partire, passiamo dalla modalità prova: un posto per conoscere il gioco, regolare la tua auto e provare cose senza andare a una gara. Poi resta sempre nel menu. Puoi leggere la guida o andare direttamente alla prova.",
+    "Willkommen bei Dream Racing! Ich bin Claudio, dein Guide. Bevor du losfährst, schauen wir im Testmodus vorbei: ein Ort, um das Spiel kennenzulernen, dein Auto einzustellen und Dinge auszuprobieren, ohne in ein Rennen zu gehen. Danach bleibt er immer im Menü. Du kannst die Anleitung lesen oder gleich zum Test gehen.")
 add(ES['guide_pages'],
     "Use the arrows to flip the pages: suspension, traction, brakes, cameras, steering wheel and drift. Whenever you like, come back and enter the test.",
     "Com as setas você passa as páginas: suspensão, tração, freios, câmeras, volante e drift. Quando quiser, volte e entre no teste.",
@@ -53,6 +59,12 @@ add(ES['car_super'],
     "La supercar : une puissance énorme. En simulation totale, il faut la manier avec précaution.",
     "La supersportiva: potenza enorme. Con la simulazione totale va trattata con cura.",
     "Der Supersportwagen: enorme Leistung. In der vollen Simulation musst du ihn mit Vorsicht behandeln.")
+add(ES['car_mine'],
+    "You'll test with your own car, with the parts and setup it already has. Whatever you adjust in the test isn't saved: to make it permanent, apply it in the workshop.",
+    "Você vai testar com o seu carro, com as peças e a regulagem que ele já tem. O que você ajustar no teste não é salvo: para deixar fixo, aplique na oficina.",
+    "Tu vas essayer avec ta voiture, avec les pièces et le réglage qu'elle a déjà. Ce que tu ajustes pendant l'essai n'est pas enregistré : pour le garder, applique-le à l'atelier.",
+    "Proverai con la tua auto, con i pezzi e l'assetto che ha già. Quello che regoli nella prova non viene salvato: per renderlo definitivo, applicalo in officina.",
+    "Du testest mit deinem eigenen Auto, mit den Teilen und dem Setup, die es schon hat. Was du im Test einstellst, wird nicht gespeichert: Um es dauerhaft zu machen, wende es in der Werkstatt an.")
 add(ES['sim_arcade'],
     "Arcade: high ABS, traction control and stability, and the steering wheel turns only a little: three quarters of a turn lock to lock. The car forgives almost everything.",
     "Arcade: ABS, controle de tração e estabilidade altos, e o volante gira pouco: três quartos de volta de batente a batente. O carro perdoa quase tudo.",
@@ -132,11 +144,11 @@ add(ES['gfx'],
     "Se il gioco gira al limite, abbassa la qualità grafica da qui. Puoi misurarla di nuovo quando vuoi.",
     "Wenn das Spiel knapp läuft, senke hier die Grafikqualität. Du kannst sie jederzeit neu messen.")
 add(ES['start'],
-    "When you're ready, tap start the test. Remember: it can only be done once.",
-    "Quando estiver pronto, toque em começar o teste. Lembre-se: só dá para fazer uma vez.",
-    "Quand tu es prêt, touche commencer l'essai. N'oublie pas : on ne peut le faire qu'une seule fois.",
-    "Quando sei pronto, tocca inizia la prova. Ricorda: si fa una sola volta.",
-    "Wenn du bereit bist, tippe auf Test starten. Denk daran: Er geht nur einmal.")
+    "When you're ready, tap start the test. You can leave and come back whenever you like: it stays on the home screen.",
+    "Quando estiver pronto, toque em começar o teste. Você pode sair e voltar quando quiser: ele fica na tela inicial.",
+    "Quand tu es prêt, touche commencer l'essai. Tu peux quitter et revenir quand tu veux : il reste sur l'accueil.",
+    "Quando sei pronto, tocca inizia la prova. Puoi uscire e tornare quando vuoi: resta nella schermata iniziale.",
+    "Wenn du bereit bist, tippe auf Test starten. Du kannst jederzeit rausgehen und wiederkommen: Er bleibt im Startmenü.")
 add(ES['test_welcome'],
     "You're on the track. Drive around for a while to warm up. With the pause button you open the tuning and the guide.",
     "Você já está na pista. Dirija um pouco para esquentar. Na pausa você abre as regulagens e o guia.",
@@ -311,22 +323,15 @@ add(ES['wheel_real'],
     "Avec le volant réel, tu dois vraiment le tourner avec le doigt : jusqu'à trois tours d'une butée à l'autre.",
     "Con il volante reale devi girarlo davvero con il dito: fino a tre giri da un fondo corsa all'altro.",
     "Beim echten Lenkrad musst du wirklich mit dem Finger drehen: bis zu drei Umdrehungen von Anschlag zu Anschlag.")
-add(ES['exit_warn'],
-    "If you leave the test you can't enter again. Tap once more to confirm.",
-    "Se você sair do teste, não poderá entrar de novo. Toque mais uma vez para confirmar.",
-    "Si tu quittes l'essai, tu ne pourras plus y entrer. Touche encore une fois pour confirmer.",
-    "Se esci dalla prova non puoi più rientrare. Tocca ancora una volta per confermare.",
-    "Wenn du den Test verlässt, kommst du nicht mehr hinein. Tippe noch einmal zur Bestätigung.")
 add(ES['exit_done'],
-    "Done, you finished the test. Now the open world awaits you. Enjoy it!",
-    "Pronto, você terminou o teste. Agora o mundo aberto te espera. Aproveite!",
-    "C'est fini, tu as terminé l'essai. Maintenant, le monde ouvert t'attend. Profites-en !",
-    "Fatto, hai finito la prova. Ora ti aspetta il mondo aperto. Divertiti!",
-    "Geschafft, du hast den Test beendet. Jetzt wartet die offene Welt auf dich. Viel Spaß!")
+    "Done, back to the menu. Test mode stays on the home screen: come back whenever you want to tune your car or try something without going to a race.",
+    "Pronto, voltamos ao menu. O modo de teste fica na tela inicial: volte quando quiser regular o seu carro ou experimentar algo sem ir a uma corrida.",
+    "C'est fait, retour au menu. Le mode essai reste sur l'accueil : reviens quand tu veux régler ta voiture ou tester quelque chose sans aller en course.",
+    "Fatto, torniamo al menu. La modalità prova resta nella schermata iniziale: torna quando vuoi regolare la tua auto o provare qualcosa senza andare a una gara.",
+    "Geschafft, zurück zum Menü. Der Testmodus bleibt im Startmenü: Komm zurück, wann immer du dein Auto einstellen oder etwas ausprobieren willst, ohne in ein Rennen zu gehen.")
 
 # ───────────────────────── menú del Modo de prueba ─────────────────────────
 add("MODO DE PRUEBA", "TEST MODE", "MODO DE TESTE", "MODE ESSAI", "MODALITÀ PROVA", "TESTMODUS")
-add("una sola vez", "one time only", "uma única vez", "une seule fois", "una sola volta", "nur einmal")
 add("eventos y ranking", "events and ranking", "eventos e ranking", "événements et classement", "eventi e classifica", "Events und Rangliste")
 add("🎓 MODO DE PRUEBA", "🎓 TEST MODE", "🎓 MODO DE TESTE", "🎓 MODE ESSAI", "🎓 MODALITÀ PROVA", "🎓 TESTMODUS")
 add("🎓 ARMÁ TU PRUEBA", "🎓 SET UP YOUR TEST", "🎓 MONTE O SEU TESTE", "🎓 PRÉPARE TON ESSAI", "🎓 PREPARA LA TUA PROVA", "🎓 STELL DEINEN TEST ZUSAMMEN")
@@ -336,7 +341,6 @@ add("las hojas con dibujos: suspensión, tracción, cámaras, volante…", "illu
 add("▶ IR A LA PRUEBA", "▶ GO TO THE TEST", "▶ IR PARA O TESTE", "▶ ALLER À L'ESSAI", "▶ VAI ALLA PROVA", "▶ ZUM TEST")
 add("elegir el auto y empezar", "pick the car and start", "escolher o carro e começar", "choisir la voiture et commencer", "scegli l'auto e inizia", "Auto wählen und starten")
 add("▶ EMPEZAR LA PRUEBA", "▶ START THE TEST", "▶ COMEÇAR O TESTE", "▶ COMMENCER L'ESSAI", "▶ INIZIA LA PROVA", "▶ TEST STARTEN")
-add("una sola vez: cuando salís no se vuelve a entrar", "one time only: once you leave you can't come back in", "uma única vez: ao sair, não dá para entrar de novo", "une seule fois : une fois sorti, on ne peut plus rentrer", "una sola volta: una volta usciti non si può rientrare", "nur einmal: wenn du rausgehst, kommst du nicht mehr rein")
 add("AUTO DE PRUEBA", "TEST CAR", "CARRO DE TESTE", "VOITURE D'ESSAI", "AUTO DI PROVA", "TESTAUTO")
 add("CAMIONETA", "PICKUP", "CAMINHONETE", "PICK-UP", "PICK-UP", "PICKUP")
 add("CLÁSICO", "CLASSIC", "CLÁSSICO", "CLASSIQUE", "CLASSICA", "KLASSIKER")
@@ -357,12 +361,6 @@ add("TEXTO", "TEXT", "TEXTO", "TEXTE", "TESTO", "TEXT")
 add("SIN GUÍA", "NO GUIDE", "SEM GUIA", "SANS GUIDE", "SENZA GUIDA", "OHNE FÜHRUNG")
 add("ADELANTE", "NEXT", "AVANÇAR", "SUIVANT", "AVANTI", "WEITER")
 add("🎓 CLAUDIO", "🎓 CLAUDIO", "🎓 CLAUDIO", "🎓 CLAUDIO", "🎓 CLAUDIO", "🎓 CLAUDIO")
-add("Un lugar para probar el juego antes de salir al mundo abierto: manejá un auto de prueba en una pista con lomos de burro, un punto de nafta, un camino de tierra por atrás de la ciudad y cuatro autos haciendo drift.",
-    "A place to try the game before heading out to the open world: drive a test car on a track with speed bumps, a fuel point, a dirt road behind the city and four cars drifting.",
-    "Um lugar para testar o jogo antes de sair para o mundo aberto: dirija um carro de teste numa pista com lombadas, um ponto de combustível, uma estrada de terra atrás da cidade e quatro carros fazendo drift.",
-    "Un endroit pour essayer le jeu avant de partir dans le monde ouvert : conduis une voiture d'essai sur une piste avec des dos d'âne, un point d'essence, un chemin de terre derrière la ville et quatre voitures qui driftent.",
-    "Un posto per provare il gioco prima di uscire nel mondo aperto: guida un'auto di prova su una pista con dossi, un punto benzina, una strada sterrata dietro la città e quattro auto che fanno drift.",
-    "Ein Ort, um das Spiel auszuprobieren, bevor du in die offene Welt fährst: Fahr ein Testauto auf einer Strecke mit Bodenschwellen, einem Tankpunkt, einer Schotterstraße hinter der Stadt und vier driftenden Autos.")
 add("🎮  Probá el nivel de simulación: arcade, intermedio, simulador total o personalizado.",
     "🎮  Try the simulation level: arcade, intermediate, full simulator or custom.",
     "🎮  Experimente o nível de simulação: arcade, intermediário, simulador total ou personalizado.",
@@ -387,16 +385,9 @@ add("🎥  Mirá las cámaras y las ayudas desde la pausa, con la guía en imág
     "🎥  Regarde les caméras et les aides depuis la pause, avec le guide en images.",
     "🎥  Guarda le camere e gli aiuti dalla pausa, con la guida illustrata.",
     "🎥  Sieh dir die Kameras und die Hilfen im Pausenmenü an, mit der Anleitung in Bildern.")
-add("⚠ La prueba se hace UNA sola vez: cuando salís, no se puede volver a entrar. Tomate el tiempo que quieras.",
-    "⚠ The test can be done only ONCE: when you leave, you can't come back in. Take all the time you want.",
-    "⚠ O teste só pode ser feito UMA vez: ao sair, não dá para entrar de novo. Fique o tempo que quiser.",
-    "⚠ L'essai ne se fait qu'UNE seule fois : une fois sorti, on ne peut plus y rentrer. Prends tout ton temps.",
-    "⚠ La prova si fa UNA sola volta: quando esci, non si può più rientrare. Prenditi tutto il tempo che vuoi.",
-    "⚠ Der Test geht nur EINMAL: Wenn du rausgehst, kommst du nicht mehr hinein. Nimm dir die Zeit, die du brauchst.")
 
 # ───────────────────────── pausa, HUD y pista de la prueba ─────────────────────────
 add("SALIR DE LA PRUEBA", "LEAVE THE TEST", "SAIR DO TESTE", "QUITTER L'ESSAI", "ESCI DALLA PROVA", "TEST VERLASSEN")
-add("TOCÁ OTRA VEZ PARA SALIR", "TAP AGAIN TO LEAVE", "TOQUE DE NOVO PARA SAIR", "TOUCHE ENCORE POUR QUITTER", "TOCCA DI NUOVO PER USCIRE", "NOCHMAL TIPPEN ZUM VERLASSEN")
 add("OCULTAR LA GUÍA", "HIDE THE GUIDE", "OCULTAR O GUIA", "MASQUER LE GUIDE", "NASCONDI LA GUIDA", "ANLEITUNG AUSBLENDEN")
 add("MOSTRAR LA GUÍA", "SHOW THE GUIDE", "MOSTRAR O GUIA", "AFFICHER LE GUIDE", "MOSTRA LA GUIDA", "ANLEITUNG EINBLENDEN")
 add("Podés cambiarlo cuando quieras: se aplica en el momento y el auto sigue donde está.", "You can change it whenever you like: it applies at once and the car stays where it is.", "Você pode mudar quando quiser: é aplicado na hora e o carro continua onde está.", "Tu peux le changer quand tu veux : il s'applique tout de suite et la voiture reste où elle est.", "Puoi cambiarlo quando vuoi: si applica subito e l'auto resta dov'è.", "Du kannst es jederzeit ändern: Es gilt sofort und das Auto bleibt, wo es ist.")

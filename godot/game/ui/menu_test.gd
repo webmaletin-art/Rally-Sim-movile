@@ -3,7 +3,8 @@ extends RefCounted
 ##   1) la GUÍA, ANTES de entrar (qué es, cómo se juega; con la voz de Claudio si hay audio y siempre con subtítulos),
 ##   2) el ARMADO de la prueba (auto: camioneta, GT, clásico o superdeportivo · nivel de simulación · drift o carrera · reglajes · calidad gráfica),
 ##   3) la pista de pruebas (DriftTrack.new(true), TestSession) con el menú de pausa de la prueba (guía con imágenes, reglajes, SALIR DE LA PRUEBA).
-## Se usa UNA sola vez: al salir de la prueba (race.gd → mark_done) la baldosa desaparece y no se vuelve a entrar.
+## Es FIJO (pedido del dueño, 21/10/2026): la baldosa queda siempre en el inicio —para reglar el auto y probar cosas sin ir a una carrera— y se sale con un solo toque.
+## La primera vez que se inicia el juego se lo manda a la guía de la prueba (menu.gd → offer_test_intro; marca testMode.intro desde _first_time).
 
 const Kit := preload("res://game/ui/ui_kit.gd")
 const Autotune := preload("res://game/autotune.gd")
@@ -23,6 +24,8 @@ const SIMS := [["arcade", "ARCADE", "sim_arcade"], ["mid", "INTERMEDIO", "sim_mi
 
 var m: Node # menu.gd
 var page := 0 # hoja de la guía que se está viendo
+var first_arrival := false # la primera vez que se juega el menú lo trae acá (offer_test_intro): la guía da la bienvenida al juego y se puede dejar para después
+var _welcome_id := "welcome" # la línea de bienvenida de esta visita (la que se repite al volver a encender la voz)
 
 # ───────────────────────── estado (se guarda en el perfil) ─────────────────────────
 static func state(profile: RefCounted) -> Dictionary:
@@ -31,19 +34,41 @@ static func state(profile: RefCounted) -> Dictionary:
 		profile.d["testMode"] = {}
 	return profile.d["testMode"]
 
+## ¿Ya hizo la prueba alguna vez (salió con «SALIR DE LA PRUEBA»)? Sólo sirve para despedirse la primera vez: la prueba se puede repetir todas las veces que quiera
 static func is_done(profile: RefCounted) -> bool:
 	return state(profile).get("done", false) == true
 
-## ¿Se muestra la baldosa? Sólo después de la configuración gráfica automática y mientras no se haya salido de la prueba
+## ¿Se muestra la baldosa? Siempre, salvo antes de la configuración gráfica automática (la prueba corre con el perfil gráfico calibrado)
 static func available(profile: RefCounted) -> bool:
-	return not is_done(profile) and not Autotune.pending(profile)
+	return not Autotune.pending(profile)
 
+## Salió de la prueba: queda anotado que la hizo (la baldosa NO desaparece) y la primera vez el menú se despide
 static func mark_done(profile: RefCounted) -> void:
-	state(profile)["done"] = true
-	state(profile)["farewell"] = true # (el menú se despide una vez: «Listo, terminaste la prueba…»)
+	var st := state(profile)
+	if st.get("done", false) != true:
+		st["farewell"] = true # (el menú se despide una sola vez, la primera: «Listo, volvemos al menú… la prueba queda acá»)
+	st["done"] = true
+	st["intro"] = false # (si salió de la prueba ya no hace falta mandarlo)
 	profile.save()
 
-## ¿Hay que decir la despedida? Una sola vez después de salir de la prueba
+## Primera vez que se inicia el juego (perfil nuevo, sin autos): la primera vez que llegue al inicio se lo manda a la guía de la prueba (menu.gd → offer_test_intro)
+static func mark_first_time(profile: RefCounted) -> void:
+	state(profile)["intro"] = true
+	profile.save()
+
+## ¿Toca mandarlo ahora a la prueba? Si está esperando la configuración gráfica automática, queda pendiente
+static func intro_due(profile: RefCounted) -> bool:
+	return state(profile).get("intro", false) == true and available(profile)
+
+## Lo manda a la prueba UNA sola vez: apenas se decide se anota (si cierra el juego o sale de la guía no vuelve a insistir)
+static func take_intro(profile: RefCounted) -> bool:
+	if not intro_due(profile):
+		return false
+	state(profile)["intro"] = false
+	profile.save()
+	return true
+
+## ¿Hay que decir la despedida? Una sola vez, la primera vez que sale de la prueba
 static func take_farewell(profile: RefCounted) -> bool:
 	var st := state(profile)
 	if st.get("farewell", false) != true:
@@ -51,6 +76,9 @@ static func take_farewell(profile: RefCounted) -> bool:
 	st["farewell"] = false
 	profile.save()
 	return true
+
+## «Mi auto»: se prueba el auto elegido en el garaje, con sus piezas y su reglaje (los ajustes que se hagan en la prueba no se guardan en él)
+const MINE := "mine"
 
 static func default_setup() -> Dictionary:
 	return {"car": "gt", "mode": "drift", "score": "points", "loop": "dirt", "lab": true}
@@ -64,10 +92,21 @@ static func setup_of(profile: RefCounted) -> Dictionary:
 	return out
 
 ## La configuración de la carrera que se larga (race.gd la entiende: tipo «test», pista «pruebas»)
-static func build_cfg(setup: Dictionary) -> Dictionary:
+static func build_cfg(setup: Dictionary, profile: RefCounted = null) -> Dictionary:
 	var id := str(setup.get("car", "gt"))
+	var car_state: Dictionary = {}
+	var mine := false
+	if id == MINE:
+		if profile != null and str(profile.current_id()) != "" and not (profile.car() as Dictionary).is_empty():
+			id = str(profile.current_id())
+			car_state = (profile.car() as Dictionary).duplicate(true) # (una copia: nada de lo que pase en la prueba toca el auto del garaje)
+			mine = true
+		else:
+			id = "gt"
+	if car_state.is_empty():
+		car_state = Profile.new_car_state(id)
 	var mode := str(setup.get("mode", "drift"))
-	return {"type": "test", "track": "pruebas", "ai": 4 if mode == "drift" else 0, "sky": "day", "car": id, "state": Profile.new_car_state(id), "testCar": true, "test": true,
+	return {"type": "test", "track": "pruebas", "ai": 4 if mode == "drift" else 0, "sky": "day", "car": id, "state": car_state, "testCar": true, "test": true, "testMine": mine,
 		"testSetup": {"mode": mode, "score": str(setup.get("score", "points")), "loop": str(setup.get("loop", "dirt")), "lab": setup.get("lab", true) == true, "tank": 1.0},
 		"back": "home", "seed": 7, "maxPI": 999}
 
@@ -95,21 +134,36 @@ func _voice_button(compact := false) -> Button:
 		b.text = GuideVoice.mode_short(nm) if compact else GuideVoice.mode_label(nm)
 		Kit.fit_button_now(b)
 		if nm != "off" and m.screen == "test_guide":
-			g.say("welcome", true))
+			g.say(_welcome_id, true))
 	return b
 
 ## 1) La guía, antes de entrar
 func _guide() -> void:
 	m.set_title(m.tr("🎓 MODO DE PRUEBA"))
 	m.refresh_car()
-	_say("welcome")
-	_text("Un lugar para probar el juego antes de salir al mundo abierto: manejá un auto de prueba en una pista con lomos de burro, un punto de nafta, un camino de tierra por atrás de la ciudad y cuatro autos haciendo drift.", 15)
+	var first := first_arrival
+	first_arrival = false # (vale para esta entrada; si vuelve a abrir la guía es la de siempre)
+	_welcome_id = "welcome_first" if first else "welcome"
+	_say(_welcome_id)
+	if first:
+		_text("👋 ¡Bienvenido! Como es tu primera vez, arrancamos por acá.", 15, Kit.GOLD)
+	_text("Un lugar para reglar tu auto y probar cosas sin ir a una carrera: manejá en una pista con lomos de burro, un punto de nafta, un camino de tierra por atrás de la ciudad y cuatro autos haciendo drift.", 15)
 	var bul := Kit.vbox(4)
 	m.body.add_child(bul)
 	for line in ["🎮  Probá el nivel de simulación: arcade, intermedio, simulador total o personalizado.", "🔧  Ajustá el reglaje: suspensión, tracción, frenos, gomas… se aplica al instante.", "🌀  Hacé drift (por puntos o libre) o una carrera contrarreloj por puertas.", "🎥  Mirá las cámaras y las ayudas desde la pausa, con la guía en imágenes."]:
 		bul.add_child(Kit.wrap(m.tr(line), 14, Kit.MUTED, 300))
-	_text("⚠ La prueba se hace UNA sola vez: cuando salís, no se puede volver a entrar. Tomate el tiempo que quieras.", 14, Kit.GOLD)
-	m.body.add_child(_voice_button())
+	_text("✔ Queda siempre en el inicio: volvé cuando quieras.", 14, Kit.GOLD)
+	var vrow := Kit.hbox(6) # (la voz y, la primera vez, «ahora no»: en una sola fila para que todo entre sin desplazar)
+	m.body.add_child(vrow)
+	var vb := _voice_button()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vrow.add_child(Kit.fit_button(vb, 11))
+	if first:
+		var skip := Kit.button(m.tr("AHORA NO · IR AL MENÚ"), func() -> void:
+			m.sfx.play("click")
+			m.go("home", null, false), false, 14, Vector2(0, 40))
+		skip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		vrow.add_child(Kit.fit_button(skip, 11))
 	m.body.add_child(m.menu_button(m.tr("📖 LEER LA GUÍA"), m.tr("las hojas con dibujos: suspensión, tracción, cámaras, volante…"), func() -> void:
 		page = 0
 		m.go("test_pages"), false))
@@ -170,16 +224,39 @@ func _setup() -> void:
 	_say("start")
 	var top := Kit.hbox(6)
 	m.pinned.add_child(top)
-	var go_b: Button = m.menu_button(m.tr("▶ EMPEZAR LA PRUEBA"), m.tr("una sola vez: cuando salís no se vuelve a entrar"), func() -> void:
+	var go_b: Button = m.menu_button(m.tr("▶ EMPEZAR LA PRUEBA"), m.tr("salís y volvés cuando quieras"), func() -> void:
 		m.guide_voice().stop()
-		m.launch(build_cfg(st), false), true, true, 20)
+		_save(st) # (la próxima vez queda armada como la dejó)
+		m.launch(build_cfg(st, m.profile), false), true, true, 20)
 	go_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(go_b)
 	top.add_child(Kit.fit_button(_voice_button(true), 10))
-	# el auto: una tarjeta por cada uno de los cuatro; se ve en la sala
+	# el auto: «mi auto» (el del garaje, con sus piezas) o una tarjeta por cada uno de los cuatro de prueba; se ve en la sala
 	var car_id := str(st["car"])
-	m.refresh_car(car_id, Profile.new_car_state(car_id))
-	m.body.add_child(Kit.label(m.tr("AUTO DE PRUEBA"), 14, Kit.GOLD))
+	var mine_id := str(m.profile.current_id())
+	var mine_on := car_id == MINE and mine_id != ""
+	if mine_on:
+		m.refresh_car()
+	else:
+		if car_id == MINE:
+			car_id = "gt" # (sin auto en el garaje no hay «mi auto»)
+		m.refresh_car(car_id, Profile.new_car_state(car_id))
+	var car_head := Kit.hbox(6)
+	m.body.add_child(car_head)
+	var car_l := Kit.label(m.tr("AUTO DE PRUEBA"), 14, Kit.GOLD)
+	car_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	car_head.add_child(car_l)
+	if mine_id != "":
+		var mm: Dictionary = CarBuild.catalog()["cars"].get(mine_id, {})
+		var mine_b := Kit.button("⭐ %s · %s" % [m.tr("MI AUTO"), str(mm.get("model", mine_id))], func() -> void:
+			m.sfx.play("click")
+			st["car"] = MINE
+			_save(st)
+			_say_force("car_mine")
+			m.go("test_setup", null, false), mine_on, 13, Vector2(0, 26))
+		mine_b.custom_minimum_size = Vector2(250, 26)
+		mine_b.size_flags_horizontal = Control.SIZE_SHRINK_END
+		car_head.add_child(Kit.fit_button(mine_b, 11))
 	var g := Kit.grid(2, 6, 6)
 	m.body.add_child(g)
 	for c in CARS:
@@ -192,7 +269,7 @@ func _setup() -> void:
 			st["car"] = id
 			_save(st)
 			_say_force(str(c[3]))
-			m.go("test_setup", null, false), car_id == id, true, 52.0, 16)
+			m.go("test_setup", null, false), car_id == id and not mine_on, true, 50.0, 16)
 		g.add_child(b)
 	# nivel de simulación (el del perfil: lo mismo que en la pausa)
 	var cur_sim := str(m.profile.setting("simLevel"))

@@ -2685,7 +2685,7 @@ func _guide_camera() -> void:
 	if id != "":
 		guide.say(id)
 
-## «SALIR DE LA PRUEBA» confirmado (dos toques): la prueba se usa una sola vez; se marca como hecha y se vuelve al menú (que se despide con la guía)
+## «SALIR DE LA PRUEBA» (un solo toque): la prueba es fija —queda en el inicio para reglar el auto y probar cosas cuando se quiera—; se anota que la hizo (la primera vez el menú se despide con la guía) y se vuelve al menú
 func _test_exit() -> void:
 	if profile != null:
 		MenuTest.mark_done(profile)
@@ -2725,6 +2725,7 @@ func _lab_init() -> void:
 	race_hud.opts_on = true # OPCIONES, ajuste de cámara y controles en la pausa
 	race_hud.lab_on = cfg.get("test", false) == true and (cfg.get("testSetup", {}) as Dictionary).get("lab", true) == true # los reglajes sólo en el Modo de prueba, y sólo si se pidió la ayuda de reglaje (en el resto el taller es el del garaje y el de los talleres del mundo)
 	race_hud.test_on = cfg.get("test", false) == true
+	race_hud.lab_note = Tr.t("Estos ajustes no se guardan en tu auto: para dejarlos, aplicalos en el TALLER (el mecánico cobra).") if cfg.get("testMine", false) == true else "" # («mi auto» del Modo de prueba: lo que se ajusta acá es sólo para probar)
 
 ## Rearma el auto con los ajustes nuevos. En drift y en las pruebas libres queda donde estaba; en una carrera vuelve a la parrilla.
 func _lab_apply() -> void:

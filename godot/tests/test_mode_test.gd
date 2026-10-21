@@ -1,11 +1,12 @@
 ## MODO DE PRUEBA ([B] 20/10/2026, pedido del dueño): la pista de pruebas (Drift Plaza mejorada), la sesión (drift por puntos o libre, carrera contrarreloj por puertas, nafta),
-## la guía hablada con subtítulos, el HUD, la pausa con la galería de hojas y la salida única con doble toque.
+## la guía hablada con subtítulos, el HUD, la pausa con la galería de hojas y la salida con un solo toque (la prueba es FIJA: queda en el menú; [B] 21/10/2026, pedido del dueño), y «mi auto».
 ## Uso: tools/test/run_test.sh test_mode_test 240
 extends SceneTree
 
 const RACE_SCENE := preload("res://game/race.tscn")
 const Profile := preload("res://game/data/profile.gd")
 const MenuTest := preload("res://game/ui/menu_test.gd")
+const Autotune := preload("res://game/autotune.gd")
 const TestSession := preload("res://game/test_session.gd")
 const DriftTrack := preload("res://game/track/drift_track.gd")
 
@@ -34,7 +35,7 @@ func _load(profile, setup: Dictionary) -> bool:
 		await process_frame
 	loaded = false
 	exit_to = ""
-	var cfg := MenuTest.build_cfg(setup)
+	var cfg := MenuTest.build_cfg(setup, profile)
 	race = RACE_SCENE.instantiate()
 	race.cfg = cfg
 	race.profile = profile
@@ -48,6 +49,14 @@ func _load(profile, setup: Dictionary) -> bool:
 		await process_frame
 	return loaded
 
+func _has_label(n: Node, needle: String) -> bool:
+	if n is Label and (n as Label).text.contains(needle):
+		return true
+	for c in n.get_children():
+		if _has_label(c, needle):
+			return true
+	return false
+
 func _frames(n: int) -> void:
 	for i in n:
 		await process_frame
@@ -57,7 +66,7 @@ func _run() -> void:
 	profile.d.erase("testMode")
 	profile.d["settings"]["guideMode"] = "text" # (sin audio: sólo los subtítulos)
 	profile.d["settings"]["simLevel"] = "mid"
-	_check(MenuTest.is_done(profile) == false, "la prueba arranca sin usar")
+	_check(MenuTest.is_done(profile) == false, "todavía no hizo la prueba")
 	var setup := MenuTest.default_setup()
 	setup["car"] = "gt"
 	# ── 1) drift por puntos
@@ -72,13 +81,14 @@ func _run() -> void:
 	_check(race.cars.size() == 5, "el jugador y cuatro autos haciendo drift (%d)" % race.cars.size())
 	_check(race.guide != null and race.guide.mode == "text", "hay guía hablada (modo %s)" % str(race.guide.mode if race.guide != null else "—"))
 	_check(race.race_hud.test_on and race.race_hud.lab_on and race.race_hud.opts_on, "la pausa tiene OPCIONES y REGLAJES")
+	_check(race.cfg["testMine"] == false and race.race_hud.lab_note == "", "con un auto de prueba los reglajes no llevan nota")
 	_check(not race.session.blocks_throttle(), "con el tanque lleno el auto acelera")
 	# el guion trae todas las líneas que usa el código
 	var g = race.guide
 	var used: Array = ["welcome", "guide_pages", "setup_welcome", "car_pickup", "car_gt", "car_classic", "car_super", "sim_arcade", "sim_mid", "sim_pro", "sim_custom", "mode_drift", "mode_race",
 		"score_points", "score_free", "loop_dirt", "loop_urban", "lab_on", "lab_off", "gfx", "start", "test_welcome", "test_try_drift", "test_pause", "test_drift_first", "test_bumps", "test_fuel_corner", "test_refuel",
 		"test_fuel_full", "test_fuel_low", "test_fuel_empty", "race_start", "test_lap_first", "test_lap_done", "cam_onboard", "cam_chase", "cam_aerial", "cam_free", "cam_rear", "cam_hood",
-		"cam_bumper", "lab_open", "lab_motor", "lab_agarre", "lab_susp", "lab_frenos", "lab_trans", "lab_aero", "sim_changed", "wheel_real", "exit_warn", "exit_done"]
+		"cam_bumper", "lab_open", "lab_motor", "lab_agarre", "lab_susp", "lab_frenos", "lab_trans", "lab_aero", "sim_changed", "wheel_real", "welcome_first", "car_mine", "exit_done"]
 	var missing: Array = []
 	for id in used:
 		if not g.has_line(str(id)) or g.text_of(str(id)) == "":
@@ -178,15 +188,29 @@ func _run() -> void:
 	await _frames(2)
 	_check(not hud.gallery.visible, "OCULTAR LA GUÍA esconde la galería")
 	hud.gallery_on = true
-	# salir de la prueba: primer toque avisa, segundo confirma
-	_check(not MenuTest.is_done(profile), "antes de salir la prueba no está usada")
+	# salir de la prueba: un solo toque; la prueba es FIJA (queda en el menú para volver cuando se quiera)
+	_check(not MenuTest.is_done(profile), "antes de salir todavía no la hizo")
 	hud._fill_pause()
 	hud.exit_btn.pressed.emit()
-	_check(hud.exit_armed_t > 0.0 and g.heard.has("exit_warn") and exit_to == "", "primer toque en SALIR DE LA PRUEBA: avisa y no sale")
-	hud.exit_btn.pressed.emit()
-	_check(exit_to == "home" and MenuTest.is_done(profile), "segundo toque: sale al menú y la prueba queda usada")
-	_check(not MenuTest.available(profile), "la baldosa desaparece (no se vuelve a entrar)")
-	_check(MenuTest.take_farewell(profile) and not MenuTest.take_farewell(profile), "la despedida se dice una sola vez")
+	_check(exit_to == "home" and MenuTest.is_done(profile), "un toque en SALIR DE LA PRUEBA: sale al menú y queda anotado que la hizo")
+	profile.d["settings"]["gfx"] = {"locked": true, "version": Autotune.VERSION, "sig": Autotune.device_sig(), "auto": {}} # (con la configuración gráfica hecha)
+	_check(MenuTest.available(profile), "la baldosa sigue en el menú: se puede volver a entrar")
+	_check(MenuTest.take_farewell(profile) and not MenuTest.take_farewell(profile), "la despedida se dice una sola vez (la primera)")
+	MenuTest.mark_done(profile) # (la segunda vez que sale)
+	_check(not MenuTest.take_farewell(profile) and MenuTest.available(profile), "la segunda vez no se despide y la prueba sigue disponible")
+	_check(not g.has_line("exit_warn"), "ya no hay aviso de «no podés volver a entrar» (la prueba es fija)")
+	# la entrada de la primera vez: se anota al crear el perfil y se consume una sola vez
+	profile.d.erase("testMode")
+	MenuTest.mark_first_time(profile)
+	_check(MenuTest.intro_due(profile), "perfil nuevo: la entrada a la prueba está pendiente")
+	var settings_gfx: Variant = profile.d["settings"]["gfx"]
+	profile.d["settings"]["gfx"] = {} # (sin la configuración gráfica automática todavía no)
+	_check(not MenuTest.intro_due(profile) and not MenuTest.take_intro(profile) and MenuTest.state(profile).get("intro") == true, "sin configuración gráfica: espera (queda pendiente)")
+	profile.d["settings"]["gfx"] = settings_gfx
+	_check(MenuTest.take_intro(profile) and not MenuTest.take_intro(profile), "con la configuración hecha: lo manda una sola vez")
+	MenuTest.mark_first_time(profile)
+	MenuTest.mark_done(profile)
+	_check(not MenuTest.intro_due(profile), "si ya salió de la prueba no hace falta mandarlo")
 	# ── 6) carrera contrarreloj por el camino de tierra
 	profile = NoSave.new()
 	profile.d.erase("testMode")
@@ -243,5 +267,35 @@ func _run() -> void:
 	_check(ok and not race.session.score_on and not race.race_hud.lab_on, "drift libre sin ayuda de reglaje: sin puntos y sin REGLAJES en la pausa")
 	var fl: Array = race.session.hud_lines()
 	_check(str(fl[1]).contains("LIBRE") or str(fl[1]).contains("DRIFT"), "el HUD dice DRIFT LIBRE")
+	# ── 8) «mi auto»: el del garaje, con sus piezas y su pintura; lo que se ajuste en la prueba no se guarda en él
+	profile = NoSave.new()
+	profile.d.erase("testMode")
+	profile.d["settings"]["guideMode"] = "text"
+	profile.d["owned"] = {}
+	profile.d["current"] = ""
+	profile.give("pickup")
+	profile.select("pickup")
+	var mine: Dictionary = profile.car()
+	mine["paint"]["body"] = "#ff00aa"
+	mine["km"] = 321.0
+	setup = MenuTest.default_setup()
+	setup["car"] = MenuTest.MINE
+	var mcfg := MenuTest.build_cfg(setup, profile)
+	_check(mcfg["car"] == "pickup" and mcfg["state"]["paint"]["body"] == "#ff00aa" and float(mcfg["state"]["km"]) == 321.0, "«mi auto»: el auto del garaje con su pintura y sus kilómetros")
+	_check(not is_same(mcfg["state"], mine), "…en una copia (nada de la prueba toca el auto del garaje)")
+	var nocar := MenuTest.build_cfg(setup, null)
+	_check(nocar["car"] == "gt", "sin perfil no hay «mi auto»: cae al GT")
+	ok = await _load(profile, setup)
+	_check(ok and race.cfg["car"] == "pickup" and race.session is TestSession, "la pista de pruebas carga con el auto del garaje")
+	var hash0: int = (profile.car() as Dictionary).hash()
+	var lkey: String = str((race.race_hud.lab_defs as Dictionary).keys()[0])
+	race.race_hud.lab["tune"][lkey] = float(race.race_hud.lab_defs[lkey]) * 1.2 + 1.0
+	race.race_hud.lab_changed.emit()
+	await _frames(4)
+	_check(race.lab_state.has("tune") and (profile.car() as Dictionary).hash() == hash0, "ajustar un reglaje en la prueba no cambia el auto del garaje")
+	_check(race.cfg["testMine"] == true and race.race_hud.lab_note != "", "con «mi auto» los reglajes avisan que no se guardan en el auto")
+	race.race_hud.open_page("lab")
+	await _frames(3)
+	_check(_has_label(race.race_hud.opts_body, "no se guardan en tu auto"), "…y la nota se ve arriba de los reglajes")
 	print("RESULTADO: ", "FALLA" if fail else "TODO OK")
 	quit(1 if fail else 0)

@@ -6,7 +6,12 @@
   {
    "id": "welcome",
    "ctx": "Pantalla de bienvenida (antes de entrar)",
-   "es": "Hola, soy Claudio, tu guía. Este es el modo de prueba: un lugar para conocer el auto, ajustar el reglaje y hacer drift antes de salir al mundo abierto. Podés leer la guía o ir directo a la prueba."
+   "es": "Hola, soy Claudio, tu guía. Este es el modo de prueba: un lugar para conocer el auto, ajustar el reglaje y hacer drift sin ir a una carrera. Queda siempre en el inicio, así que volvé cuando quieras. Podés leer la guía o ir directo a la prueba."
+  },
+  {
+   "id": "welcome_first",
+   "ctx": "Primera vez que se juega: bienvenida al llegar al inicio (el juego lo manda acá una sola vez)",
+   "es": "¡Bienvenido a Dream Racing! Soy Claudio, tu guía. Antes de salir, pasemos por el modo de prueba: un lugar para conocer el juego, reglar tu auto y probar cosas sin ir a una carrera. Después queda siempre en el menú. Podés leer la guía o ir directo a la prueba."
   },
   {
    "id": "guide_pages",
@@ -37,6 +42,11 @@
    "id": "car_super",
    "ctx": "Elegir el superdeportivo",
    "es": "El superdeportivo: muchísima potencia. Con simulación total hay que tratarlo con cuidado."
+  },
+  {
+   "id": "car_mine",
+   "ctx": "Elegir «mi auto» (el del garaje)",
+   "es": "Vas a probar con tu auto, con las piezas y el reglaje que ya tiene. Lo que ajustes en la prueba no se guarda: para dejarlo fijo, aplicalo en el taller."
   },
   {
    "id": "sim_arcade",
@@ -106,7 +116,7 @@
   {
    "id": "start",
    "ctx": "Al estar todo elegido",
-   "es": "Cuando estés listo, tocá empezar la prueba. Acordate: se hace una sola vez."
+   "es": "Cuando estés listo, tocá empezar la prueba. Podés salir y volver cuando quieras: queda en el inicio."
   },
   {
    "id": "test_welcome",
@@ -254,14 +264,9 @@
    "es": "Con el volante real tenés que girar de verdad con el dedo: hasta tres vueltas de tope a tope."
   },
   {
-   "id": "exit_warn",
-   "ctx": "Primer toque en SALIR DE LA PRUEBA",
-   "es": "Si salís de la prueba no podés volver a entrar. Tocá otra vez para confirmar."
-  },
-  {
    "id": "exit_done",
-   "ctx": "Al salir de la prueba",
-   "es": "Listo, terminaste la prueba. Ahora te espera el mundo abierto. ¡Disfrutalo!"
+   "ctx": "Al salir de la prueba (sólo la primera vez que se hace)",
+   "es": "Listo, volvemos al menú. El modo de prueba queda en el inicio: volvé cuando quieras reglar tu auto o probar algo sin ir a una carrera."
   }
  ]
 }

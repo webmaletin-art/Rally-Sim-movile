@@ -23,13 +23,15 @@ Generado por `python3 tools/audio/guide_voice_todo.py --md` desde `godot/game/da
 
 | archivo | cuándo se dice | texto |
 |---|---|---|
-| `welcome.ogg` | Pantalla de bienvenida (antes de entrar) | Hola, soy Claudio, tu guía. Este es el modo de prueba: un lugar para conocer el auto, ajustar el reglaje y hacer drift antes de salir al mundo abierto. Podés leer la guía o ir directo a la prueba. |
+| `welcome.ogg` | Pantalla de bienvenida (antes de entrar) | Hola, soy Claudio, tu guía. Este es el modo de prueba: un lugar para conocer el auto, ajustar el reglaje y hacer drift sin ir a una carrera. Queda siempre en el inicio, así que volvé cuando quieras. Podés leer la guía o ir directo a la prueba. |
+| `welcome_first.ogg` | Primera vez que se juega: bienvenida al llegar al inicio (el juego lo manda acá una sola vez) | ¡Bienvenido a Dream Racing! Soy Claudio, tu guía. Antes de salir, pasemos por el modo de prueba: un lugar para conocer el juego, reglar tu auto y probar cosas sin ir a una carrera. Después queda siempre en el menú. Podés leer la guía o ir directo a la prueba. |
 | `guide_pages.ogg` | Al abrir las hojas de la guía | Con las flechas pasás las hojas: suspensión, tracción, frenos, cámaras, volante y drift. Cuando quieras, volvé y entrá a la prueba. |
 | `setup_welcome.ogg` | Pantalla de armado de la prueba | Elegí con qué auto vas a probar, el nivel de simulación y qué querés hacer: drift o carrera. |
 | `car_pickup.ogg` | Elegir la camioneta | La camioneta: alta y pesada. Es ideal para sentir la suspensión en los lomos de burro y en la tierra. |
 | `car_gt.ogg` | Elegir el GT | El GT: equilibrado y estable. Un auto rápido de calle para aprender el reglaje. |
 | `car_classic.ogg` | Elegir el clásico | El clásico: poco agarre y mucho carácter. Se desliza fácil, así que es muy divertido para el drift. |
 | `car_super.ogg` | Elegir el superdeportivo | El superdeportivo: muchísima potencia. Con simulación total hay que tratarlo con cuidado. |
+| `car_mine.ogg` | Elegir «mi auto» (el del garaje) | Vas a probar con tu auto, con las piezas y el reglaje que ya tiene. Lo que ajustes en la prueba no se guarda: para dejarlo fijo, aplicalo en el taller. |
 | `sim_arcade.ogg` | Elegir Arcade | Arcade: ABS, control de tracción y estabilidad altos, y el volante gira poco: tres cuartos de vuelta de tope a tope. El auto te perdona casi todo. |
 | `sim_mid.ogg` | Elegir Intermedio | Intermedio: ayudas medias. Un manejo equilibrado, entre el arcade y el simulador. |
 | `sim_pro.ogg` | Elegir Simulador total | Simulador total: sin ayudas, y el volante de la pantalla pide vueltas de verdad, como uno real. Más difícil, pero muy realista. |
@@ -43,7 +45,7 @@ Generado por `python3 tools/audio/guide_voice_todo.py --md` desde `godot/game/da
 | `lab_on.ogg` | Ayuda de reglaje: sí | Con la ayuda de reglaje vas a ver el menú de reglajes en la pausa: suspensión, tracción, frenos y más. |
 | `lab_off.ogg` | Ayuda de reglaje: no | Sin ayuda de reglaje el auto va como viene de fábrica. Igual podés cambiar el nivel de simulación desde la pausa. |
 | `gfx.ogg` | Botón de calidad gráfica | Si el juego te anda justo, bajá la calidad gráfica desde acá. Podés volver a medirla cuando quieras. |
-| `start.ogg` | Al estar todo elegido | Cuando estés listo, tocá empezar la prueba. Acordate: se hace una sola vez. |
+| `start.ogg` | Al estar todo elegido | Cuando estés listo, tocá empezar la prueba. Podés salir y volver cuando quieras: queda en el inicio. |
 | `test_welcome.ogg` | Al largar | Ya estás en la pista. Manejá un rato para entrar en calor. Con la pausa abrís los reglajes y la guía. |
 | `test_try_drift.ogg` | Pasaron unos segundos sin derrapar (drift) | Probá hacer un drift: acelerá, girá el volante y tirá del freno de mano, el botón H, para soltar la cola. |
 | `test_pause.ogg` | Al abrir la pausa | Esta es la pausa de la prueba. Podés cambiar el nivel de simulación, abrir los reglajes, mirar la guía o salir de la prueba. |
@@ -73,20 +75,21 @@ Generado por `python3 tools/audio/guide_voice_todo.py --md` desde `godot/game/da
 | `lab_aero.ogg` | Solapa Aerodinámica | Aerodinámica: la carga adelante y atrás. Aprieta el auto al piso a alta velocidad, pero le quita punta. |
 | `sim_changed.ogg` | Cambio de nivel de simulación en la pausa | Cambiaste el nivel de simulación. Se aplica enseguida. |
 | `wheel_real.ogg` | Volante real activo | Con el volante real tenés que girar de verdad con el dedo: hasta tres vueltas de tope a tope. |
-| `exit_warn.ogg` | Primer toque en SALIR DE LA PRUEBA | Si salís de la prueba no podés volver a entrar. Tocá otra vez para confirmar. |
-| `exit_done.ogg` | Al salir de la prueba | Listo, terminaste la prueba. Ahora te espera el mundo abierto. ¡Disfrutalo! |
+| `exit_done.ogg` | Al salir de la prueba (sólo la primera vez que se hace) | Listo, volvemos al menú. El modo de prueba queda en el inicio: volvé cuando quieras reglar tu auto o probar algo sin ir a una carrera. |
 
 ## English (subtítulos y guion para grabar en ese idioma)
 
 | archivo | texto |
 |---|---|
-| `welcome.ogg` | Hi, I'm Claudio, your guide. This is test mode: a place to get to know the car, tune the setup and drift before heading out to the open world. You can read the guide or go straight to the test. |
+| `welcome.ogg` | Hi, I'm Claudio, your guide. This is test mode: a place to get to know the car, tune the setup and drift without going to a race. It always stays on the home screen, so come back whenever you like. You can read the guide or go straight to the test. |
+| `welcome_first.ogg` | Welcome to Dream Racing! I'm Claudio, your guide. Before you head out, let's stop by test mode: a place to get to know the game, tune your car and try things without going to a race. After that it always stays in the menu. You can read the guide or go straight to the test. |
 | `guide_pages.ogg` | Use the arrows to flip the pages: suspension, traction, brakes, cameras, steering wheel and drift. Whenever you like, come back and enter the test. |
 | `setup_welcome.ogg` | Choose which car you'll test with, the simulation level and what you want to do: drift or race. |
 | `car_pickup.ogg` | The pickup: tall and heavy. Ideal for feeling the suspension on the speed bumps and on dirt. |
 | `car_gt.ogg` | The GT: balanced and stable. A fast road car to learn the setup. |
 | `car_classic.ogg` | The classic: little grip and lots of character. It slides easily, so it's great fun for drifting. |
 | `car_super.ogg` | The supercar: huge power. In full simulation you have to handle it with care. |
+| `car_mine.ogg` | You'll test with your own car, with the parts and setup it already has. Whatever you adjust in the test isn't saved: to make it permanent, apply it in the workshop. |
 | `sim_arcade.ogg` | Arcade: high ABS, traction control and stability, and the steering wheel turns only a little: three quarters of a turn lock to lock. The car forgives almost everything. |
 | `sim_mid.ogg` | Intermediate: medium assists. A balanced drive, between arcade and the simulator. |
 | `sim_pro.ogg` | Full simulator: no assists, and the on-screen wheel asks for real turns, like a real one. Harder, but very realistic. |
@@ -100,7 +103,7 @@ Generado por `python3 tools/audio/guide_voice_todo.py --md` desde `godot/game/da
 | `lab_on.ogg` | With tuning help on, you'll see the tuning menu in the pause screen: suspension, traction, brakes and more. |
 | `lab_off.ogg` | Without tuning help the car stays as it comes from the factory. You can still change the simulation level from the pause screen. |
 | `gfx.ogg` | If the game runs a bit tight, lower the graphics quality from here. You can measure it again whenever you like. |
-| `start.ogg` | When you're ready, tap start the test. Remember: it can only be done once. |
+| `start.ogg` | When you're ready, tap start the test. You can leave and come back whenever you like: it stays on the home screen. |
 | `test_welcome.ogg` | You're on the track. Drive around for a while to warm up. With the pause button you open the tuning and the guide. |
 | `test_try_drift.ogg` | Try a drift: accelerate, turn the wheel and pull the handbrake, the H button, to kick the tail out. |
 | `test_pause.ogg` | This is the test pause. You can change the simulation level, open the tuning, look at the guide or leave the test. |
@@ -130,20 +133,21 @@ Generado por `python3 tools/audio/guide_voice_todo.py --md` desde `godot/game/da
 | `lab_aero.ogg` | Aerodynamics: the downforce at the front and rear. It presses the car to the ground at high speed, but costs top speed. |
 | `sim_changed.ogg` | You changed the simulation level. It applies right away. |
 | `wheel_real.ogg` | With the real wheel you have to turn it for real with your finger: up to three turns lock to lock. |
-| `exit_warn.ogg` | If you leave the test you can't enter again. Tap once more to confirm. |
-| `exit_done.ogg` | Done, you finished the test. Now the open world awaits you. Enjoy it! |
+| `exit_done.ogg` | Done, back to the menu. Test mode stays on the home screen: come back whenever you want to tune your car or try something without going to a race. |
 
 ## Português (subtítulos y guion para grabar en ese idioma)
 
 | archivo | texto |
 |---|---|
-| `welcome.ogg` | Oi, eu sou o Claudio, o seu guia. Este é o modo de teste: um lugar para conhecer o carro, ajustar a regulagem e fazer drift antes de sair para o mundo aberto. Você pode ler o guia ou ir direto para o teste. |
+| `welcome.ogg` | Oi, eu sou o Claudio, o seu guia. Este é o modo de teste: um lugar para conhecer o carro, ajustar a regulagem e fazer drift sem ir a uma corrida. Ele fica sempre na tela inicial, então volte quando quiser. Você pode ler o guia ou ir direto para o teste. |
+| `welcome_first.ogg` | Bem-vindo ao Dream Racing! Eu sou o Claudio, o seu guia. Antes de sair, vamos passar pelo modo de teste: um lugar para conhecer o jogo, regular o seu carro e experimentar coisas sem ir a uma corrida. Depois ele fica sempre no menu. Você pode ler o guia ou ir direto para o teste. |
 | `guide_pages.ogg` | Com as setas você passa as páginas: suspensão, tração, freios, câmeras, volante e drift. Quando quiser, volte e entre no teste. |
 | `setup_welcome.ogg` | Escolha com qual carro você vai testar, o nível de simulação e o que quer fazer: drift ou corrida. |
 | `car_pickup.ogg` | A caminhonete: alta e pesada. Ideal para sentir a suspensão nas lombadas e na terra. |
 | `car_gt.ogg` | O GT: equilibrado e estável. Um carro de rua rápido para aprender a regulagem. |
 | `car_classic.ogg` | O clássico: pouca aderência e muito caráter. Ele escorrega fácil, por isso é muito divertido para o drift. |
 | `car_super.ogg` | O superesportivo: muita potência. Na simulação total é preciso tratá-lo com cuidado. |
+| `car_mine.ogg` | Você vai testar com o seu carro, com as peças e a regulagem que ele já tem. O que você ajustar no teste não é salvo: para deixar fixo, aplique na oficina. |
 | `sim_arcade.ogg` | Arcade: ABS, controle de tração e estabilidade altos, e o volante gira pouco: três quartos de volta de batente a batente. O carro perdoa quase tudo. |
 | `sim_mid.ogg` | Intermediário: ajudas médias. Uma condução equilibrada, entre o arcade e o simulador. |
 | `sim_pro.ogg` | Simulador total: sem ajudas, e o volante da tela pede voltas de verdade, como um real. Mais difícil, mas muito realista. |
@@ -157,7 +161,7 @@ Generado por `python3 tools/audio/guide_voice_todo.py --md` desde `godot/game/da
 | `lab_on.ogg` | Com a ajuda de regulagem você vê o menu de regulagens na pausa: suspensão, tração, freios e mais. |
 | `lab_off.ogg` | Sem a ajuda de regulagem o carro vai como sai de fábrica. Mesmo assim você pode mudar o nível de simulação na pausa. |
 | `gfx.ogg` | Se o jogo estiver rodando no limite, diminua a qualidade gráfica por aqui. Você pode medir de novo quando quiser. |
-| `start.ogg` | Quando estiver pronto, toque em começar o teste. Lembre-se: só dá para fazer uma vez. |
+| `start.ogg` | Quando estiver pronto, toque em começar o teste. Você pode sair e voltar quando quiser: ele fica na tela inicial. |
 | `test_welcome.ogg` | Você já está na pista. Dirija um pouco para esquentar. Na pausa você abre as regulagens e o guia. |
 | `test_try_drift.ogg` | Experimente um drift: acelere, gire o volante e puxe o freio de mão, o botão H, para soltar a traseira. |
 | `test_pause.ogg` | Esta é a pausa do teste. Você pode mudar o nível de simulação, abrir as regulagens, ver o guia ou sair do teste. |
@@ -187,20 +191,21 @@ Generado por `python3 tools/audio/guide_voice_todo.py --md` desde `godot/game/da
 | `lab_aero.ogg` | Aerodinâmica: a carga na frente e atrás. Aperta o carro contra o piso em alta velocidade, mas tira velocidade final. |
 | `sim_changed.ogg` | Você mudou o nível de simulação. Ele é aplicado na hora. |
 | `wheel_real.ogg` | Com o volante real você tem que girar de verdade com o dedo: até três voltas de batente a batente. |
-| `exit_warn.ogg` | Se você sair do teste, não poderá entrar de novo. Toque mais uma vez para confirmar. |
-| `exit_done.ogg` | Pronto, você terminou o teste. Agora o mundo aberto te espera. Aproveite! |
+| `exit_done.ogg` | Pronto, voltamos ao menu. O modo de teste fica na tela inicial: volte quando quiser regular o seu carro ou experimentar algo sem ir a uma corrida. |
 
 ## Français (subtítulos y guion para grabar en ese idioma)
 
 | archivo | texto |
 |---|---|
-| `welcome.ogg` | Salut, je suis Claudio, ton guide. Voici le mode essai : un endroit pour découvrir la voiture, ajuster le réglage et drifter avant de partir dans le monde ouvert. Tu peux lire le guide ou aller directement à l'essai. |
+| `welcome.ogg` | Salut, je suis Claudio, ton guide. Voici le mode essai : un endroit pour découvrir la voiture, ajuster le réglage et drifter sans aller en course. Il reste toujours sur l'accueil, alors reviens quand tu veux. Tu peux lire le guide ou aller directement à l'essai. |
+| `welcome_first.ogg` | Bienvenue dans Dream Racing ! Je suis Claudio, ton guide. Avant de partir, passons par le mode essai : un endroit pour découvrir le jeu, régler ta voiture et tester des choses sans aller en course. Ensuite, il reste toujours dans le menu. Tu peux lire le guide ou aller directement à l'essai. |
 | `guide_pages.ogg` | Avec les flèches tu tournes les pages : suspension, traction, freins, caméras, volant et drift. Quand tu veux, reviens et entre dans l'essai. |
 | `setup_welcome.ogg` | Choisis avec quelle voiture tu vas essayer, le niveau de simulation et ce que tu veux faire : drift ou course. |
 | `car_pickup.ogg` | Le pick-up : haut et lourd. Idéal pour sentir la suspension sur les dos d'âne et sur la terre. |
 | `car_gt.ogg` | La GT : équilibrée et stable. Une voiture de route rapide pour apprendre le réglage. |
 | `car_classic.ogg` | La classique : peu d'adhérence et beaucoup de caractère. Elle glisse facilement, donc elle est très amusante pour le drift. |
 | `car_super.ogg` | La supercar : une puissance énorme. En simulation totale, il faut la manier avec précaution. |
+| `car_mine.ogg` | Tu vas essayer avec ta voiture, avec les pièces et le réglage qu'elle a déjà. Ce que tu ajustes pendant l'essai n'est pas enregistré : pour le garder, applique-le à l'atelier. |
 | `sim_arcade.ogg` | Arcade : ABS, antipatinage et stabilité élevés, et le volant tourne peu : trois quarts de tour d'une butée à l'autre. La voiture pardonne presque tout. |
 | `sim_mid.ogg` | Intermédiaire : aides moyennes. Une conduite équilibrée, entre l'arcade et le simulateur. |
 | `sim_pro.ogg` | Simulateur total : sans aides, et le volant à l'écran demande de vrais tours, comme un vrai. Plus difficile, mais très réaliste. |
@@ -214,7 +219,7 @@ Generado por `python3 tools/audio/guide_voice_todo.py --md` desde `godot/game/da
 | `lab_on.ogg` | Avec l'aide au réglage, tu verras le menu de réglages dans la pause : suspension, traction, freins et plus. |
 | `lab_off.ogg` | Sans l'aide au réglage, la voiture reste comme à la sortie d'usine. Tu peux quand même changer le niveau de simulation depuis la pause. |
 | `gfx.ogg` | Si le jeu tourne juste, baisse la qualité graphique d'ici. Tu peux la mesurer de nouveau quand tu veux. |
-| `start.ogg` | Quand tu es prêt, touche commencer l'essai. N'oublie pas : on ne peut le faire qu'une seule fois. |
+| `start.ogg` | Quand tu es prêt, touche commencer l'essai. Tu peux quitter et revenir quand tu veux : il reste sur l'accueil. |
 | `test_welcome.ogg` | Tu es sur la piste. Roule un peu pour t'échauffer. Avec la pause, tu ouvres les réglages et le guide. |
 | `test_try_drift.ogg` | Essaie un drift : accélère, tourne le volant et tire le frein à main, le bouton H, pour lâcher l'arrière. |
 | `test_pause.ogg` | Voici la pause de l'essai. Tu peux changer le niveau de simulation, ouvrir les réglages, regarder le guide ou quitter l'essai. |
@@ -244,20 +249,21 @@ Generado por `python3 tools/audio/guide_voice_todo.py --md` desde `godot/game/da
 | `lab_aero.ogg` | Aérodynamique : l'appui à l'avant et à l'arrière. Il plaque la voiture au sol à haute vitesse, mais lui enlève de la vitesse de pointe. |
 | `sim_changed.ogg` | Tu as changé le niveau de simulation. Il s'applique tout de suite. |
 | `wheel_real.ogg` | Avec le volant réel, tu dois vraiment le tourner avec le doigt : jusqu'à trois tours d'une butée à l'autre. |
-| `exit_warn.ogg` | Si tu quittes l'essai, tu ne pourras plus y entrer. Touche encore une fois pour confirmer. |
-| `exit_done.ogg` | C'est fini, tu as terminé l'essai. Maintenant, le monde ouvert t'attend. Profites-en ! |
+| `exit_done.ogg` | C'est fait, retour au menu. Le mode essai reste sur l'accueil : reviens quand tu veux régler ta voiture ou tester quelque chose sans aller en course. |
 
 ## Italiano (subtítulos y guion para grabar en ese idioma)
 
 | archivo | texto |
 |---|---|
-| `welcome.ogg` | Ciao, sono Claudio, la tua guida. Questa è la modalità prova: un posto per conoscere l'auto, regolare l'assetto e fare drift prima di uscire nel mondo aperto. Puoi leggere la guida o andare direttamente alla prova. |
+| `welcome.ogg` | Ciao, sono Claudio, la tua guida. Questa è la modalità prova: un posto per conoscere l'auto, regolare l'assetto e fare drift senza andare a una gara. Resta sempre nella schermata iniziale, quindi torna quando vuoi. Puoi leggere la guida o andare direttamente alla prova. |
+| `welcome_first.ogg` | Benvenuto in Dream Racing! Sono Claudio, la tua guida. Prima di partire, passiamo dalla modalità prova: un posto per conoscere il gioco, regolare la tua auto e provare cose senza andare a una gara. Poi resta sempre nel menu. Puoi leggere la guida o andare direttamente alla prova. |
 | `guide_pages.ogg` | Con le frecce sfogli le pagine: sospensioni, trazione, freni, camere, volante e drift. Quando vuoi, torna indietro ed entra nella prova. |
 | `setup_welcome.ogg` | Scegli con quale auto provare, il livello di simulazione e cosa vuoi fare: drift o gara. |
 | `car_pickup.ogg` | Il pick-up: alto e pesante. Ideale per sentire le sospensioni sui dossi e sullo sterrato. |
 | `car_gt.ogg` | La GT: equilibrata e stabile. Un'auto stradale veloce per imparare l'assetto. |
 | `car_classic.ogg` | La classica: poca aderenza e tanto carattere. Scivola facilmente, quindi è molto divertente per il drift. |
 | `car_super.ogg` | La supersportiva: potenza enorme. Con la simulazione totale va trattata con cura. |
+| `car_mine.ogg` | Proverai con la tua auto, con i pezzi e l'assetto che ha già. Quello che regoli nella prova non viene salvato: per renderlo definitivo, applicalo in officina. |
 | `sim_arcade.ogg` | Arcade: ABS, controllo di trazione e stabilità alti, e il volante gira poco: tre quarti di giro da un fondo corsa all'altro. L'auto perdona quasi tutto. |
 | `sim_mid.ogg` | Intermedio: aiuti medi. Una guida equilibrata, tra l'arcade e il simulatore. |
 | `sim_pro.ogg` | Simulatore totale: senza aiuti, e il volante sullo schermo richiede giri veri, come uno reale. Più difficile, ma molto realistico. |
@@ -271,7 +277,7 @@ Generado por `python3 tools/audio/guide_voice_todo.py --md` desde `godot/game/da
 | `lab_on.ogg` | Con l'aiuto assetto vedrai il menu delle regolazioni nella pausa: sospensioni, trazione, freni e altro. |
 | `lab_off.ogg` | Senza l'aiuto assetto l'auto resta com'è di fabbrica. Puoi comunque cambiare il livello di simulazione dalla pausa. |
 | `gfx.ogg` | Se il gioco gira al limite, abbassa la qualità grafica da qui. Puoi misurarla di nuovo quando vuoi. |
-| `start.ogg` | Quando sei pronto, tocca inizia la prova. Ricorda: si fa una sola volta. |
+| `start.ogg` | Quando sei pronto, tocca inizia la prova. Puoi uscire e tornare quando vuoi: resta nella schermata iniziale. |
 | `test_welcome.ogg` | Sei in pista. Guida un po' per scaldarti. Con la pausa apri le regolazioni e la guida. |
 | `test_try_drift.ogg` | Prova un drift: accelera, gira il volante e tira il freno a mano, il pulsante H, per far scivolare la coda. |
 | `test_pause.ogg` | Questa è la pausa della prova. Puoi cambiare il livello di simulazione, aprire le regolazioni, guardare la guida o uscire dalla prova. |
@@ -301,20 +307,21 @@ Generado por `python3 tools/audio/guide_voice_todo.py --md` desde `godot/game/da
 | `lab_aero.ogg` | Aerodinamica: il carico davanti e dietro. Schiaccia l'auto a terra ad alta velocità, ma toglie velocità di punta. |
 | `sim_changed.ogg` | Hai cambiato il livello di simulazione. Si applica subito. |
 | `wheel_real.ogg` | Con il volante reale devi girarlo davvero con il dito: fino a tre giri da un fondo corsa all'altro. |
-| `exit_warn.ogg` | Se esci dalla prova non puoi più rientrare. Tocca ancora una volta per confermare. |
-| `exit_done.ogg` | Fatto, hai finito la prova. Ora ti aspetta il mondo aperto. Divertiti! |
+| `exit_done.ogg` | Fatto, torniamo al menu. La modalità prova resta nella schermata iniziale: torna quando vuoi regolare la tua auto o provare qualcosa senza andare a una gara. |
 
 ## Deutsch (subtítulos y guion para grabar en ese idioma)
 
 | archivo | texto |
 |---|---|
-| `welcome.ogg` | Hallo, ich bin Claudio, dein Guide. Das ist der Testmodus: ein Ort, um das Auto kennenzulernen, das Setup einzustellen und zu driften, bevor du in die offene Welt fährst. Du kannst die Anleitung lesen oder gleich zum Test gehen. |
+| `welcome.ogg` | Hallo, ich bin Claudio, dein Guide. Das ist der Testmodus: ein Ort, um das Auto kennenzulernen, das Setup einzustellen und zu driften, ohne in ein Rennen zu gehen. Er bleibt immer im Startmenü, komm also zurück, wann du willst. Du kannst die Anleitung lesen oder gleich zum Test gehen. |
+| `welcome_first.ogg` | Willkommen bei Dream Racing! Ich bin Claudio, dein Guide. Bevor du losfährst, schauen wir im Testmodus vorbei: ein Ort, um das Spiel kennenzulernen, dein Auto einzustellen und Dinge auszuprobieren, ohne in ein Rennen zu gehen. Danach bleibt er immer im Menü. Du kannst die Anleitung lesen oder gleich zum Test gehen. |
 | `guide_pages.ogg` | Mit den Pfeilen blätterst du: Federung, Antrieb, Bremsen, Kameras, Lenkrad und Drift. Wenn du so weit bist, geh zurück und starte den Test. |
 | `setup_welcome.ogg` | Wähle, mit welchem Auto du testest, die Simulationsstufe und was du machen willst: Driften oder Rennen. |
 | `car_pickup.ogg` | Der Pickup: hoch und schwer. Ideal, um die Federung auf den Bodenschwellen und im Dreck zu spüren. |
 | `car_gt.ogg` | Der GT: ausgewogen und stabil. Ein schneller Straßenwagen, um das Setup zu lernen. |
 | `car_classic.ogg` | Der Klassiker: wenig Grip und viel Charakter. Er rutscht leicht und macht deshalb beim Driften richtig Spaß. |
 | `car_super.ogg` | Der Supersportwagen: enorme Leistung. In der vollen Simulation musst du ihn mit Vorsicht behandeln. |
+| `car_mine.ogg` | Du testest mit deinem eigenen Auto, mit den Teilen und dem Setup, die es schon hat. Was du im Test einstellst, wird nicht gespeichert: Um es dauerhaft zu machen, wende es in der Werkstatt an. |
 | `sim_arcade.ogg` | Arcade: ABS, Traktionskontrolle und Stabilität sind hoch, und das Lenkrad dreht nur wenig: dreiviertel Umdrehung von Anschlag zu Anschlag. Das Auto verzeiht fast alles. |
 | `sim_mid.ogg` | Mittel: mittlere Hilfen. Ein ausgewogenes Fahrgefühl zwischen Arcade und Simulator. |
 | `sim_pro.ogg` | Voller Simulator: ohne Hilfen, und das Lenkrad auf dem Bildschirm verlangt echte Umdrehungen wie ein richtiges. Schwieriger, aber sehr realistisch. |
@@ -328,7 +335,7 @@ Generado por `python3 tools/audio/guide_voice_todo.py --md` desde `godot/game/da
 | `lab_on.ogg` | Mit der Setup-Hilfe siehst du im Pausenmenü die Einstellungen: Federung, Antrieb, Bremsen und mehr. |
 | `lab_off.ogg` | Ohne Setup-Hilfe bleibt das Auto ab Werk. Die Simulationsstufe kannst du trotzdem im Pausenmenü ändern. |
 | `gfx.ogg` | Wenn das Spiel knapp läuft, senke hier die Grafikqualität. Du kannst sie jederzeit neu messen. |
-| `start.ogg` | Wenn du bereit bist, tippe auf Test starten. Denk daran: Er geht nur einmal. |
+| `start.ogg` | Wenn du bereit bist, tippe auf Test starten. Du kannst jederzeit rausgehen und wiederkommen: Er bleibt im Startmenü. |
 | `test_welcome.ogg` | Du bist auf der Strecke. Fahr dich ein bisschen warm. Mit der Pause öffnest du die Einstellungen und die Anleitung. |
 | `test_try_drift.ogg` | Probier einen Drift: Gib Gas, dreh das Lenkrad und zieh die Handbremse, die H-Taste, um das Heck ausbrechen zu lassen. |
 | `test_pause.ogg` | Das ist die Pause des Tests. Du kannst die Simulationsstufe ändern, die Einstellungen öffnen, die Anleitung ansehen oder den Test verlassen. |
@@ -358,5 +365,4 @@ Generado por `python3 tools/audio/guide_voice_todo.py --md` desde `godot/game/da
 | `lab_aero.ogg` | Aerodynamik: der Abtrieb vorn und hinten. Er drückt das Auto bei hohem Tempo auf die Straße, kostet aber Höchstgeschwindigkeit. |
 | `sim_changed.ogg` | Du hast die Simulationsstufe geändert. Sie gilt sofort. |
 | `wheel_real.ogg` | Beim echten Lenkrad musst du wirklich mit dem Finger drehen: bis zu drei Umdrehungen von Anschlag zu Anschlag. |
-| `exit_warn.ogg` | Wenn du den Test verlässt, kommst du nicht mehr hinein. Tippe noch einmal zur Bestätigung. |
-| `exit_done.ogg` | Geschafft, du hast den Test beendet. Jetzt wartet die offene Welt auf dich. Viel Spaß! |
+| `exit_done.ogg` | Geschafft, zurück zum Menü. Der Testmodus bleibt im Startmenü: Komm zurück, wann immer du dein Auto einstellen oder etwas ausprobieren willst, ohne in ein Rennen zu gehen. |
