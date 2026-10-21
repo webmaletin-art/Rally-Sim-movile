@@ -252,8 +252,8 @@ func _ready() -> void:
 		go("account", "gate") # hay que conectarse a confirmar la cuenta (cuenta nueva en este teléfono, archivo tocado o muchos días sin conexión)
 	else:
 		go(parts[0], arg0)
-		if start_screen == "home":
-			store.offer_popup() # cartel de ofertas (una vez por sesión)
+		if start_screen == "home" and screen == "home":
+			store.offer_popup() # cartel de ofertas (una vez por sesión; no si se lo mandó a la guía del modo de prueba: eso tiene que verse solo)
 	if not daily.is_empty():
 		toast("🎁 Premio diario: +%s (racha %d)" % [Kit.fmt_cr(float(daily["amount"])), int(daily["streak"])])
 		sfx.play("coin")
@@ -275,6 +275,7 @@ func _first_time() -> void:
 		if c.get("starter", false):
 			profile.give(id, "starter")
 	profile.select(str(profile.d["owned"].keys()[0]))
+	MenuTest.mark_first_time(profile) # (perfil nuevo: al llegar al inicio —después de la configuración gráfica— se lo manda a la guía del MODO DE PRUEBA, una sola vez)
 
 # ───────────────────────── mundo 3D ─────────────────────────
 func _build_world() -> void:
@@ -374,6 +375,17 @@ func offer_calibration() -> void:
 		return
 	calib_prompted = true
 	offer_auto_tune() # la primera vez: aviso → medición automática → elección con la recomendada
+
+## Primera vez que se inicia el juego (pedido del dueño, 21/10/2026: «si inició por primera vez me manda al modo prueba»): apenas termina la configuración gráfica automática lo manda a la guía del
+## MODO DE PRUEBA, UNA sola vez (después queda la baldosa del inicio). No corre en las compilaciones de prueba con argumentos (autotest, perf, autorace, captura, --noconsent).
+func offer_test_intro() -> bool:
+	if autotest != "" or perf_arg != "" or autorace != "" or shot_path != "" or no_consent or screen != "home":
+		return false
+	if not MenuTest.take_intro(profile):
+		return false
+	test_ui.first_arrival = true
+	go("test_guide")
+	return true
 
 ## Optimización automática (15/10/2026): la PRIMERA vez (o con otro teléfono) se mide sola en Dream City y al final se elige con la recomendada marcada
 ## (calibration.gd). Desde Opciones → Gráficos → «ELEGIR CALIDAD GRÁFICA» se abre la elección directa, con lo último medido y el botón «MEDIR AUTOMÁTICAMENTE».
@@ -582,7 +594,7 @@ func go(name: String, arg = null, push := true) -> void:
 			if MenuTest.available(profile):
 				test_ui.build(name, arg)
 			else:
-				_home() # (la prueba se usa una sola vez; sin la configuración gráfica automática todavía no se muestra)
+				_home() # (sin la configuración gráfica automática todavía no se muestra)
 		_: _home()
 	if chrome_on and screen == name: # (la tienda de la calle abre el concesionario con un go() adentro: ése ya armó su marco)
 		_chrome_finish(name)
@@ -590,6 +602,7 @@ func go(name: String, arg = null, push := true) -> void:
 		_restore_scroll.call_deferred(sc, keep_v)
 	if name == "home":
 		offer_calibration() # configuración gráfica automática: la primera vez (después del aviso legal y de la cuenta)
+		offer_test_intro() # …y recién después el Modo de prueba (lo último que hace go(): la pantalla de inicio ya quedó armada)
 
 ## Devuelve el desplazamiento de una lista que se rearmó (hasta que el contenedor mide el contenido hace falta un par de cuadros)
 func _restore_scroll(sc: ScrollContainer, v: int) -> void:
@@ -856,7 +869,7 @@ func _home() -> void:
 	advb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(advb)
 	var on_open := Release.online_open(profile)
-	# MODO DE PRUEBA (pedido del dueño, 20/10/2026): una tercera baldosa al lado de Aventura y Modo online, sólo después de la configuración gráfica automática y hasta que se use (una sola vez)
+	# MODO DE PRUEBA (pedido del dueño, 20/10/2026; fijo desde el 21/10): una tercera baldosa al lado de Aventura y Modo online, siempre, después de la configuración gráfica automática (para reglar el auto y probar cosas sin ir a una carrera)
 	var test_tile := MenuTest.available(profile)
 	var online_sub := "próximamente"
 	if on_open:
@@ -865,7 +878,7 @@ func _home() -> void:
 	obn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(obn)
 	if test_tile:
-		var tsb := menu_button("MODO DE PRUEBA", "una sola vez", func(): go("test_guide"), false, true, 20)
+		var tsb := menu_button("MODO DE PRUEBA", "reglá y probá tu auto", func(): go("test_guide"), false, true, 20)
 		tsb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		top.add_child(tsb)
 	var g := Kit.grid(3, 8, 8)

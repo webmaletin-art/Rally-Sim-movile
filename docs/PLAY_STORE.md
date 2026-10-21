@@ -124,7 +124,7 @@ Los íconos del lanzador (adaptativo + monocromo) ya están en `godot/store/icon
 
 ### Propuestas que necesitan tu OK (todavía NO las hice)
 1. **Idiomas**: español, inglés, portugués, francés, italiano y alemán ya tienen traducción de los textos del juego (la voz grabada del copiloto todavía solo existe en español, ver `docs/PLAN_V1.md`).
-2. **Taller de prueba de la pausa** — **resuelto el 20/10/2026 (pedido del dueño):** ya no está en la pausa de ningún modo; el reglaje libre sólo existe en el **Modo de prueba** (una sola vez) y en el garaje y los talleres del mundo (con las piezas compradas). La pausa de la Carrera rápida conserva OPCIONES y MODIFICAR CONTROLES.
+2. **Taller de prueba de la pausa** — **resuelto el 20/10/2026 (pedido del dueño):** ya no está en la pausa de ningún modo; el reglaje libre sólo existe en el **Modo de prueba** (fijo en el menú desde el 21/10/2026) y en el garaje y los talleres del mundo (con las piezas compradas). La pausa de la Carrera rápida conserva OPCIONES y MODIFICAR CONTROLES.
 3. **Reparto gratis / pago**: hoy son gratis las 5 primeras etapas de la aventura (eran 3: pedido del dueño del 20/10/2026, `Release.ADVENTURE_STAGES`), las copas Debut y Nacional y todos los mapas; el resto con `dr_adventure` / `dr_garage` / `dr_full`.
 4. **Créditos**: SÍ se venden (bolsas de monedas consumibles, ver tabla de productos). Precios y cantidades a revisar por el dueño antes de subir.
 5. **DR Bisonte XR** en la tienda ($190.000): se ve y se prueba, pero se compra recién al terminar la aventura. ¿Lo mantenemos así en la versión de Play?

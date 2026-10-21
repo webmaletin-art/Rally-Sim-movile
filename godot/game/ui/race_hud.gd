@@ -38,7 +38,7 @@ signal lab_changed # se movió una barra del taller de prueba (race.gd rearma el
 signal lab_reset
 signal sim_changed(id: String) # se eligió otro nivel de simulación desde la pausa (race.gd lo aplica)
 signal guide_say(id: String) # Modo de prueba: la guía hablada (game/audio/guide_voice.gd) dice esta línea
-signal test_exit_pressed # Modo de prueba: «SALIR DE LA PRUEBA» confirmado (race.gd la marca como usada y vuelve al menú)
+signal test_exit_pressed # Modo de prueba: «SALIR DE LA PRUEBA» (un solo toque: la prueba es fija, se puede repetir; race.gd anota que la hizo y vuelve al menú)
 var sim_fn: Callable # nivel de simulación actual («arcade», «mid», «pro», «custom»); vacío = acá no se puede cambiar (la Aventura lo fija)
 ## Niveles de simulación (los mismos de la pantalla que se ve antes de largar: menu.gd)
 const SIM_LEVELS := [["arcade", "ARCADE", "ABS, tracción y estabilidad altas y ayuda de trazada fuerte: el auto perdona casi todo."],
@@ -96,7 +96,7 @@ var gslides: Control
 var gcount_l: Label
 var gallery_on := true
 var exit_btn: Button
-var exit_armed_t := 0.0
+var lab_note := "" # nota arriba de los reglajes (el Modo de prueba con «mi auto»: lo que se ajusta no se guarda en el auto)
 var _lab_tab_said := -1
 const GALLERY_PAGES := ["lab", "camadj", "sim"]
 const LAB_SLIDES := ["motor", "agarre", "susp", "frenos", "trac", "aero"] # una hoja por solapa del reglaje (lab_panel.gd TABS)
@@ -536,23 +536,14 @@ func _fill_pause() -> void:
 			if xb != null:
 				(xb as Button).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 				pause_col.add_child(xb)
-	if test_on: # Modo de prueba: la guía con dibujos (a la derecha) se muestra u oculta, y para salir hay que tocar dos veces (no se vuelve a entrar)
+	if test_on: # Modo de prueba: la guía con dibujos (a la derecha) se muestra u oculta, y se sale con un solo toque (la prueba queda en el inicio para volver cuando se quiera)
 		var gal_b := Kit.button(_gallery_label(), Callable(), false, 19, sz)
 		gal_b.pressed.connect(func() -> void:
 			gallery_on = not gallery_on
 			gal_b.text = _gallery_label()
 			Kit.fit_button_now(gal_b))
 		pair.call(gal_b, Kit.button("↺  REINICIAR", func(): restart_pressed.emit(), false, 19, sz))
-		exit_armed_t = 0.0
-		exit_btn = Kit.button("🚪  " + Tr.t("SALIR DE LA PRUEBA"), func() -> void:
-			if exit_armed_t <= 0.0:
-				exit_armed_t = 4.0
-				exit_btn.text = "⚠  " + Tr.t("TOCÁ OTRA VEZ PARA SALIR")
-				Kit.fit_button_now(exit_btn)
-				guide_say.emit("exit_warn")
-				return
-			exit_armed_t = 0.0
-			test_exit_pressed.emit(), false, 19, sz)
+		exit_btn = Kit.button("🚪  " + Tr.t("SALIR DE LA PRUEBA"), func() -> void: test_exit_pressed.emit(), false, 19, sz)
 		exit_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		pause_col.add_child(exit_btn)
 		_fit_pause_buttons(pause_col)
@@ -845,6 +836,8 @@ func _lab_page() -> void:
 		if tab_i != _lab_tab_said:
 			_lab_tab_said = tab_i
 			guide_say.emit(str(LAB_LINES[tab_i]))
+	if lab_note != "":
+		opts_body.add_child(Kit.wrap(lab_note, 12, Kit.GOLD, 300))
 	LabPanel.build(opts_body, lab, lab_defs, lab_tab, func() -> void: lab_changed.emit(), func() -> void: _opts_go("lab", null, false), func() -> void:
 		lab_reset.emit()
 		_opts_go("lab", null, false), opts.sfx if opts != null else null)
@@ -917,16 +910,11 @@ func _gallery_context() -> bool:
 		return true
 	return opts_box != null and opts_box.visible and GALLERY_PAGES.has(opts_page)
 
-func _test_process(dt: float) -> void:
+func _test_process(_dt: float) -> void:
 	if gallery == null and (pause_box.visible or (opts_box != null and opts_box.visible)):
 		_ensure_gallery()
 	if gallery != null:
 		var want := gallery_on and not cine_on and _gallery_context()
 		if gallery.visible != want:
 			gallery.visible = want
-	if exit_armed_t > 0.0:
-		exit_armed_t -= dt
-		if exit_armed_t <= 0.0 and exit_btn != null and is_instance_valid(exit_btn):
-			exit_btn.text = "🚪  " + Tr.t("SALIR DE LA PRUEBA")
-			Kit.fit_button_now(exit_btn)
 
