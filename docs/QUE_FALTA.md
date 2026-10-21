@@ -10,6 +10,7 @@ Regla de siempre: **nada de esto está probado en un teléfono** (desde acá só
 - Guías: `docs/GUIA_SQL_SUPABASE.md`, `docs/GUIA_PLAY_CONSOLE_PASO_A_PASO.md`, esta lista; políticas de privacidad y términos; textos de la ficha en 6 idiomas; AAB reproducible con un flujo.
 
 ## 2. Probar en el teléfono (APK normal de `main` / «Dream Racing RC»; la primera vez que abras cada una baja los autos de nuevo, ~600 MB, con wifi)
+**Descargas directas:** APK normal (versión de `main`, sin herramientas de desarrollo): https://github.com/webmaletin-art/Rally-Sim-movile/releases/download/godot-apk/DreamRacing-liviano.apk · APK de pruebas «Dream Racing RC» (con modo desarrollador y «COPIAR REGISTRO»): https://github.com/webmaletin-art/Rally-Sim-movile/releases/download/godot-apk-rc/DreamRacing-RC.apk. Los dos traen lo mismo del juego; cambia el nombre, el paquete (se instalan uno al lado del otro) y las herramientas.
 Hacelo con calma y **anotá qué falla**; con una captura y «dónde» (el 📍 del mapa o el nombre de la calle) lo arreglo.
 
 | Qué | Cómo se prueba | Qué tiene que pasar |
