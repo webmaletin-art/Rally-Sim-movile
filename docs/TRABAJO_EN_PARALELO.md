@@ -59,6 +59,7 @@ Así el otro lo ve con `git pull` y no se pisan.
 
 | Chat | Sistema / tarea | Archivos | Desde (UTC) |
 |---|---|---|---|
+| B | Modo de prueba FIJO (siempre en el menú, sin «una sola vez») + primera vez que se inicia el juego → manda al modo de prueba + «MI AUTO» en el armado | `game/ui/menu_test.gd`, `game/ui/menu.gd` (baldosa y `_first_time`; hot: sólo esas partes), `game/race.gd` (`_test_exit`, test cfg), `game/ui/race_hud.gd` (salida de la pausa de la prueba), `game/data/guide_script.json`, `tests/test_mode_test.gd`, `tests/test_menu_test.gd`, `tools/i18n/batches/b75_*.py`, docs | 2026-10-21 01:10 |
 
 ## 5. Avisos para el otro chat
 
