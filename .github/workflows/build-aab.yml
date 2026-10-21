@@ -73,7 +73,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p plugin && cd plugin
-          gh release download --repo godotengine/godot-google-play-billing --pattern '*.zip' || true
+          # versión fija (3.3.0, Play Billing Library 9.1; Google Play exige la 8 o más nueva): así el AAB no cambia solo si el plugin publica otra versión
+          gh release download 3.3.0 --repo godotengine/godot-google-play-billing --pattern '*.zip' || true
           for z in *.zip; do [ -f "$z" ] && unzip -q -o "$z" -d unz || true; done
           cfg=$(find . -name plugin.cfg -path '*GodotGooglePlayBilling*' | head -1)
           echo "plugin.cfg: $cfg"
