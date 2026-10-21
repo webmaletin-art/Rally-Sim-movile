@@ -1,0 +1,390 @@
+name: Play · Publicar
+
+# Publicación de Dream Racing en Google Play con la API oficial (Google Play Developer API). Se lanza a mano: Actions → «Play · Publicar» → Run workflow (rama main).
+# Procedimiento completo, en castellano: docs/PUBLICAR_EN_PLAY.md. Herramientas reutilizables para otros juegos del estudio: tools/play/.
+#
+# DOS MODOS (input «mode»):
+#   validate  (por defecto)  hace TODO lo de publicar —auditoría, pruebas, AAB firmado, verificación, subida a Google— pero NO publica: la edición de
+#                            Google se valida y se BORRA. No cambia nada en Play Console.
+#   publish                  igual, y además CONFIRMA la edición: la versión queda en la pista elegida. Exige confirm = PUBLICAR.
+# PISTAS (input «track»): internal = pruebas internas · alpha = prueba CERRADA · beta = prueba abierta · production = producción.
+#   Producción además exige production_approval = «AUTORIZO PRODUCCION <versión>» (la autorización explícita del dueño para esa versión) y pasa por el
+#   entorno de GitHub «google-play-produccion» (Settings → Environments: ahí se puede exigir un aprobador).
+#
+# SECRETOS (Settings → Secrets and variables → Actions): ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS (firma de subida) ·
+#   SUPABASE_URL, SUPABASE_ANON_KEY (cuenta del juego) · GOOGLE_PLAY_SERVICE_ACCOUNT (JSON completo de la cuenta de servicio de Google Cloud).
+# VARIABLE (no secreta, opcional pero recomendada): UPLOAD_CERT_SHA256 = huella SHA-256 del «Certificado de clave de carga» de Play Console.
+# Nunca se imprime ningún secreto. Este flujo NO sube nada a GitHub Releases: el AAB queda como artefacto de la corrida (30 días).
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'validate = probar todo SIN publicar · publish = publicar de verdad'
+        type: choice
+        options: [validate, publish]
+        default: validate
+      track:
+        description: 'Pista de Google Play (internal = pruebas internas · alpha = prueba cerrada · beta = prueba abierta · production = producción)'
+        type: choice
+        options: [internal, alpha, beta, production]
+        default: internal
+      version_name:
+        description: 'Nombre de versión que ve el jugador (ej. 1.0.0)'
+        default: '1.0.0'
+      release_status:
+        description: 'Estado de la versión en la pista (completed = disponible · draft = borrador, se envía a mano desde Play Console)'
+        type: choice
+        options: [completed, draft]
+        default: completed
+      rollout_percent:
+        description: 'Sólo producción: % de usuarios (100 = todos; menos = lanzamiento escalonado)'
+        default: '100'
+      update_listing:
+        description: 'Subir también la ficha (textos, ícono, gráfico y capturas de store_listing/) en el mismo modo'
+        type: boolean
+        default: false
+      tests:
+        description: 'reuse = aceptar una compilación verde con el mismo código del juego · all = correr las 107 pruebas ahora'
+        type: choice
+        options: [reuse, all]
+        default: reuse
+      confirm:
+        description: 'Para mode=publish: escribí PUBLICAR'
+        default: ''
+      production_approval:
+        description: 'Para producción: escribí AUTORIZO PRODUCCION <nombre de versión> (ej. AUTORIZO PRODUCCION 1.0.0)'
+        default: ''
+      allow_draft_fallback:
+        description: 'Si la app está en borrador en Play, reintentar la versión como borrador'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: play-release
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: 4.7.2
+  BUNDLETOOL_VERSION: 1.18.1
+  BUNDLETOOL_SHA256: 675786493983787ffa11550bdb7c0715679a44e1643f3ff980a529e9c822595c
+
+jobs:
+  # ───────────────────────── 1. Auditoría previa ─────────────────────────
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      version_code: ${{ steps.vc.outputs.code }}
+    env:
+      MODE: ${{ inputs.mode }}
+      TRACK: ${{ inputs.track }}
+      VERSION_NAME: ${{ inputs.version_name }}
+      CONFIRM: ${{ inputs.confirm }}
+      APPROVAL: ${{ inputs.production_approval }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Herramientas de Google
+        run: pip install --quiet google-api-python-client google-auth google-auth-httplib2 pillow cryptography
+
+      - name: Autorizaciones (publicar de verdad exige confirmación explícita)
+        run: |
+          echo "Modo: $MODE · pista: $TRACK · versión: $VERSION_NAME · rama: $GITHUB_REF_NAME"
+          if ! echo "$VERSION_NAME" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z]+)*$'; then
+            echo "::error::version_name «$VERSION_NAME» no tiene el formato 1.2.3"; exit 1
+          fi
+          if [ "$MODE" = "publish" ]; then
+            if [ "$GITHUB_REF_NAME" != "main" ]; then echo "::error::Sólo se publica desde la rama main (esta corrida es de $GITHUB_REF_NAME). Para probar usá mode=validate."; exit 1; fi
+            if [ "$CONFIRM" != "PUBLICAR" ]; then echo "::error::mode=publish exige escribir PUBLICAR en «confirm». No se publicó nada."; exit 1; fi
+            if [ "$TRACK" = "production" ] && [ "$APPROVAL" != "AUTORIZO PRODUCCION $VERSION_NAME" ]; then
+              echo "::error::Producción exige production_approval = «AUTORIZO PRODUCCION $VERSION_NAME». No se publicó nada."; exit 1
+            fi
+          fi
+          echo "✅ Autorizaciones en regla para el modo $MODE"
+
+      - name: Pruebas de las herramientas de publicación (contra un Google Play falso)
+        run: |
+          python3 tools/play/tests/publish_test.py
+          python3 tools/play/tests/verify_aab_test.py
+
+      - name: Auditoría del repositorio (sin Google)
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && 'set' || '' }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD != '' && 'set' || '' }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS != '' && 'set' || '' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL != '' && 'set' || '' }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY != '' && 'set' || '' }}
+          UPLOAD_CERT_SHA256: ${{ vars.UPLOAD_CERT_SHA256 }}
+        run: python3 tools/play/audit.py
+
+      - name: Auditoría contra Google Play y próximo código de versión
+        id: vc
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+        run: |
+          min=$((1000 + GITHUB_RUN_NUMBER))
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT" ]; then
+            if [ "$MODE" = "publish" ]; then echo "::error::Falta el secreto GOOGLE_PLAY_SERVICE_ACCOUNT: no se puede publicar (docs/PUBLICAR_EN_PLAY.md → «Conectar Google Play»)."; exit 1; fi
+            echo "::warning::Falta GOOGLE_PLAY_SERVICE_ACCOUNT: esta validación NO habla con Google (queda parcial)."
+            echo "code=$min" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python3 tools/play/audit.py --online
+          python3 tools/play/publish.py status
+          code=$(python3 tools/play/publish.py next-version-code --min "$min")
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "versionCode que se usará: $code"
+
+  # ───────────────────────── 2. Pruebas obligatorias ─────────────────────────
+  tests:
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TESTS: ${{ inputs.tests }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: ¿Ya hay una compilación verde con este mismo código del juego?
+        id: reuse
+        run: |
+          found=""
+          if [ "$TESTS" = "reuse" ]; then
+            mine=$(git rev-parse HEAD:godot)
+            for s in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/build-godot.yml/runs?status=success&per_page=50" --jq '.workflow_runs[].head_sha'); do
+              git cat-file -e "$s^{commit}" 2>/dev/null || continue
+              if [ "$(git rev-parse "$s:godot" 2>/dev/null)" = "$mine" ]; then found=$s; break; fi
+            done
+          fi
+          if [ -n "$found" ]; then
+            echo "✅ Las 107 pruebas ya pasaron en verde con exactamente este código del juego (compilación de $found). No se repiten."
+            echo "reuse=true" >> "$GITHUB_OUTPUT"
+            echo "- ✅ Pruebas: reutilizadas de la compilación verde de \`$found\` (mismo contenido de \`godot/\`)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No hay una compilación verde equivalente (o se pidió tests=all): se corren todas las pruebas ahora."
+            echo "reuse=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Instalar Godot
+        if: steps.reuse.outputs.reuse != 'true'
+        run: |
+          set -e
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          curl -sSL -o godot.zip $base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          sudo mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+          rm -f godot.zip
+          godot --headless --version
+      - name: Importar recursos
+        if: steps.reuse.outputs.reuse != 'true'
+        working-directory: godot
+        run: |
+          godot --headless --import || true
+          godot --headless --import || true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Todas las pruebas obligatorias (si una falla, no se publica)
+        if: steps.reuse.outputs.reuse != 'true'
+        run: tools/test/run_ci_tests.sh
+      - name: Prueba de la verificación de compras del servidor
+        run: node tools/online/verify_purchase_test.mjs
+
+  # ───────────────────────── 3. AAB firmado y verificado ─────────────────────────
+  build:
+    needs: [preflight, tests]
+    runs-on: ubuntu-latest
+    env:
+      VERSION_CODE: ${{ needs.preflight.outputs.version_code }}
+      VERSION_NAME: ${{ inputs.version_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools build-tools;36.1.0 platforms;android-36'
+      - name: Instalar Godot y plantillas de exportación
+        run: |
+          set -e
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          curl -sSL -o godot.zip $base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          unzip -q godot.zip
+          sudo mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+          curl -sSL -o tpz.zip $base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          dir=$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p $dir
+          unzip -q -j tpz.zip 'templates/android_*' 'templates/version.txt' -d $dir
+          rm -f tpz.zip godot.zip
+          godot --headless --version
+      - name: Plantilla de compilación de Android (Gradle)
+        run: |
+          set -e
+          mkdir -p godot/android/build
+          unzip -q $HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/android_source.zip -d godot/android/build
+          echo "${GODOT_VERSION}.stable" > godot/android/.build_version
+          touch godot/android/build/.gdignore
+          sed -i 's/compileSdk *: *[0-9]*/compileSdk : 36/' godot/android/build/config.gradle || true
+          echo "android.suppressUnsupportedCompileSdk=36" >> godot/android/build/gradle.properties
+      - name: Plugin de compras (Google Play Billing, versión fija)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          mkdir -p plugin && cd plugin
+          gh release download 3.3.0 --repo godotengine/godot-google-play-billing --pattern '*.zip'
+          for z in *.zip; do unzip -q -o "$z" -d unz; done
+          cfg=$(find . -name plugin.cfg -path '*GodotGooglePlayBilling*' | head -1)
+          if [ -z "$cfg" ]; then echo "::error::No se pudo instalar el plugin de compras: no se publica un AAB sin compras"; exit 1; fi
+          mkdir -p ../godot/addons
+          rm -rf ../godot/addons/GodotGooglePlayBilling
+          cp -r "$(dirname $cfg)" ../godot/addons/GodotGooglePlayBilling
+          cd ../godot
+          printf '\n[editor_plugins]\n\nenabled=PackedStringArray("res://addons/GodotGooglePlayBilling/plugin.cfg")\n' >> project.godot
+      - name: "Firma de SUBIDA (obligatoria: sin ella no se publica)"
+        id: sign
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          for v in KS_B64 KS_PASS KS_ALIAS; do
+            if [ -z "${!v}" ]; then
+              case $v in KS_B64) n=ANDROID_KEYSTORE_BASE64;; KS_PASS) n=ANDROID_KEYSTORE_PASSWORD;; *) n=ANDROID_KEY_ALIAS;; esac
+              echo "::error::Falta el secreto $n (Settings → Secrets and variables → Actions). Sin la clave de subida no se arma un AAB para Google Play."; exit 1
+            fi
+          done
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/upload.keystore"
+          echo "path=$RUNNER_TEMP/upload.keystore" >> "$GITHUB_OUTPUT"
+          echo "user=$KS_ALIAS" >> "$GITHUB_OUTPUT"
+          echo "Firmando con la clave de SUBIDA"
+      - name: Configurar Godot (SDK de Android)
+        run: |
+          mkdir -p $HOME/.config/godot
+          cat > $HOME/.config/godot/editor_settings-4.7.tres <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          export/android/debug_keystore = "$GITHUB_WORKSPACE/godot/keystore/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+      - name: Importar recursos
+        working-directory: godot
+        run: |
+          godot --headless --import || true
+          godot --headless --import || true
+      - name: Configurar el modo online (Supabase)
+        working-directory: godot
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "::error::Faltan los secretos SUPABASE_URL y SUPABASE_ANON_KEY: la versión de Play necesita la cuenta del servidor (docs/CUENTA_Y_ECONOMIA.md)."; exit 1
+          fi
+          python3 -c "import json,os,urllib.parse as u; p=u.urlparse(os.environ['SUPABASE_URL'].strip()); json.dump({'url': p.scheme+'://'+p.netloc, 'anon_key': os.environ['SUPABASE_ANON_KEY'].strip()}, open('game/online/online_config.json','w'))"
+      - name: Número de versión
+        working-directory: godot
+        run: |
+          case "$VERSION_CODE" in ''|*[!0-9]*) echo "::error::versionCode inválido «$VERSION_CODE»"; exit 1;; esac
+          sed -i "/^\[preset.3.options\]/,\$ s/^version\/code=.*/version\/code=${VERSION_CODE}/" export_presets.cfg
+          sed -i "/^\[preset.3.options\]/,\$ s/^version\/name=.*/version\/name=\"${VERSION_NAME}\"/" export_presets.cfg
+          echo "r${GITHUB_RUN_NUMBER}-${GITHUB_SHA::7}" > game/build_id.txt
+          sed -n '/^\[preset.3.options\]/,$p' export_presets.cfg | grep -n "^version/\|target_sdk\|unique_name"
+      - name: Exportar el AAB
+        working-directory: godot
+        env:
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ steps.sign.outputs.path }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ steps.sign.outputs.user }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          mkdir -p ../build
+          godot --headless --export-release "Google Play (AAB)" ../build/DreamRacing-play.aab
+          ls -la ../build
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: bundletool (verificado por huella)
+        run: |
+          curl -sSL -o bundletool.jar https://github.com/google/bundletool/releases/download/${BUNDLETOOL_VERSION}/bundletool-all-${BUNDLETOOL_VERSION}.jar
+          echo "${BUNDLETOOL_SHA256}  bundletool.jar" | sha256sum -c -
+      - name: Verificar el AAB (firma, paquete, versionCode, API, compras y 16 KB)
+        env:
+          UPLOAD_CERT_SHA256: ${{ vars.UPLOAD_CERT_SHA256 }}
+        run: |
+          python3 tools/play/verify_aab.py build/DreamRacing-play.aab --bundletool bundletool.jar \
+            --expect-version-code "$VERSION_CODE" --expect-version-name "$VERSION_NAME"
+          cp build/DreamRacing-play.aab "build/DreamRacing-play-v${VERSION_CODE}.aab"
+          sha256sum "build/DreamRacing-play-v${VERSION_CODE}.aab" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Conservar el AAB como artefacto (30 días)
+        uses: actions/upload-artifact@v4
+        with:
+          name: DreamRacing-play-v${{ needs.preflight.outputs.version_code }}.aab
+          path: build/DreamRacing-play-v${{ needs.preflight.outputs.version_code }}.aab
+          retention-days: 30
+
+  # ───────────────────────── 4. Subida a Google Play (validar o publicar) ─────────────────────────
+  publish:
+    needs: [preflight, tests, build]
+    runs-on: ubuntu-latest
+    environment: ${{ (inputs.track == 'production' && inputs.mode == 'publish') && 'google-play-produccion' || 'google-play-pruebas' }}
+    env:
+      MODE: ${{ inputs.mode }}
+      TRACK: ${{ inputs.track }}
+      VERSION_NAME: ${{ inputs.version_name }}
+      VERSION_CODE: ${{ needs.preflight.outputs.version_code }}
+      STATUS: ${{ inputs.release_status }}
+      ROLLOUT: ${{ inputs.rollout_percent }}
+      APPROVAL: ${{ inputs.production_approval }}
+      DRAFT_FALLBACK: ${{ inputs.allow_draft_fallback }}
+      UPDATE_LISTING: ${{ inputs.update_listing }}
+      GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Herramientas de Google
+        run: pip install --quiet google-api-python-client google-auth google-auth-httplib2 pillow cryptography
+      - uses: actions/download-artifact@v4
+        with:
+          name: DreamRacing-play-v${{ needs.preflight.outputs.version_code }}.aab
+          path: aab
+      - name: Subir el AAB a Google Play
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT" ]; then
+            echo "::warning::Sin GOOGLE_PLAY_SERVICE_ACCOUNT no se puede hablar con Google Play: el AAB firmado y verificado quedó como artefacto de esta corrida, pero NO se validó ni se publicó nada en Play."
+            echo "## ⚠️ Resultado: PARCIAL — el AAB está listo pero Google Play no se consultó (falta GOOGLE_PLAY_SERVICE_ACCOUNT)" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$MODE" = "publish" ]; then exit 1; fi
+            exit 0
+          fi
+          status="$STATUS"
+          args=(--aab "aab/DreamRacing-play-v${VERSION_CODE}.aab" --track "$TRACK" --mode "$MODE" --version-name "$VERSION_NAME" --expect-version-code "$VERSION_CODE")
+          if [ "$TRACK" = "production" ] && [ "$ROLLOUT" != "100" ] && [ "$STATUS" = "completed" ]; then
+            status=inProgress
+            args+=(--user-fraction "$(python3 -c "print(max(0.01,min(0.99,float('$ROLLOUT')/100)))")")
+          fi
+          args+=(--status "$status")
+          [ "$DRAFT_FALLBACK" = "true" ] && args+=(--allow-draft-fallback)
+          [ "$TRACK" = "production" ] && args+=(--production-approval "$APPROVAL")
+          python3 tools/play/publish.py release "${args[@]}"
+      - name: Ficha de Google Play (textos, ícono, gráfico y capturas)
+        if: ${{ inputs.update_listing }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT" ]; then echo "::error::Falta GOOGLE_PLAY_SERVICE_ACCOUNT"; exit 1; fi
+          python3 tools/play/listing.py sync --mode "$MODE"
+      - name: Estado final en Google Play
+        if: ${{ always() && env.GOOGLE_PLAY_SERVICE_ACCOUNT != '' }}
+        run: python3 tools/play/publish.py status

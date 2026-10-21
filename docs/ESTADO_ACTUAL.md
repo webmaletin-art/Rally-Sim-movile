@@ -3,6 +3,10 @@
 Una sección por sistema, con lo que anda, lo que falta y lo que espera prueba en el teléfono. El detalle técnico vive en el documento de cada sistema (ver `docs/INDICE_TECNICO.md`);
 el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hecho y probado en la computadora · 📱 falta probar en el APK · 🚧 en curso · ⛔ bloqueado.
 
+## Publicación automática en Google Play (21/10/2026, [B], rama RC, sin fusionar) — `docs/PUBLICAR_EN_PLAY.md`
+- ✅ Herramientas `tools/play/` (auditoría, verificación del AAB, publicación por la API oficial, ficha) y flujo «Play · Publicar» (validar / publicar por pista; producción sólo con «AUTORIZO PRODUCCION <versión>»). Probado contra un Google Play **falso**; **no probado contra Google real**.
+- ⛔ Para usarlo: fusionar a `main`, cargar `GOOGLE_PLAY_SERVICE_ACCOUNT` (con permisos) y correr «validate». Vídeo: falta subir el tráiler a YouTube.
+
 ## Preparación del lanzamiento (21/10/2026, [B]) — `docs/REGISTRO_TECNICO.md` → 21/10 05:30 · guía: `docs/LANZAMIENTO_PASO_A_PASO.md`
 - ✅📱 **Buggy:** la cámara de adentro ya no dibuja nada de la carrocería del modelo (`cowl_z = 2.6` en `game/models/cars/buggy.json`): un solo tablero, el nuestro.
 - ✅ **Migraciones:** 22 aplicadas, Local = Remote (flujo n.º 37, 21/10 04:49 UTC); nada pendiente.
