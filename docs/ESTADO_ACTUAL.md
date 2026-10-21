@@ -10,11 +10,11 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 - ✅📱 Sin Nitro ni alerones; precios por escalones («cada dos autos, el mismo precio»); migración `20261025120000` con devolución probada en un Postgres local.
 - ✅ Guías nuevas: `docs/GUIA_SQL_SUPABASE.md`, `docs/GUIA_PLAY_CONSOLE_PASO_A_PASO.md`, `docs/QUE_FALTA.md`.
 
-## Versión candidata (rama ccr-e7ae3f10-45afj2, NO en main) — `docs/VERSION_CANDIDATA.md`
+## Versión candidata (rama ccr-e7ae3f10-45afj2; **fusionada a main el 21/10/2026**, commit `e953c9b`) — `docs/VERSION_CANDIDATA.md`
 - ✅📱 Fases 1–5 validadas técnicamente (pruebas de Godot y SQL en GitHub); **ninguna probada en un teléfono**. APK «Dream Racing RC» en la release `godot-apk-rc` (se instala al lado).
 - ✅📱 Fase 5: desafíos del día (LOGROS, 1.ª página), metas de colección X/N, hitos de temporada, horarios rotativos, cacería para principiantes (apagada hasta publicar).
 - ✅ Fase 6: compras revisadas sin cambios (verificación con Google, recibo único, restaurar). Límites: reembolsos no se quitan solos; un desbloqueo queda en la 1.ª cuenta del juego.
-- ⛔ Migraciones 20261022, 20261023 y 20261024 **sin aplicar** (esperan autorización del dueño; aplicar 20261022 antes de publicar).
+- ✅ Migraciones 20261022, 20261023, 20261024 y 20261025120000 **aplicadas** el 21/10/2026 00:02 UTC (flujo «Supabase · aplicar migraciones» n.º 35, sin errores; autorización expresa del dueño). `caza_inicial` sigue apagada. Detalle: `docs/GUIA_SQL_SUPABASE.md` → «Historial».
 
 ## Estabilidad (cierres nativos)
 - ✅📱 **Causa confirmada y corregida (15/10):** bucles de sonido que leían fuera de los datos (hilo de audio, `AudioStreamPlaybackWAV::decode_samples`) → `game/audio/wav_loop.gd`. Falta confirmar en el teléfono.
@@ -59,7 +59,7 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 - ✅📱 **Aventura:** menos daño de ruedas y se reinicia en cada etapa; 5 etapas libres (`adv_rules_test`).
 - ✅📱 **Menús:** texto que baja la letra en vez de cortarse con «…»; «Acerca de» con enlaces web a privacidad, términos y borrado de cuenta.
 - 🔎 **Auto «Ren…»:** no existe un auto con ese nombre; sus cabinas más rotas son Strix Vandal RS y Chakal Dune R. Falta que el dueño diga cuál.
-- ✅ **SQL:** 21 migraciones aplicadas en orden y repetidas en un Postgres 16 local (`ECONOMIA_ONLINE_TEST OK`, `CUENTA_TEST OK`). ⛔ Siguen sin aplicar 20261022 → 20261023 → 20261024 hasta el OK del dueño.
+- ✅ **SQL:** 21 migraciones aplicadas en orden y repetidas en un Postgres 16 local (`ECONOMIA_ONLINE_TEST OK`, `CUENTA_TEST OK`). ✅ 20261022 → 20261025120000 aplicadas al servidor real el 21/10/2026 00:02 UTC (ver `docs/GUIA_SQL_SUPABASE.md` → «Historial»).
 
 ## Versión pública vs versión candidata, práctica de la Aventura y nombre online (20/10, [B] 5.ª tanda) — `docs/REGISTRO_TECNICO.md` → 20/10 11:00
 - ✅📱 **La versión pública (main y Google Play) no trae modo desarrollador ni «COPIAR REGISTRO»:** `Release.internal()` = editor o versión candidata marcada (`game/build_channel.txt`, que escribe el flujo sólo fuera de main); `Release.dev()` lo exige. En la RC todo sigue igual (`public_build_test`).
