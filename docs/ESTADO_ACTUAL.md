@@ -7,7 +7,9 @@ el historial de intervenciones, en `docs/REGISTRO_TECNICO.md`. Leyenda: ✅ hech
 - ✅📱 **Buggy:** la cámara de adentro ya no dibuja nada de la carrocería del modelo (`cowl_z = 2.6` en `game/models/cars/buggy.json`): un solo tablero, el nuestro.
 - ✅ **Migraciones:** 22 aplicadas, Local = Remote (flujo n.º 37, 21/10 04:49 UTC); nada pendiente.
 - ✅📱 **Compras:** plugin de Google Play Billing **fijo en 3.3.0** (Billing Library 9.1) en `build-aab.yml`; `billing.gd` tolera las variantes de las claves de precio; los 10 productos coinciden con el servidor. **Sólo se prueban de verdad en la prueba interna de Play** (plugin 3.3.0 + motor 4.7.2 nunca corrieron en un teléfono).
-- ✅ **AAB:** `DreamRacing-play-v1004.aab` (763 MB) en la release `play-aab`, armado desde `main` en verde (API 36, 16 KB aprobado, firmado con la clave de subida, con compras). Se reconstruye si cambia el juego.
+- ✅📱 **Taller sin la pestaña ESTÉTICA** (21/10, pedido del dueño: las piezas —paragolpes, faldones, capó— se veían feas): oculta con `Shops.ALL_TABS` y `allowed_tabs()` (el código y las piezas quedan; para volver a mostrarla, sumar `5` ahí y a «paint»).
+- ✅ **Capturas de Play** rehechas sin esa pestaña (`05_taller`, `06_pintura`) y **novedades** de la versión en 6 idiomas (`store_listing/novedades.md`).
+- ✅ **AAB:** el último armado desde `main` en verde (ver `docs/LANZAMIENTO_PASO_A_PASO.md`; v1004 y v1005 ya no sirven) en la release `play-aab` (API 36, 16 KB aprobado, firmado con la clave de subida, con compras). Se reconstruye si cambia el juego.
 - ✅ **Ficha de Play:** textos en 6 idiomas actualizados (`store_listing/ficha.md`) y 8 capturas en `store_listing/capturas/`.
 - ⛔ **Lo que sólo puede hacer el dueño:** cuenta de Play Console y declaraciones, 10 productos, cuenta de revisión, secreto `GOOGLE_PLAY_SERVICE_ACCOUNT` + «Supabase · publicar funciones», interruptores de Supabase, la prueba cerrada de 14 días (si la cuenta es personal).
 

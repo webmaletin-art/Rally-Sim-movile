@@ -727,12 +727,8 @@ func _chrome_panel(name: String) -> PanelContainer:
 
 ## Barra superior y riel: se arman al final, cuando la pantalla ya decidió su pestaña (el taller de la calle puede tener sólo algunas)
 func _chrome_finish(name: String) -> void:
-	var allowed: Array = [0, 1, 2, 3, 4, 5]
-	var sd: Dictionary = garage.shop_info()
-	if not sd.is_empty():
-		allowed = sd["tabs"]
 	chrome.build_top(name)
-	chrome.build_rail(name, garage.ws_tab, allowed)
+	chrome.build_rail(name, garage.ws_tab, garage.allowed_tabs())
 
 
 func set_title(t: String) -> void:
