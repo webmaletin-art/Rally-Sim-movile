@@ -12,7 +12,7 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 - **Pruebas:** `menu_ui_test` actualizada (el riel del garaje ahora tiene atrás, separador, 2 autos y **5** pestañas; 33 OK, 0 FALLA), `workshop_ui_test` (6 OK), `dealer_variants_test`, `test_menu_test` OK; `extract.py --report`: 0 textos nuevos. Capturas con el motor de verdad (xvfb): el riel del taller y el garaje ya no tienen «ESTÉTICA».
 - **Capturas de Play rehechas:** `05_garaje` salía con la pestaña ESTÉTICA y los pilotos en T (con el render por software los pilotos de la sala quedan en T-pose; en el teléfono se mueven) → ahora **`05_taller`** (pantalla de AJUSTE del taller, sin pilotos) y `06_pintura` (sin pilotos y sin ESTÉTICA); `tools/trailer/make_play_shots.py` apunta a `ui/tune.png`. Las otras 6 no cambian.
 - **Novedades (what's new):** `store_listing/novedades.md` con el texto de la versión 1.0.0 en es-419, en-US, pt-BR, fr-FR, it-IT y de-DE (419–480 caracteres, tope 500) y el bloque con etiquetas `<es-419>…</es-419>` para pegarlo de una vez en «Notas de la versión»; `ficha.md` lo referencia; `docs/LANZAMIENTO_PASO_A_PASO.md` actualizada (capturas en orden, novedades, el AAB que se sube).
-- **AAB:** el `v1005` (armado 05:00 UTC) ya NO sirve: no tiene este cambio. Se rearma desde `main` (v1006).
+- **AAB:** el `v1005` (05:07 UTC) no tiene este cambio → se rearmó desde `main` (`a19d51a`): flujo «Build Play Store AAB» n.º 6, verde (plugin 3.3.0, 16 KB aprobado, firmado, con compras) → **`DreamRacing-play-v1006.aab`** (763 MB), release `play-aab`. Es el que se sube; el v1003, v1004 y v1005 no sirven.
 - **Pedirle al dueño:** que mire el taller en el teléfono (¿queda bien sin ESTÉTICA?, ¿faltan las llantas y la pintura en el riel?).
 
 ---
