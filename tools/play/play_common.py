@@ -93,7 +93,6 @@ def masked_account(info):
 
 def build_service(info, read_only=False):
     from google.oauth2 import service_account
-    from googleapiclient.discovery import build
     creds = service_account.Credentials.from_service_account_info(info, scopes=[SCOPE])
     svc = _build_service(creds)
     if read_only:
@@ -121,6 +120,7 @@ def _build_service(creds):
         doc = json.loads(get_static_doc("androidpublisher", "v3"))
         doc["rootUrl"] = endpoint
         return build_from_document(doc, credentials=creds)
+    from googleapiclient.discovery import build
     return build("androidpublisher", "v3", credentials=creds, cache_discovery=False)
 
 
