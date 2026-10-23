@@ -115,8 +115,10 @@ HINTS = [
     (r"The caller does not have permission|forbidden|403",
      "La cuenta de servicio no tiene permiso. En Play Console → Usuarios y permisos → invitá el correo de la cuenta de servicio y dale permisos de la app "
      "(publicar en pruebas / administrar versiones). Puede tardar hasta ~24 h en activarse. Verificá también que la «Google Play Android Developer API» esté habilitada en Google Cloud."),
-    (r"applicationNotFound|No application was found|404",
-     "Play no encuentra la app «%PKG%» para esa cuenta de servicio: el paquete no coincide o la cuenta no tiene acceso a esa app."),
+    (r"applicationNotFound|No application was found|Package not found|404",
+     "Play no encuentra la app «%PKG%» para esa cuenta de servicio (la cuenta SÍ se autenticó: Google respondió). Causas posibles: (1) en Play Console el paquete recién queda "
+     "asociado a la app cuando se sube el PRIMER AAB a mano (Prueba y publicación → Pruebas internas → Crear versión): hasta entonces la API contesta «Package not found»; "
+     "(2) la cuenta de servicio no tiene permisos sobre esa app (Play Console → Usuarios y permisos → la cuenta → Permisos de la app); (3) el permiso es de hace menos de ~24 h."),
     (r"signature|certificate|signed with|upload key|different key",
      "La firma del AAB no coincide con la clave de subida registrada en Play. Usá el keystore de subida correcto (no lo cambies sin pedir el restablecimiento de la clave en Play Console)."),
     (r"versionCode.*lower|lower than|downgrade",

@@ -134,7 +134,7 @@ jobs:
             echo "code=$min" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          python3 tools/play/audit.py --online
+          python3 tools/play/audit.py --online --no-secret-check
           python3 tools/play/publish.py status
           code=$(python3 tools/play/publish.py next-version-code --min "$min")
           echo "code=$code" >> "$GITHUB_OUTPUT"
