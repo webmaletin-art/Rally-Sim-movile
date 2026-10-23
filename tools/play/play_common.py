@@ -91,10 +91,29 @@ def masked_account(info):
     return "%s…@%s" % (name[:3], dom)
 
 
-def build_service(info):
+def build_service(info, read_only=False):
     from google.oauth2 import service_account
     from googleapiclient.discovery import build
     creds = service_account.Credentials.from_service_account_info(info, scopes=[SCOPE])
+    svc = _build_service(creds)
+    if read_only:
+        guard_read_only(svc)
+    return svc
+
+
+def guard_read_only(svc):
+    """Candado de SÓLO LECTURA: cualquier pedido a la API de Play que no sea GET se rechaza ANTES de salir de la máquina (el token OAuth viaja por otro canal)."""
+    http = svc._http
+    orig = http.request
+
+    def only_get(uri, method="GET", *a, **kw):
+        if str(method).upper() != "GET":
+            raise RuntimeError("MODO SOLO LECTURA: se bloqueó un pedido %s a la API de Google Play (%s)" % (method, str(uri).split("?")[0][-80:]))
+        return orig(uri, method, *a, **kw)
+    http.request = only_get
+
+
+def _build_service(creds):
     endpoint = os.environ.get("PLAY_API_ENDPOINT")  # SÓLO para las pruebas con un Google Play falso (tools/play/tests); en producción no se usa
     if endpoint:
         from googleapiclient.discovery import build_from_document

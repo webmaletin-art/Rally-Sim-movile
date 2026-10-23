@@ -106,6 +106,35 @@ def main():
     rc, out, so = run(["next-version-code", "--min", "1006"], {"PLAY_API_ENDPOINT": ""})
     check(so.strip() == "1006" and "puede repetir" in out, "sin cuenta de servicio avisa y usa el mínimo")
 
+    print("6b) status es SOLO LECTURA: únicamente GET, sin ediciones ni escrituras")
+    fake_play.reset(tracks={"internal": [{"name": "1.0.0", "status": "draft", "versionCodes": ["1006"]}]})
+    rc, out, so = run(["status"], env)
+    writes = [(m, p) for m, p in fake_play.STATE["log"] if m != "GET" and p != "/token"]
+    check(subprocess.run([sys.executable, os.path.join(ROOT, "tools", "play", "check_status_readonly.py")], capture_output=True).returncode == 0, "el candado estático pasa")
+    check(rc == 0 and "1006" in out, "status informa la versión 1006 de la pista interna")
+    check(not writes, "ningún pedido de escritura a Play (%s)" % writes)
+    check(not any("/edits" in p for m, p in fake_play.STATE["log"]), "no se abrió ninguna edición")
+    check(not fake_play.STATE["edits"] and not fake_play.STATE["committed"], "no quedó ninguna edición ni nada confirmado")
+    fake_play.reset(deny=True)
+    rc, out, so = run(["status"], env)
+    check(rc != 0 and "Usuarios y permisos" in out, "status con permiso denegado da un mensaje comprensible")
+
+    print("6c) el candado de solo lectura bloquea cualquier escritura")
+    sys.path.insert(0, os.path.join(ROOT, "tools", "play"))
+    import play_common
+    os.environ.update(env)
+    fake_play.reset()
+    info = json.load(open(sa))
+    svc = play_common.build_service(info, read_only=True)
+    try:
+        svc.edits().insert(packageName="com.srg.dreamracing", body={}).execute()
+        blocked = False
+    except RuntimeError as e:
+        blocked = "SOLO LECTURA" in str(e)
+    check(blocked and not fake_play.STATE["edits"], "un POST (crear edición) se rechaza antes de salir")
+    for k in env:
+        os.environ.pop(k, None)
+
     print("7) el JSON de la cuenta de servicio nunca se imprime")
     fake_play.reset()
     rc, out, so = run(["status"], env)
