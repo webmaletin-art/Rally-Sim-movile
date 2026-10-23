@@ -69,6 +69,16 @@ Después: Actions → «Play · Publicar» → modo **validate**. Si termina en 
 
 Reglas: **nunca** pegues claves, contraseñas ni el JSON en el chat, en archivos del repositorio ni en capturas. Sólo en *Secrets* de GitHub.
 
+## 4 bis. Primer «validate» real contra Google (23/10/2026) — resultado
+
+Corrida n.º 1 de «Play · Publicar» sobre `main` (`660552c`), modo validar, pista interna:
+- ✅ Los 5 secretos de firma y de Supabase **existen** (la auditoría con los valores a mano los vio presentes). *(El paso en línea los marcó «faltantes» por un defecto mío —no recibía esas variables—; ya está corregido con `--no-secret-check`.)*
+- ✅ El secreto **`GOOGLE_PLAY_SERVICE_ACCOUNT` existe, es un JSON de cuenta de servicio válido y Google lo aceptó** (la autenticación funcionó; la cuenta es `dre…@srg-play-publisher.iam.gserviceaccount.com`).
+- ⛔ **Google contestó 404 «Package not found: com.srg.dreamracing».** Es decir: la API llega, pero **para esa cuenta de servicio la app todavía no existe**. Lo más probable —es el comportamiento conocido de Play Console— es que **el paquete queda asociado a la app recién cuando se sube el primer AAB a mano**. Otras causas posibles: la cuenta no tiene permisos sobre esa app, o la invitación tiene menos de ~24 h. Desde acá no se puede distinguir.
+- ➖ El resto del flujo (pruebas, build, subida) no corrió porque la auditoría en línea frenó antes, a propósito.
+
+**Lo que hay que hacer una sola vez (sólo vos):** subir **a mano** el AAB `DreamRacing-play-v1006.aab` a *Play Console → Prueba y publicación → Pruebas internas → Crear versión* (aceptar Play App Signing). Eso crea el vínculo del paquete. Después, en *Usuarios y permisos*, comprobar que la cuenta `srg-play-publisher` tiene permisos sobre la app. Y avisarme: corro de nuevo «validate» y, si da verde, sigo con las publicaciones por API (la versión 1006 ya subida a mano no estorba: el flujo usa un código mayor).
+
 ## 5. Primera publicación de prueba (paso a paso)
 
 1. Probás el juego en tu teléfono. Si está bien: **«Dream Racing está listo para publicar»**.

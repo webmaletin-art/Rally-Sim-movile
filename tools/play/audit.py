@@ -189,6 +189,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config")
     ap.add_argument("--online", action="store_true")
+    ap.add_argument("--no-secret-check", action="store_true", help="no revisar los secretos de firma/Supabase (ya los revisó otro paso con sus valores a mano)")
     a = ap.parse_args()
     cfg = load_config(a.config)
     rep = Report("Auditoría previa a publicar «%s» (%s)" % (cfg["name"], cfg["package"]))
@@ -196,7 +197,8 @@ def main():
     audit_products(cfg, rep)
     audit_workflows(cfg, rep)
     audit_docs(cfg, rep)
-    audit_secrets(cfg, rep, a.online)
+    if not a.no_secret_check:
+        audit_secrets(cfg, rep, a.online)
     listing.check(cfg, rep)
     if a.online:
         audit_online(cfg, rep)
