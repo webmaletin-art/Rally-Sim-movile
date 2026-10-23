@@ -10,7 +10,7 @@ STATE = {}
 def reset(**kw):
     STATE.clear()
     STATE.update({"edits": {}, "next": 1, "bundles": kw.get("bundles", []), "tracks": kw.get("tracks", {}), "log": [],
-                  "draft_app": kw.get("draft_app", False), "deny": kw.get("deny", False), "committed": [], "uploads": {}})
+                  "reviews": kw.get("reviews", []), "draft_app": kw.get("draft_app", False), "deny": kw.get("deny", False), "committed": [], "uploads": {}})
 
 
 class H(BaseHTTPRequestHandler):
@@ -100,6 +100,14 @@ class H(BaseHTTPRequestHandler):
         if m:
             return self._send(200, {"releases": [{"releaseName": r.get("name"), "releaseLifecycleState": "RELEASE_LIFECYCLE_STATE_" + r.get("status", "").upper(),
                                                    "activeArtifacts": [{"versionCode": c} for c in r.get("versionCodes", [])]} for r in STATE["tracks"].get(m.group(1), [])]})
+        if path.endswith("/reviews"):
+            q = self.path.split("?", 1)[1] if "?" in self.path else ""
+            revs = STATE.get("reviews", [])
+            if "token=p2" in q:
+                return self._send(200, {"reviews": revs[2:]})
+            if len(revs) > 2:
+                return self._send(200, {"reviews": revs[:2], "tokenPagination": {"nextPageToken": "p2"}})
+            return self._send(200, {"reviews": revs} if revs else {})
         if path.endswith("/bundles"):
             return self._send(200, {"bundles": STATE["bundles"]})
         if path.endswith("/tracks"):
