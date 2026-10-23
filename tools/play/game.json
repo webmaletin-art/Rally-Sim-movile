@@ -1,0 +1,60 @@
+{
+  "_nota": "Configuración de UN juego para las herramientas de tools/play. Para otro juego del estudio: copiar este archivo, cambiar los datos y pasar --config. Sin secretos (los secretos viven en GitHub Actions).",
+  "package": "com.srg.dreamracing",
+  "name": "Dream Racing",
+  "default_language": "es-419",
+  "languages": {
+    "es-419": "Español",
+    "en-US": "English",
+    "pt-BR": "Português (Brasil)",
+    "fr-FR": "Français",
+    "it-IT": "Italiano",
+    "de-DE": "Deutsch"
+  },
+  "godot": {
+    "export_presets": "godot/export_presets.cfg",
+    "preset_name": "Google Play (AAB)",
+    "min_target_sdk": 35,
+    "expected_target_sdk": 36,
+    "min_sdk_max": 26
+  },
+  "version_code_base": 1000,
+  "listing": {
+    "ficha": "store_listing/ficha.md",
+    "novedades": "store_listing/novedades.md",
+    "icon": "store_listing/icono_512.png",
+    "feature_graphic": "store_listing/grafico_funciones_1024x500.png",
+    "screenshots_dir": "store_listing/capturas",
+    "video_youtube_url": null,
+    "contact_email": "roldanhr98@gmail.com",
+    "privacy_url": "https://webmaletin-art.github.io/Rally-Sim-movile/docs/privacidad.html",
+    "delete_account_url": "https://webmaletin-art.github.io/Rally-Sim-movile/docs/eliminar-cuenta.html"
+  },
+  "products": {
+    "_nota": "IDs EXACTOS que se crean en Play Console (Monetizar → Productos → Productos integrados). kind: unlock = no consumible · credits = consumible. Precios en USD recomendados (docs/PLAY_STORE.md).",
+    "dr_full": {"kind": "unlock", "usd": 9.99},
+    "dr_adventure": {"kind": "unlock", "usd": 4.99},
+    "dr_garage": {"kind": "unlock", "usd": 6.99},
+    "car_truck": {"kind": "unlock", "usd": 1.99},
+    "car_gt3": {"kind": "unlock", "usd": 2.99},
+    "car_hyper": {"kind": "unlock", "usd": 3.99},
+    "dr_coins_s": {"kind": "credits", "usd": 0.99},
+    "dr_coins_m": {"kind": "credits", "usd": 1.99},
+    "dr_coins_l": {"kind": "credits", "usd": 3.99},
+    "dr_coins_xl": {"kind": "credits", "usd": 7.99}
+  },
+  "products_sources": {
+    "client": "godot/game/store/products.gd",
+    "server": "supabase/functions/verify-purchase/handler.ts"
+  },
+  "secrets_required": {
+    "build": ["ANDROID_KEYSTORE_BASE64", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "SUPABASE_URL", "SUPABASE_ANON_KEY"],
+    "publish": ["GOOGLE_PLAY_SERVICE_ACCOUNT"]
+  },
+  "closed_test": {
+    "required_testers": 12,
+    "required_days": 14,
+    "started_on": null,
+    "_nota": "started_on: fecha (AAAA-MM-DD) en que los 12 testers ya estaban inscriptos en la prueba cerrada. Sólo para que `status` calcule los días que faltan; Google es quien decide."
+  }
+}

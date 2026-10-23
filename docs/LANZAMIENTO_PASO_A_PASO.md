@@ -1,5 +1,7 @@
 # Lanzamiento de Dream Racing — instructivo en orden cronológico (preparado el 21/10/2026 para subir el 22/10)
 
+> **21/10/2026:** la subida ya puede hacerse por la API oficial de Google Play (sin bajar ni subir el AAB a mano): **`docs/PUBLICAR_EN_PLAY.md`**. Esta guía queda para los pasos de Play Console que no tienen API (cuenta, declaraciones, productos, testers).
+
 Todo lo que se podía dejar hecho desde GitHub **está hecho**. Esto es lo que hacés vos, en el orden en que conviene hacerlo, con los links y los datos exactos.
 Los detalles de cada formulario de Play Console están en `docs/GUIA_PLAY_CONSOLE_PASO_A_PASO.md` (cada paso de acá dice cuál leer). Las respuestas de «Seguridad de los datos» están en `docs/PLAY_SEGURIDAD_DATOS.md`.
 
