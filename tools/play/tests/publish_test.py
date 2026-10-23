@@ -134,6 +134,13 @@ def main():
     check(blocked and not fake_play.STATE["edits"], "un POST (crear edición) se rechaza antes de salir")
     for k in env:
         os.environ.pop(k, None)
+    svc = play_common.build_service(info, read_only=True)  # ruta de PRODUCCIÓN (sin servidor falso): sólo se arma el cliente, no se sale a la red
+    try:
+        svc.edits().insert(packageName="com.srg.dreamracing", body={}).execute()
+        blocked = False
+    except RuntimeError as e:
+        blocked = "SOLO LECTURA" in str(e)
+    check(blocked, "ruta de producción: el cliente se arma y el POST se rechaza")
 
     print("7) el JSON de la cuenta de servicio nunca se imprime")
     fake_play.reset()
