@@ -1,0 +1,46 @@
+name: Play · Reseñas y errores
+
+# ETAPA 1 (reseñas), SÓLO LECTURA: baja las reseñas de Dream Racing de Google Play (androidpublisher.reviews.list = un GET paginado), arma un informe por temas
+# (errores, sugerencias, temas repetidos) y lo deja como ARTEFACTO de esta corrida con retención corta (3 días).
+# NO responde reseñas, NO publica, NO toca pistas, versiones, ficha ni AAB. NO guarda nada en el repositorio.
+# El resumen visible del flujo y los logs llevan sólo agregados (cantidades, calificaciones, temas): los nombres y textos de jugadores van únicamente en el artefacto.
+# Candados: (1) revisión estática antes de consultar, (2) cliente de Google que rechaza todo lo que no sea GET, (3) permisos de GitHub de sólo lectura.
+# Etapa 2 (Android vitals / Play Developer Reporting API): todavía NO implementada; ver docs/PUBLICAR_EN_PLAY.md → «Reseñas y errores».
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-resenas
+  cancel-in-progress: false
+
+jobs:
+  resenas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Herramientas de Google
+        run: pip install --quiet google-api-python-client google-auth google-auth-httplib2
+      - name: Candado estático (sólo lectura, sin responder)
+        run: python3 tools/play/check_reviews_readonly.py
+      - name: Reseñas de Google Play (sólo lectura)
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT" ]; then
+            echo "::error::Falta el secreto GOOGLE_PLAY_SERVICE_ACCOUNT"; exit 1
+          fi
+          python3 tools/play/reviews.py --out reviews_out
+      - name: Informe como artefacto (3 días; contiene datos personales)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resenas-play-${{ github.run_number }}
+          path: reviews_out
+          retention-days: 3
+          if-no-files-found: ignore

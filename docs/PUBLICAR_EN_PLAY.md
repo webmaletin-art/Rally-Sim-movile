@@ -83,6 +83,16 @@ Corrida n.º 1 de «Play · Publicar» sobre `main` (`660552c`), modo validar, p
 
 Actions → **«Play · Estado»** → Run workflow. Ejecuta únicamente `python3 tools/play/publish.py status`, que **sólo envía pedidos GET** (`applications.tracks.releases.list`) y muestra pistas, versiones y artefactos activos. No abre ediciones, no sube AAB, no toca `versionCode`, pistas ni ficha. Candados: revisión estática (`tools/play/check_status_readonly.py`), filtro en el cliente que rechaza todo lo que no sea GET, y permisos de GitHub de sólo lectura. (Antes `status` abría y borraba una edición temporal; ya no.)
 
+## 4 quater. «Play · Reseñas y errores» (23/10/2026)
+
+**Etapa 1, reseñas (hecha, sólo lectura):** Actions → «Play · Reseñas y errores». Hace un único tipo de consulta, `androidpublisher.reviews.list` (GET paginado), con el mismo candado de sólo GET. Genera un informe por temas (errores, sugerencias, temas repetidos, reseñas de 1 a 3 estrellas) y lo deja como **artefacto con retención de 3 días** (`resenas-play-N`: `informe.md`, `resumen.json`, `reviews_raw.json`). **Nada de eso se guarda en el repositorio**, y el resumen y los logs del flujo llevan sólo agregados (sin nombres ni textos de jugadores). **No responde reseñas**: no existe ningún código de respuesta (`reply`) en el flujo y el cliente rechazaría el POST. El alcance temporal de lo que devuelve Google se informa tal como se observa (reseña más vieja y más nueva de cada consulta); no se da por confirmado ningún límite sin esa evidencia.
+
+**Etapa 2, errores de Android vitals (NO implementada):** usa otra API, «Google Play Developer Reporting API» (`playdeveloperreporting.googleapis.com`). Lo que tenés que hacer vos, y no hice yo:
+1. **Google Cloud** (el mismo proyecto de la cuenta de servicio) → APIs y servicios → habilitar **«Google Play Developer Reporting API»**.
+2. **Play Console → Usuarios y permisos →** la cuenta de servicio → permisos de la app: el de **solo lectura sobre la calidad de la app (Android vitals)**. (El nombre exacto del permiso en la consola no pude verificarlo.)
+3. Habrá datos sólo con instalaciones reales suficientes.
+Del lado del código haría falta ampliar el candado para permitir, **exclusivamente** en el host de Reporting, los POST `…:query` (consultas de tasas de cierres y ANR, de solo lectura) y los GET `errorIssues:search` / `errorReports:search`; nada más. No se hará hasta que lo autorices.
+
 ## 5. Primera publicación de prueba (paso a paso)
 
 1. Probás el juego en tu teléfono. Si está bien: **«Dream Racing está listo para publicar»**.
