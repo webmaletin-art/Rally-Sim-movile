@@ -13,6 +13,7 @@ PRODUCCIÓN exige además --production-approval «AUTORIZO PRODUCCION <versionNa
 La cuenta de servicio sale de la variable GOOGLE_PLAY_SERVICE_ACCOUNT (nunca se imprime)."""
 import argparse
 import datetime
+import json
 import os
 import sys
 
@@ -77,33 +78,48 @@ def cmd_next_version_code(cfg, a):
 
 
 def cmd_status(cfg, a):
-    svc = connect(cfg)
+    """Estado en Play, SÓLO LECTURA: únicamente pedidos GET (applications.tracks.releases.list). NO abre ediciones, no sube nada, no confirma nada.
+    El servicio se construye con un candado que rechaza cualquier pedido que no sea GET."""
+    info = service_account_info()
+    if not info:
+        fail("Falta el secreto GOOGLE_PLAY_SERVICE_ACCOUNT (el JSON completo de la cuenta de servicio): no se puede consultar Google Play.")
+    print("Cuenta de servicio: %s" % masked_account(info))
+    svc = build_service(info, read_only=True)
     pkg = cfg["package"]
-    rep = Report("Estado en Google Play de %s" % pkg)
-    try:
-        codes, tracks = with_edit(svc, pkg, lambda e: used_version_codes(svc, pkg, e))
-    except Exception as e:  # noqa: BLE001
-        fail(explain_http_error(e, pkg))
-    rep.ok("Google Play responde y la cuenta de servicio tiene acceso a la app")
-    rep.info("Códigos de versión conocidos por Play: %s" % (sorted(codes) or "ninguno (todavía no se subió ningún AAB)"))
-    for t in tracks:
-        for r in t.get("releases", []):
-            rep.info("Pista «%s»: versión %s · %s · códigos %s%s" % (
-                t["track"], r.get("name", "?"), r.get("status"), r.get("versionCodes", []),
-                " · %.0f%% de usuarios" % (100 * r["userFraction"]) if r.get("userFraction") else ""))
-    if not any(t.get("releases") for t in tracks):
-        rep.warn("Ninguna pista tiene versiones: la app está sin publicar (borrador). La primera versión puede exigir hacerse a mano en Play Console")
+    rep = Report("Estado en Google Play de %s (SOLO LECTURA)" % pkg)
+    found = {}
+    first_error = ""
+    for track in TRACKS:
+        try:
+            r = svc.applications().tracks().releases().list(parent="applications/%s/tracks/%s" % (pkg, track)).execute()
+            found[track] = r.get("releases", [])
+        except Exception as e:  # noqa: BLE001
+            msg = explain_http_error(e, pkg)
+            if "404" in msg and not found:
+                fail(msg)
+            first_error = first_error or msg
+            found[track] = None
+            rep.warn("Pista «%s»: no se pudo leer (%s)" % (track, msg.splitlines()[0][:160]))
+    if all(v is None for v in found.values()):
+        fail(first_error)
+    rep.ok("Google Play responde y la cuenta de servicio puede LEER la app %s" % pkg)
+    names = {"internal": "pruebas internas", "alpha": "prueba cerrada (alpha)", "beta": "prueba abierta (beta)", "production": "producción"}
+    for track in TRACKS:
+        rels = found.get(track)
+        if rels is None:
+            continue
+        if not rels:
+            rep.info("Pista «%s» (%s): sin versiones" % (track, names[track]))
+        for r in rels:
+            arts = r.get("activeArtifacts", [])
+            rep.info("Pista «%s» (%s): versión %s · estado %s · artefactos activos: %s" % (
+                track, names[track], r.get("releaseName", "?"), r.get("releaseLifecycleState", "?"),
+                json.dumps(arts, ensure_ascii=False)[:300] if arts else "ninguno"))
+    if not any(found.get(t) for t in TRACKS):
+        rep.warn("Ninguna pista tiene versiones visibles por la API: la versión 1006 puede estar todavía en borrador (sin enviar a la pista) o la API no la expone en estado borrador")
     ct = cfg.get("closed_test", {})
-    if ct.get("started_on"):
-        d0 = datetime.date.fromisoformat(ct["started_on"])
-        left = ct["required_days"] - (datetime.date.today() - d0).days
-        if left > 0:
-            rep.info("Prueba cerrada: empezó el %s con %d testers requeridos; faltan %d días de %d para pedir producción" % (ct["started_on"], ct["required_testers"], left, ct["required_days"]))
-        else:
-            rep.ok("Prueba cerrada: pasaron los %d días (desde %s). Confirmá en Play Console → Panel que figura «Solicitar acceso a producción»" % (ct["required_days"], ct["started_on"]))
-    else:
-        rep.info("Prueba cerrada: sin fecha en game.json → closed_test.started_on (poné la fecha en que los %d testers ya estaban inscriptos). "
-                 "La API NO informa si se cumplió el requisito de testers/días: eso lo decide Google y se ve en Play Console → Panel" % ct.get("required_testers", 12))
+    rep.info("Prueba cerrada: %s. La API NO informa si se cumplió el requisito de testers/días: se ve en Play Console → Panel" %
+             ("empezó el %s" % ct["started_on"] if ct.get("started_on") else "sin fecha en game.json → closed_test.started_on"))
     rep.emit()
 
 

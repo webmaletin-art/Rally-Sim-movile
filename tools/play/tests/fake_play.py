@@ -96,6 +96,10 @@ class H(BaseHTTPRequestHandler):
         STATE["log"].append(("GET", path))
         if STATE["deny"]:
             return self._err(403, "The caller does not have permission")
+        m = re.search(r"/applications/[^/]+/tracks/(\w+)/releases$", path)
+        if m:
+            return self._send(200, {"releases": [{"releaseName": r.get("name"), "releaseLifecycleState": "RELEASE_LIFECYCLE_STATE_" + r.get("status", "").upper(),
+                                                   "activeArtifacts": [{"versionCode": c} for c in r.get("versionCodes", [])]} for r in STATE["tracks"].get(m.group(1), [])]})
         if path.endswith("/bundles"):
             return self._send(200, {"bundles": STATE["bundles"]})
         if path.endswith("/tracks"):

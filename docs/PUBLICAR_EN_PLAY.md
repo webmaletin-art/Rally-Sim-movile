@@ -79,6 +79,10 @@ Corrida n.º 1 de «Play · Publicar» sobre `main` (`660552c`), modo validar, p
 
 **Lo que hay que hacer una sola vez (sólo vos):** subir **a mano** el AAB `DreamRacing-play-v1006.aab` a *Play Console → Prueba y publicación → Pruebas internas → Crear versión* (aceptar Play App Signing). Eso crea el vínculo del paquete. Después, en *Usuarios y permisos*, comprobar que la cuenta `srg-play-publisher` tiene permisos sobre la app. Y avisarme: corro de nuevo «validate» y, si da verde, sigo con las publicaciones por API (la versión 1006 ya subida a mano no estorba: el flujo usa un código mayor).
 
+## 4 ter. «Play · Estado»: consulta de SÓLO LECTURA (23/10/2026)
+
+Actions → **«Play · Estado»** → Run workflow. Ejecuta únicamente `python3 tools/play/publish.py status`, que **sólo envía pedidos GET** (`applications.tracks.releases.list`) y muestra pistas, versiones y artefactos activos. No abre ediciones, no sube AAB, no toca `versionCode`, pistas ni ficha. Candados: revisión estática (`tools/play/check_status_readonly.py`), filtro en el cliente que rechaza todo lo que no sea GET, y permisos de GitHub de sólo lectura. (Antes `status` abría y borraba una edición temporal; ya no.)
+
 ## 5. Primera publicación de prueba (paso a paso)
 
 1. Probás el juego en tu teléfono. Si está bien: **«Dream Racing está listo para publicar»**.

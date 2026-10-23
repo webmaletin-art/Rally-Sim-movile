@@ -1,0 +1,37 @@
+name: Play · Estado
+
+# CONSULTA DE SÓLO LECTURA del estado de Dream Racing en Google Play (pistas, versiones, artefactos activos). Se lanza a mano: Actions → «Play · Estado» → Run workflow.
+# Hace ÚNICAMENTE `python3 tools/play/publish.py status`, que sólo envía pedidos GET (applications.tracks.releases.list): NO abre ediciones, NO sube AAB,
+# NO cambia versionCode, NO publica, NO envía a revisión, NO toca pistas ni la ficha. Tres candados: (1) revisión estática antes de consultar,
+# (2) el cliente de Google se arma con un filtro que rechaza cualquier pedido que no sea GET, (3) permisos de GitHub sólo de lectura.
+# Necesita el secreto GOOGLE_PLAY_SERVICE_ACCOUNT (nunca se imprime). No compila el juego ni toca el AAB.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-estado
+  cancel-in-progress: false
+
+jobs:
+  estado:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Herramientas de Google
+        run: pip install --quiet google-api-python-client google-auth google-auth-httplib2
+      - name: Candado estático (esto es sólo lectura)
+        run: python3 tools/play/check_status_readonly.py
+      - name: Estado en Google Play (sólo lectura)
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT" ]; then
+            echo "::error::Falta el secreto GOOGLE_PLAY_SERVICE_ACCOUNT: no se puede consultar Google Play."; exit 1
+          fi
+          python3 tools/play/publish.py status
