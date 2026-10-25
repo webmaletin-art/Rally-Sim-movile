@@ -21,6 +21,10 @@ const Daily := preload("res://game/data/daily.gd")
 const FIND_R := 90.0
 const MARK_R := 450.0
 const START_R := 12.0
+## Largada sin GPS ni frenar a fondo: estar encima del círculo (a menos de START_IN metros, andando a menos de START_SP m/s) START_HOLD segundos alcanza (25/10/2026, pedido del dueño)
+const START_IN := 18.0
+const START_SP := 4.0
+const START_HOLD := 2.0
 const OFF_R := 70.0
 const OFF_T := 6.0
 const REPEAT_K := 0.35
@@ -51,6 +55,7 @@ var _stop_t := 0.0
 var _near_t := 0.0
 var _marks := {} # id → Node3D
 var _gate: Node3D
+var _lines: Array = [] # arcos de largada/meta de la carrera en curso
 var _cool := {}
 var _result := {}
 var _done_t := 0.0
@@ -163,14 +168,14 @@ func _free(dt: float, p: Vector2, sp: float) -> void:
 		var d: float = (ev["start"] as Vector2).distance_to(p)
 		if d < FIND_R and not found(str(ev["id"])):
 			_discover(ev)
-		if d < START_R and sp < 2.0 and not _cool.has(str(ev["id"])):
+		if d < START_IN and sp < START_SP and not _cool.has(str(ev["id"])):
 			var pol = race.get("police")
 			if pol != null and pol.state == "chase":
 				_toast(Tr.t("Con la policía encima no se puede largar"))
 				_cool[str(ev["id"])] = 6.0
 				return
 			_stop_t += 0.2
-			if _stop_t >= 0.8:
+			if _stop_t >= START_HOLD:
 				_stop_t = 0.0
 				_begin(i)
 			return
@@ -208,6 +213,7 @@ func _begin(i: int) -> void:
 		me.place(s0.x, s0.y, yaw)
 		me.restart_history(race.sim_t)
 	_spawn_rivals()
+	_make_lines(cur)
 	_pi = 0
 	arc = 0.0
 	t = 0.0
@@ -309,7 +315,7 @@ func _run(dt: float, p: Vector2, sp: float) -> void:
 		_hud_l.text = "%s %s · %s / %s" % [cur["icon"], Tr.t("Huida"), _fmt(t), _fmt(float(cur["time"]))]
 		return
 	# avance del jugador sobre el recorrido (para circuitos, vuelta por vuelta)
-	var proj := _project(p, _pi)
+	var proj := _project(p, _pi, typ == "circuito")
 	_pi = int(proj[0])
 	_course_t -= dt
 	if _course_t <= 0.0: # el GPS sigue desde donde vas (en un circuito, dando la vuelta)
@@ -335,7 +341,7 @@ func _run(dt: float, p: Vector2, sp: float) -> void:
 	var ahead := 0
 	for r in rivals:
 		var rp := Vector2(r["car"].phys.px, r["car"].phys.pz)
-		var pr := _project(rp, int(r["pi"]))
+		var pr := _project(rp, int(r["pi"]), typ == "circuito")
 		r["pi"] = int(pr[0])
 		var ra := float(pr[1])
 		if typ == "circuito":
@@ -384,14 +390,20 @@ func _run(dt: float, p: Vector2, sp: float) -> void:
 	_gate_update(typ)
 
 ## Punto del recorrido más cercano (mirando cerca del anterior): [índice, metros desde la largada, distancia al recorrido]
-func _project(p: Vector2, i0: int) -> Array:
+## loop = true en un circuito: el recorrido es un lazo y la ventana de búsqueda pasa del final al principio (antes se quedaba pegada al último tramo y la vuelta nunca se contaba: 25/10/2026)
+func _project(p: Vector2, i0: int, loop := false) -> Array:
 	var pts: PackedVector2Array = cur["pts"]
 	var best := 1e18
 	var bi := i0
 	var bt := 0.0
+	var m := pts.size() - 1
 	var lo := maxi(0, i0 - 4)
 	var hi := mini(pts.size() - 2, i0 + 30)
-	for i in range(lo, hi + 1):
+	if loop:
+		lo = i0 - 4
+		hi = i0 + 30
+	for ii in range(lo, hi + 1):
+		var i := posmod(ii, m) if loop else ii
 		var a := pts[i]
 		var b := pts[i + 1]
 		var ab := b - a
@@ -544,6 +556,7 @@ func _end() -> void:
 	if is_instance_valid(_gate):
 		_gate.queue_free()
 	_gate = null
+	_clear_lines()
 	var pol = race.get("police")
 	if pol != null:
 		pol.suspended = false
@@ -561,6 +574,7 @@ func _end() -> void:
 ## Se rehicieron los autos (taller de prueba): se cancela lo que esté en curso
 func forget() -> void:
 	rivals.clear()
+	_clear_lines()
 	_open_streets()
 	var ch = _ch()
 	if ch != null:
@@ -650,6 +664,66 @@ func _fetch_record(id: String, lb: Label3D) -> void:
 		return
 	var top: Dictionary = (r["data"] as Array)[0]
 	lb.text += "\n🌍 %s · %s" % [_fmt(float(top.get("value", 0))), str(top.get("name", ""))]
+
+## Arco naranja de largada/meta sobre la calle (en un circuito, la línea que hay que cruzar para que cuente la vuelta; la columna naranja que se ve adelante es sólo la guía del próximo tramo)
+func _make_lines(ev: Dictionary) -> void:
+	_clear_lines()
+	var typ := str(ev["type"])
+	if typ == "huida" or typ == "persecucion" or track.world_node == null:
+		return
+	var pts: PackedVector2Array = ev["pts"]
+	if pts.size() < 2:
+		return
+	_lines.append(_line_node(pts[0], pts[1] - pts[0]))
+	if typ != "circuito":
+		var n := pts.size()
+		_lines.append(_line_node(pts[n - 1], pts[n - 1] - pts[n - 2]))
+
+func _clear_lines() -> void:
+	for l in _lines:
+		if is_instance_valid(l):
+			(l as Node).queue_free()
+	_lines.clear()
+
+func _line_node(c: Vector2, dir: Vector2) -> Node3D:
+	var root := Node3D.new()
+	var d := dir.normalized() if dir.length() > 0.01 else Vector2(0, 1)
+	root.position = Vector3(c.x, float(track.ground_y(c.x, c.y)), c.y)
+	root.rotation.y = atan2(d.x, d.y)
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color(1.0, 0.62, 0.08)
+	var fmat := StandardMaterial3D.new()
+	fmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	fmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	fmat.albedo_color = Color(1.0, 0.7, 0.1, 0.5)
+	var half := 8.5
+	var strip := MeshInstance3D.new() # raya sobre el asfalto
+	var sm := BoxMesh.new()
+	sm.size = Vector3(half * 2.0, 0.05, 2.0)
+	strip.mesh = sm
+	strip.material_override = fmat
+	strip.position = Vector3(0, 0.18, 0)
+	root.add_child(strip)
+	for sx in [-half, half]: # postes
+		var post := MeshInstance3D.new()
+		var pm := BoxMesh.new()
+		pm.size = Vector3(0.6, 7.0, 0.6)
+		post.mesh = pm
+		post.material_override = mat
+		post.position = Vector3(sx, 3.5, 0)
+		root.add_child(post)
+	var bar := MeshInstance3D.new() # travesaño
+	var bm := BoxMesh.new()
+	bm.size = Vector3(half * 2.0 + 0.6, 0.9, 0.6)
+	bar.mesh = bm
+	bar.material_override = mat
+	bar.position = Vector3(0, 7.0, 0)
+	root.add_child(bar)
+	for m in root.get_children():
+		(m as GeometryInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	track.world_node.add_child(root)
+	return root
 
 func _gate_update(typ: String) -> void:
 	if typ == "persecucion":

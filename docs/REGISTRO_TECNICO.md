@@ -5,6 +5,15 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 25/10/2026 · [B] Carreras del mundo abierto: vueltas que no contaban, arco de meta, largada sin GPS y sin logo de Godot — PENDIENTE DE APK
+- **Síntoma (dueño):** en el circuito del Centro dio ~6 vueltas y no contó ninguna; creyó que la luz naranja era la meta; las carreras sólo arrancaban si marcaba el GPS; se ve el logo de Godot al abrir.
+- **Causa de las vueltas (reproducida):** `CityEvents._project` buscaba el punto del recorrido sólo entre `i0-4` y `i0+30` sin pasar del último tramo. En un circuito (lazo cerrado) al llegar a la línea la proyección se quedaba clavada al final y el avance nunca daba la vuelta (`arc` clavado en 1 vuelta). `tests/ow_lap_test.gd` con el código viejo: arc 800 de 2400; con el arreglo: 2402.
+- **Cambios:** `_project(p, i0, loop)` recorre los tramos en módulo en los circuitos (jugador y rivales). Arco naranja de largada/meta sobre la calle (`_make_lines`: dos postes, travesaño y raya; en el circuito es la línea de cada vuelta; se saca al terminar), sin tocar el mapa. La columna naranja de adelante sigue siendo sólo la guía. Largada: estar a menos de 18 m andando a menos de 4 m/s durante 2 s alcanza (antes 12 m, casi parado, 0,8 s); no hace falta marcar el GPS. Logo de Godot: `boot_splash/show_image=false` + fondo oscuro en `project.godot`.
+- **Pruebas:** `ow_lap_test` (nueva, en `build-godot.yml`), `ow_events_test`, `events_rules_test`, `events_ui_test`.
+- **Siguiente paso:** que el dueño pruebe el circuito (¿cuenta vuelta al cruzar el arco?, ¿arranca solo al esperar encima?) y que el arranque ya no muestre el logo de Godot.
+
+---
+
 ## 23/10/2026 · [B] Primer «validate» real de «Play · Publicar» en main: Google responde 404 «Package not found» — BLOQUEO: falta la primera subida manual del AAB
 - **Hecho:** fusión de la RC a `main` (`660552c`, autorizada por el dueño); corrida n.º 1 de «Play · Publicar» (`validate`, `internal`). Evidencia: secretos de firma y Supabase presentes; `GOOGLE_PLAY_SERVICE_ACCOUNT` presente, válido y aceptado por Google (cuenta `dre…@srg-play-publisher.iam.gserviceaccount.com`); `edits.insert` → **404 Package not found: com.srg.dreamracing**.
 - **Defecto propio corregido:** el paso «Auditoría contra Google Play» no recibía los secretos de firma y daba falsos «faltan»; ahora `audit.py --online --no-secret-check`. El mensaje del 404 explica las causas (primer AAB manual, permisos de la cuenta, espera de ~24 h).

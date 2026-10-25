@@ -8,6 +8,8 @@ config/name="GSkorp Rally"
 run/main_scene="res://bootstrap/boot.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/version="0.1"
+boot_splash/show_image=false
+boot_splash/bg_color=Color(0.039, 0.047, 0.078, 1)
 
 [display]
 
