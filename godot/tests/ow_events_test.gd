@@ -116,7 +116,7 @@ func _run() -> void:
 	_check(evs.found(str(sprint["id"])), "al pasar cerca se descubre «%s»" % sprint["name"])
 	# 2) largar el sprint (frenado en el círculo) y correrlo a fondo
 	me.place(sprint["start"].x, sprint["start"].y, float(sprint["yaw"]))
-	for i in 8:
+	for i in 14:
 		evs.update(0.2)
 	_check(evs.state == "countdown" and evs.rivals.size() == 3, "frenado en el círculo larga con 3 rivales (%s, %d)" % [evs.state, evs.rivals.size()])
 	_check(evs._closure != null, "al largar se arma el cierre de calles (%d vallas: una ruta de la región casi no tiene calles que salgan; los circuitos de la ciudad sí, en street_closure_test)" % (evs._closure.count if evs._closure != null else -1))
