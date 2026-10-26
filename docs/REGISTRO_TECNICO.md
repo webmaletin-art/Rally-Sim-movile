@@ -5,6 +5,16 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 26/10/2026 · [B] Compras: «No se pudo iniciar la compra» — causa comprobada: los 10 productos NO existen en Play Console; diagnóstico agregado (SIN compilar ni publicar) — BLOQUEADO (falta crear los productos)
+- **Síntoma (dueño, prueba interna):** al tocar un producto en COMPRAS sale «No se pudo iniciar la compra».
+- **Evidencia real de Google (corrida «Play · Publicar» validate n.º 2, 25/10/2026, `audit.py --online`, sólo lectura):** `monetization.onetimeproducts.list` devolvió 0 productos → «Productos que faltan crear en Play Console: dr_full, dr_adventure, dr_garage, car_truck, car_gt3, car_hyper, dr_coins_s, dr_coins_m, dr_coins_l, dr_coins_xl». La cuenta de servicio sí lee la app (la lista no dio error), la pista interna tiene la 1006 publicada.
+- **Camino de código:** `billing.gd` → `buy()` llama a `client.purchase(id)` (firma del plugin 3.3.0 verificada: `purchase(product_id: String, purchase_option_id := "", offer_id := "", is_offer_personalized := false) -> Dictionary`, coincide). El plugin sólo puede abrir el flujo de productos cuyos detalles Google devolvió en `query_product_details`; sin productos devuelve un código ≠ OK y el juego mostraba siempre el mismo cartel, sin anotar el código.
+- **Los IDs coinciden** entre `products.gd`, `tools/play/game.json` y `verify-purchase` (auditoría: «Los 10 productos coinciden»); falta crearlos en Play Console con esos IDs exactos (no se tocaron IDs ni precios).
+- **Cambio (local, SIN push, SIN AAB):** `billing.gd` registra con `CrashLog` ([compras]) la conexión, cuántos productos devolvió Google y cuáles no, y el código/nombre/mensaje reales de cada fallo (sin tokens ni cuentas); distingue producto no disponible / Google sin respuesta / error de configuración / ya comprado / no admitido; si Google no devolvió el producto no abre una compra que fallaría igual y reconsulta. No acredita ni desbloquea nada sin confirmación de Google. Prueba: `release_test` (24 OK).
+- **Siguiente paso:** el dueño crea los 10 productos (Monetizar → Productos → Productos integrados, ID exacto, ACTIVOS, precio) y, con ese AAB o el v1006, vuelve a probar; recién con ese resultado se decide si hace falta rearmar el AAB para llevar el diagnóstico.
+
+---
+
 ## 25/10/2026 · [B] Carreras del mundo abierto: vueltas que no contaban, arco de meta, largada sin GPS y sin logo de Godot — PENDIENTE DE APK
 - **Síntoma (dueño):** en el circuito del Centro dio ~6 vueltas y no contó ninguna; creyó que la luz naranja era la meta; las carreras sólo arrancaban si marcaba el GPS; se ve el logo de Godot al abrir.
 - **Causa de las vueltas (reproducida):** `CityEvents._project` buscaba el punto del recorrido sólo entre `i0-4` y `i0+30` sin pasar del último tramo. En un circuito (lazo cerrado) al llegar a la línea la proyección se quedaba clavada al final y el avance nunca daba la vuelta (`arc` clavado en 1 vuelta). `tests/ow_lap_test.gd` con el código viejo: arc 800 de 2400; con el arreglo: 2402.
