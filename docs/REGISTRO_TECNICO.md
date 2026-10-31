@@ -5,6 +5,15 @@ Resultado: RESUELTO · PARCIAL · FALLIDO · BLOQUEADO · PENDIENTE DE APK. Una 
 
 ---
 
+## 31/10/2026 · [B] Carreras del mapa: la primera victoria pagaba sólo el 35 % — causa confirmada con datos del servidor; arreglo en el cliente — PENDIENTE DE APK/AAB
+- **Síntoma (dueño):** ganó el Circuito Centro y la cuenta siguió en $0. **Datos reales (SQL Editor, 31/10/2026):** `account_earns` tiene un único premio `owev · circuito_0 · 1140` (el premio entero es ≈ $3.260 → 35 % = repetición), `account_econ.credits` = 0 / voucher = 0, la cuenta existe desde el 14/10. El récord (2:06.5) sí llegó al ranking.
+- **Causa:** `_discover()` anota la carrera en la cuenta con `progress("owev:<id>")` (queda un «claim»); al ganar por primera vez el juego mandaba `first`/`rep` y el servidor (`_acct_one`, migración 20261022) pagaba como repetición porque el claim ya existía.
+- **Cambio:** `city_events.gd` deja de mandar `first`/`rep` (el monto enviado ya lleva el multiplicador de repetición); sin migración. Costo: se pierde la defensa «reinstalo y vuelvo a cobrar la primera victoria entera» en el sentido estricto; las victorias ya sincronizadas siguen restaurándose desde la cuenta (`wins`), y los topes por premio, hora y día del servidor siguen. Las copas (`rewards.gd`) no cambian.
+- **Reposición:** el dueño ejecutó `account_admin_grant('…', 2120)` en SQL (autorizado por él, 31/10/2026).
+- **Por qué el saldo estaba en 0 (no confirmado):** el servidor guarda el premio pero no hay historial de gastos; las cuentas nuevas arrancan con $5.000, así que se gastó todo (nafta, peajes, multas…) o hay otra causa; no se encontró un error de cobro.
+
+---
+
 ## 26/10/2026 · [B] Compras: «No se pudo iniciar la compra» — causa comprobada: los 10 productos NO existen en Play Console; diagnóstico agregado (SIN compilar ni publicar) — BLOQUEADO (falta crear los productos)
 - **Síntoma (dueño, prueba interna):** al tocar un producto en COMPRAS sale «No se pudo iniciar la compra».
 - **Evidencia real de Google (corrida «Play · Publicar» validate n.º 2, 25/10/2026, `audit.py --online`, sólo lectura):** `monetization.onetimeproducts.list` devolvió 0 productos → «Productos que faltan crear en Play Console: dr_full, dr_adventure, dr_garage, car_truck, car_gt3, car_hyper, dr_coins_s, dr_coins_m, dr_coins_l, dr_coins_xl». La cuenta de servicio sí lee la app (la lista no dio error), la pista interna tiene la 1006 publicada.
