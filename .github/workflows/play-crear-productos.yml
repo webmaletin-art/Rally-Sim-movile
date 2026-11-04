@@ -1,0 +1,43 @@
+name: Play · Crear productos
+
+# Crea en Play Console los 10 productos de compras de Dream Racing (IDs, tipo y precio base USD de tools/play/game.json; nombre y descripción de products.gd; informe: docs/INFORME_PRODUCTOS_PLAY.md).
+# Sin «confirm» es un ENSAYO (no escribe nada). Con confirm = CREAR crea los que faltan (los existentes NO se tocan) y los activa. No borra nada, no toca pistas, versiones, AAB ni la ficha.
+# Se lanza a mano. Necesita GOOGLE_PLAY_SERVICE_ACCOUNT (nunca se imprime).
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Vacío = ensayo (no escribe). CREAR = crea y activa los productos que falten'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-crear-productos
+  cancel-in-progress: false
+
+jobs:
+  productos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Herramientas de Google
+        run: pip install --quiet google-api-python-client google-auth google-auth-httplib2
+      - name: Pruebas y candado
+        run: |
+          python3 tools/play/check_products_lock.py
+          python3 tools/play/tests/create_products_test.py
+      - name: Crear productos (ensayo si no se confirma)
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT" ]; then
+            echo "::error::Falta el secreto GOOGLE_PLAY_SERVICE_ACCOUNT"; exit 1
+          fi
+          python3 tools/play/create_products.py --confirm "$CONFIRM"
