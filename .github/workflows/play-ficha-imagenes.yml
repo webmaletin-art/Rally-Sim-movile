@@ -1,0 +1,38 @@
+name: Play · Imágenes de la ficha
+
+# Sube a la ficha de Play (idioma predeterminado) el ícono, el gráfico de funciones y las capturas de teléfono listadas en store_listing/imagenes_alpha.json, en ese orden. `tools/play/listing_images.py`.
+# Sin «confirm» es un ENSAYO (Google valida y la edición se borra). Con confirm = IMAGENES las guarda. No toca textos, vídeo, pistas, versiones ni testers.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'IMAGENES = confirmar (sin esto es un ensayo)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-ficha-imagenes
+  cancel-in-progress: false
+
+jobs:
+  imagenes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Herramientas de Google
+        run: pip install --quiet google-api-python-client google-auth google-auth-httplib2
+      - name: Prueba de la herramienta
+        run: python3 tools/play/tests/listing_images_test.py
+      - name: Imágenes de la ficha
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT" ]; then echo "::error::Falta el secreto GOOGLE_PLAY_SERVICE_ACCOUNT"; exit 1; fi
+          python3 tools/play/listing_images.py upload --confirm "$CONFIRM"

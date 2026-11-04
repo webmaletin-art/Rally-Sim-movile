@@ -1,0 +1,15 @@
+{
+  "_nota": "Imágenes de la ficha de Play (es-419) en el orden en que aparecen. Todas son capturas reales del juego (o el ícono y el gráfico de marca); los originales NO se mueven ni se borran. Revisadas una por una el 05/11/2026: se dejaron afuera 04_region.jpg (cielo vacío, auto sobre el pasto) y 08_travesia.jpg (el cartel dice 45 km y la ficha 44 km; el texto del fondo queda tapado por un piloto).",
+  "icon": "store_listing/icono_512.png",
+  "featureGraphic": "store_listing/grafico_funciones_1024x500.png",
+  "phoneScreenshots": [
+    "store_listing/capturas/01_rally_atardecer.jpg",
+    "store_listing/capturas/03_dream_city.jpg",
+    "store_listing/capturas/07_lago.jpg",
+    "docs/fotos_mejoras/faros_noche.jpg",
+    "store_listing/capturas/02_aventura.jpg",
+    "docs/fotos_mejoras/plaza_gente.jpg",
+    "store_listing/capturas/05_taller.jpg",
+    "store_listing/capturas/06_pintura.jpg"
+  ]
+}
