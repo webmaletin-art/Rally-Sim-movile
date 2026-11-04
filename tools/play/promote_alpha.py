@@ -23,6 +23,7 @@ def main():
     ap.add_argument("--version-name", required=True)
     ap.add_argument("--confirm", default="")
     ap.add_argument("--notes", default="store_listing/novedades.md")
+    ap.add_argument("--status", choices=["completed", "draft"], default="completed")
     a = ap.parse_args()
     cfg = load_config(a.config)
     pkg = cfg["package"]
@@ -44,9 +45,9 @@ def main():
         print("Bundles que Play ya tiene: %s" % sorted(have))
         if int(a.version_code) not in have:
             fail("Play no tiene el bundle con versionCode %s: no se puede poner en alpha sin subirlo (no se sube nada acá)." % a.version_code)
-        rel = {"name": a.version_name, "versionCodes": [str(int(a.version_code))], "status": "completed", "releaseNotes": notes}
+        rel = {"name": a.version_name, "versionCodes": [str(int(a.version_code))], "status": a.status, "releaseNotes": notes}
         svc.edits().tracks().update(packageName=pkg, editId=edit_id, track=TRACK, body={"track": TRACK, "releases": [rel]}).execute()
-        print("✅ Pista «%s» preparada con el bundle %s ya subido (versión %s)" % (TRACK, a.version_code, a.version_name))
+        print("✅ Pista «%s» preparada con el bundle %s ya subido (versión %s, estado %s)" % (TRACK, a.version_code, a.version_name, a.status))
         svc.edits().validate(packageName=pkg, editId=edit_id).execute()
         print("✅ Google VALIDÓ la edición (%s)" % edit_id)
         if a.confirm == "ALPHA":

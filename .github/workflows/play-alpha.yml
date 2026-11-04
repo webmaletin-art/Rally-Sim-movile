@@ -11,6 +11,9 @@ on:
       version_name:
         description: 'Nombre de la versión'
         default: '1.0.1'
+      release_status:
+        description: 'completed = disponible · draft = borrador (obligatorio si la app todavía está en borrador en Play: se envía a revisión desde Play Console)'
+        default: 'completed'
       confirm:
         description: 'Vacío = ensayo. ALPHA = publicar en la prueba cerrada'
         required: false
@@ -41,6 +44,7 @@ jobs:
           CONFIRM: ${{ inputs.confirm }}
           VC: ${{ inputs.version_code }}
           VN: ${{ inputs.version_name }}
+          ST: ${{ inputs.release_status }}
         run: |
           if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT" ]; then echo "::error::Falta el secreto GOOGLE_PLAY_SERVICE_ACCOUNT"; exit 1; fi
-          python3 tools/play/promote_alpha.py --version-code "$VC" --version-name "$VN" --confirm "$CONFIRM"
+          python3 tools/play/promote_alpha.py --version-code "$VC" --version-name "$VN" --status "$ST" --confirm "$CONFIRM"
