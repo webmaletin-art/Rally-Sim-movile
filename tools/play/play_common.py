@@ -125,8 +125,10 @@ def _build_service(creds):
     # corrida del 04/11/2026 al 96 % de la subida). 20 minutos alcanzan de sobra.
     try:
         import google_auth_httplib2
-        import httplib2
-        http = google_auth_httplib2.AuthorizedHttp(creds, http=httplib2.Http(timeout=1200))
+        from googleapiclient.http import build_http  # (quita el 308 de las redirecciones: Google lo usa para decir «seguí subiendo»; con un Http pelado la subida falla con «missing a Location header»)
+        base = build_http()
+        base.timeout = 1200
+        http = google_auth_httplib2.AuthorizedHttp(creds, http=base)
         return build("androidpublisher", "v3", http=http, cache_discovery=False)
     except ImportError:
         return build("androidpublisher", "v3", credentials=creds, cache_discovery=False)
