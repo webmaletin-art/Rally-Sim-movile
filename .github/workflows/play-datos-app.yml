@@ -1,0 +1,56 @@
+name: Play · Datos de la app
+
+# Muestra (sólo lectura) los datos de contacto de la app en Play, un resumen de la ficha (imágenes y vídeo por idioma) y comprueba que respondan las páginas legales (privacidad, términos, eliminar cuenta).
+# Con action = set y confirm = CONTACTO guarda el correo de contacto indicado. No toca imágenes, textos, pistas, versiones ni testers. `tools/play/app_details.py`.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'show = ver · set = guardar el correo de contacto'
+        type: choice
+        options: [show, set]
+        default: show
+      email:
+        description: 'Correo de contacto (sólo para set)'
+        required: false
+        default: ''
+      confirm:
+        description: 'CONTACTO = confirmar (sin esto set es un ensayo)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-datos-app
+  cancel-in-progress: false
+
+jobs:
+  datos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Páginas legales (¿responden?)
+        run: |
+          for p in privacidad terminos eliminar-cuenta; do
+            u="https://webmaletin-art.github.io/Rally-Sim-movile/docs/$p.html"
+            code=$(curl -sS -o /tmp/p.html -w '%{http_code}' --max-time 30 "$u" || echo 000)
+            echo "$u → HTTP $code · $(wc -c < /tmp/p.html 2>/dev/null) bytes · título: $(grep -o '<title>[^<]*' /tmp/p.html | head -1)"
+          done
+      - name: Herramientas de Google
+        run: pip install --quiet google-api-python-client google-auth google-auth-httplib2
+      - name: Prueba de la herramienta
+        run: python3 tools/play/tests/app_details_test.py
+      - name: Datos de la app en Play
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          ACTION: ${{ inputs.action }}
+          EMAIL: ${{ inputs.email }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT" ]; then echo "::error::Falta el secreto GOOGLE_PLAY_SERVICE_ACCOUNT"; exit 1; fi
+          python3 tools/play/app_details.py "$ACTION" --email "$EMAIL" --confirm "$CONFIRM"
