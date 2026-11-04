@@ -1,0 +1,33 @@
+name: Play · Productos
+
+# CONSULTA DE SÓLO LECTURA: compara los 10 productos de compras del juego con los que existen en Play Console (`python3 tools/play/publish.py products`).
+# Sólo pedidos GET (monetization.onetimeproducts.list; si falla, inappproducts.list); el cliente de Google rechaza cualquier otro método. No crea ni cambia productos,
+# no abre ediciones, no sube nada. Necesita GOOGLE_PLAY_SERVICE_ACCOUNT (nunca se imprime). Se lanza a mano.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-productos
+  cancel-in-progress: false
+
+jobs:
+  productos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Herramientas de Google
+        run: pip install --quiet google-api-python-client google-auth google-auth-httplib2
+      - name: Productos de Play (sólo lectura)
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT" ]; then
+            echo "::error::Falta el secreto GOOGLE_PLAY_SERVICE_ACCOUNT"; exit 1
+          fi
+          python3 tools/play/publish.py products
