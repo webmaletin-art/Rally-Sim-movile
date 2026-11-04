@@ -1,0 +1,43 @@
+name: Play · Testers de alpha (grupo de Google)
+
+# Sin datos MUESTRA los grupos de Google que hoy son testers de la prueba cerrada (alpha). Con «group» valida agregar ese grupo (se conservan los existentes); con confirm = GRUPO lo confirma.
+# Sólo toca los testers de alpha. El grupo lo crea el dueño en groups.google.com; acá no se inventa ninguna dirección. `tools/play/alpha_group.py`.
+on:
+  workflow_dispatch:
+    inputs:
+      group:
+        description: 'Dirección del grupo de Google (ej. dream-racing-testers@googlegroups.com). Vacío = sólo mostrar'
+        required: false
+        default: ''
+      confirm:
+        description: 'GRUPO = confirmar el cambio (sin esto es un ensayo)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-alpha-grupo
+  cancel-in-progress: false
+
+jobs:
+  grupo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Herramientas de Google
+        run: pip install --quiet google-api-python-client google-auth google-auth-httplib2
+      - name: Prueba de la herramienta
+        run: python3 tools/play/tests/alpha_group_test.py
+      - name: Testers de alpha por grupo
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          GRP: ${{ inputs.group }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT" ]; then echo "::error::Falta el secreto GOOGLE_PLAY_SERVICE_ACCOUNT"; exit 1; fi
+          python3 tools/play/alpha_group.py --group "$GRP" --confirm "$CONFIRM"
