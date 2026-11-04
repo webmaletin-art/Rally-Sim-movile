@@ -24,13 +24,13 @@ import listing  # noqa: E402
 TRACKS = ("internal", "alpha", "beta", "production")
 
 
-def connect(cfg):
+def connect(cfg, read_only=False):
     info = service_account_info()
     if not info:
         fail("Falta el secreto GOOGLE_PLAY_SERVICE_ACCOUNT (el JSON completo de la cuenta de servicio): no se puede hablar con Google Play. "
              "Pasos: docs/PUBLICAR_EN_PLAY.md → «Conectar Google Play».")
     print("Cuenta de servicio: %s" % masked_account(info))
-    return build_service(info)
+    return build_service(info, read_only=read_only)
 
 
 def used_version_codes(svc, pkg, edit_id):
@@ -219,7 +219,7 @@ def cmd_release(cfg, a):
 
 
 def cmd_products(cfg, a):
-    svc = connect(cfg)
+    svc = connect(cfg, read_only=True) # sólo GET (monetization.onetimeproducts.list / inappproducts.list)
     pkg = cfg["package"]
     rep = Report("Productos integrados: game.json ↔ Play Console")
     found = {}
