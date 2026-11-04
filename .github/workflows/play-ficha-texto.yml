@@ -1,0 +1,48 @@
+name: Play · Textos de la ficha
+
+# `show` MUESTRA qué textos tiene hoy la ficha de Play Console (sólo longitudes). `set` valida (ensayo) o guarda (confirm = TEXTOS) los textos de store_listing/ficha.md de los idiomas indicados.
+# Sólo título y descripciones: NO toca imágenes, vídeo, categoría, pistas, versiones ni testers. `tools/play/listing_text.py`.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'show = ver · set = valida/guarda textos'
+        type: choice
+        options: [show, set]
+        default: show
+      langs:
+        description: 'Idiomas para set (ej. es-419)'
+        default: 'es-419'
+      confirm:
+        description: 'TEXTOS = confirmar (sin esto set es un ensayo)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: play-ficha-texto
+  cancel-in-progress: false
+
+jobs:
+  ficha:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Herramientas de Google
+        run: pip install --quiet google-api-python-client google-auth google-auth-httplib2
+      - name: Prueba de la herramienta
+        run: python3 tools/play/tests/listing_text_test.py
+      - name: Textos de la ficha
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          ACTION: ${{ inputs.action }}
+          LANGS: ${{ inputs.langs }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT" ]; then echo "::error::Falta el secreto GOOGLE_PLAY_SERVICE_ACCOUNT"; exit 1; fi
+          python3 tools/play/listing_text.py "$ACTION" --langs "$LANGS" --confirm "$CONFIRM"
