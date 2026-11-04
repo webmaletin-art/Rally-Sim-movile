@@ -9,6 +9,7 @@ extends Node
 const Products := preload("res://game/store/products.gd")
 const Release := preload("res://game/data/release.gd")
 const Tr := preload("res://game/i18n/tr.gd")
+const CrashLog := preload("res://game/diag/crash_log.gd")
 
 signal state_changed
 signal message(text: String)
@@ -24,8 +25,44 @@ var client = null
 var connected := false
 var details: Dictionary = {} # id → {"title", "price"}
 var busy := false
+var last_error := {} # {stage, code, name, msg}: último fallo real de Google Play (para el registro «COPIAR REGISTRO»; nunca guarda tokens ni cuentas)
+var unavailable := {} # id → true: Google no devolvió ese producto en la consulta (no existe, no está activo o la cuenta no tiene acceso)
+var _queried := false
 const TOKENS_KEPT := 60 # cuántos «recibos» de bolsas de monedas ya acreditadas se recuerdan (evita acreditar dos veces la misma compra)
 var _verifying := {} # compras que se están verificando con el servidor (para no mandarlas dos veces)
+
+## Nombre legible del código de respuesta de BillingClient (BillingResponseCode)
+static func code_name(code: int) -> String:
+	match code:
+		-3: return "SERVICE_TIMEOUT"
+		-2: return "FEATURE_NOT_SUPPORTED"
+		-1: return "SERVICE_DISCONNECTED"
+		0: return "OK"
+		1: return "USER_CANCELED"
+		2: return "SERVICE_UNAVAILABLE"
+		3: return "BILLING_UNAVAILABLE"
+		4: return "ITEM_UNAVAILABLE"
+		5: return "DEVELOPER_ERROR"
+		6: return "ERROR"
+		7: return "ITEM_ALREADY_OWNED"
+		8: return "ITEM_NOT_OWNED"
+		12: return "NETWORK_ERROR"
+	return "CODE_%d" % code
+
+## Anota en el registro qué falló de verdad (etapa, código, nombre y el mensaje de Google). No guarda tokens de compra ni datos de la cuenta.
+func _log_error(stage: String, code: int, msg: String, extra := "") -> void:
+	last_error = {"stage": stage, "code": code, "name": code_name(code), "msg": msg}
+	CrashLog.mark("compras", "%s: %d %s · %s%s" % [stage, code, code_name(code), msg.left(200), (" · " + extra) if extra != "" else ""])
+
+## Texto para el jugador según qué falló (no es lo mismo «producto no disponible» que «sin conexión» o «cuenta sin acceso»)
+static func player_text(code: int) -> String:
+	match code:
+		4: return Tr.t("Este producto todavía no está disponible en Google Play.")
+		3, 2, -1, -3, 12: return Tr.t("Google Play no responde ahora. Revisá tu conexión y probá de nuevo en un momento.")
+		5: return Tr.t("La tienda no está configurada para esta versión del juego.")
+		7: return Tr.t("Ya tenés este producto. Tocá RESTAURAR COMPRAS.")
+		-2: return Tr.t("Tu teléfono o tu cuenta de Google no admiten esta compra.")
+	return Tr.t("No se pudo iniciar la compra.")
 
 ## ¿Está el plugin en esta compilación?
 static func supported() -> bool:
@@ -67,13 +104,25 @@ func buy(id: String) -> void:
 	if not is_ready():
 		message.emit(Tr.t("Las compras no están disponibles ahora. Probá de nuevo en un momento."))
 		return
+	if _queried and not details.has(id):
+		# Google no devolvió este producto al consultarlo: no hay nada que comprar (se registra el motivo y no se abre un flujo que fallaría igual)
+		unavailable[id] = true
+		_log_error("compra", 4, "el producto no está en la respuesta de Google Play (no existe, no está activo o la cuenta no tiene acceso)", "id=%s" % id)
+		message.emit(player_text(4))
+		client.query_product_details(Products.ids(), 0) # (por si el producto se creó o activó hace un momento)
+		state_changed.emit()
+		return
 	busy = true
 	state_changed.emit()
 	var r: Variant = client.purchase(id)
 	if r is Dictionary and int((r as Dictionary).get("response_code", OK)) != OK:
 		busy = false
-		message.emit(Tr.t("No se pudo iniciar la compra."))
+		var code := int((r as Dictionary).get("response_code", OK))
+		_log_error("compra", code, str((r as Dictionary).get("debug_message", "")), "id=%s" % id)
+		message.emit(player_text(code))
 		state_changed.emit()
+	else:
+		CrashLog.mark("compras", "compra iniciada: id=%s" % id)
 
 ## Vuelve a pedir a Google lo comprado (por si se reinstaló el juego o quedó algo pendiente)
 func restore() -> void:
@@ -83,20 +132,25 @@ func restore() -> void:
 
 func _on_connected() -> void:
 	connected = true
+	CrashLog.mark("compras", "conectado con Google Play; se consultan %d productos" % Products.ids().size())
 	client.query_product_details(Products.ids(), 0) # ProductType.INAPP
 	client.query_purchases(0)
 	state_changed.emit()
 
 func _on_disconnected() -> void:
 	connected = false
+	CrashLog.mark("compras", "desconectado de Google Play")
 	state_changed.emit()
 
-func _on_connect_error(_code = 0, _msg = "") -> void:
+func _on_connect_error(code = 0, msg = "") -> void:
 	connected = false
+	_log_error("conexión", int(code), str(msg))
 	state_changed.emit()
 
 func _on_details(result: Dictionary) -> void:
-	if int(result.get("response_code", result.get("result_code", OK))) != OK:
+	var rc := int(result.get("response_code", result.get("result_code", OK)))
+	if rc != OK:
+		_log_error("consulta de productos", rc, str(result.get("debug_message", "")))
 		return
 	for d in result.get("product_details", []):
 		var dd: Dictionary = d
@@ -113,6 +167,14 @@ func _on_details(result: Dictionary) -> void:
 			price = str(dd.get("formatted_price", ""))
 		if id != "":
 			details[id] = {"title": str(dd.get("title", dd.get("name", ""))), "price": price}
+	_queried = true
+	unavailable.clear()
+	var missing: Array = []
+	for pid in Products.ids():
+		if not details.has(pid):
+			unavailable[pid] = true
+			missing.append(pid)
+	CrashLog.mark("compras", "productos: %d de %d devueltos por Google Play%s" % [details.size(), Products.ids().size(), (" · sin respuesta: " + ", ".join(missing)) if not missing.is_empty() else ""])
 	state_changed.emit()
 
 func _on_purchases(result: Dictionary) -> void:
@@ -126,7 +188,8 @@ func _on_purchase_updated(result: Dictionary) -> void:
 		for p in result.get("purchases", []):
 			_handle(p)
 	elif code != USER_CANCELED:
-		message.emit(Tr.t("No se pudo completar la compra."))
+		_log_error("compra (respuesta)", code, str(result.get("debug_message", "")))
+		message.emit(player_text(code) if code == 7 else Tr.t("No se pudo completar la compra."))
 	state_changed.emit()
 
 func _handle(p: Dictionary) -> void:

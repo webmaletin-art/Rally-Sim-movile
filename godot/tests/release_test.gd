@@ -82,5 +82,14 @@ func _init() -> void:
 	bil._grant_credits("token-1", 5000) # la misma compra reintentada: no acredita dos veces
 	bil._grant_credits("token-2", 12000)
 	check(int(p.d["credits"]) == before + 17000, "las monedas se acreditan una sola vez por compra (recibo) [%d → %d]" % [before, int(p.d["credits"])])
+	# diagnóstico de compras: si Google no devuelve ningún producto, todos quedan «no disponibles» y se registra el motivo; nunca se acredita nada
+	var bd := Billing.new()
+	bd.profile = p
+	bd._on_details({"response_code": 0, "product_details": [{"product_id": "dr_full", "one_time_purchase_offer_details": {"formatted_price": "US$ 9,99"}}]})
+	check(bd.price_of("dr_full") == "US$ 9,99" and not bd.unavailable.has("dr_full") and bd.unavailable.has("dr_coins_s"), "los productos que Google no devuelve quedan como no disponibles (%d)" % bd.unavailable.size())
+	bd._on_details({"response_code": 5, "debug_message": "Developer error"})
+	check(int(bd.last_error.get("code", -9)) == 5 and str(bd.last_error.get("name", "")) == "DEVELOPER_ERROR", "el error real de Google (código y nombre) queda anotado")
+	check(Billing.player_text(4) != Billing.player_text(3) and Billing.player_text(3) != Billing.player_text(99), "el jugador ve motivos distintos: producto no disponible, sin conexión y error genérico")
+	bd.free()
 	bil.free()
 	quit(1 if fail else 0)

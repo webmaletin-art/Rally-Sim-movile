@@ -488,15 +488,13 @@ func _finish(ok: bool, why: String) -> void:
 	# rivales adaptables: ganaste → la próxima van más rápido; perdiste → un poco más lento
 	var pace := float(r.get("pace", 0.93 + 0.07 * float(cur["tier"])))
 	r["pace"] = clampf(pace + (0.03 if won else -0.03), 0.85, 1.08)
-	# el progreso viaja con el premio a la cuenta (victorias, mejor tiempo); la primera victoria avisa cuánto sería repetida: si la cuenta ya la tenía
-	# (reinstalación, otro teléfono) el servidor paga eso (migración 20261022)
+	# el progreso viaja con el premio a la cuenta (victorias, mejor tiempo)
 	var ex := {"w": int(r.get("wins", 0))}
 	if r.has("best"):
 		ex["b"] = float(r["best"])
 	if reward > 0:
-		if won and first:
-			ex["first"] = true
-			ex["rep"] = int(round(float(cur["reward"]) * k * REPEAT_K / 10.0) * 10.0)
+		# (31/10/2026) ya no se manda «first»/«rep»: al descubrir la carrera el juego la anota en la cuenta (progress), y el servidor, al ver esa anotación, tomaba la primera victoria
+		# como repetida y pagaba sólo el 35 %. El monto que se manda (reward) ya lleva el multiplicador de repetición, así que alcanza con él.
 		race.profile.earn(float(reward), "owev", id, ex)
 		race.profile.add_xp(float(reward) * 0.2)
 	elif ok:
