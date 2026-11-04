@@ -121,7 +121,15 @@ def _build_service(creds):
         doc["rootUrl"] = endpoint
         return build_from_document(doc, credentials=creds)
     from googleapiclient.discovery import build
-    return build("androidpublisher", "v3", credentials=creds, cache_discovery=False)
+    # Tiempo de espera largo: al subir un AAB de ~730 MB, Google tarda más de 60 s en procesar el último tramo y la respuesta se cortaba («The read operation timed out»,
+    # corrida del 04/11/2026 al 96 % de la subida). 20 minutos alcanzan de sobra.
+    try:
+        import google_auth_httplib2
+        import httplib2
+        http = google_auth_httplib2.AuthorizedHttp(creds, http=httplib2.Http(timeout=1200))
+        return build("androidpublisher", "v3", http=http, cache_discovery=False)
+    except ImportError:
+        return build("androidpublisher", "v3", credentials=creds, cache_discovery=False)
 
 
 # ───────────────────────── errores de Google, en castellano ─────────────────────────
